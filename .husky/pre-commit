@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Set STAKED_CELO_DISABLE_PRECOMIT=1 in your environment to disable precomit
+# hooks.
+if [[ -z "$STAKED_CELO_DISABLE_PRECOMIT" ]]; then
+  . "$(dirname "$0")/_/husky.sh"
+
+  npx lint-staged
+fi
