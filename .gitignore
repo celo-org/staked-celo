@@ -1,0 +1,16 @@
+build/
+migrations/
+node_modules/
+
+# asdf
+.tool-versions
+
+# hardhat
+artifacts
+cache
+deployments/localhost
+deployments/hardhat
+typechain-types
+
+# IDEA
+.idea
