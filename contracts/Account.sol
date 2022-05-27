@@ -669,24 +669,26 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             );
         }
 
-        (uint256 lockedWithdrawalValue, uint256 lockedWithdrawalTimestamp) = getLockedGold()
-            .getPendingWithdrawal(address(this), lockedGoldPendingWithdrawalIndex);
+        (
+            uint256 lockedGoldPendingWithdrawalValue,
+            uint256 lockedGoldPendingWithdrawalTimestamp
+        ) = getLockedGold().getPendingWithdrawal(address(this), lockedGoldPendingWithdrawalIndex);
 
         PendingWithdrawal memory pendingWithdrawal = pendingWithdrawals[beneficiary][
             localPendingWithdrawalIndex
         ];
 
-        if (pendingWithdrawal.value != lockedWithdrawalValue) {
+        if (pendingWithdrawal.value != lockedGoldPendingWithdrawalValue) {
             revert InconsistentPendingWithdrawalValues(
                 pendingWithdrawal.value,
-                lockedWithdrawalValue
+                lockedGoldPendingWithdrawalValue
             );
         }
 
-        if (pendingWithdrawal.timestamp != lockedWithdrawalTimestamp) {
+        if (pendingWithdrawal.timestamp != lockedGoldPendingWithdrawalTimestamp) {
             revert InconsistentPendingWithdrawalTimestamps(
                 pendingWithdrawal.timestamp,
-                lockedWithdrawalTimestamp
+                lockedGoldPendingWithdrawalTimestamp
             );
         }
 
