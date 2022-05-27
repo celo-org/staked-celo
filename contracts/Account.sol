@@ -669,27 +669,24 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             );
         }
 
-        /**
-         * We plan to add an O(1) view function to LockedGold.sol so we don't end up copying these
-         * arrays, but for now we are doing this to unblock development.
-         */
-        (uint256[] memory values, uint256[] memory timestamps) = getLockedGold()
-            .getPendingWithdrawals(address(this));
+        (uint256 lockedWithdrawalValue, uint256 lockedWithdrawalTimestamp) = getLockedGold()
+            .getPendingWithdrawal(address(this), lockedGoldPendingWithdrawalIndex);
+
         PendingWithdrawal memory pendingWithdrawal = pendingWithdrawals[beneficiary][
             localPendingWithdrawalIndex
         ];
 
-        if (pendingWithdrawal.value != values[lockedGoldPendingWithdrawalIndex]) {
+        if (pendingWithdrawal.value != lockedWithdrawalValue) {
             revert InconsistentPendingWithdrawalValues(
                 pendingWithdrawal.value,
-                values[lockedGoldPendingWithdrawalIndex]
+                lockedWithdrawalValue
             );
         }
 
-        if (pendingWithdrawal.timestamp != timestamps[lockedGoldPendingWithdrawalIndex]) {
+        if (pendingWithdrawal.timestamp != lockedWithdrawalTimestamp) {
             revert InconsistentPendingWithdrawalTimestamps(
                 pendingWithdrawal.timestamp,
-                timestamps[lockedGoldPendingWithdrawalIndex]
+                lockedWithdrawalTimestamp
             );
         }
 
