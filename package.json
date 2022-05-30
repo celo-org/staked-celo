@@ -50,7 +50,8 @@
     "lint:ci": "yarn run lint:sol:ci && yarn run lint:ts:ci",
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
     "lint:ts:ci": "prettier --check ./**/*.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "deploy:alfajores": "npx hardhat deploy  --network alfajores --show-stack-traces --tags core"
   },
   "author": "Celo Labs Inc.",
   "license": "ISC",
