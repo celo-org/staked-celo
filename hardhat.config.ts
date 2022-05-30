@@ -9,6 +9,7 @@ import "./lib/contractkit.plugin";
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
 
+const privateKey = "";
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 /**
@@ -31,12 +32,15 @@ module.exports = {
     },
     multisigOwner0: {
       default: 3,
+      alfajores: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
     },
     multisigOwner1: {
       default: 4,
+      alfajores: "0x2B73d814BA2231606f9d856C7C20423915F96711",
     },
     multisigOwner2: {
       default: 5,
+      alfajores: "0xF4BB4Aa6AAD00E9B660B744736B7092816704CB9",
     },
     // Used as owner in test fixtures instead of multisig
     owner: {
@@ -54,6 +58,11 @@ module.exports = {
         blockNumber: 399,
         // url: "https://alfajores-forno.celo-testnet.org"
       },
+    },
+    alfajores: {
+      url: `https://alfajores-forno.celo-testnet.org/`,
+      accounts: [`${privateKey}`],
+      gas: 4000000,
     },
   },
   solidity: {
