@@ -170,7 +170,8 @@ In order to use the tarball containing the staked CELO contracts, you will need 
 ``` ts 
 external: {
     deployments: {
-      hardhat: ["deployments/local"],
+      // Specify path to deployment data
+      hardhat: ["chainData/deployments/local"],
     }
   },
 

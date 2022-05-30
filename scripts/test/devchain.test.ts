@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 hre.config.external = {
   deployments: {
-    hardhat: ["deployments/local"],
+    hardhat: ["chainData/deployments/local"],
   },
 };
 
