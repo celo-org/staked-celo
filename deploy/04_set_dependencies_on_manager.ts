@@ -6,7 +6,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const stakedCelo = await hre.deployments.get("StakedCelo");
   const manager: Manager = await hre.ethers.getContract("Manager");
-  console.log(account.address, stakedCelo.address, manager.address);
   await manager.setDependencies(stakedCelo.address, account.address);
 };
 

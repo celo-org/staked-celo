@@ -7,9 +7,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
 
   const { deployer, multisigOwner0, multisigOwner1, multisigOwner2 } = await hre.getNamedAccounts();
-  // const [deployer] = await ethers.getSigners();
-  // console.log(deployer);
-  // const owners = ["0x0a692a271DfAf2d36E46f50269c932511B55e871", "0x2B73d814BA2231606f9d856C7C20423915F96711", "0xF4BB4Aa6AAD00E9B660B744736B7092816704CB9Ò"];
   const owners = [multisigOwner0, multisigOwner1, multisigOwner2];
   const deployment = await deploy("MultiSig", {
     from: deployer,
