@@ -13,7 +13,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "^4.4.2",
     "@openzeppelin/contracts-upgradeable": "^4.5.2",
-    "@terminal-fi/celo-devchain": "git+https://github.com/soloseng/celo-devchain#with-db-option",
+    "@terminal-fi/celo-devchain": "git+https://github.com/soloseng/celo-devchain#add-pre-release-v7",
     "@typechain/ethers-v5": "^9.0.0",
     "@typechain/hardhat": "^4.0.0",
     "@typechain/truffle-v5": "^3.0.0",
@@ -42,7 +42,7 @@
     "compile": "yarn run hardhat compile",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
-    "devchain": "yarn run celo-devchain --port 7545 --core v5",
+    "devchain": "yarn run celo-devchain --port 7545 --core v7",
     "deploy:devchain": "yarn run hardhat deploy --network local && ts-node --files ./scripts/mineBlocks.ts",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
@@ -53,7 +53,7 @@
     "prepare": "husky install"
   },
   "author": "Celo Labs Inc.",
-  "license": "ISC",
+  "license": "LGPL-3.0-only",
   "lint-staged": {
     "*.sol": "yarn lint:sol",
     "*.ts": "yarn lint:ts",

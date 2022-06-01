@@ -866,9 +866,9 @@
   dependencies:
     defer-to-connect "^1.0.1"
 
-"@terminal-fi/celo-devchain@git+https://github.com/soloseng/celo-devchain#with-db-option":
+"@terminal-fi/celo-devchain@git+https://github.com/soloseng/celo-devchain#add-pre-release-v7":
   version "3.4.0"
-  resolved "git+https://github.com/soloseng/celo-devchain#eb3dc5f1e213a49a41b41631c84b969e51182837"
+  resolved "git+https://github.com/soloseng/celo-devchain#d0ba21e4c9159622e9b494a738abc19829f3d966"
   dependencies:
     "@celo/contractkit" "^1.2.4"
     "@celo/ganache-cli" "git+https://github.com/celo-org/ganache-cli.git#e933297"
