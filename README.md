@@ -131,20 +131,17 @@ Once deployed, devchain can safely be stopped.
 
 Once the contracts are successfully deployed to the network, compress the chain data.
 
-<!-- TODO(soloseng): ∆ checkout branch on PR merge -->
-
 ```bash
 # Start with a fresh checkout to avoid build complications.
 > git clone https://github.com/celo-org/celo-monorepo.git
 > git fetch --all --tags
-> git checkout soloseng/add-devchain-option
 
 # Yarn commands can take a while to run.
 > yarn
 > yarn build --ignore docs
 
 > cd packages/protocol
-> yarn devchain compress-chain <path_to_staked_CELO_chainData_dir> .tmp/stakedCeloDevchain.tar.gz
+> yarn devchain compress-chain <path_to_staked_CELO_chainData_dir> <filename>
 ```
 
 ### Testing the New Devchain Tarball

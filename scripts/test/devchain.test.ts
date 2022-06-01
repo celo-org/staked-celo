@@ -1,13 +1,18 @@
 import hre from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Account } from "../../typechain-types/Account";
+import { Manager } from "../../typechain-types/Manager";
+import { MultiSig } from "../../typechain-types/MultiSig";
+import { StakedCelo } from "../../typechain-types/StakedCelo";
+import { RebasedStakedCelo } from "../../typechain-types/RebasedStakedCelo";
 
 hre.config.external = {
   deployments: {
     hardhat: ["chainData/deployments/local"],
   },
 };
-
+// Set `blockNumber` to the last block that Staked CELO contracts were deployed to.
 hre.config.networks.hardhat.forking!.blockNumber = 445;
 hre.config.networks.hardhat.accounts = {
   mnemonic: "concert load couple harbor equip island argue ramp clarify fence smart topic",
@@ -18,20 +23,20 @@ hre.config.networks.hardhat.accounts = {
 };
 
 describe("Deployment check", () => {
-  let multiSig: any;
-  let account: any;
-  let manager: any;
-  let stCELO: any;
-  let rstCELO: any;
+  let multiSig: MultiSig;
+  let account: Account;
+  let manager: Manager;
+  let stCELO: StakedCelo;
+  let rstCELO: RebasedStakedCelo;
 
-  let multisigOwner0: SignerWithAddress;
-  let multisigOwner1: SignerWithAddress;
-  let multisigOwner2: SignerWithAddress;
+  let multiSigOwner0: SignerWithAddress;
+  let multiSigOwner1: SignerWithAddress;
+  let multiSigOwner2: SignerWithAddress;
 
   beforeEach(async () => {
-    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    multisigOwner1 = await hre.ethers.getNamedSigner("multisigOwner1");
-    multisigOwner2 = await hre.ethers.getNamedSigner("multisigOwner2");
+    multiSigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+    multiSigOwner1 = await hre.ethers.getNamedSigner("multisigOwner1");
+    multiSigOwner2 = await hre.ethers.getNamedSigner("multisigOwner2");
 
     multiSig = await hre.ethers.getContract("MultiSig");
     account = await hre.ethers.getContract("Account");
@@ -40,30 +45,25 @@ describe("Deployment check", () => {
     rstCELO = await hre.ethers.getContract("RebasedStakedCelo");
   });
 
-  it("multisig should be owned by 3 addresses", async () => {
+  it("MultiSig contract should be owned by the 3 multiSigOwners addresses", async () => {
     const ownerList = await multiSig.getOwners();
     expect(ownerList.length).to.eq(3);
-    expect(ownerList[0]).to.eq(multisigOwner0.address);
-    expect(ownerList[1]).to.eq(multisigOwner1.address);
-    expect(ownerList[2]).to.eq(multisigOwner2.address);
+    expect(ownerList[0]).to.eq(multiSigOwner0.address);
+    expect(ownerList[1]).to.eq(multiSigOwner1.address);
+    expect(ownerList[2]).to.eq(multiSigOwner2.address);
   });
 
-  it("multisig first be owned by 3 addresses", async () => {
-    const ownerList = await multiSig.getOwners();
-    expect(ownerList[1]).to.eq(multisigOwner1.address);
-  });
-
-  it("Manager should be owned by multisig", async () => {
+  it("Manager should be owned by MultiSig", async () => {
     const currentManager = await account.manager();
     expect(currentManager).to.eq(manager.address);
   });
 
-  it("Account should have manager contract address as manager", async () => {
+  it("Account should have Manager contract address as manager", async () => {
     const currentManager = await account.manager();
     expect(currentManager).to.eq(manager.address);
   });
 
-  it("StakedCelo should have manager contract address as manager", async () => {
+  it("StakedCelo should have Manager contract address as manager", async () => {
     const currentManager = await stCELO.manager();
     expect(currentManager).to.eq(manager.address);
   });

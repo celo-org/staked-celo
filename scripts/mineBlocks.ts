@@ -1,8 +1,11 @@
 import hre from "hardhat";
 import { JsonRpcProvider } from "@ethersproject/providers";
 
+import { mineBlocks } from "../test-ts/utils";
+
 let devchainProvider: JsonRpcProvider;
 
+// Switch provider to mine block on ganache instead of the default hardhat fork
 function useLocalhostProvider() {
   console.log("switching provider");
   devchainProvider = new hre.ethers.providers.JsonRpcProvider("http://localhost:7545");
@@ -10,10 +13,7 @@ function useLocalhostProvider() {
 
 async function mineNBlocks(n: number) {
   useLocalhostProvider();
-  console.log(`Mining ${n} Blocks`);
-  for (let index = 0; index < n; index++) {
-    await devchainProvider.send("evm_mine", []);
-  }
+  mineBlocks(n);
 }
 
 mineNBlocks(35);
