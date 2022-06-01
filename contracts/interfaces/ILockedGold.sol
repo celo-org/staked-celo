@@ -12,6 +12,8 @@ interface ILockedGold {
 
     function getTotalLockedGold() external view returns (uint256);
 
+    function getPendingWithdrawal(address, uint256) external view returns (uint256, uint256);
+
     function getPendingWithdrawals(address)
         external
         view
