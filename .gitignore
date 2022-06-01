@@ -14,3 +14,6 @@ typechain-types
 deployments
 # IDEA
 .idea
+.env
+.env.staging
+.env.alfajores

@@ -5,11 +5,13 @@ import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-deploy";
 import "./lib/contractkit.plugin";
+import "dotenv/config";
 
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
 
-const privateKey = "";
+const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 /**
@@ -25,6 +27,7 @@ module.exports = {
   namedAccounts: {
     deployer: {
       default: 0,
+      alfajores: 0,
     },
     // Temp to get some deployments working
     manager: {
@@ -32,15 +35,14 @@ module.exports = {
     },
     multisigOwner0: {
       default: 3,
+      // on alfajores, multisig will be a 1 of 1 since the network tag is only provided in one place.
       alfajores: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
     },
     multisigOwner1: {
       default: 4,
-      alfajores: "0x2B73d814BA2231606f9d856C7C20423915F96711",
     },
     multisigOwner2: {
       default: 5,
-      alfajores: "0xF4BB4Aa6AAD00E9B660B744736B7092816704CB9",
     },
     // Used as owner in test fixtures instead of multisig
     owner: {
@@ -61,6 +63,11 @@ module.exports = {
     },
     alfajores: {
       url: `https://alfajores-forno.celo-testnet.org/`,
+      accounts: [`${privateKey}`],
+      gas: 4000000,
+    },
+    staging: {
+      url: `https://staging-forno.celo-networks-dev.org/`,
       accounts: [`${privateKey}`],
       gas: 4000000,
     },

@@ -3,7 +3,17 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
-  const { deployer } = await hre.getNamedAccounts();
+
+  // Get a list the named accounts based on network
+  const namedAccounts = await hre.getNamedAccounts();
+
+  const deployer = namedAccounts.deployer;
+
+  console.log("deployer--->", namedAccounts);
+
+  // Since we can't get specific named accounts, we remove those we have gotten their value, so that
+  // we now have only the multisig left.
+  delete namedAccounts["deployer"];
 
   const deployment = await deploy("Manager", {
     from: deployer,
@@ -21,6 +31,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_manager";
-func.tags = ["Manager"];
+func.tags = ["Manager", "core"];
 func.dependencies = ["MultiSig"];
 export default func;

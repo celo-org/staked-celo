@@ -5,7 +5,9 @@
   "repository": {
     "url": "https://github.com/celo-org/staked-celo"
   },
-  "dependencies": {},
+  "dependencies": {
+    "dotenv": "^16.0.1"
+  },
   "devDependencies": {
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^1.5.2",
@@ -51,7 +53,10 @@
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
     "lint:ts:ci": "prettier --check ./**/*.ts",
     "prepare": "husky install",
-    "deploy:alfajores": "npx hardhat deploy  --network alfajores --show-stack-traces --tags core"
+    "keys:decrypt": "bash scripts/key_placer.sh decrypt",
+    "keys:encrypt": "bash scripts/key_placer.sh encrypt",
+    "deploy:alfajores": "cp -f .env.alfajores .env  && npx hardhat deploy  --network alfajores --show-stack-traces --tags core",
+    "deploy:staging": "cp -f .env.staging .env  && npx hardhat deploy  --network staging --show-stack-traces --tags core"
   },
   "author": "Celo Labs Inc.",
   "license": "ISC",
