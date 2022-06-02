@@ -129,24 +129,17 @@ Once deployed, devchain can safely be stopped.
 
 ### Generating New Chain Data Tar
 
-Once the contracts are successfully deployed to the network, compress the chain data.
+Once the contracts are successfully deployed to the network, compress the chain data. 
+
+**NB:** This next part assumes that you already have a local copy of [celo-monorepo](https://github.com/celo-org/celo-monorepo) on your machine. If not, follow the instructions on how to get setup [here](https://github.com/celo-org/celo-monorepo/blob/master/SETUP.md).
 
 ```bash
-# Start with a fresh checkout to avoid build complications.
-> git clone https://github.com/celo-org/celo-monorepo.git
-> git fetch --all --tags
-
-# Yarn commands can take a while to run.
-> yarn
-> yarn build --ignore docs
-
-> cd packages/protocol
-> yarn devchain compress-chain <path_to_staked_CELO_chainData_dir> <filename>
+> yarn tarchain run <path_to_datadir> <path_to_monorepo>
 ```
 
 ### Testing the New Devchain Tarball
 
-Run devchain with imported data.
+Run devchain using staked CELO devchain.
 
 ```bash
 yarn run celo-devchain --port 7545 --file <path_to_tarball>
@@ -192,7 +185,7 @@ networks: {
       forking: {
         // Local devchain
         url: "http://localhost:7545",
-        blockNumber: 445,
+        blockNumber: 780,
       },
       // Mnemonic used to access multisig owner accounts.
       accounts: { mnemonic: "concert load couple harbor equip island argue ramp clarify fence smart topic" },
