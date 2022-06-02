@@ -13,7 +13,7 @@ hre.config.external = {
   },
 };
 // Set `blockNumber` to the last block that Staked CELO contracts were deployed to.
-hre.config.networks.hardhat.forking!.blockNumber = 445;
+hre.config.networks.hardhat.forking!.blockNumber = 785;
 hre.config.networks.hardhat.accounts = {
   mnemonic: "concert load couple harbor equip island argue ramp clarify fence smart topic",
   path: "m/44'/60'/0'/0",
