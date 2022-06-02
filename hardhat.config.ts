@@ -37,6 +37,7 @@ module.exports = {
       default: 3,
       // on alfajores, multisig will be a 1 of 1 since the network tag is only provided in one place.
       alfajores: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
+      staging: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
     },
     multisigOwner1: {
       default: 4,

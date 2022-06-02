@@ -42,7 +42,7 @@
     "web3-utils": "^1.3.0"
   },
   "scripts": {
-    "compile": "yarn run hardhat compile",
+    "compile": "yarn run hardhat compile --network local",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
     "devchain": "yarn run celo-devchain --port 7545 --core v5",
