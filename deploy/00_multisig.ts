@@ -12,13 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const minDelay = Number(process.env.TIME_LOCK_MIN_DELAY);
   const delay = Number(process.env.TIME_LOCK_DELAY);
 
-  console.log(deployer, minDelay, delay);
-
-  // Since we can't get specific named accounts, we remove those we have gotten their value, so that
-  // we now have only the multisig left.
-  delete namedAccounts["deployer"];
-
-  const multisigOwners = Object.values(namedAccounts);
+  const multisigOwners = Object.values(namedAccounts).filter((val) => val !== deployer);
   const requiredConfirmations = multisigOwners.length > 1 ? multisigOwners.length - 1 : 1;
 
   const deployment = await deploy("MultiSig", {
