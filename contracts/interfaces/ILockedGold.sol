@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
 interface ILockedGold {
@@ -11,6 +11,8 @@ interface ILockedGold {
     function getAccountTotalLockedGold(address) external view returns (uint256);
 
     function getTotalLockedGold() external view returns (uint256);
+
+    function getPendingWithdrawal(address, uint256) external view returns (uint256, uint256);
 
     function getPendingWithdrawals(address)
         external
