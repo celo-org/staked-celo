@@ -26,6 +26,20 @@ Run prettier to lint and write - this is also done automatically in a pre-commit
 yarn lint
 ```
 
+## Deploying to remote networks
+Deployment can be done from the root of the project by running any of the below commands:
+Requirement : Gcloud must be setup and user account must have access to staked-celo-staging and staked-celo-alfajores on GCP. see #eng-permissions on slack if facing any issue.
+
+Alfajores : 
+```
+yarn deploy:alfajores
+```
+
+Staging : 
+```
+yarn deploy:alfajores
+```
+
 ## Contracts
 
 ### StakedCelo.sol
