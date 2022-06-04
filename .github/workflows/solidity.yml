@@ -33,7 +33,7 @@ jobs:
         run: yarn
 
       - name: Compile contracts and generate typechain bindings
-        run: yarn compile
+        run: cp -f .env.dist .env && yarn compile
 
       - name: Lint
         run: yarn lint:ci
