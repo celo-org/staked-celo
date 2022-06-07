@@ -5,7 +5,6 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-deploy";
-import "hardhat-deploy-ethers";
 import "./lib/contractkit.plugin";
 import "dotenv/config";
 
