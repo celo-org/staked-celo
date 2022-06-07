@@ -5,9 +5,6 @@
   "repository": {
     "url": "https://github.com/celo-org/staked-celo"
   },
-  "dependencies": {
-    "dotenv": "^16.0.1"
-  },
   "devDependencies": {
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^1.5.2",
@@ -24,6 +21,7 @@
     "@types/mocha": "^9.1.0",
     "@types/node": "^17.0.17",
     "chai": "^4.3.6",
+    "dotenv": "^16.0.1",
     "ethereum-waffle": "^3.4.0",
     "ethereumjs-util": "^7.1.4",
     "ethers": "^5.5.4",
