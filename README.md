@@ -37,7 +37,19 @@ yarn deploy:alfajores
 
 Staging : 
 ```
-yarn deploy:alfajores
+yarn deploy:staging
+```
+
+You can additionally verify the deployment, with the following commands.
+
+Alfajores : 
+```
+yarn verify:deploy:alfajores
+```
+
+Staging : 
+```
+yarn verify:deploy:staging
 ```
 
 ## Contracts
