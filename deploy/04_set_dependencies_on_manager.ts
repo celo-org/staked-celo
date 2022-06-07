@@ -10,6 +10,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_set_dependencies_on_manager";
-func.tags = ["SetDepsOnManager"];
+func.tags = ["SetDepsOnManager", "core"];
 func.dependencies = ["Manager", "Account", "StakedCelo"];
 export default func;

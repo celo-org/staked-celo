@@ -29,6 +29,7 @@
     "ethers": "^5.5.4",
     "hardhat": "npm:@celo/hardhat@2.8.4",
     "hardhat-deploy": "^0.10.5",
+    "hardhat-deploy-ethers": "^0.3.0-beta.13",
     "husky": ">=6",
     "lint-staged": ">=10",
     "prettier": "^2.5.1",
@@ -56,7 +57,9 @@
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy:alfajores": "cp -f .env.alfajores .env  && npx hardhat deploy  --network alfajores --show-stack-traces --tags core",
-    "deploy:staging": "cp -f .env.staging .env  && npx hardhat deploy  --network staging --show-stack-traces --tags core"
+    "deploy:staging": "cp -f .env.staging .env  && npx hardhat deploy  --network staging --show-stack-traces --tags core",
+    "verify:deploy:alfajores": "npx hardhat --network alfajores sourcify",
+    "verify:deploy:staging": "npx hardhat --network staging sourcify"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

@@ -5,7 +5,6 @@ import { Account } from "../typechain-types/Account";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
   const account: Account = await hre.ethers.getContract("Account");
   const stakedCelo: StakedCelo = await hre.ethers.getContract("StakedCelo");
   const manager: Manager = await hre.ethers.getContract("Manager");
@@ -17,6 +16,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_transfer_to_multisig";
-func.tags = ["TransferAllContractsToMultisig"];
+func.tags = ["TransferAllContractsToMultisig", "core"];
 func.dependencies = ["Manager", "Account", "StakedCelo", "MultiSig"];
 export default func;
