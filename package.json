@@ -44,7 +44,7 @@
     "compile": "yarn run hardhat compile",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
-    "devchain": "yarn run celo-devchain --port 7545 --core v7",
+    "devchain": "yarn run celo-devchain --port 7545 --core pre-release-v7",
     "deploy:devchain": "yarn run hardhat deploy --network local && ts-node --files ./scripts/mineBlocks.ts",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
