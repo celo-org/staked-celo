@@ -54,8 +54,13 @@ describe("Deployment check", () => {
   });
 
   it("Manager should be owned by MultiSig", async () => {
-    const currentManager = await account.manager();
-    expect(currentManager).to.eq(manager.address);
+    const currentOwner = await manager.owner();
+    expect(currentOwner).to.eq(multiSig.address);
+  });
+
+  it("Account should be owned by MultiSig", async () => {
+    const currentOwner = await account.owner();
+    expect(currentOwner).to.eq(multiSig.address);
   });
 
   it("Account should have Manager contract address as manager", async () => {
@@ -63,9 +68,19 @@ describe("Deployment check", () => {
     expect(currentManager).to.eq(manager.address);
   });
 
+  it("StakedCelo should be owned by MultiSig", async () => {
+    const currentOwner = await stCELO.owner();
+    expect(currentOwner).to.eq(multiSig.address);
+  });
+
   it("StakedCelo should have Manager contract address as manager", async () => {
     const currentManager = await stCELO.manager();
     expect(currentManager).to.eq(manager.address);
+  });
+
+  it("RebasedStakedCelo should be owned by MultiSig", async () => {
+    const currentOwner = await rstCELO.owner();
+    expect(currentOwner).to.eq(multiSig.address);
   });
 
   it("rstCELO should have zero supply", async () => {

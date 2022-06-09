@@ -24,36 +24,37 @@ yargs
       exitOnError(
         runCmd(
           args.datadir!,
-          args.filename != ("" || undefined) ? args.filename : "stakedCeloDevchain.tar.gz",
+          args.filename?.trim().length == 0 || args.filename == undefined
+            ? "stakedCeloDevchain.tar.gz"
+            : args.filename!,
           args.monorepo!
         )
       )
   ).argv;
 
-function runCmd(datadir: string, filename: string, monorepo: string) {
+function runCmd(datadir: string, filename: string | undefined, monorepo: string) {
   const chainDataDir = "chainData/";
   const deploymentsDir = "deployments/local";
 
   fs.copySync(deploymentsDir, chainDataDir + deploymentsDir);
   const cmdArgs = ["devchain", "compress-chain", datadir, chainDataDir + filename];
-  const ProtocolRoot = path.normalize(path.join(__dirname, `../${monorepo}/packages/protocol`));
-
-  return execCmd(`yarn`, cmdArgs, { cwd: ProtocolRoot });
+  const protocolRoot = path.normalize(path.join(process.cwd(), `${monorepo}/packages/protocol`));
+  return execCmd(`yarn`, cmdArgs, { cwd: protocolRoot });
 }
 
 export function execCmd(
   cmd: string,
   args: string[],
-  options?: SpawnOptions & { silent?: boolean }
+  options?: SpawnOptions // & { silent?: boolean }
 ) {
   return new Promise<number>(async (resolve, reject) => {
-    const { silent, ...spawnOptions } = options || { silent: false };
-    if (!silent) {
-      console.debug("$ " + [cmd].concat(args).join(" "));
-    }
+    const { ...spawnOptions } = options; //|| { silent: false };
+    // if (!silent) {
+    //   console.debug("$ " + [cmd].concat(args).join(" "));
+    // }
     const process = spawn(cmd, args, {
       ...spawnOptions,
-      stdio: silent ? "ignore" : "inherit",
+      // stdio: silent ? "ignore" : "inherit",
     });
     process.on("close", (code) => {
       try {
