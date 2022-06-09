@@ -42,19 +42,12 @@ function runCmd(datadir: string, filename: string | undefined, monorepo: string)
   return execCmd(`yarn`, cmdArgs, { cwd: protocolRoot });
 }
 
-export function execCmd(
-  cmd: string,
-  args: string[],
-  options?: SpawnOptions // & { silent?: boolean }
-) {
+export function execCmd(cmd: string, args: string[], options?: SpawnOptions) {
   return new Promise<number>(async (resolve, reject) => {
-    const { ...spawnOptions } = options; //|| { silent: false };
-    // if (!silent) {
-    //   console.debug("$ " + [cmd].concat(args).join(" "));
-    // }
+    const { ...spawnOptions } = options;
+
     const process = spawn(cmd, args, {
       ...spawnOptions,
-      // stdio: silent ? "ignore" : "inherit",
     });
     process.on("close", (code) => {
       try {
