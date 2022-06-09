@@ -54,7 +54,9 @@
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy:alfajores": "cp -f .env.alfajores .env  && npx hardhat deploy  --network alfajores --show-stack-traces --tags core",
-    "verify:deploy:alfajores": "npx hardhat --network alfajores sourcify"
+    "deploy:staging": "cp -f .env.staging .env  && npx hardhat deploy  --network staging --show-stack-traces --tags core",
+    "verify:deploy:alfajores": "npx hardhat --network alfajores sourcify",
+    "verify:deploy:staging": "npx hardhat --network staging sourcify"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

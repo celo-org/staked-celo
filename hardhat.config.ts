@@ -29,6 +29,7 @@ module.exports = {
     deployer: {
       default: 0,
       alfajores: 0,
+      staging: 0,
     },
     // Temp to get some deployments working
     manager: {
@@ -36,8 +37,9 @@ module.exports = {
     },
     multisigOwner0: {
       default: 3,
-      // on alfajores, multisig will be a 1 of 1 since the network tag is only provided here.
+      // on alfajores and staging, multisig will be a 1 of 1 since the network tag is only provided here.
       alfajores: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
+      staging: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
     },
     multisigOwner1: {
       default: 4,
@@ -64,6 +66,11 @@ module.exports = {
     },
     alfajores: {
       url: `https://alfajores-forno.celo-testnet.org/`,
+      accounts: [`${privateKey}`],
+      gas: 4000000,
+    },
+    staging: {
+      url: `https://staging-forno.celo-networks-dev.org`,
       accounts: [`${privateKey}`],
       gas: 4000000,
     },

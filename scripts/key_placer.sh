@@ -4,6 +4,7 @@ echo "Processing encrypted files v2"
 
 # Set list of secret files to encrypt and decrypt.
 files=(
+  ".env.staging:staked-celo-staging"
   ".env.alfajores:staked-celo-alfajores"
 )
 

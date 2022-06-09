@@ -8,8 +8,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Get a list the named accounts based on network
   const namedAccounts = await hre.getNamedAccounts();
 
-  console.log("namedAccounts", namedAccounts);
-
   const deployer = namedAccounts.deployer;
   const minDelay = Number(process.env.TIME_LOCK_MIN_DELAY);
   const delay = Number(process.env.TIME_LOCK_DELAY);
