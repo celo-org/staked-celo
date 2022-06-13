@@ -29,6 +29,9 @@ yarn lint
 ## Deploying to remote networks
 Deployment can be done from the root of the project by running any of the below commands:
 Requirement : Gcloud must be setup and user account must have access staked-celo-alfajores on GCP. see #eng-permissions on slack if facing any issue.
+Next you must ensure the environment variables have been decrypted. using `keys:decrypt`.
+
+Then use the following commands to deploy depending on the desired target environment.
 
 Alfajores : 
 ```
