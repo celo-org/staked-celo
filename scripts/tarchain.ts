@@ -38,7 +38,7 @@ function runCmd(datadir: string, filename: string | undefined, monorepo: string)
 
   fs.copySync(deploymentsDir, chainDataDir + deploymentsDir);
   const cmdArgs = ["devchain", "compress-chain", datadir, chainDataDir + filename];
-  const protocolRoot = path.normalize(path.join(process.cwd(), `${monorepo}/packages/protocol`));
+  const protocolRoot = path.normalize(`${monorepo}/packages/protocol`);
   return execCmd(`yarn`, cmdArgs, { cwd: protocolRoot });
 }
 
