@@ -700,7 +700,7 @@ describe("MultiSig", () => {
   });
 
   describe("#getOwners()", () => {
-    it("should return the owners", async () => {
+    it.only("should return the owners", async () => {
       expect(await multiSig.getOwners()).to.deep.equal(owners);
     });
   });

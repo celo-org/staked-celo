@@ -9,6 +9,8 @@ import "./lib/contractkit.plugin";
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
 
+import "./lib/multisigTask";
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 /**
@@ -45,7 +47,7 @@ module.exports = {
   },
   networks: {
     local: {
-      url: "http://localhost:8545",
+      url: "http://localhost:7545",
     },
     hardhat: {
       forking: {
