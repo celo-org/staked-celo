@@ -52,9 +52,7 @@
     "lint:ci": "yarn run lint:sol:ci && yarn run lint:ts:ci",
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
     "lint:ts:ci": "prettier --check ./**/*.ts",
-    "prepare": "husky install",
-    "multisig": "yarn run hardhat run --network local scripts/index.ts",
-    "multisig1": "ts-node --files scripts/index.ts"
+    "prepare": "husky install"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",
