@@ -45,6 +45,9 @@ module.exports = {
   },
   networks: {
     local: {
+      url: "http://localhost:8545",
+    },
+    devchain: {
       url: "http://localhost:7545",
     },
     hardhat: {

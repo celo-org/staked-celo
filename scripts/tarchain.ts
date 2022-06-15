@@ -34,7 +34,7 @@ yargs
 
 function runCmd(datadir: string, filename: string | undefined, monorepo: string) {
   const chainDataDir = "chainData/";
-  const deploymentsDir = "deployments/local";
+  const deploymentsDir = "deployments/devchain";
 
   fs.copySync(deploymentsDir, chainDataDir + deploymentsDir);
   const cmdArgs = ["devchain", "compress-chain", datadir, chainDataDir + filename];
