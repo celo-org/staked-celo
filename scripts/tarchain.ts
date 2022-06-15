@@ -10,16 +10,21 @@ yargs
   .strict(true)
   .showHelpOnFail(true)
   .command(
-    "run <datadir> <monorepo>",
+    "run",
     "Create a new tarball that includes the deployed staked CELO contracts",
     (args) =>
       args
-        .positional("datadir", { type: "string", description: "Path to devchain data directory" })
-        .positional("monorepo", { type: "string", description: "Path to monorepo" })
+        .option("datadir", { type: "string", description: "Path to devchain data directory" })
+        .option("monorepo", { type: "string", description: "Path to monorepo" })
         .option("filename", {
           type: "string",
           description: "Filename of output tarball (default: stakedCeloDevchain.tar.gz)",
-        }),
+        })
+        .demandOption(
+          ["datadir", "monorepo"],
+          "Please provide both datadir and monorepo path arguments to work with this tool"
+        )
+        .requiresArg(["datadir", "monorepo"]),
     (args) =>
       exitOnError(
         runCmd(

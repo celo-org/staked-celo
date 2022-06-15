@@ -134,7 +134,7 @@ Once the contracts are successfully deployed to the network, compress the chain 
 **NB:** This next part assumes that you already have a local copy of [celo-monorepo](https://github.com/celo-org/celo-monorepo) on your machine. If not, follow the instructions on how to get setup [here](https://github.com/celo-org/celo-monorepo/blob/master/SETUP.md).
 
 ```bash
-> yarn tarchain run <path_to_datadir> <path_to_monorepo>
+> yarn tarchain run --datadir <path_to_datadir> --monorepo <path_to_monorepo>
 ```
 
 ### Testing the New Devchain Tarball
