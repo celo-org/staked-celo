@@ -121,7 +121,7 @@ In a separate terminal, deploy all staked CELO contracts to the current local ne
 yarn deploy:devchain
 ```
 
-This will create `deployments/local/` directory that contains functions to easily access deployments using hardhat-deploy. 
+This will create `deployments/devchain/` directory that contains functions to easily access deployments using hardhat-deploy. 
 
 See [hardhat-deploy](https://github.com/wighawag/hardhat-deploy#migrating-existing-deployment-to-hardhat-deploy) for more details on how to use existing deployments.
 
@@ -161,7 +161,7 @@ In order to use the tarball containing the staked CELO contracts, you will need 
 external: {
     deployments: {
       // Specify path to deployment data
-      hardhat: ["chainData/deployments/local"],
+      hardhat: ["chainData/deployments/devchain"],
     }
   },
 
