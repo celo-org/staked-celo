@@ -9,7 +9,7 @@ import { RebasedStakedCelo } from "../../typechain-types/RebasedStakedCelo";
 
 hre.config.external = {
   deployments: {
-    hardhat: ["chainData/deployments/local"],
+    hardhat: ["chainData/deployments/devchain"],
   },
 };
 // Set `blockNumber` to the last block that Staked CELO contracts were deployed to.
