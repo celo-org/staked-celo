@@ -1,5 +1,5 @@
 {
-  "address": "0x9fF4Fac94163c8e0B4a4DADbE2342ed896826ba8",
+  "address": "0xE9D5CbC9d6438576c9DD4Ec12bD9f8c2F4338157",
   "abi": [
     {
       "anonymous": false,
@@ -55,6 +55,22 @@
       "type": "receive"
     },
     {
+      "inputs": [],
+      "name": "AccountCreationFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        }
+      ],
+      "name": "ActivatePendingVotesFailed",
+      "type": "error"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -66,8 +82,194 @@
       "type": "error"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "CeloTransferFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "GroupsAndVotesArrayLengthsMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "localPendingWithdrawalTimestamp",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lockedGoldPendingWithdrawalTimestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "InconsistentPendingWithdrawalTimestamps",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "localPendingWithdrawalValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lockedGoldPendingWithdrawalValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "InconsistentPendingWithdrawalValues",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "InsufficientRevokableVotes",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        }
+      ],
+      "name": "NoScheduledWithdrawal",
+      "type": "error"
+    },
+    {
       "inputs": [],
       "name": "NullAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "pendingWithdrawalIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "pendingWithdrawalsLength",
+          "type": "uint256"
+        }
+      ],
+      "name": "PendingWithdrawalIndexTooHigh",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RevokeActiveFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RevokePendingFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "sentValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expectedValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "TotalVotesMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "VoteFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "celoAvailable",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "celoToWindraw",
+          "type": "uint256"
+        }
+      ],
+      "name": "WithdrawalAmountTooHigh",
       "type": "error"
     },
     {
@@ -76,23 +278,73 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "spender",
+          "name": "beneficiary",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "value",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
           "type": "uint256"
         }
       ],
-      "name": "Approval",
+      "name": "CeloWithdrawalFinished",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "withdrawalAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "CeloWithdrawalScheduled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "withdrawalAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "CeloWithdrawalStarted",
       "type": "event"
     },
     {
@@ -133,118 +385,85 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
+          "name": "group",
           "type": "address"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "value",
+          "name": "amount",
           "type": "uint256"
         }
       ],
-      "name": "Transfer",
+      "name": "VotesScheduled",
       "type": "event"
     },
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "owner",
+          "name": "group",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        }
-      ],
-      "name": "allowance",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
+          "name": "voteLesser",
           "type": "address"
         },
         {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "approve",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "address",
-          "name": "account",
+          "name": "voteGreater",
           "type": "address"
         }
       ],
-      "name": "balanceOf",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "burn",
+      "name": "activateAndVote",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "decimals",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "localPendingWithdrawalIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lockedGoldPendingWithdrawalIndex",
+          "type": "uint256"
+        }
+      ],
+      "name": "finishPendingWithdrawal",
       "outputs": [
         {
-          "internalType": "uint8",
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        }
+      ],
+      "name": "getCeloForGroup",
+      "outputs": [
+        {
+          "internalType": "uint256",
           "name": "",
-          "type": "uint8"
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -254,52 +473,94 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "spender",
+          "name": "beneficiary",
           "type": "address"
-        },
+        }
+      ],
+      "name": "getNumberPendingWithdrawals",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "subtractedValue",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "decreaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "spender",
+          "name": "beneficiary",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "addedValue",
+          "name": "index",
           "type": "uint256"
         }
       ],
-      "name": "increaseAllowance",
+      "name": "getPendingWithdrawal",
       "outputs": [
         {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
       "inputs": [
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        }
+      ],
+      "name": "getPendingWithdrawals",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "values",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "timestamps",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalCelo",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_registry",
+          "type": "address"
+        },
         {
           "internalType": "address",
           "name": "_manager",
@@ -330,31 +591,42 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
-          "name": "to",
+          "name": "",
           "type": "address"
         },
         {
           "internalType": "uint256",
-          "name": "amount",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "mint",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "name",
+      "name": "pendingWithdrawals",
       "outputs": [
         {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -362,10 +634,10 @@
     },
     {
       "inputs": [],
-      "name": "owner",
+      "name": "registry",
       "outputs": [
         {
-          "internalType": "address",
+          "internalType": "contract IRegistry",
           "name": "",
           "type": "address"
         }
@@ -383,6 +655,109 @@
     {
       "inputs": [
         {
+          "internalType": "address[]",
+          "name": "groups",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "votes",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "scheduleVotes",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "address[]",
+          "name": "groups",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "withdrawals",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "scheduleWithdrawals",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        }
+      ],
+      "name": "scheduledVotesForGroup",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        }
+      ],
+      "name": "scheduledWithdrawalsForGroup",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        }
+      ],
+      "name": "scheduledWithdrawalsForGroupAndBeneficiary",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "_manager",
           "type": "address"
@@ -395,20 +770,7 @@
     },
     {
       "inputs": [],
-      "name": "symbol",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "totalSupply",
+      "name": "totalScheduledWithdrawals",
       "outputs": [
         {
           "internalType": "uint256",
@@ -417,59 +779,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "transfer",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "transferFrom",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -520,6 +829,55 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "group",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "lesserAfterPendingRevoke",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "greaterAfterPendingRevoke",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "lesserAfterActiveRevoke",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "greaterAfterActiveRevoke",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "_logic",
           "type": "address"
         },
@@ -533,48 +891,48 @@
       "type": "constructor"
     }
   ],
-  "transactionHash": "0x90be3967e6ed303650acc9524e72c777b00b56d4164edd43db3e884b3baea6d2",
+  "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
   "receipt": {
     "to": null,
     "from": "0x5409ED021D9299bf6814279A6A1411A7e866A631",
-    "contractAddress": "0x9fF4Fac94163c8e0B4a4DADbE2342ed896826ba8",
+    "contractAddress": "0xE9D5CbC9d6438576c9DD4Ec12bD9f8c2F4338157",
     "transactionIndex": 0,
-    "gasUsed": "459341",
-    "logsBloom": "0x00000000000000000000001000000200400000000000000000820000000000000000000000000000000000000000004000000000000010000000000100000000000000000000000000000000000002000001000000000000000008000000000000000000020000000000000000000800000000000000000000000000000000400000000000000000004000000000000080080020000000000000000000000000200010000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000001000000000000000000020000000000000000000000000000000000000000000000000000000000000000002",
-    "blockHash": "0x01ba509a24daeb434456b940c6b587fd0cd07c0f24ae5aa97513f634486f89c3",
-    "transactionHash": "0x90be3967e6ed303650acc9524e72c777b00b56d4164edd43db3e884b3baea6d2",
+    "gasUsed": "468381",
+    "logsBloom": "0x00000000000000000000000000000200400000000000000000820000000000000000010000000000000000000000000000000000000010000000000104000000000000000000000000000000000002000001000000000000000008011000000000000000020001000000000000180800000000000000001000000000000000400010000000000400000000000000000080080000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000020000000800000000000000000000000001080000000000000000020000000040000000000000000000000000000000000100000000000000000000002",
+    "blockHash": "0x2b08f2d058208fa2b471b06b817c5f442efebfd5ca15e215017ff1f1f6372818",
+    "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
     "logs": [
       {
         "transactionIndex": 0,
-        "blockNumber": 772,
-        "transactionHash": "0x90be3967e6ed303650acc9524e72c777b00b56d4164edd43db3e884b3baea6d2",
-        "address": "0x9fF4Fac94163c8e0B4a4DADbE2342ed896826ba8",
+        "blockNumber": 770,
+        "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
+        "address": "0xE9D5CbC9d6438576c9DD4Ec12bD9f8c2F4338157",
         "topics": [
           "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b",
-          "0x000000000000000000000000f8150b85b9b13ffc2a1fe1457375a555400bf401"
+          "0x000000000000000000000000cdcd3eb9c303e83a348c42b905b97d8998b72fde"
         ],
         "data": "0x",
         "logIndex": 0,
-        "blockHash": "0x01ba509a24daeb434456b940c6b587fd0cd07c0f24ae5aa97513f634486f89c3"
+        "blockHash": "0x2b08f2d058208fa2b471b06b817c5f442efebfd5ca15e215017ff1f1f6372818"
       },
       {
         "transactionIndex": 0,
-        "blockNumber": 772,
-        "transactionHash": "0x90be3967e6ed303650acc9524e72c777b00b56d4164edd43db3e884b3baea6d2",
-        "address": "0x9fF4Fac94163c8e0B4a4DADbE2342ed896826ba8",
+        "blockNumber": 770,
+        "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
+        "address": "0xE9D5CbC9d6438576c9DD4Ec12bD9f8c2F4338157",
         "topics": [
           "0x60a0f5b9f9e81e98216071b85826681c796256fe3d1354ecb675580fba64fa69",
           "0x0000000000000000000000002ec7a614739496a974b087b4b2f5793e2d264d9d"
         ],
         "data": "0x",
         "logIndex": 1,
-        "blockHash": "0x01ba509a24daeb434456b940c6b587fd0cd07c0f24ae5aa97513f634486f89c3"
+        "blockHash": "0x2b08f2d058208fa2b471b06b817c5f442efebfd5ca15e215017ff1f1f6372818"
       },
       {
         "transactionIndex": 0,
-        "blockNumber": 772,
-        "transactionHash": "0x90be3967e6ed303650acc9524e72c777b00b56d4164edd43db3e884b3baea6d2",
-        "address": "0x9fF4Fac94163c8e0B4a4DADbE2342ed896826ba8",
+        "blockNumber": 770,
+        "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
+        "address": "0xE9D5CbC9d6438576c9DD4Ec12bD9f8c2F4338157",
         "topics": [
           "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
           "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -582,17 +940,30 @@
         ],
         "data": "0x",
         "logIndex": 2,
-        "blockHash": "0x01ba509a24daeb434456b940c6b587fd0cd07c0f24ae5aa97513f634486f89c3"
+        "blockHash": "0x2b08f2d058208fa2b471b06b817c5f442efebfd5ca15e215017ff1f1f6372818"
+      },
+      {
+        "transactionIndex": 0,
+        "blockNumber": 770,
+        "transactionHash": "0x4ad93f07a4f0615a22bc2de1fcbdeda9ebb212a3e47f93b03f9fcd334cc5d6fd",
+        "address": "0x841789fe96a433b49450E37E8CB513117712F63F",
+        "topics": [
+          "0x805996f252884581e2f74cf3d2b03564d5ec26ccc90850ae12653dc1b72d1fa2",
+          "0x000000000000000000000000e9d5cbc9d6438576c9dd4ec12bd9f8c2f4338157"
+        ],
+        "data": "0x",
+        "logIndex": 3,
+        "blockHash": "0x2b08f2d058208fa2b471b06b817c5f442efebfd5ca15e215017ff1f1f6372818"
       }
     ],
-    "blockNumber": 772,
-    "cumulativeGasUsed": "459341",
+    "blockNumber": 770,
+    "cumulativeGasUsed": "468381",
     "status": 1,
     "byzantium": true
   },
   "args": [
-    "0xF8150B85B9B13fFc2A1fe1457375A555400bF401",
-    "0x485cc9550000000000000000000000002ec7a614739496a974b087b4b2f5793e2d264d9d0000000000000000000000005409ed021d9299bf6814279a6a1411a7e866a631"
+    "0xCdCD3EB9c303e83A348c42b905b97D8998b72FdE",
+    "0xc0c53b8b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000002ec7a614739496a974b087b4b2f5793e2d264d9d0000000000000000000000005409ed021d9299bf6814279a6a1411a7e866a631"
   ],
   "numDeployments": 1,
   "solcInputHash": "4814d6b8a8394fe8b363a892b6618b21",
@@ -602,11 +973,12 @@
   "execute": {
     "methodName": "initialize",
     "args": [
+      "0x0000000000000000000000000000000000000000",
       "0x2EC7a614739496A974B087B4b2F5793e2D264D9D",
       "0x5409ED021D9299bf6814279A6A1411A7e866A631"
     ]
   },
-  "implementation": "0xF8150B85B9B13fFc2A1fe1457375A555400bF401",
+  "implementation": "0xCdCD3EB9c303e83A348c42b905b97D8998b72FdE",
   "devdoc": {
     "details": "This contract implements an upgradeable proxy. It is upgradeable because calls are delegated to an implementation address that can be changed. This address is stored in storage in the location specified by https://eips.ethereum.org/EIPS/eip-1967[EIP1967], so that it doesn't conflict with the storage layout of the implementation behind the proxy.",
     "kind": "dev",
