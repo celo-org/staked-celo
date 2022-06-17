@@ -9,7 +9,7 @@ import "./lib/contractkit.plugin";
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
 
-import "./lib/multisigTask";
+import "./lib/multiSigTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more

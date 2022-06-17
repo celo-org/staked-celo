@@ -45,6 +45,7 @@
     "compile": "yarn run hardhat compile",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
+    "deploy:devchain":"yarn run hardhat deploy --network local",
     "devchain": "yarn run celo-devchain --port 7545 --core v7 ",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
