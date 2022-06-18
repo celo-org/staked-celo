@@ -982,13 +982,6 @@
     "@types/bn.js" "*"
     "@types/node" "*"
 
-"@types/fs-extra@^9.0.13":
-  version "9.0.13"
-  resolved "https://registry.yarnpkg.com/@types/fs-extra/-/fs-extra-9.0.13.tgz#7594fbae04fe7f1918ce8b3d213f74ff44ac1f45"
-  integrity sha512-nEnwB++1u5lVDM2UI4c1+5R+FYaKfaAzS4OococimjVm3nQw3TuzH5UNsocrcTBbhnerblyHj4A49qXbIiZdpA==
-  dependencies:
-    "@types/node" "*"
-
 "@types/google-libphonenumber@^7.4.17":
   version "7.4.23"
   resolved "https://registry.yarnpkg.com/@types/google-libphonenumber/-/google-libphonenumber-7.4.23.tgz#c44c9125d45f042943694d605fd8d8d796cafc3b"
@@ -1148,18 +1141,6 @@
   dependencies:
     "@types/bn.js" "*"
     "@types/underscore" "*"
-
-"@types/yargs-parser@*":
-  version "21.0.0"
-  resolved "https://registry.yarnpkg.com/@types/yargs-parser/-/yargs-parser-21.0.0.tgz#0c60e537fa790f5f9472ed2776c2b71ec117351b"
-  integrity sha512-iO9ZQHkZxHn4mSakYV0vFHAVDyEOIJQrV2uZ06HxEPcx+mt8swXoZHIbaaJ2crJYFfErySgktuTZ3BeLz+XmFA==
-
-"@types/yargs@^17.0.10":
-  version "17.0.10"
-  resolved "https://registry.yarnpkg.com/@types/yargs/-/yargs-17.0.10.tgz#591522fce85d8739bca7b8bb90d048e4478d186a"
-  integrity sha512-gmEaFwpj/7f/ROdtIlci1R1VYU1J4j95m8T+Tj3iBgiBFKg1foE/PSl93bBd5T9LDXNPo8UlNN6W0qwD8O5OaA==
-  dependencies:
-    "@types/yargs-parser" "*"
 
 "@yarnpkg/lockfile@^1.1.0":
   version "1.1.0"
