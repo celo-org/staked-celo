@@ -1,12 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+// @ts-ignore -- not sure why i'm getting error here when compiling, but not in the test files.
 import { MultiSig } from "../../typechain-types/MultiSig";
 
-import { BigNumber, ContractReceipt } from "ethers";
+import { BigNumber, Contract, ContractReceipt } from "ethers";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-
-let multiSig: MultiSig;
 
 /// Get signer (should be compatible with testnet)
 // TODO: test using ledger HW
@@ -14,65 +12,75 @@ export async function getSigner(
   hre: HardhatRuntimeEnvironment,
   signerName: string
 ): Promise<SignerWithAddress> {
-  const owner: SignerWithAddress = await hre.ethers.getNamedSigner(signerName);
-  return owner;
+  return await hre.ethers.getNamedSigner(signerName);
 }
 
 // Get multiSig contract
 // deployment files are needed.
-export async function getContract(
-  hre: HardhatRuntimeEnvironment,
-  contractName: string
-): Promise<string> {
-  multiSig = await hre.ethers.getContract(contractName);
-  return multiSig.address;
+export async function getContract(hre: HardhatRuntimeEnvironment): Promise<Contract> {
+  return await hre.ethers.getContract("MultiSig");
 }
 
 /// Get owners
-export async function getOwners(): Promise<string[]> {
-  const ownerList = await multiSig.getOwners();
-  return ownerList;
+export async function getOwners(multiSig: MultiSig): Promise<string[]> {
+  return await multiSig.getOwners();
 }
 
 /// Submit proposal
 export async function submitProposal(
+  multiSig: MultiSig,
   destinations: [],
   values: [],
   payloads: [],
   signer: SignerWithAddress
 ): Promise<ContractReceipt> {
   const tx = await multiSig.connect(signer).submitProposal(destinations, values, payloads);
-  const receipt = await tx.wait();
-  return receipt;
+  return await tx.wait();
 }
 
 /// Confirm proposal
 export async function confirmProposal(
+  multiSig: MultiSig,
   proposalId: number,
   signer: SignerWithAddress
 ): Promise<ContractReceipt> {
   const tx = await multiSig.connect(signer).confirmProposal(proposalId);
-  const receipt = await tx.wait();
-  return receipt;
+  return await tx.wait();
 }
 
 /// Revoke confirmation
-export async function revokeConfirmation(proposalId: number, signer: SignerWithAddress) {
-  await multiSig.connect(signer).revokeConfirmation(proposalId);
+export async function revokeConfirmation(
+  multiSig: MultiSig,
+  proposalId: number,
+  signer: SignerWithAddress
+) {
+  const tx = await multiSig.connect(signer).revokeConfirmation(proposalId);
+  return await tx.wait();
 }
 
 /// Schedule proposal
-export async function scheduleProposal(proposalId: number, signer: SignerWithAddress) {
-  await multiSig.connect(signer).scheduleProposal(proposalId);
+export async function scheduleProposal(
+  multiSig: MultiSig,
+  proposalId: number,
+  signer: SignerWithAddress
+) {
+  const tx = await multiSig.connect(signer).scheduleProposal(proposalId);
+  return await tx.wait();
 }
 
 /// Execute proposal
-export async function executeProposal(proposalId: number, signer: SignerWithAddress) {
-  await multiSig.connect(signer).executeProposal(proposalId);
+export async function executeProposal(
+  multiSig: MultiSig,
+  proposalId: number,
+  signer: SignerWithAddress
+) {
+  const tx = await multiSig.connect(signer).executeProposal(proposalId);
+  return await tx.wait();
 }
 
 /// Get proposal
 export async function getProposal(
+  multiSig: MultiSig,
   proposalId: number
 ): Promise<
   [string[], BigNumber[], string[]] & {
@@ -81,56 +89,63 @@ export async function getProposal(
     payloads: string[];
   }
 > {
-  const proposalInfo = await multiSig.getProposal(proposalId);
-  return proposalInfo;
+  return await multiSig.getProposal(proposalId);
 }
 
 /// Get confirmations
-export async function getConfirmations(proposalId: number): Promise<string[]> {
-  const confList = await multiSig.getConfirmations(proposalId);
-  return confList;
+export async function getConfirmations(multiSig: MultiSig, proposalId: number): Promise<string[]> {
+  return await multiSig.getConfirmations(proposalId);
 }
 
 /// Is proposal fully confirmed?
-export async function isFullyConfirmed(proposalId: number): Promise<boolean> {
-  const result = await multiSig.isFullyConfirmed(proposalId);
-  return result;
+export async function isFullyConfirmed(multiSig: MultiSig, proposalId: number): Promise<boolean> {
+  return await multiSig.isFullyConfirmed(proposalId);
 }
 
 /// Is proposal scheduled?
-export async function isScheduled(proposalId: number): Promise<boolean> {
-  const result = await multiSig.isScheduled(proposalId);
-  return result;
+export async function isScheduled(multiSig: MultiSig, proposalId: number): Promise<boolean> {
+  return await multiSig.isScheduled(proposalId);
 }
 
 /// Get timestamp
-export async function getTimestamp(proposalId: number): Promise<BigNumber> {
-  const timestamp = await multiSig.getTimestamp(proposalId);
-  return timestamp;
+export async function getTimestamp(multiSig: MultiSig, proposalId: number): Promise<BigNumber> {
+  return await multiSig.getTimestamp(proposalId);
 }
 
 /// Is proposal time-lock reached?
-export async function isProposalTimelockReached(proposalId: number): Promise<boolean> {
-  const result = await multiSig.isProposalTimelockReached(proposalId);
-  return result;
+export async function isProposalTimelockReached(
+  multiSig: MultiSig,
+  proposalId: number
+): Promise<boolean> {
+  return await multiSig.isProposalTimelockReached(proposalId);
 }
 
 /// Is given address an owner of multisig contract?
-export async function isOwner(address: string): Promise<boolean> {
-  const result = await multiSig.isOwner(address);
-  return result;
+export async function isOwner(multiSig: MultiSig, address: string): Promise<boolean> {
+  return await multiSig.isOwner(address);
 }
 
 /// Is proposal confirmed by address?
-export async function isConfirmedBy(proposalId: number, address: string): Promise<boolean> {
-  const result = await multiSig.isConfirmedBy(proposalId, address);
-  return result;
+export async function isConfirmedBy(
+  multiSig: MultiSig,
+  proposalId: number,
+  address: string
+): Promise<boolean> {
+  return await multiSig.isConfirmedBy(proposalId, address);
+}
+
+/// Parse events emitted by contract functions
+export function parseEvents(receipt: ContractReceipt, eventName: string) {
+  const event = receipt.events?.find((event) => event.event === eventName);
+  console.log("new event emitted:", event?.event, `(${event?.args})`);
 }
 
 /// temp function to gen payload
 //TODO: remove this.
-export async function encodeData(hre: HardhatRuntimeEnvironment): Promise<string> {
+export async function encodeData(
+  multiSig: MultiSig,
+  hre: HardhatRuntimeEnvironment
+): Promise<string> {
   const nonOwners: SignerWithAddress[] = await hre.ethers.getUnnamedSigners();
-  const txData = multiSig.interface.encodeFunctionData("addOwner", [nonOwners[0].address]);
-  return txData;
+  return multiSig.interface.encodeFunctionData("addOwner", [nonOwners[0].address]);
 }
