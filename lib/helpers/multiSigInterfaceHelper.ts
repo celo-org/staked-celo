@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-// @ts-ignore -- not sure why i'm getting error here when compiling, but not in the test files.
+// @ts-ignore -- Throws error because it cant find "../../typechain-types/MultiSig" module. Can't generate typechain-types because of this error -_-
 import { MultiSig } from "../../typechain-types/MultiSig";
 
 import { BigNumber, Contract, ContractReceipt } from "ethers";
