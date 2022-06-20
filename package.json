@@ -18,6 +18,7 @@
     "@typechain/hardhat": "^4.0.0",
     "@typechain/truffle-v5": "^3.0.0",
     "@types/chai": "^4.3.0",
+    "@types/minimist": "^1.2.2",
     "@types/mocha": "^9.1.0",
     "@types/node": "^17.0.17",
     "chai": "^4.3.6",
@@ -53,10 +54,9 @@
     "prepare": "husky install",
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
-    "deploy:alfajores": "cp -f .env.alfajores .env  && npx hardhat deploy  --network alfajores --show-stack-traces --tags core",
-    "deploy:staging": "cp -f .env.staging .env  && npx hardhat deploy  --network staging --show-stack-traces --tags core",
-    "verify:deploy:alfajores": "npx hardhat --network alfajores sourcify",
-    "verify:deploy:staging": "npx hardhat --network staging sourcify"
+    "deploy:alfajores": "hardhat stakedCelo:deploy  --network alfajores --override-network alfajores --show-stack-traces --tags core",
+    "deploy:staging": "hardhat stakedCelo:deploy  --network staging --override-network staging --show-stack-traces --tags core",
+    "verify:deploy:alfajores": "hardhat --network alfajores sourcify"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

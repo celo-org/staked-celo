@@ -6,12 +6,20 @@ import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-deploy";
 import "./lib/contractkit.plugin";
-import "dotenv/config";
+import minimist from "minimist";
+import { config } from "dotenv";
+
+const argv = minimist(process.argv.slice(2));
+const { network } = argv;
+config({ path: network === "" || !network ? ".env" : `.env.${network}` });
 
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
+import "./lib/deployTask";
 
-const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+const ALFAJORES_FROM = "0x5bC1C4C1D67C5E4384189302BC653A611568a788";
+const STAGING_FROM = "0x5bC1C4C1D67C5E4384189302BC653A611568a788";
+const MAINNET_FROM = "0xE23a4c6615669526Ab58E9c37088bee4eD2b2dEE";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -61,18 +69,22 @@ module.exports = {
         // Local ganache
         url: "http://localhost:7545",
         blockNumber: 399,
-        // url: "https://alfajores-forno.celo-testnet.org"
       },
     },
     alfajores: {
       url: `https://alfajores-forno.celo-testnet.org/`,
-      accounts: [`${privateKey}`],
       gas: 4000000,
+      from: ALFAJORES_FROM,
     },
     staging: {
-      url: `https://staging-forno.celo-networks-dev.org`,
-      accounts: [`${privateKey}`],
+      url: `https://staging-forno.celo-networks-dev.org/`,
       gas: 4000000,
+      from: STAGING_FROM,
+    },
+    mainnet: {
+      url: `https://forno.celo.org/`,
+      gas: 4000000,
+      from: MAINNET_FROM,
     },
   },
   solidity: {

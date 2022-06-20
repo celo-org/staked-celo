@@ -4,8 +4,6 @@ import { DAY } from "../test-ts/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
-
-  // Get a list the named accounts based on network
   const namedAccounts = await hre.getNamedAccounts();
 
   const deployer = namedAccounts.deployer;
