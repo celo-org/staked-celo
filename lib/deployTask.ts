@@ -4,21 +4,26 @@ const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 task("stakedCelo:deploy", "Deploys contracts with custom hardhat config options.")
   .addParam(
     "overrideNetwork",
-    "(Required)The target network to deploy the contracts.",
+    "(Required) The target network to deploy the contracts.",
     undefined,
     types.string
   )
   .addOptionalParam("url", "Host url.", undefined, types.string)
   .addOptionalParam(
     "tags",
-    "Target deployment of contracts with given tags.",
+    "Target deployment of contracts with provided tags.",
     undefined,
     types.string
   )
-  .addOptionalParam("from", "Account used to deploy the contracts", undefined, types.string)
+  .addOptionalParam(
+    "from",
+    "The address of the account used to deploy the contracts.",
+    undefined,
+    types.string
+  )
   .addFlag(
     "usePrivateKey",
-    "Determines if private key in .env is used or not. Private key will be used automatically if network url is a remote."
+    "Determines if private key in .env is used or not. Private key will be used automatically if network url is a remote host."
   )
   .setAction(async (taskArgs, hre) => {
     try {

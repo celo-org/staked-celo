@@ -28,10 +28,12 @@ yarn lint
 
 ## Deploying to remote networks
 Deployment can be done from the root of the project by running any of the below commands:
-Requirement : Gcloud must be setup and user account must have access staked-celo-alfajores on GCP. see #eng-permissions on slack if facing any issue.
+Requirement : Gcloud must be setup and user account must have access staked-celo-alfajores on GCP. 
+
 Next you must ensure the environment variables have been decrypted. using `keys:decrypt`.
 
 Then use the following commands to deploy depending on the desired target environment.
+e.g the below command will deploy to the Alfajores network, using the decrypted private key and default Alfajores rpc url.
 
 Alfajores : 
 ```
@@ -44,6 +46,19 @@ Alfajores :
 ```
 yarn verify:deploy:alfajores
 ```
+
+You may desire to deploy using an unlocked account in a private note. In that case after running your private node, in that case you can use the following commands :
+
+```
+npx hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --override-network <STRING> --tags <STRING> --url <STRING> [--use-private-key]
+```
+
+example
+```
+npx hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --override-network alfajores --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
+```
+ 
+Run `npx hardhat help stakedCelo:deploy` for more information.
 
 ## Contracts
 
