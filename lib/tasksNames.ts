@@ -1,0 +1,15 @@
+export const STAKED_CELO_MULTISIG = "stakedCelo:multiSig";
+export const MULTISIG_GET_OWNERS = "multiSig:getOwners";
+export const MULTISIG_SUBMIT_PROPOSAL = "multiSig:submitProposal";
+export const MULTISIG_CONFIRM_PROPOSAL = "multiSig:confirmProposal";
+export const MULTISIG_REVOKE_CONFIRMATION = "multiSig:revokeConfirmation";
+export const MULTISIG_SCHEDULE_PROPOSAL = "multiSig:scheduleProposal";
+export const MULTISIG_EXECUTE_PROPOSAL = "multiSig:executeProposal";
+export const MULTISIG_GET_PROPOSAL = "multiSig:getProposal";
+export const MULTISIG_GET_CONFIRMATIONS = "multiSig:getConfirmations";
+export const MULTISIG_IS_FULLY_CONFIRMED = "multiSig:isFullyConfirmed";
+export const MULTISIG_IS_SCHEDULED = "multiSig:isScheduled";
+export const MULTISIG_GET_TIMESTAMP = "multiSig:getTimestamp";
+export const MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED = "multiSig:isProposalTimelockReached";
+export const MULTISIG_IS_OWNER = "multiSig:isOwner";
+export const MULTISIG_IS_CONFIRMED_BY = "multiSig:isConfirmedBy";

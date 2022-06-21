@@ -1,4 +1,23 @@
 import { task, subtask, types } from "hardhat/config";
+
+import {
+  STAKED_CELO_MULTISIG,
+  MULTISIG_GET_OWNERS,
+  MULTISIG_SUBMIT_PROPOSAL,
+  MULTISIG_CONFIRM_PROPOSAL,
+  MULTISIG_REVOKE_CONFIRMATION,
+  MULTISIG_SCHEDULE_PROPOSAL,
+  MULTISIG_EXECUTE_PROPOSAL,
+  MULTISIG_GET_PROPOSAL,
+  MULTISIG_GET_CONFIRMATIONS,
+  MULTISIG_IS_FULLY_CONFIRMED,
+  MULTISIG_IS_SCHEDULED,
+  MULTISIG_GET_TIMESTAMP,
+  MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED,
+  MULTISIG_IS_OWNER,
+  MULTISIG_IS_CONFIRMED_BY,
+} from "./tasksNames";
+
 import {
   getContract,
   confirmProposal,
@@ -19,7 +38,7 @@ import {
   parseEvents,
 } from "./helpers/multiSigInterfaceHelper";
 
-task("stakedCelo:multiSig", "Interface with the staked CELO multi-sig contract.")
+task(STAKED_CELO_MULTISIG, "Interface with the staked CELO multi-sig contract.")
   .addFlag("getOwners", "Get owners.")
   .addParam("signer", "(required) Account used to sign the transaction.", undefined, types.string)
   .addOptionalParam(
@@ -167,7 +186,7 @@ task("stakedCelo:multiSig", "Interface with the staked CELO multi-sig contract."
   });
 
 /// Get owners
-subtask("multiSig:getOwners")
+subtask(MULTISIG_GET_OWNERS)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .setAction(async ({ contract }) => {
     try {
@@ -179,7 +198,7 @@ subtask("multiSig:getOwners")
   });
 
 /// Submit proposal
-subtask("multiSig:submitProposal")
+subtask(MULTISIG_SUBMIT_PROPOSAL)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam(
     "destinations",
@@ -205,7 +224,7 @@ subtask("multiSig:submitProposal")
   });
 
 /// Confirm proposal
-subtask("multiSig:confirmProposal")
+subtask(MULTISIG_CONFIRM_PROPOSAL)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addParam("signer", "named account of multiSig owner", undefined, types.any)
@@ -219,7 +238,7 @@ subtask("multiSig:confirmProposal")
   });
 
 /// Revoke proposal confirmation
-subtask("multiSig:revokeConfirmation")
+subtask(MULTISIG_REVOKE_CONFIRMATION)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addParam("signer", "named account of multiSig owner", undefined, types.any)
@@ -233,7 +252,7 @@ subtask("multiSig:revokeConfirmation")
   });
 
 /// Schedule proposal
-subtask("multiSig:scheduleProposal")
+subtask(MULTISIG_SCHEDULE_PROPOSAL)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addParam("signer", "named account of multiSig owner", undefined, types.any)
@@ -247,7 +266,7 @@ subtask("multiSig:scheduleProposal")
   });
 
 /// Execute proposal
-subtask("multiSig:executeProposal")
+subtask(MULTISIG_EXECUTE_PROPOSAL)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addPositionalParam("proposalId", "ID of the proposal", undefined, types.int)
   .addOptionalParam("signer", "named account of multiSig owner", undefined, types.any)
@@ -261,7 +280,7 @@ subtask("multiSig:executeProposal")
   });
 
 /// Get proposal
-subtask("multiSig:getProposal")
+subtask(MULTISIG_GET_PROPOSAL)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -274,7 +293,7 @@ subtask("multiSig:getProposal")
   });
 
 /// Get confirmations
-subtask("multiSig:getConfirmations")
+subtask(MULTISIG_GET_CONFIRMATIONS)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -287,7 +306,7 @@ subtask("multiSig:getConfirmations")
   });
 
 /// Get confirmations
-subtask("multiSig:isFullyConfirmed")
+subtask(MULTISIG_IS_FULLY_CONFIRMED)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -300,7 +319,7 @@ subtask("multiSig:isFullyConfirmed")
   });
 
 /// Get confirmations
-subtask("multiSig:isScheduled")
+subtask(MULTISIG_IS_SCHEDULED)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -313,7 +332,7 @@ subtask("multiSig:isScheduled")
   });
 
 /// Get confirmations
-subtask("multiSig:getTimestamp")
+subtask(MULTISIG_GET_TIMESTAMP)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -326,7 +345,7 @@ subtask("multiSig:getTimestamp")
   });
 
 /// Get confirmations
-subtask("multiSig:isProposalTimelockReached")
+subtask(MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ contract, proposalId }) => {
@@ -339,7 +358,7 @@ subtask("multiSig:isProposalTimelockReached")
   });
 
 /// Get confirmations
-subtask("multiSig:isOwner")
+subtask(MULTISIG_IS_OWNER)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("address", "Address of suposed owner", undefined, types.string)
   .setAction(async ({ contract, address }) => {
@@ -352,7 +371,7 @@ subtask("multiSig:isOwner")
   });
 
 /// Get confirmations
-subtask("multiSig:isConfirmedBy")
+subtask(MULTISIG_IS_CONFIRMED_BY)
   .addParam("contract", "MultiSig contract instance", undefined, types.any)
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addParam("address", "Owner address", undefined, types.string)
