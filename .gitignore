@@ -8,7 +8,9 @@ node_modules/
 # hardhat
 artifacts
 cache
-/deployments
+deployments/hardhat
+deployments/local
+deployments/devchain
 typechain-types
 
 # IDEA
