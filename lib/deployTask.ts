@@ -3,12 +3,6 @@ import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
 task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
-  .addParam(
-    "overrideNetwork",
-    "(Required) The target network to deploy the contracts.",
-    undefined,
-    types.string
-  )
   .addOptionalParam("url", "Host url.", undefined, types.string)
   .addOptionalParam(
     "tags",
@@ -30,8 +24,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
     try {
       console.log("Starting stakedCelo:deploy task...");
       const networks = hre.config.networks;
-      console.log("accounts", networks.alfajores.accounts);
-      const targetNetwork = taskArgs["overrideNetwork"];
+      const targetNetwork = hre.network.name;
       //@ts-ignore Property 'url' does not exist on type 'NetworkConfig'.
       const hostUrl = String(network.url);
 
