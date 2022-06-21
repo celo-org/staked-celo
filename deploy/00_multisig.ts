@@ -10,7 +10,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const minDelay = Number(process.env.TIME_LOCK_MIN_DELAY);
   const delay = Number(process.env.TIME_LOCK_DELAY);
 
-  const multisigOwners = Object.values(namedAccounts).filter((val) => val !== deployer);
+  let multisigOwners: string[] = [];
+  for (let key in namedAccounts) {
+    var res = key.includes("multisigOwner");
+    if (res) {
+      multisigOwners.push(namedAccounts[key]);
+    }
+  }
+
   const requiredConfirmations = multisigOwners.length > 1 ? multisigOwners.length - 1 : 1;
 
   const deployment = await deploy("MultiSig", {
