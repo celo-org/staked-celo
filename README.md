@@ -60,6 +60,36 @@ npx hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags co
  
 Run `npx hardhat help stakedCelo:deploy` for more information.
 
+You may want to run your deployment via a light node using an unlocked account, in that case follow the steps below
+### Steps to Run a light node:
+
+Steps to Run a light node:
+
+Step 1: Create and fund an account.
+First export $ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
+to your shell.
+
+Create a directory called celo-tools , cd into it and run the below command:
+docker run -v $PWD:/root/.celo --rm -it $ALFAJORES_CELO_IMAGE account new
+
+Choose empty paraphrase and once ran, it will output the address of the newly created account. Copy this address and export it to your shell as $CELO_ACCOUNT_ADDRESS
+
+i.e export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
+
+Step 2 : Fund the account
+Clone the celo-monorepo, then
+cd celo-monorepo/packages/celotool,
+
+Next run this command to fund the newly created account with 1 CELO
+yarn cli account faucet -e alfajores --account $CELO_ACCOUNT_ADDRESS --tokenParams CELO,1
+
+
+Step 3: 
+Run the light node
+docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo
+
+Now if you point any network URL to :8545, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions
+
 ## Contracts
 
 ### StakedCelo.sol
