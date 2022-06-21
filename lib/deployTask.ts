@@ -1,7 +1,8 @@
 import { task, types } from "hardhat/config";
+import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
-task("stakedCelo:deploy", "Deploys contracts with custom hardhat config options.")
+task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
   .addParam(
     "overrideNetwork",
     "(Required) The target network to deploy the contracts.",
