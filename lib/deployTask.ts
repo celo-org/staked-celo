@@ -23,7 +23,7 @@ task("stakedCelo:deploy", "Deploys contracts with custom hardhat config options.
   )
   .addFlag(
     "usePrivateKey",
-    "Determines if private key in .env is used or not. Private key will be used automatically if network url is a remote host."
+    "Determines if private key in environment is used or not. Private key will be used automatically if network url is a remote host."
   )
   .setAction(async (taskArgs, hre) => {
     try {
