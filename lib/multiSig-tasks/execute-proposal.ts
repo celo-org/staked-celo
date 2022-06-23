@@ -4,7 +4,7 @@ import { MULTISIG_EXECUTE_PROPOSAL } from "../tasksNames";
 
 import {
   getSigner,
-  getContract,
+  getMultiSig,
   executeProposal,
   parseEvents,
 } from "../helpers/multiSigInterfaceHelper";
@@ -16,7 +16,7 @@ task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
   .setAction(async ({ proposalId, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
-      const multiSigContract = await getContract(hre);
+      const multiSigContract = await getMultiSig(hre);
       const receipt = await executeProposal(multiSigContract, proposalId, signer);
       parseEvents(receipt, "TransactionExecuted");
     } catch (error) {

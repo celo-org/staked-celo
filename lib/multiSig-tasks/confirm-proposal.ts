@@ -4,8 +4,8 @@ import { MULTISIG_CONFIRM_PROPOSAL } from "../tasksNames";
 
 import {
   getSigner,
-  getContract,
-  confirmProposal,
+  getMultiSig,
+  // confirmProposal,
   parseEvents,
 } from "../helpers/multiSigInterfaceHelper";
 
@@ -16,8 +16,9 @@ task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
   .setAction(async ({ proposalId, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
-      const multiSigContract = await getContract(hre);
-      const receipt = await confirmProposal(multiSigContract, proposalId, signer);
+      const multiSigContract = await getMultiSig(hre);
+      const tx = await multiSigContract.connect(signer).confirmProposal(proposalId);
+      const receipt = await tx.wait();
       parseEvents(receipt, "ProposalConfirmed");
     } catch (error) {
       console.log("Error confirming proposal:", error);

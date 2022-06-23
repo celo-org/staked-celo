@@ -4,7 +4,7 @@ import { MULTISIG_REVOKE_CONFIRMATION } from "../tasksNames";
 
 import {
   getSigner,
-  getContract,
+  getMultiSig,
   revokeConfirmation,
   parseEvents,
 } from "../helpers/multiSigInterfaceHelper";
@@ -16,7 +16,7 @@ task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
   .setAction(async ({ proposalId, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
-      const multiSigContract = await getContract(hre);
+      const multiSigContract = await getMultiSig(hre);
       const receipt = await revokeConfirmation(multiSigContract, proposalId, signer);
       parseEvents(receipt, "ConfirmationRevoked");
     } catch (error) {

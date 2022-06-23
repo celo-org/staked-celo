@@ -1,13 +1,11 @@
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
-// @ts-ignore -- Throws error because it cant find "../../typechain-types/MultiSig" module. Can't generate typechain-types because of this error -_-
-import { MultiSig } from "../../typechain-types/MultiSig";
-
 import { BigNumber, ContractReceipt, Signer } from "ethers";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { LedgerSigner } from "@anders-t/ethers-ledger";
+
+// @ts-ignore -- Throws error because it cant find "../../typechain-types/MultiSig" module. Can't generate typechain-types because of this error -_-
+import { MultiSig } from "../../typechain-types/MultiSig";
 
 /// Get signer
 export async function getSigner(
@@ -30,7 +28,7 @@ export async function getSigner(
 
 // Get multiSig contract
 // deployment files are needed.
-export async function getContract(hre: HardhatRuntimeEnvironment): Promise<MultiSig> {
+export async function getMultiSig(hre: HardhatRuntimeEnvironment): Promise<MultiSig> {
   return await hre.ethers.getContract("MultiSig");
 }
 
@@ -139,14 +137,4 @@ export async function isConfirmedBy(
 export function parseEvents(receipt: ContractReceipt, eventName: string) {
   const event = receipt.events?.find((event) => event.event === eventName);
   console.log("new event emitted:", event?.event, `(${event?.args})`);
-}
-
-/// temp function to gen payload
-//TODO: remove this.
-export async function encodeData(
-  multiSig: MultiSig,
-  hre: HardhatRuntimeEnvironment
-): Promise<string> {
-  const nonOwners: SignerWithAddress[] = await hre.ethers.getUnnamedSigners();
-  return multiSig.interface.encodeFunctionData("addOwner", [nonOwners[0].address]);
 }

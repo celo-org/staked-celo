@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 
 import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
-import { getContract, getSigner, submitProposal } from "../helpers/multiSigInterfaceHelper";
+import { getMultiSig, getSigner, submitProposal } from "../helpers/multiSigInterfaceHelper";
 
 task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .addParam(
@@ -18,7 +18,7 @@ task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .setAction(async ({ destinations, values, payloads, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
-      const multiSigContract = await getContract(hre);
+      const multiSigContract = await getMultiSig(hre);
       const receipt = await submitProposal(
         multiSigContract,
         destinations.split(","),
