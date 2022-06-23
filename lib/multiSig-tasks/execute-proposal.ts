@@ -2,12 +2,7 @@ import { task, types } from "hardhat/config";
 
 import { MULTISIG_EXECUTE_PROPOSAL } from "../tasksNames";
 
-import {
-  getSigner,
-  getMultiSig,
-  executeProposal,
-  parseEvents,
-} from "../helpers/multiSigInterfaceHelper";
+import { getSigner, parseEvents } from "../helpers/interfaceHelper";
 
 task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
@@ -16,8 +11,9 @@ task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
   .setAction(async ({ proposalId, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
-      const multiSigContract = await getMultiSig(hre);
-      const receipt = await executeProposal(multiSigContract, proposalId, signer);
+      const multiSigContract = await hre.ethers.getContract("MultiSig");
+      const tx = await multiSigContract.connect(signer).executeProposal(proposalId);
+      const receipt = await tx.wait();
       parseEvents(receipt, "TransactionExecuted");
     } catch (error) {
       console.log("Error executing proposal", error);

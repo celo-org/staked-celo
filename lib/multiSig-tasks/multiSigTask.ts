@@ -12,5 +12,3 @@ import "./get-timestamp";
 import "./is-proposal-timelock-reached";
 import "./is-owner";
 import "./is-confirmed-by";
-
-//TODO: add task description
