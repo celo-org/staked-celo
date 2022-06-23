@@ -1,4 +1,5 @@
 import { task, types } from "hardhat/config";
+import chalk from "chalk";
 
 import { MULTISIG_IS_CONFIRMED_BY } from "../tasksNames";
 
@@ -11,6 +12,6 @@ task(MULTISIG_IS_CONFIRMED_BY, "Check if a proposal has been confirmed a multiSi
       const result = await multiSigContract.isConfirmedBy(proposalId, address);
       console.log(result);
     } catch (error) {
-      console.log(error);
+      console.log(chalk.red("Error getting proposal confirmation by address:"), error);
     }
   });

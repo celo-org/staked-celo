@@ -1,8 +1,7 @@
 import { ContractReceipt, Signer } from "ethers";
-
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-
 import { LedgerSigner } from "@anders-t/ethers-ledger";
+import chalk from "chalk";
 
 export async function getSigner(
   hre: HardhatRuntimeEnvironment,
@@ -24,5 +23,5 @@ export async function getSigner(
 
 export function parseEvents(receipt: ContractReceipt, eventName: string) {
   const event = receipt.events?.find((event) => event.event === eventName);
-  console.log("new event emitted:", event?.event, `(${event?.args})`);
+  console.log(chalk.green("new event emitted:"), event?.event, `(${event?.args})`);
 }

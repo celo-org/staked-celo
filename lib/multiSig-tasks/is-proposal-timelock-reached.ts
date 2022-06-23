@@ -1,4 +1,5 @@
 import { task, types } from "hardhat/config";
+import chalk from "chalk";
 
 import { MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED } from "../tasksNames";
 
@@ -10,6 +11,6 @@ task(MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED, "Check if a proposal time-lock has b
       const result = await multiSigContract.isProposalTimelockReached(proposalId);
       console.log(result);
     } catch (error) {
-      console.log(error);
+      console.log(chalk.red("Error cheking if proposal timelock has been reached:"), error);
     }
   });

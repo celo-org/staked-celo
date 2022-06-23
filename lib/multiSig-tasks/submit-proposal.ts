@@ -1,4 +1,5 @@
 import { task, types } from "hardhat/config";
+import chalk from "chalk";
 
 import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
@@ -7,14 +8,24 @@ import { getSigner } from "../helpers/interfaceHelper";
 task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .addParam(
     "destinations",
-    "The addresses at which the operations are targeted",
+    "The addresses at which the operations are targeted | Use comma separated values for multiple entries.",
     undefined,
     types.string
   )
-  .addParam("values", "The CELO values involved in the proposal if any.", undefined, types.string)
-  .addParam("payloads", "The payloads of the proposal.", undefined, types.string)
-  .addOptionalParam("namedAccount", "The signer.")
-  .addFlag("useLedger", "use ledger signer")
+  .addParam(
+    "values",
+    "The CELO values involved in the proposal if any | Use comma separated values for multiple entries",
+    undefined,
+    types.string
+  )
+  .addParam(
+    "payloads",
+    "The payloads of the proposal| Use comma separated values for multiple entries",
+    undefined,
+    types.string
+  )
+  .addOptionalParam("namedAccount", "Named account of multiSig owner", undefined, types.string)
+  .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ destinations, values, payloads, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
@@ -26,10 +37,10 @@ task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
       const events = receipt.events;
       if (events !== undefined) {
         for (var i = 0; i < events!.length; i++) {
-          console.log("new event emitted:", events[i].event, `(${events[i].args})`);
+          console.log(chalk.green("new event emitted:"), events[i].event, `(${events[i].args})`);
         }
       }
     } catch (error) {
-      console.log("Error submitting proposal", error);
+      console.log(chalk.red("Error submitting proposal:"), error);
     }
   });

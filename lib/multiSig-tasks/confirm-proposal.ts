@@ -1,13 +1,13 @@
 import { task, types } from "hardhat/config";
+import chalk from "chalk";
 
 import { MULTISIG_CONFIRM_PROPOSAL } from "../tasksNames";
-
 import { getSigner, parseEvents } from "../helpers/interfaceHelper";
 
 task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
-  .addOptionalParam("namedAccount", "named account of multiSig owner", undefined, types.string)
-  .addFlag("useLedger", "use ledger signer")
+  .addOptionalParam("namedAccount", "Named account of multiSig owner", undefined, types.string)
+  .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ proposalId, namedAccount, useLedger }, hre) => {
     try {
       const signer = await getSigner(hre, namedAccount, useLedger);
@@ -16,6 +16,6 @@ task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
       const receipt = await tx.wait();
       parseEvents(receipt, "ProposalConfirmed");
     } catch (error) {
-      console.log("Error confirming proposal:", error);
+      console.log(chalk.red("Error confirming proposal:"), error);
     }
   });

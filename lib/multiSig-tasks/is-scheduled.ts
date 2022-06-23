@@ -1,4 +1,5 @@
 import { task, types } from "hardhat/config";
+import chalk from "chalk";
 
 import { MULTISIG_IS_SCHEDULED } from "../tasksNames";
 
@@ -10,6 +11,6 @@ task(MULTISIG_IS_SCHEDULED, "Check if a proposal is scheduled")
       const scheduled = await multiSigContract.isScheduled(proposalId);
       console.log(scheduled);
     } catch (error) {
-      console.log(error);
+      console.log(chalk.red("Error checking proposal schedule status:"), error);
     }
   });
