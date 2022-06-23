@@ -1,23 +1,36 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
 // @ts-ignore -- Throws error because it cant find "../../typechain-types/MultiSig" module. Can't generate typechain-types because of this error -_-
 import { MultiSig } from "../../typechain-types/MultiSig";
 
-import { BigNumber, Contract, ContractReceipt } from "ethers";
+import { BigNumber, ContractReceipt, Signer } from "ethers";
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-/// Get signer (should be compatible with testnet)
-// TODO: test using ledger HW
+import { LedgerSigner } from "@anders-t/ethers-ledger";
+
+/// Get signer
 export async function getSigner(
   hre: HardhatRuntimeEnvironment,
-  signerName: string
-): Promise<SignerWithAddress> {
-  return await hre.ethers.getNamedSigner(signerName);
+  namedAccount: string,
+  useLedger: boolean
+): Promise<Signer> {
+  let signer: Signer;
+  if (useLedger) {
+    signer = new LedgerSigner(hre.ethers.provider);
+  } else {
+    if (namedAccount == undefined) {
+      throw new Error("NamedAccount is required when not using Ledger wallet.");
+    }
+    signer = await hre.ethers.getNamedSigner(namedAccount);
+  }
+
+  return signer;
 }
 
 // Get multiSig contract
 // deployment files are needed.
-export async function getContract(hre: HardhatRuntimeEnvironment): Promise<Contract> {
+export async function getContract(hre: HardhatRuntimeEnvironment): Promise<MultiSig> {
   return await hre.ethers.getContract("MultiSig");
 }
 
@@ -32,7 +45,7 @@ export async function submitProposal(
   destinations: [],
   values: [],
   payloads: [],
-  signer: SignerWithAddress
+  signer: Signer
 ): Promise<ContractReceipt> {
   const tx = await multiSig.connect(signer).submitProposal(destinations, values, payloads);
   return await tx.wait();
@@ -42,38 +55,26 @@ export async function submitProposal(
 export async function confirmProposal(
   multiSig: MultiSig,
   proposalId: number,
-  signer: SignerWithAddress
+  signer: Signer
 ): Promise<ContractReceipt> {
   const tx = await multiSig.connect(signer).confirmProposal(proposalId);
   return await tx.wait();
 }
 
 /// Revoke confirmation
-export async function revokeConfirmation(
-  multiSig: MultiSig,
-  proposalId: number,
-  signer: SignerWithAddress
-) {
+export async function revokeConfirmation(multiSig: MultiSig, proposalId: number, signer: Signer) {
   const tx = await multiSig.connect(signer).revokeConfirmation(proposalId);
   return await tx.wait();
 }
 
 /// Schedule proposal
-export async function scheduleProposal(
-  multiSig: MultiSig,
-  proposalId: number,
-  signer: SignerWithAddress
-) {
+export async function scheduleProposal(multiSig: MultiSig, proposalId: number, signer: Signer) {
   const tx = await multiSig.connect(signer).scheduleProposal(proposalId);
   return await tx.wait();
 }
 
 /// Execute proposal
-export async function executeProposal(
-  multiSig: MultiSig,
-  proposalId: number,
-  signer: SignerWithAddress
-) {
+export async function executeProposal(multiSig: MultiSig, proposalId: number, signer: Signer) {
   const tx = await multiSig.connect(signer).executeProposal(proposalId);
   return await tx.wait();
 }

@@ -9,7 +9,7 @@ import "./lib/contractkit.plugin";
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
 
-import "./lib/multiSigTask";
+import "./lib/multiSig-tasks/multiSigTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -51,6 +51,10 @@ module.exports = {
     },
     devchain: {
       url: "http://localhost:7545",
+      // Having to set a default value for gas, as the provider does not estimate
+      // gas properly when signing using ledger HW, resulting in an error.
+      gas: 2100000,
+      gasPrice: 8000000000,
     },
     hardhat: {
       forking: {
