@@ -4,7 +4,7 @@ import { MULTISIG_GET_PROPOSAL } from "../tasksNames";
 
 import { getContract, getProposal } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_GET_PROPOSAL)
+task(MULTISIG_GET_PROPOSAL, "Get a multiSig proposal by it's ID")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ proposalId }, hre) => {
     try {

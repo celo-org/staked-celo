@@ -9,7 +9,7 @@ import {
   parseEvents,
 } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_REVOKE_CONFIRMATION)
+task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addOptionalParam("namedAccount", "named account of multiSig owner", undefined, types.string)
   .addFlag("useLedger", "use ledger signer")

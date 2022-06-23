@@ -4,7 +4,7 @@ import { MULTISIG_IS_SCHEDULED } from "../tasksNames";
 
 import { getContract, isScheduled } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_IS_SCHEDULED)
+task(MULTISIG_IS_SCHEDULED, "Check if a proposal is scheduled")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ proposalId }, hre) => {
     try {

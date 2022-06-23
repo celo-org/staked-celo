@@ -4,7 +4,7 @@ import { MULTISIG_GET_TIMESTAMP } from "../tasksNames";
 
 import { getContract, getTimestamp } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_GET_TIMESTAMP)
+task(MULTISIG_GET_TIMESTAMP, "Get a proposal timestamp")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .setAction(async ({ proposalId }, hre) => {
     try {

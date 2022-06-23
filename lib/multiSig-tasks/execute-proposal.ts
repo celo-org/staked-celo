@@ -9,7 +9,7 @@ import {
   parseEvents,
 } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_EXECUTE_PROPOSAL)
+task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
   .addOptionalParam("namedAccount", "named account of multiSig owner", undefined, types.string)
   .addFlag("useLedger", "use ledger signer")

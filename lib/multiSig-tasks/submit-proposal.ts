@@ -4,7 +4,7 @@ import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
 import { getContract, getSigner, submitProposal } from "../helpers/multiSigInterfaceHelper";
 
-task(MULTISIG_SUBMIT_PROPOSAL)
+task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .addParam(
     "destinations",
     "The addresses at which the operations are targeted",
