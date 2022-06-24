@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
   }
 
-  const requiredConfirmations = multisigOwners.length > 1 ? multisigOwners.length - 1 : 1;
+  const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
   const deployment = await deploy("MultiSig", {
     from: deployer,
