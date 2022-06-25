@@ -33,6 +33,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
         hre.config.namedAccounts = {
           //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
           ...namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
           deployer: { ...namedAccounts.deployer, [targetNetwork]: taskArgs["from"] },
         };
       }
