@@ -24,11 +24,17 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
     try {
       console.log("Starting stakedCelo:deploy task...");
       const networks = hre.config.networks;
+      const namedAccounts = hre.config.namedAccounts;
       const targetNetwork = hre.network.name;
       let hostUrl;
 
       if (taskArgs["from"] !== undefined) {
         networks[targetNetwork].from = taskArgs["from"];
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...namedAccounts,
+          deployer: { ...namedAccounts.deployer, [targetNetwork]: taskArgs["from"] },
+        };
       }
 
       if (taskArgs["url"] !== undefined) {

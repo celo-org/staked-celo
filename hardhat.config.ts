@@ -44,10 +44,6 @@ module.exports = {
       alfajores: ALFAJORES_FROM,
       staging: STAGING_FROM,
     },
-    // Temp to get some deployments working
-    manager: {
-      default: 2,
-    },
     multisigOwner0: {
       default: 3,
       // on alfajores and staging, multisig will be a 1 of 1 since the network tag is only provided here.
