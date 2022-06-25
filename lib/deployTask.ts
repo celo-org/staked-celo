@@ -2,6 +2,10 @@ import { task, types } from "hardhat/config";
 import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
+// Defaults
+const FROM = process.env.FROM;
+const MULTISIG_SIGNER_0 = process.env.MULTISIG_SIGNER_0;
+
 task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
   .addOptionalParam("url", "Host url.", undefined, types.string)
   .addOptionalParam(
@@ -24,17 +28,35 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
     try {
       console.log("Starting stakedCelo:deploy task...");
       const networks = hre.config.networks;
-      const namedAccounts = hre.config.namedAccounts;
       const targetNetwork = hre.network.name;
       let hostUrl;
+
+      // Setup defaults
+      if (targetNetwork !== "hardhat") {
+        const deployer = { [targetNetwork]: FROM };
+        const multisigOwner0 = { [targetNetwork]: MULTISIG_SIGNER_0 };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          deployer: { ...hre.config.namedAccounts.deployer, ...deployer },
+        };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          multisigOwner0: { ...hre.config.namedAccounts.multisigOwner0, ...multisigOwner0 },
+        };
+        hre.config.networks[targetNetwork].from = FROM;
+      }
 
       if (taskArgs["from"] !== undefined) {
         networks[targetNetwork].from = taskArgs["from"];
         hre.config.namedAccounts = {
           //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
-          ...namedAccounts,
+          ...hre.config.namedAccounts,
           //@ts-ignore Computed Property [targetNetwork]
-          deployer: { ...namedAccounts.deployer, [targetNetwork]: taskArgs["from"] },
+          deployer: { ...hre.config.namedAccounts.deployer, [targetNetwork]: taskArgs["from"] },
         };
       }
 
