@@ -17,9 +17,14 @@ config({ path: network === "" || !network ? ".env" : `.env.${network}` });
 import "./lib/bignumber-monkeypatch";
 import "./lib/deployTask";
 
+// Deployer
 const ALFAJORES_FROM = "0x5bC1C4C1D67C5E4384189302BC653A611568a788";
 const STAGING_FROM = "0x5bC1C4C1D67C5E4384189302BC653A611568a788";
 const MAINNET_FROM = "0xE23a4c6615669526Ab58E9c37088bee4eD2b2dEE";
+
+// Multisig
+const ALFAJORES_MULTISIG_SIGNER_0 = "0x0a692a271DfAf2d36E46f50269c932511B55e871";
+const STAGING_MULTISIG_SIGNER_0 = "0x0a692a271DfAf2d36E46f50269c932511B55e871";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -36,8 +41,8 @@ module.exports = {
   namedAccounts: {
     deployer: {
       default: 0,
-      alfajores: 0,
-      staging: 0,
+      alfajores: ALFAJORES_FROM,
+      staging: STAGING_FROM,
     },
     // Temp to get some deployments working
     manager: {
@@ -46,8 +51,8 @@ module.exports = {
     multisigOwner0: {
       default: 3,
       // on alfajores and staging, multisig will be a 1 of 1 since the network tag is only provided here.
-      alfajores: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
-      staging: "0x0a692a271DfAf2d36E46f50269c932511B55e871",
+      alfajores: ALFAJORES_MULTISIG_SIGNER_0,
+      staging: STAGING_MULTISIG_SIGNER_0,
     },
     multisigOwner1: {
       default: 4,
@@ -73,17 +78,19 @@ module.exports = {
     },
     alfajores: {
       url: `https://alfajores-forno.celo-testnet.org/`,
-      gas: 4000000,
       from: ALFAJORES_FROM,
+      gas: 13000000,
+      gasPrice: 100000000000,
     },
     staging: {
       url: `https://staging-forno.celo-networks-dev.org/`,
-      gas: 4000000,
       from: STAGING_FROM,
+      gas: 13000000,
+      gasPrice: 100000000000,
     },
     mainnet: {
       url: `https://forno.celo.org/`,
-      gas: 4000000,
+      gas: 13000000,
       from: MAINNET_FROM,
     },
   },

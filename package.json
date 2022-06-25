@@ -55,7 +55,7 @@
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy:alfajores": "hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core",
-    "deploy:staging": "hardhat stakedCelo:deploy  --show-stack-traces --tags core",
+    "deploy:staging": "hardhat stakedCelo:deploy --network staging --show-stack-traces --tags core",
     "verify:deploy:alfajores": "hardhat --network alfajores sourcify"
   },
   "author": "Celo Labs Inc.",
