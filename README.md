@@ -50,12 +50,12 @@ yarn verify:deploy:alfajores
 You may desire to deploy using an unlocked account in a private note. In that case after running your private node, in that case you can use the following commands :
 
 ```
-npx hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --override-network <STRING> --tags <STRING> --url <STRING> [--use-private-key]
+npx hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --tags <STRING> --url <STRING> [--use-private-key]
 ```
 
 example
 ```
-npx hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --override-network alfajores --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
+npx hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
 ```
  
 Run `npx hardhat help stakedCelo:deploy` for more information.
