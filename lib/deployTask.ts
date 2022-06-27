@@ -31,7 +31,6 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       const targetNetwork = hre.network.name;
       let hostUrl;
 
-      // Setup defaults
       if (targetNetwork !== "hardhat") {
         const deployer = { [targetNetwork]: FROM };
         const multisigOwner0 = { [targetNetwork]: MULTISIG_SIGNER_0 };
