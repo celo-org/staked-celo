@@ -47,6 +47,9 @@ module.exports = {
     local: {
       url: "http://localhost:8545",
     },
+    devchain: {
+      url: "http://localhost:7545",
+    },
     hardhat: {
       forking: {
         // Local ganache
