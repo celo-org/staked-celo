@@ -1,3 +1,4 @@
+import { JsonRpcProvider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
 import { Wallet, BigNumber as EthersBigNumber } from "ethers";
 import Web3 from "web3";
@@ -171,9 +172,17 @@ export function getFirstBlockNumberForEpoch(
   return (epochNumber - 1) * epochSize + 1;
 }
 
-export async function mineBlocks(blocks: number) {
+// `useGanache` allows for mining block directly on the ganache network
+export async function mineBlocks(blocks: number, useGanache?: boolean) {
+  let localProvider: JsonRpcProvider;
+  if (useGanache) {
+    localProvider = new ethers.providers.JsonRpcProvider("http://localhost:7545");
+  } else {
+    localProvider = ethers.provider;
+  }
+
   for (let i = 0; i < blocks; i++) {
-    await ethers.provider.send("evm_mine", []);
+    await localProvider.send("evm_mine", []);
   }
 }
 
