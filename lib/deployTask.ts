@@ -3,7 +3,7 @@ import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
 // Defaults
-const FROM = process.env.FROM;
+const DEPLOYER = process.env.DEPLOYER;
 const MULTISIG_SIGNER_0 = process.env.MULTISIG_SIGNER_0;
 
 task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
@@ -32,7 +32,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       let hostUrl;
 
       if (targetNetwork !== "hardhat") {
-        const deployer = { [targetNetwork]: FROM };
+        const deployer = { [targetNetwork]: DEPLOYER };
         const multisigOwner0 = { [targetNetwork]: MULTISIG_SIGNER_0 };
         hre.config.namedAccounts = {
           //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
@@ -46,7 +46,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
           //@ts-ignore Computed Property [targetNetwork]
           multisigOwner0: { ...hre.config.namedAccounts.multisigOwner0, ...multisigOwner0 },
         };
-        hre.config.networks[targetNetwork].from = FROM;
+        hre.config.networks[targetNetwork].from = DEPLOYER;
       }
 
       if (taskArgs["from"] !== undefined) {
