@@ -27,5 +27,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.id = "deploy_rebased_staked_celo";
 func.tags = ["RebasedStakedCelo", "core"];
-func.dependencies = ["StakedCelo", "Account"];
+func.dependencies = ["StakedCelo", "Account", "MultiSig"];
 export default func;

@@ -171,6 +171,98 @@ Withdrawal flow:
    withdrawal that was created in the previous step. This will finalize the
    LockedGold withdrawal and return the remaining CELO to the user.
 
+
+## Updating Devchain Chain Data with Staked CELO Contracts
+
+This section will walk you through how to generate a new devchain tarball containing deployed staked CELO contracts.
+
+### Deploying Staked CELO Contracts to Local Devchain
+
+First open a terminal and run the `devchain` and specify the path to store the chain data. This will need to stay running until we have generated the new tarball.
+
+```bash
+yarn devchain --db db/
+```
+
+In a separate terminal, deploy all staked CELO contracts to the current local network.
+
+```bash
+yarn deploy:devchain
+```
+
+This will create `deployments/devchain/` directory that contains functions to easily access deployments using hardhat-deploy. 
+
+See [hardhat-deploy](https://github.com/wighawag/hardhat-deploy#migrating-existing-deployment-to-hardhat-deploy) for more details on how to use existing deployments.
+
+Once deployed, devchain can safely be stopped.
+
+### Generating New Chain Data Tar
+
+Once the contracts are successfully deployed to the network, compress the chain data. 
+
+**NB:** This next part assumes that you already have a local copy of [celo-monorepo](https://github.com/celo-org/celo-monorepo) on your machine. If not, follow the instructions on how to get setup [here](https://github.com/celo-org/celo-monorepo/blob/master/SETUP.md).
+
+```bash
+> yarn tarchain run --datadir <path_to_datadir> --monorepo <path_to_monorepo>
+```
+
+### Testing the New Devchain Tarball
+
+Run devchain using staked CELO devchain.
+
+```bash
+yarn run celo-devchain --port 7545 --file <path_to_tarball>
+```
+
+Once ganache has started, run the test script to ensure all contracts were deployed properly.
+
+```bash
+yarn test scripts/test/devchain.test.ts
+```
+
+## Develop Against Unreleased Staked CELO Contracts.
+
+**NB:** The following assumes that you are using [celo-devchain](https://www.npmjs.com/package/@terminal-fi/celo-devchain) & [hardhat-deploy](https://www.npmjs.com/package/hardhat-deploy) packages.
+
+In order to use the tarball containing the staked CELO contracts, you will need to add the external deployments files and configure the hardhat network  in `hardhat.config.ts` accordingly.
+
+``` ts 
+external: {
+    deployments: {
+      // Specify path to deployment data
+      hardhat: ["chainData/deployments/devchain"],
+    }
+  },
+
+namedAccounts: {
+    deployer: {
+      default: 0,
+    },
+    multisigOwner0: {
+      default: 3,
+    },
+    multisigOwner1: {
+      default: 4,
+    },
+    multisigOwner2: {
+      default: 5,
+    },
+  },
+
+networks: {
+    hardhat: {
+      forking: {
+        // Local devchain
+        url: "http://localhost:7545",
+        blockNumber: 780,
+      },
+      // Mnemonic used to access multisig owner accounts.
+      accounts: { mnemonic: "concert load couple harbor equip island argue ramp clarify fence smart topic" },
+    },
+  },
+```
+
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style and how to contribute.
