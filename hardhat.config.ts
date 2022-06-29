@@ -13,7 +13,7 @@ import "./lib/bignumber-monkeypatch";
 
 const argv = minimist(process.argv.slice(2));
 const { network } = argv;
-config({ path: network === "" || !network ? ".env" : `.env.${network}` });
+config({ path: network === "" || !network || network === "devchain" ? ".env" : `.env.${network}` });
 
 import "./lib/deployTask";
 
