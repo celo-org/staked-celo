@@ -8,13 +8,13 @@ import "hardhat-deploy";
 import "./lib/contractkit.plugin";
 import minimist from "minimist";
 import { config } from "dotenv";
+// --- Monkey-patching ---
+import "./lib/bignumber-monkeypatch";
 
 const argv = minimist(process.argv.slice(2));
 const { network } = argv;
 config({ path: network === "" || !network ? ".env" : `.env.${network}` });
 
-// --- Monkey-patching ---
-import "./lib/bignumber-monkeypatch";
 import "./lib/deployTask";
 
 // You need to export an object to set up your config

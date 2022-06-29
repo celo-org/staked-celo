@@ -27,77 +27,70 @@ yarn lint
 ```
 
 ## Deploying to remote networks
-Deployment can be done from the root of the project by running any of the below commands:
-Requirement : Gcloud must be setup and user account must have access staked-celo-alfajores on GCP. 
-
-Next you must ensure the environment variables have been decrypted, using `keys:decrypt`.
-
+Requirement: `gcloud` must be set up and user account must have access staked-celo-alfajores and staked-celo-staging on GCP. 
+Next, ensure the environment variables have been decrypted, using `yarn keys:decrypt`.
 Then use the following commands to deploy depending on the desired target environment.
-e.g., the below command will deploy to the Alfajores network, using the decrypted private key and default Alfajores rpc url. 
+For example, the below command will deploy to the Alfajores network, using the decrypted private key, the default Alfajores rpc url and the other variables in `.env.alfajores`. 
 
 Alfajores : 
 ```
-yarn deploy:alfajores
+yarn deploy --network alfajores
 ```
 
 You may immediately verify the deployment, with the following commands.
 
 Alfajores : 
 ```
-yarn verify:deploy:alfajores
+yarn verify --network alfajores
 ```
 
-You may desire to deploy using an unlocked account in a private note. In that case after running your private node, in that case you can use the following commands :
+You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
 
 ```
-npx hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --tags <STRING> --url <STRING> [--use-private-key]
+yarn hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --tags <STRING> --url <STRING> [--use-private-key]
 ```
 
 example
 ```
-npx hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
+yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
 ```
  
-Run `npx hardhat help stakedCelo:deploy` for more information.
+Run `yarn hardhat help stakedCelo:deploy` for more information.
 
 You may want to run your deployment via a light node using an unlocked account, in that case follow the steps below
 ### Steps to Run a light node:
 
-Steps to Run a light node:
-
 Step 1: Create and fund an account.
-First export $ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
-to your shell.
+In your terminal, run the below command
 
-Create a directory called celo-tools , cd into it and run the below command:
+```
+export $ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
+```
+
+Then create a directory called `celo-tools` , cd into it and run the below command:
+
+```
 docker run -v $PWD:/root/.celo --rm -it $ALFAJORES_CELO_IMAGE account new
-
-Choose a passphrase. Once run, it will output the address of the newly created account. Copy this address and export it to your shell as $CELO_ACCOUNT_ADDRESS.
-
-i.e export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
-
-Step 2 : Fund the account
-The simplest way to fund your account is to request some faucet CELO from https://celo.org/developers/faucet.
-
-Alternatively cLabs employees with access to GCP can fund larger amounts using the below steps: 
-
-Clone the celo-monorepo, then
-```
-cd celo-monorepo/packages/celotool,
 ```
 
-Next run this command to fund the newly created account with 1 CELO
+Choose a passphrase or hit enter twice to choose an empty phrase. Once done, it should output the address of the newly created account. Copy this address and export it to your shell as `$CELO_ACCOUNT_ADDRESS`.
+
+i.e 
+
 ```
-yarn cli account faucet -e alfajores --account $CELO_ACCOUNT_ADDRESS --tokenParams CELO,1
+export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
 ```
 
-Step 3: 
-Run the light node
+Step 2: Run the light node.
+
+From within the `celo-tools` created above, run:
+
 ```
 docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo
 ```
+Observe the command line output for the prompt to specify the passphrase chosen in step 1. Enter your passphrase and hit enter to continue, if everything goes well, you should observe the node running and mining blocks successfully.
 
-Now if you point any network URL to :8545, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions
+Now if you point any network URL to `:8545`, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions.
 
 ## Contracts
 

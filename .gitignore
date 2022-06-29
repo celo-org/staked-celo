@@ -12,10 +12,14 @@ deployments/hardhat
 deployments/local
 deployments/devchain
 typechain-types
+
 # IDEA
 .idea
+
+ # decrypted environment configs
 .env.staging
 .env.alfajores
+.env.mainnet
 
 #devchain
 db

@@ -57,11 +57,8 @@
     "prepare": "husky install",
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
-    "deploy:alfajores": "hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core",
-    "deploy:staging": "hardhat stakedCelo:deploy --network staging --show-stack-traces --tags core",
-    "deploy:mainnet": "hardhat stakedCelo:deploy  --network mainnet --show-stack-traces --tags core",
-    "verify:deploy:alfajores": "hardhat --network alfajores sourcify",
-    "verify:deploy:mainnet": "hardhat --network mainnet sourcify",
+    "deploy": "hardhat stakedCelo:deploy --show-stack-traces --tags core",
+    "verify:deploy": "hardhat sourcify",
     "tarchain": "ts-node scripts/tarchain.ts"
   },
   "author": "Celo Labs Inc.",

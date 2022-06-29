@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const stakedCelo = await hre.deployments.get("StakedCelo");
   const account = await hre.deployments.get("Account");
-  const multisig = await hre.deployments.get("MultiSig");
+  const multiSig = await hre.deployments.get("MultiSig");
 
   const { deploy } = hre.deployments;
 
@@ -14,12 +14,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     proxy: {
       proxyArgs: ["{implementation}", "{data}"],
-      owner: multisig.address,
+      owner: multiSig.address,
       upgradeIndex: 0,
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [stakedCelo.address, account.address, multisig.address],
+        args: [stakedCelo.address, account.address, multiSig.address],
       },
     },
   });
