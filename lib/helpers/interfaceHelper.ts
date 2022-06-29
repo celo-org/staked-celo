@@ -5,17 +5,21 @@ import chalk from "chalk";
 
 export async function getSigner(
   hre: HardhatRuntimeEnvironment,
-  namedAccount: string,
+  account: string,
   useLedger: boolean
 ): Promise<Signer> {
   let signer: Signer;
   if (useLedger) {
     signer = new LedgerSigner(hre.ethers.provider);
   } else {
-    if (namedAccount == undefined) {
-      throw new Error("NamedAccount is required when not using Ledger wallet.");
+    if (account === undefined) {
+      throw new Error("Account is required when not using Ledger wallet.");
     }
-    signer = await hre.ethers.getNamedSigner(namedAccount);
+    if (hre.ethers.utils.isAddress(account)) {
+      signer = await hre.ethers.getSigner(account);
+    } else {
+      signer = await hre.ethers.getNamedSigner(account);
+    }
   }
 
   return signer;
