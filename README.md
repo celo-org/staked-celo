@@ -77,6 +77,10 @@ Choose a passphrase. Once run, it will output the address of the newly created a
 i.e export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
 
 Step 2 : Fund the account
+The simplest way to fund your account is to request some faucet CELO from https://celo.org/developers/faucet.
+
+Alternatively cLabs employees with access to GCP can fund larger amounts using the below steps: 
+
 Clone the celo-monorepo, then
 ```
 cd celo-monorepo/packages/celotool,
