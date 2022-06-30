@@ -97,10 +97,12 @@ Once your local node is running with an unlocked account, in your terminal, run 
 
 If you are signing a transaction, make sure to pass the `--account` flag with the account name or address.
 
-Example:
+Examples:
 
 ```bash
-yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --account '<YOUR_ACCOUNT_ADDRESS>'
+$ yarn run hardhat stakedCelo:multiSig:submitProposal --help
+
+$ yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --account '<YOUR_ACCOUNT_ADDRESS>'
 ```
 
 ### Signing transactions with Ledger wallet
