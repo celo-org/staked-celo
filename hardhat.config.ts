@@ -24,6 +24,12 @@ import "./lib/multiSig-tasks/multiSigTask";
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
+  external: {
+    deployments: {
+      // Specify path to deployment data
+      local: ["deployments/alfajores"],
+    },
+  },
   paths: {
     tests: "test-ts",
   },
@@ -51,6 +57,8 @@ module.exports = {
   networks: {
     local: {
       url: "http://localhost:8545",
+      gas: 13000000,
+      gasPrice: 100000000000,
     },
     devchain: {
       url: "http://localhost:7545",
