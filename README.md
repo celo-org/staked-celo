@@ -91,6 +91,42 @@ Observe the command line output for the prompt to specify the passphrase chosen 
 
 Now if you point any network URL to `:8545`, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions.
 
+## Using local node to interact with multiSig contract
+
+Once your local node is running with an unlocked account, in your terminal, run the `stakedCelo:multiSig:<function_name>` task.
+
+If you are signing a transaction, make sure to pass the `--account` flag with the account name or address.
+
+Example:
+
+```bash
+yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --account '<YOUR_ACCOUNT_ADDRESS>'
+```
+
+### Signing transactions with Ledger wallet
+
+Follow the [steps to install the Ethereum app & create an account](https://support.ledger.com/hc/en-us/articles/360009576554-Ethereum-ETH-?docs=true) on the ledger device. Make sure to enable **Blind signing**.
+
+<span style="color:yellow">**Warning:**</span> It is important to install the ***Ethereum app***, as the CELO app is not fully supported.
+
+Close the ledger live app once installation is complete.
+
+Run a local node with the `--usb` flag.
+
+Example:
+
+```bash
+docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo --usb
+```
+
+Once the local node is running, in a separate terminal, you can run the `stakedCelo:multiSig:<function_name>` task with the `--use-ledger` flag.
+
+Example:
+
+```bash
+yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --use-ledger
+```
+
 ## Contracts
 
 ### StakedCelo.sol
