@@ -18,7 +18,7 @@ task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
     try {
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
-      const tx = await multiSigContract.connect(signer).revokeConfirmation(proposalId);
+      const tx = await multiSigContract.connect(signer).revokeConfirmation(proposalId, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "ConfirmationRevoked");
     } catch (error) {

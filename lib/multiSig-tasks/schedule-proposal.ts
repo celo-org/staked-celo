@@ -18,7 +18,7 @@ task(MULTISIG_SCHEDULE_PROPOSAL, "Schedule a proposal")
     try {
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
-      const tx = await multiSigContract.connect(signer).scheduleProposal(proposalId);
+      const tx = await multiSigContract.connect(signer).scheduleProposal(proposalId, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "ProposalScheduled");
     } catch (error) {

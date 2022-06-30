@@ -17,7 +17,7 @@ task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
     try {
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
-      const tx = await multiSigContract.connect(signer).confirmProposal(proposalId);
+      const tx = await multiSigContract.connect(signer).confirmProposal(proposalId, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "ProposalConfirmed");
     } catch (error) {

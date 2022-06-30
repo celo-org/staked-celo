@@ -37,7 +37,9 @@ task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
-        .submitProposal(destinations.split(","), values.split(","), payloads.split(","));
+        .submitProposal(destinations.split(","), values.split(","), payloads.split(","), {
+          type: 0,
+        });
       const receipt = await tx.wait();
       const events = receipt.events;
       if (events !== undefined) {

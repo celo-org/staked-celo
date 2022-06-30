@@ -17,7 +17,7 @@ task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
     try {
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
-      const tx = await multiSigContract.connect(signer).executeProposal(proposalId);
+      const tx = await multiSigContract.connect(signer).executeProposal(proposalId, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "TransactionExecuted");
     } catch (error) {
