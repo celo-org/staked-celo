@@ -43,7 +43,7 @@ Alfajores :
 ```
 yarn verify --network alfajores
 ```
-
+## Deploying to local CELO node
 You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
 
 ```
@@ -57,17 +57,16 @@ yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags c
  
 Run `yarn hardhat help stakedCelo:deploy` for more information.
 
-You may want to run your deployment via a light node using an unlocked account, in that case follow the steps below
 ### Steps to Run a light node:
 
 Step 1: Create and fund an account.
 In your terminal, run the below command
 
 ```
-export $ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
+export ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
 ```
 
-Then create a directory called `celo-tools` , cd into it and run the below command:
+Then create a directory called `celo-data-dir` , cd into it and run the below command:
 
 ```
 docker run -v $PWD:/root/.celo --rm -it $ALFAJORES_CELO_IMAGE account new
@@ -83,7 +82,7 @@ export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
 
 Step 2: Run the light node.
 
-From within the `celo-tools` created above, run:
+From within the `celo-data-dir` created above, run:
 
 ```
 docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo
