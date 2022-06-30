@@ -26,6 +26,71 @@ Run prettier to lint and write - this is also done automatically in a pre-commit
 yarn lint
 ```
 
+## Deploying to remote networks
+Requirement: `gcloud` must be set up and user account must have access staked-celo-alfajores and staked-celo-staging on GCP. 
+Next, ensure the environment variables have been decrypted, using `yarn keys:decrypt`.
+Then use the following commands to deploy depending on the desired target environment.
+For example, the below command will deploy to the Alfajores network, using the decrypted private key, the default Alfajores rpc url and the other variables in `.env.alfajores`. 
+
+Alfajores : 
+```
+yarn deploy --network alfajores
+```
+
+You may immediately verify the deployment, with the following commands.
+
+Alfajores : 
+```
+yarn verify --network alfajores
+```
+## Deploying to local CELO node
+You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
+
+```
+yarn hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --tags <STRING> --url <STRING> [--use-private-key]
+```
+
+example
+```
+yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
+```
+ 
+Run `yarn hardhat help stakedCelo:deploy` for more information.
+
+### Steps to Run a light node:
+
+Step 1: Create and fund an account.
+In your terminal, run the below command
+
+```
+export ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
+```
+
+Then create a directory called `celo-data-dir` , cd into it and run the below command:
+
+```
+docker run -v $PWD:/root/.celo --rm -it $ALFAJORES_CELO_IMAGE account new
+```
+
+Choose a passphrase or hit enter twice to choose an empty phrase. Once done, it should output the address of the newly created account. Copy this address and export it to your shell as `$CELO_ACCOUNT_ADDRESS`.
+
+i.e 
+
+```
+export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
+```
+
+Step 2: Run the light node.
+
+From within the `celo-data-dir` created above, run:
+
+```
+docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo
+```
+Observe the command line output for the prompt to specify the passphrase chosen in step 1. Enter your passphrase and hit enter to continue, if everything goes well, you should observe the node running and mining blocks successfully.
+
+Now if you point any network URL to `:8545`, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions.
+
 ## Contracts
 
 ### StakedCelo.sol
