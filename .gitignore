@@ -16,5 +16,11 @@ typechain-types
 # IDEA
 .idea
 
+ #decrypted environment configs
+.env.staging
+.env.alfajores
+.env.mainnet
+.env
+
 #devchain
 db

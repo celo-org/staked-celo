@@ -21,6 +21,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_manager";
-func.tags = ["Manager"];
+func.tags = ["Manager", "core"];
 func.dependencies = ["MultiSig"];
 export default func;

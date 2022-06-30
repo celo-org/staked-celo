@@ -1,13 +1,21 @@
 // --- Hardhat plugins ---
+import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-deploy";
 import "./lib/contractkit.plugin";
-
+import minimist from "minimist";
+import { config } from "dotenv";
 // --- Monkey-patching ---
 import "./lib/bignumber-monkeypatch";
+
+const argv = minimist(process.argv.slice(2));
+const { network } = argv;
+config({ path: network === "" || !network || network === "devchain" ? ".env" : `.env.${network}` });
+
+import "./lib/deployTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -24,10 +32,6 @@ module.exports = {
   namedAccounts: {
     deployer: {
       default: 0,
-    },
-    // Temp to get some deployments working
-    manager: {
-      default: 2,
     },
     multisigOwner0: {
       default: 3,
@@ -55,8 +59,22 @@ module.exports = {
         // Local ganache
         url: "http://localhost:7545",
         blockNumber: 399,
-        // url: "https://alfajores-forno.celo-testnet.org"
       },
+    },
+    alfajores: {
+      url: `https://alfajores-forno.celo-testnet.org/`,
+      gas: 13000000,
+      gasPrice: 100000000000,
+    },
+    staging: {
+      url: `https://staging-forno.celo-networks-dev.org/`,
+      gas: 13000000,
+      gasPrice: 100000000000,
+    },
+    mainnet: {
+      url: `https://forno.celo.org/`,
+      gas: 13000000,
+      gasPrice: 100000000000,
     },
   },
   solidity: {
@@ -77,4 +95,4 @@ module.exports = {
       },
     ],
   },
-};
+} as HardhatUserConfig;
