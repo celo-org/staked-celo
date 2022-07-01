@@ -5,6 +5,8 @@ const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 // Defaults
 const DEPLOYER = process.env.DEPLOYER;
 const MULTISIG_SIGNER_0 = process.env.MULTISIG_SIGNER_0;
+const MULTISIG_SIGNER_1 = process.env.MULTISIG_SIGNER_1;
+const MULTISIG_SIGNER_2 = process.env.MULTISIG_SIGNER_2;
 
 task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
   .addOptionalParam("url", "Host url.", undefined, types.string)
@@ -34,6 +36,8 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       if (targetNetwork !== "hardhat") {
         const deployer = { [targetNetwork]: DEPLOYER };
         const multisigOwner0 = { [targetNetwork]: MULTISIG_SIGNER_0 };
+        const multisigOwner1 = { [targetNetwork]: MULTISIG_SIGNER_1 };
+        const multisigOwner2 = { [targetNetwork]: MULTISIG_SIGNER_2 };
         hre.config.namedAccounts = {
           //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
           ...hre.config.namedAccounts,
@@ -45,6 +49,18 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
           ...hre.config.namedAccounts,
           //@ts-ignore Computed Property [targetNetwork]
           multisigOwner0: { ...hre.config.namedAccounts.multisigOwner0, ...multisigOwner0 },
+        };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          multisigOwner1: { ...hre.config.namedAccounts.multisigOwner1, ...multisigOwner1 },
+        };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          multisigOwner2: { ...hre.config.namedAccounts.multisigOwner2, ...multisigOwner2 },
         };
         hre.config.networks[targetNetwork].from = DEPLOYER;
       }
