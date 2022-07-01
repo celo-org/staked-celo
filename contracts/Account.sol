@@ -6,13 +6,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Managed.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
+import "./interfaces/IAccount.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
  * @notice This contract depends on the Manager to decide how to distribute votes and how to
  * keep track of ownership of CELO voted via this contract.
  */
-contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, IAccount {
     /**
      * @notice Used to keep track of a pending withdrawal. A similar data structure
      * exists within LockedGold.sol, but it only keeps track of pending withdrawals
@@ -207,6 +208,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
+    mapping(string => uint256) public logger;
+    mapping(string => address) public loggerAddress;
+
     /**
      * @notice Deposits CELO sent via msg.value as unlocked CELO intended as
      * votes for groups.
@@ -226,14 +230,23 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
 
         uint256 totalVotes;
         for (uint256 i = 0; i < groups.length; i++) {
-            scheduledVotes[groups[i]].toVote += votes[i];
-            totalVotes += votes[i];
-            emit VotesScheduled(groups[i], votes[i]);
-        }
+            scheduledVotes[groups[i]].toVote += 0;
 
-        if (totalVotes != uint256(msg.value)) {
-            revert TotalVotesMismatch(msg.value, totalVotes);
+            logger["scheduledVotes[groups[i]].toVote"] = scheduledVotes[groups[i]].toVote;
+            //loggerAddress["groups at i"] = groups[i];
+            // logger["votes at i "] = votes[i];
+             logger["last i"] = i;
+
+
+            //totalVotes += votes[i];
+            // emit VotesScheduled(groups[i], votes[i]);
         }
+        logger["outside loop"] = 999;
+        // logger["groups.length"] = groups.length;
+        // logger["votes.length"] = votes.length;
+        // if (totalVotes != uint256(msg.value)) {
+        //     revert TotalVotesMismatch(msg.value, totalVotes);
+        // }
     }
 
     /**

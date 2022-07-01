@@ -8,11 +8,11 @@ interface IAccount {
 
     function scheduleVotes(address[] calldata group, uint256[] calldata votes) external payable;
 
-    function scheduledVotes(address group) external returns (uint256);
+    function scheduledVotesForGroup(address group) external returns (uint256);
 
     function scheduleWithdrawals(
+        address beneficiary,
         address[] calldata group,
-        uint256[] calldata withdrawals,
-        address beneficiary
-    ) external;
+        uint256[] calldata withdrawals
+    ) external payable;
 }

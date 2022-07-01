@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "hardhat/console.sol";
 
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
@@ -238,6 +239,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * will be scheduled to be voted for with the Account contract.
      */
     function deposit() external payable {
+        console.log("from hardhart console.log", msg.sender);
         if (activeGroups.length() == 0) {
             revert NoActiveGroups();
         }
@@ -332,10 +334,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
          * the distribution logic below.
          */
         address[] memory votableGroups = getVotableGroups(votes);
-        if (votableGroups.length == 0) {
-            revert NoVotableGroups();
-        }
-
         GroupWithVotes[] memory sortedGroups;
         uint256 availableVotes;
         (sortedGroups, availableVotes) = getSortedGroupsWithVotes(votableGroups);
@@ -431,7 +429,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalVotes[i + numberDeprecatedGroupsWithdrawn] = withdrawalsPerGroup[i];
         }
 
-        account.scheduleWithdrawals(finalGroups, finalVotes, beneficiary);
+        account.scheduleWithdrawals(beneficiary, finalGroups, finalVotes);
     }
 
     /**
@@ -581,11 +579,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         for (uint256 i = 0; i < numberGroups; i++) {
             address group = activeGroups.at(i);
-            uint256 scheduledVotes = account.scheduledVotes(group);
+            uint256 scheduledVotes = account.scheduledVotesForGroup(group);
             if (getElection().canReceiveVotes(group, votes + scheduledVotes)) {
                 votableGroups[numberVotableGroups] = group;
                 numberVotableGroups++;
             }
+        }
+
+        if (numberVotableGroups == 0) {
+            revert NoVotableGroups();
         }
 
         address[] memory votableGroupsFinal = new address[](numberVotableGroups);
