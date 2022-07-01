@@ -7,6 +7,8 @@ const DEPLOYER = process.env.DEPLOYER;
 const MULTISIG_SIGNER_0 = process.env.MULTISIG_SIGNER_0;
 const MULTISIG_SIGNER_1 = process.env.MULTISIG_SIGNER_1;
 const MULTISIG_SIGNER_2 = process.env.MULTISIG_SIGNER_2;
+const MULTISIG_SIGNER_3 = process.env.MULTISIG_SIGNER_3;
+const MULTISIG_SIGNER_4 = process.env.MULTISIG_SIGNER_4;
 
 task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options.")
   .addOptionalParam("url", "Host url.", undefined, types.string)
@@ -38,6 +40,8 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
         const multisigOwner0 = { [targetNetwork]: MULTISIG_SIGNER_0 };
         const multisigOwner1 = { [targetNetwork]: MULTISIG_SIGNER_1 };
         const multisigOwner2 = { [targetNetwork]: MULTISIG_SIGNER_2 };
+        const multisigOwner3 = { [targetNetwork]: MULTISIG_SIGNER_3 };
+        const multisigOwner4 = { [targetNetwork]: MULTISIG_SIGNER_4 };
         hre.config.namedAccounts = {
           //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
           ...hre.config.namedAccounts,
