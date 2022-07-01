@@ -42,6 +42,12 @@ module.exports = {
     multisigOwner2: {
       default: 5,
     },
+    multisigOwner3: {
+      default: 6,
+    },
+    multisigOwner4: {
+      default: 7,
+    },
     // Used as owner in test fixtures instead of multisig
     owner: {
       default: 6,
