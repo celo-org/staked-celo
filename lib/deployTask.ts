@@ -113,7 +113,6 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
 
       hre.config.networks = networks;
       console.log("Deploying with the following network settings...", hre.config.namedAccounts);
-      process.exit(0);
       return await hre.run("deploy", taskArgs);
     } catch (error) {
       console.log(error);
