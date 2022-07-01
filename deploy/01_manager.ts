@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
-  validatorGroupsString ? validatorGroupsString.split(',') : []
+  validatorGroupsString ? validatorGroupsString.split(",") : [];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -24,11 +24,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
   });
 
-  const manager = await hre.ethers.getContract('Manager');
+  const manager = await hre.ethers.getContract("Manager");
 
   for (let i = 0; i < validatorGroups.length; i++) {
-      console.log('activating group', validatorGroups[i]);
-      await manager.activateGroup(validatorGroups[i]);
+    console.log("activating group", validatorGroups[i]);
+    await manager.activateGroup(validatorGroups[i]);
   }
 };
 
