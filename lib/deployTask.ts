@@ -66,6 +66,18 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
           //@ts-ignore Computed Property [targetNetwork]
           multisigOwner2: { ...hre.config.namedAccounts.multisigOwner2, ...multisigOwner2 },
         };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          multisigOwner3: { ...hre.config.namedAccounts.multisigOwner3, ...multisigOwner3 },
+        };
+        hre.config.namedAccounts = {
+          //@ts-ignore Property 'deployer' does not exist on type 'NetworkConfig'
+          ...hre.config.namedAccounts,
+          //@ts-ignore Computed Property [targetNetwork]
+          multisigOwner4: { ...hre.config.namedAccounts.multisigOwner4, ...multisigOwner4 },
+        };
         hre.config.networks[targetNetwork].from = DEPLOYER;
       }
 
@@ -100,7 +112,8 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       }
 
       hre.config.networks = networks;
-      console.log("Deploying with the following network settings...", networks[targetNetwork]);
+      console.log("Deploying with the following network settings...", hre.config.namedAccounts);
+      process.exit(0);
       return await hre.run("deploy", taskArgs);
     } catch (error) {
       console.log(error);
