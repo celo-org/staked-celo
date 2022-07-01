@@ -28,7 +28,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   for (let i = 0; i < validatorGroups.length; i++) {
     console.log("activating group", validatorGroups[i]);
-    await manager.activateGroup(validatorGroups[i]);
+    const tx = await manager.activateGroup(validatorGroups[i]);
+    await tx.wait();
   }
 };
 
