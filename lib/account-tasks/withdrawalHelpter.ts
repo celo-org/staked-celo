@@ -35,11 +35,11 @@ export async function withdrawHelper(hre: HardhatRuntimeEnvironment, beneficiary
       console.log("revokeAmount:", revokeAmount);
 
       // get AccountContract pending votes for group.
-      const groupvote = await electionWrapper.getVotesForGroupByAccount(
+      const groupVote = await electionWrapper.getVotesForGroupByAccount(
         accountContract.address,
         group
       );
-      const pendingVotes = groupvote.pending;
+      const pendingVotes = groupVote.pending;
 
       console.log("pendingVotes:", pendingVotes);
 

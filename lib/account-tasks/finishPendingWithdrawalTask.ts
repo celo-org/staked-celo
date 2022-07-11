@@ -48,9 +48,6 @@ task(
       // User can optionally specify using a private key irrespective of deploying to remote network or not.
       if (taskArgs["usePrivateKey"]) {
         networks[targetNetwork].accounts = [`0x${privateKey}`];
-        console.log(targetNetwork, taskArgs["usePrivateKey"], networks[targetNetwork].accounts, [
-          `0x${privateKey}`,
-        ]);
       }
 
       const res = await finishPendingWithdrawals(hre, taskArgs["beneficiary"]);
