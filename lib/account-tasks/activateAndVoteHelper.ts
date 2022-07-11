@@ -5,19 +5,23 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
   const accountContract = await hre.ethers.getContract("Account");
   const ManagerContract = await hre.ethers.getContract("Manager");
 
-  let electionWrapper;
-
-  electionWrapper = await hre.kit.contracts.getElection();
+  const electionWrapper = await hre.kit.contracts.getElection();
+  const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
   const groupList = await ManagerContract.getGroups();
   console.log("groups:", groupList);
 
   for (var group of groupList) {
+    const canActivateForGroup = await electionContract.hasActivatablePendingVotes(
+      accountContract.address,
+      group
+    );
     const amountScheduled = await accountContract.scheduledVotesForGroup(group);
 
+    console.log(`can activate for ${group}:`, canActivateForGroup);
     console.log(`amount scheduled for group ${group}:`, amountScheduled.toString());
 
-    if (amountScheduled > hre.ethers.BigNumber.from(0)) {
+    if (amountScheduled > hre.ethers.BigNumber.from(0) || canActivateForGroup) {
       var { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
         group,
         amountScheduled.toString()
@@ -30,8 +34,7 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
       const tx = await accountContract.activateAndVote(group, lesser, greater);
 
       const receipt = await tx.wait();
-      console.log(chalk.yellow("receipt events", receipt.events));
-      //TODO: parse events emmitted?
+      console.log(chalk.yellow("receipt status"), receipt.status);
     }
   }
 }
