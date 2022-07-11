@@ -1,4 +1,3 @@
-export const STAKED_CELO_MULTISIG = "stakedCelo:multiSig";
 export const MULTISIG_GET_OWNERS = "stakedCelo:multiSig:getOwners";
 export const MULTISIG_SUBMIT_PROPOSAL = "stakedCelo:multiSig:submitProposal";
 export const MULTISIG_CONFIRM_PROPOSAL = "stakedCelo:multiSig:confirmProposal";
