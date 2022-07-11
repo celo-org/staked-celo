@@ -27,10 +27,10 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
       console.log("current group:", group);
       console.log(chalk.green("greater:", greater));
 
-      // const tx = await accountContract.activateAndVote(group, lesser, greater);
+      const tx = await accountContract.activateAndVote(group, lesser, greater);
 
-      // const receipt = await tx.wait();
-      // console.log(chalk.yellow("receipt events", receipt.events))
+      const receipt = await tx.wait();
+      console.log(chalk.yellow("receipt events", receipt.events));
       //TODO: parse events emmitted?
     }
   }

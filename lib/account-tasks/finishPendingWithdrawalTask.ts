@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 import chalk from "chalk";
 
 import { ACCOUNT_FINISH_PENDING_WITHDRAWAL } from "../tasksNames";
-import { finishPendingWithdrawals } from "../withdrawalHelpter";
+import { finishPendingWithdrawals } from "./withdrawalHelpter";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 

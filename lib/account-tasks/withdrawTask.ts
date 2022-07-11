@@ -1,7 +1,7 @@
 import { task, types } from "hardhat/config";
 
 import { ACCOUNT_WITHDRAW } from "../tasksNames";
-import { withdrawHelper } from "../withdrawalHelpter";
+import { withdrawHelper } from "./withdrawalHelpter";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
