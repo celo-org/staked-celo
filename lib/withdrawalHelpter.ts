@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 
 export async function withdrawHelper(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
   let electionWrapper;
@@ -53,7 +53,8 @@ export async function withdrawHelper(hre: HardhatRuntimeEnvironment, beneficiary
       const lesserAndGreaterAfterPendingRevoke =
         await electionWrapper.findLesserAndGreaterAfterVote(
           group,
-          (toRevokeFromPending * -1).toString()
+          // @ts-ignore
+          (toRevokeFromPending * -1).toString() //TODO: can you use Bignumber here?
         );
       const lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
       const greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
@@ -67,7 +68,8 @@ export async function withdrawHelper(hre: HardhatRuntimeEnvironment, beneficiary
       // @ts-ignore
       const lesserAndGreaterAfterActiveRevoke = await electionWrapper.findLesserAndGreaterAfterVote(
         group,
-        (toRevokeFromActive * -1).toString()
+        // @ts-ignore
+        (toRevokeFromActive * -1).toString() //TODO: can you use Bignumber here?
       );
       const lesserAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.lesser;
       const greaterAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.greater;
