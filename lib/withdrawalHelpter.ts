@@ -1,0 +1,178 @@
+import chalk from "chalk";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { Contract } from "ethers";
+
+export async function withdrawHelper(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
+  let electionWrapper;
+  electionWrapper = await hre.kit.contracts.getElection();
+
+  const accountContract = await hre.ethers.getContract("Account");
+  const managerContract = await hre.ethers.getContract("Manager");
+
+  // Use deprecated and active groups to get the full list of groups with potential withdrawals.
+  const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
+  const activeGroups: [] = await managerContract.getGroups();
+
+  const groupList = deprecatedGroups.concat(activeGroups);
+  console.log("groupList:", groupList);
+
+  for (var group of groupList) {
+    console.log(chalk.yellow("current group", group));
+
+    // check what the beneficiary withdrawal amount is for each group.
+    const scheduledWithdrawalAmount =
+      await accountContract.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiaryAddress);
+    console.log(chalk.green("scheduled withdrawal amount from group:", scheduledWithdrawalAmount));
+
+    if (scheduledWithdrawalAmount > 0) {
+      // substract the immediateWithdrawalAmount from scheduledWithdrawalAmount to get the revokable amount
+      const immediateWithdrawalAmount = await accountContract.scheduledVotesForGroup(group);
+      console.log("immediateWithdrawalAmount:", immediateWithdrawalAmount);
+
+      const revokeAmount = scheduledWithdrawalAmount - immediateWithdrawalAmount;
+      console.log("revokeAmount:", revokeAmount);
+
+      // get AccountContract pending votes for group.
+      const groupvote = await electionWrapper.getVotesForGroupByAccount(
+        accountContract.address,
+        group
+      );
+      const pendingVotes = groupvote.pending;
+
+      console.log("pendingVotes:", pendingVotes);
+
+      // amount to revoke from pending
+      const toRevokeFromPending = Math.min(revokeAmount, pendingVotes.toNumber());
+
+      console.log("toRevokeFromPending:", toRevokeFromPending);
+
+      // find lesser and greater for pending votes
+      // @ts-ignore
+      const lesserAndGreaterAfterPendingRevoke =
+        await electionWrapper.findLesserAndGreaterAfterVote(
+          group,
+          (toRevokeFromPending * -1).toString()
+        );
+      const lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
+      const greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
+
+      // find amount to revoke from active votes
+      const toRevokeFromActive = revokeAmount - toRevokeFromPending;
+
+      console.log("toRevokeFromActive:", toRevokeFromActive);
+
+      // find lesser and greater for active votes
+      // @ts-ignore
+      const lesserAndGreaterAfterActiveRevoke = await electionWrapper.findLesserAndGreaterAfterVote(
+        group,
+        (toRevokeFromActive * -1).toString()
+      );
+      const lesserAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.lesser;
+      const greaterAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.greater;
+
+      // // find index of group
+      const index = await findAddressIndex(electionWrapper, group, accountContract.address);
+
+      // use current index
+      console.log("beneficiaryAddress:", beneficiaryAddress);
+      console.log("group:", group);
+      console.log("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
+      console.log("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
+      console.log("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
+      console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
+      console.log("index:", index);
+
+      //TODO: uncomment these
+
+      // const tx = await accountContract.withdraw(beneficiaryAddress, group, lesserAfterPendingRevoke, greaterAfterPendingRevoke, lesserAfterActiveRevoke, greaterAfterActiveRevoke, index);
+
+      // const receipt = await tx.wait();
+
+      // console.log(receipt)
+    }
+  }
+}
+
+// find index of group in list
+async function findAddressIndex(
+  electionWrapper: ElectionWrapper,
+  group: string,
+  account: string
+): Promise<number> {
+  const list = await electionWrapper.getGroupsVotedForByAccount(account);
+
+  return list.indexOf(group);
+}
+
+export async function finishPendingWithdrawals(
+  hre: HardhatRuntimeEnvironment,
+  beneficiaryAddress: string
+) {
+  //TODO: only run if timestamp pass
+
+  const accountContract = await hre.ethers.getContract("Account");
+  const numberOfPendingWithdrawals = await accountContract.getNumberPendingWithdrawals(
+    beneficiaryAddress
+  );
+  const lockedGoldWrapper = await hre.kit.contracts.getLockedGold();
+
+  for (var i = 0; i < numberOfPendingWithdrawals; i++) {
+    const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexes(
+      accountContract,
+      lockedGoldWrapper,
+      beneficiaryAddress
+    );
+
+    console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
+    console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
+    console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
+    //TODO: uncomment below
+    // const tx = await accountContract.finishPendingWithdrawal(beneficiaryAddress, localIndex, lockedGoldIndex);
+    // const receipt = await tx.wait()
+
+    // console.log("receipt:", receipt)
+  }
+}
+
+async function getPendingWithdrawalIndexes(
+  accountContract: Contract,
+  lockedGoldWrapper: LockedGoldWrapper,
+  beneficiary: string
+) {
+  const localIndex = 0;
+
+  // get pending withdrawals
+  const localIndexData = await accountContract.getPendingWithdrawals(beneficiary);
+  const lockedPendingWithdrawals = await lockedGoldWrapper.getPendingWithdrawals(
+    accountContract.address
+  );
+
+  if (localIndexData[0].length != localIndexData[1].length) {
+    throw new Error("mismatched list");
+  }
+
+  const localValue = localIndexData[0][0];
+  const localTimestamp = localIndexData[1][0];
+
+  var t = new Date(1970, 0, 1);
+  const localTimestampInSeconds = t.setSeconds(localTimestamp.toString());
+
+  if (localTimestampInSeconds > Date.now()) {
+    const remainingTime = localTimestampInSeconds - Date.now();
+    throw new Error(
+      `Cannot finalize withdraw at the moment. Wait your ${remainingTime} more seconds.`
+    );
+  }
+
+  const res = (goldIndex: any) => goldIndex.time.toString() == localTimestamp.toString();
+
+  var lockedGoldIndex = lockedPendingWithdrawals.findIndex(res);
+
+  if (lockedPendingWithdrawals[lockedGoldIndex].value.toString() !== localValue.toString()) {
+    console.log(chalk.red("not supposed to happen"));
+  }
+
+  return { localIndex, lockedGoldIndex };
+}
