@@ -17,9 +17,9 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
       group
     );
     const amountScheduled = await accountContract.scheduledVotesForGroup(group);
-
-    console.log(`can activate for ${group}:`, canActivateForGroup);
-    console.log(`amount scheduled for group ${group}:`, amountScheduled.toString());
+    console.log(chalk.yellow("current group:"), group);
+    console.log(chalk.yellow(`can activate for group:`), canActivateForGroup);
+    console.log(chalk.yellow(`amount scheduled for group:`), amountScheduled.toString());
 
     if (amountScheduled > hre.ethers.BigNumber.from(0) || canActivateForGroup) {
       var { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
@@ -27,9 +27,9 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
         amountScheduled.toString()
       );
 
-      console.log(chalk.red("lesser:", lesser));
-      console.log("current group:", group);
-      console.log(chalk.green("greater:", greater));
+      console.log(chalk.red("lesser:"), lesser);
+
+      console.log(chalk.green("greater:"), greater);
 
       const tx = await accountContract.activateAndVote(group, lesser, greater);
 

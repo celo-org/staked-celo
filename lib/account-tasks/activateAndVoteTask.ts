@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 import chalk from "chalk";
 
 import { ACCOUNT_ACTIVATE_AND_VOTE } from "../tasksNames";
-import { activateAndvote } from "./activateAndVoteHelper";
+import { activateAndvote } from "./helpers/activateAndVoteHelper";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 task(ACCOUNT_ACTIVATE_AND_VOTE, "Activate CELO and vote for validator groups")

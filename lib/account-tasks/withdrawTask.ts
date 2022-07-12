@@ -1,7 +1,8 @@
+import chalk from "chalk";
 import { task, types } from "hardhat/config";
 
 import { ACCOUNT_WITHDRAW } from "../tasksNames";
-import { withdrawHelper } from "./withdrawalHelpter";
+import { withdraw } from "./helpers/withdrawalHelpter";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -49,8 +50,8 @@ task(ACCOUNT_WITHDRAW, "Withdraws CELO from account contract.")
         ]);
       }
 
-      await withdrawHelper(hre, taskArgs["beneficiary"]);
+      await withdraw(hre, taskArgs["beneficiary"]);
     } catch (error) {
-      console.log("Error withdrawing CELO:", error);
+      console.log(chalk.red("Error withdrawing CELO:"), error);
     }
   });
