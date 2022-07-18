@@ -17,7 +17,7 @@ task(ACCOUNT_ACTIVATE_AND_VOTE, "Activate CELO and vote for validator groups")
 
       if (targetNetwork == "local") {
         if (deploymentsPath === undefined) {
-          throw new Error("must specify contracts deployment data file path.");
+          throw new Error("Must specify contracts deployment data file path.");
         } else {
           hre.config.external = {
             deployments: {
