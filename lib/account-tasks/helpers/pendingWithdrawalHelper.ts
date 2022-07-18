@@ -27,11 +27,14 @@ export async function finishPendingWithdrawals(
       console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
       console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
 
-      //TODO: uncomment below
-      // const tx = await accountContract.finishPendingWithdrawal(beneficiaryAddress, localIndex, lockedGoldIndex);
-      // const receipt = await tx.wait()
+      const tx = await accountContract.finishPendingWithdrawal(
+        beneficiaryAddress,
+        localIndex,
+        lockedGoldIndex
+      );
+      const receipt = await tx.wait();
 
-      // console.log("receipt:", receipt)
+      console.log("receipt:", receipt);
     }
   } catch (error) {
     throw error;

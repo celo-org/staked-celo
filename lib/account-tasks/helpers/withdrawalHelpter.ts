@@ -5,7 +5,6 @@ import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
   try {
     const electionWrapper = await hre.kit.contracts.getElection();
-
     const accountContract = await hre.ethers.getContract("Account");
     const managerContract = await hre.ethers.getContract("Manager");
 
@@ -54,7 +53,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
           await electionWrapper.findLesserAndGreaterAfterVote(
             group,
             // @ts-ignore
-            (toRevokeFromPending * -1).toString() //TODO: can you use Bignumber here?
+            (toRevokeFromPending * -1).toString()
           );
         const lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
         const greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
@@ -70,7 +69,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
           await electionWrapper.findLesserAndGreaterAfterVote(
             group,
             // @ts-ignore
-            (toRevokeFromActive * -1).toString() //TODO: can you use Bignumber here?
+            (toRevokeFromActive * -1).toString()
           );
         const lesserAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.lesser;
         const greaterAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.greater;
@@ -87,13 +86,19 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
         console.log("index:", index);
 
-        //TODO: uncomment these
+        const tx = await accountContract.withdraw(
+          beneficiaryAddress,
+          group,
+          lesserAfterPendingRevoke,
+          greaterAfterPendingRevoke,
+          lesserAfterActiveRevoke,
+          greaterAfterActiveRevoke,
+          index
+        );
 
-        // const tx = await accountContract.withdraw(beneficiaryAddress, group, lesserAfterPendingRevoke, greaterAfterPendingRevoke, lesserAfterActiveRevoke, greaterAfterActiveRevoke, index);
+        const receipt = await tx.wait();
 
-        // const receipt = await tx.wait();
-
-        // console.log(receipt)
+        console.log(receipt);
       }
     }
   } catch (error) {
