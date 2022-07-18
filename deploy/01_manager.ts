@@ -1,14 +1,12 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-
-const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
-  validatorGroupsString ? validatorGroupsString.split(",") : [];
+import { parseArray } from "../lib/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
 
-  const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
+  const validatorGroups = parseArray(process.env.VALIDATOR_GROUPS);
 
   const deployment = await deploy("Manager", {
     from: deployer,
