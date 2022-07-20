@@ -5,11 +5,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
   const manager = await hre.deployments.get("Manager");
+  const multisig = await hre.deployments.get("MultiSig");
 
   const deployment = await deploy("StakedCelo", {
     from: deployer,
     log: true,
     proxy: {
+      owner: multisig.address,
       proxyArgs: ["{implementation}", "{data}"],
       upgradeIndex: 0,
       proxyContract: "ERC1967Proxy",
