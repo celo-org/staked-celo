@@ -9,20 +9,24 @@ export async function getSigner(
   useLedger: boolean
 ): Promise<Signer> {
   let signer: Signer;
-  if (useLedger) {
-    signer = new LedgerSigner(hre.ethers.provider);
-  } else {
-    if (account === undefined) {
-      throw new Error("Account is required when not using Ledger wallet.");
-    }
-    if (hre.ethers.utils.isAddress(account)) {
-      signer = await hre.ethers.getSigner(account);
+  try {
+    if (useLedger) {
+      signer = new LedgerSigner(hre.ethers.provider);
     } else {
-      signer = await hre.ethers.getNamedSigner(account);
+      if (account === undefined) {
+        throw new Error("Account is required when not using Ledger wallet.");
+      }
+      if (hre.ethers.utils.isAddress(account)) {
+        signer = await hre.ethers.getSigner(account);
+      } else {
+        signer = await hre.ethers.getNamedSigner(account);
+      }
     }
-  }
 
-  return signer;
+    return signer;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export function parseEvents(receipt: ContractReceipt, eventName: string) {
