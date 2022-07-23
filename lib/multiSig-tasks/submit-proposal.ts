@@ -3,7 +3,7 @@ import chalk from "chalk";
 
 import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
-import { getSigner } from "../helpers/interfaceHelper";
+import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
 
 task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .addParam(
@@ -33,6 +33,7 @@ task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
   .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ destinations, values, payloads, account, useLedger }, hre) => {
     try {
+      await setLocalNodeDeploymentPath(hre);
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract

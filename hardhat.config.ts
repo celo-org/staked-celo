@@ -24,12 +24,6 @@ import "./lib/multiSig-tasks/multiSigTask";
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  external: {
-    deployments: {
-      // Specify path to deployment data
-      local: ["deployments/alfajores"],
-    },
-  },
   paths: {
     tests: "test-ts",
   },

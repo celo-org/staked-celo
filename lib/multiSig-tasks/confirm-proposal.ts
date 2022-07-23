@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 import chalk from "chalk";
 
 import { MULTISIG_CONFIRM_PROPOSAL } from "../tasksNames";
-import { getSigner, parseEvents } from "../helpers/interfaceHelper";
+import { getSigner, parseEvents, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
 
 task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
@@ -15,6 +15,7 @@ task(MULTISIG_CONFIRM_PROPOSAL, "Confirm a multiSig proposal")
   .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ proposalId, account, useLedger }, hre) => {
     try {
+      await setLocalNodeDeploymentPath(hre);
       const signer = await getSigner(hre, account, useLedger);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract.connect(signer).confirmProposal(proposalId, { type: 0 });

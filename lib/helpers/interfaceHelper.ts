@@ -33,3 +33,52 @@ export function parseEvents(receipt: ContractReceipt, eventName: string) {
   const event = receipt.events?.find((event) => event.event === eventName);
   console.log(chalk.green("new event emitted:"), event?.event, `(${event?.args})`);
 }
+
+export async function setLocalNodeDeploymentPath(hre: HardhatRuntimeEnvironment) {
+  try {
+    const currentNetworkId = await hre.ethers.provider.getNetwork();
+
+    switch (currentNetworkId.chainId) {
+      case 44787:
+        setAlfajoresDeploymentPath(hre);
+        break;
+      case 1101:
+        setStagingDeploymentPath(hre);
+        break;
+      case 42220:
+        setMainnetDeploymentPath(hre);
+        break;
+      case 1337: // devchain chain ID
+        break;
+
+      default:
+        throw new Error(`Unsupported Network ID: ${currentNetworkId.chainId}`);
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+function setAlfajoresDeploymentPath(hre: HardhatRuntimeEnvironment) {
+  hre.config.external = {
+    deployments: {
+      local: ["deployments/alfajores"],
+    },
+  };
+}
+
+function setStagingDeploymentPath(hre: HardhatRuntimeEnvironment) {
+  hre.config.external = {
+    deployments: {
+      local: ["deployments/staging"],
+    },
+  };
+}
+
+function setMainnetDeploymentPath(hre: HardhatRuntimeEnvironment) {
+  hre.config.external = {
+    deployments: {
+      local: ["deployments/mainnet"],
+    },
+  };
+}
