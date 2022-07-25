@@ -6,13 +6,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./Managed.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
+import "./interfaces/IAccount.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
  * @notice This contract depends on the Manager to decide how to distribute votes and how to
  * keep track of ownership of CELO voted via this contract.
  */
-contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, IAccount {
     /**
      * @notice Used to keep track of a pending withdrawal. A similar data structure
      * exists within LockedGold.sol, but it only keeps track of pending withdrawals
@@ -247,7 +248,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         address beneficiary,
         address[] calldata groups,
         uint256[] calldata withdrawals
-    ) external payable onlyManager {
+    ) external onlyManager {
         if (groups.length != withdrawals.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }

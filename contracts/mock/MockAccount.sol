@@ -18,7 +18,7 @@ contract MockAccount {
     mapping(address => uint256) public getCeloForGroup;
     uint256 public getTotalCelo;
 
-    mapping(address => uint256) public scheduledVotes;
+    mapping(address => uint256) public scheduledVotesForGroup;
 
     function scheduleVotes(address[] calldata groups, uint256[] calldata votes) external payable {
         lastVotedGroups = groups;
@@ -30,9 +30,9 @@ contract MockAccount {
     }
 
     function scheduleWithdrawals(
+        address beneficiary,
         address[] calldata groups,
-        uint256[] calldata withdrawals,
-        address beneficiary
+        uint256[] calldata withdrawals
     ) external {
         lastWithdrawnGroups = groups;
         lastWithdrawals = withdrawals;
@@ -60,6 +60,6 @@ contract MockAccount {
     }
 
     function setScheduledVotes(address group, uint256 amount) external {
-        scheduledVotes[group] = amount;
+        scheduledVotesForGroup[group] = amount;
     }
 }

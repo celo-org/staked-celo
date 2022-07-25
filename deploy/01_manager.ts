@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import { executeAndWait } from "../lib/deploy-utils";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
   validatorGroupsString ? validatorGroupsString.split(",") : [];
@@ -28,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   for (let i = 0; i < validatorGroups.length; i++) {
     console.log("activating group", validatorGroups[i]);
-    await manager.activateGroup(validatorGroups[i]);
+    await executeAndWait(manager.activateGroup(validatorGroups[i]));
   }
 };
 

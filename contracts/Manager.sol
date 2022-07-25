@@ -431,7 +431,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalVotes[i + numberDeprecatedGroupsWithdrawn] = withdrawalsPerGroup[i];
         }
 
-        account.scheduleWithdrawals(finalGroups, finalVotes, beneficiary);
+        account.scheduleWithdrawals(beneficiary, finalGroups, finalVotes);
     }
 
     /**
@@ -581,7 +581,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         for (uint256 i = 0; i < numberGroups; i++) {
             address group = activeGroups.at(i);
-            uint256 scheduledVotes = account.scheduledVotes(group);
+            uint256 scheduledVotes = account.scheduledVotesForGroup(group);
             if (getElection().canReceiveVotes(group, votes + scheduledVotes)) {
                 votableGroups[numberVotableGroups] = group;
                 numberVotableGroups++;
