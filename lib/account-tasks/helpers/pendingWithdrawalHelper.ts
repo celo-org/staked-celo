@@ -16,14 +16,20 @@ export async function finishPendingWithdrawals(
 
     console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
 
-    for (var i = 0; i < numberOfPendingWithdrawals; i++) {
+    let hasClaimableWithdrawals: boolean = true;
+    while (hasClaimableWithdrawals) {
       const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexesAndValidate(
         accountContract,
         lockedGoldWrapper,
         beneficiaryAddress
       );
 
-      console.log(chalk.green(`beneficiary: ${beneficiaryAddress}, index: ${i}`));
+      if (localIndex < 0) {
+        hasClaimableWithdrawals = false;
+        return;
+      }
+
+      console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
       console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
       console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
 
@@ -47,11 +53,10 @@ async function getPendingWithdrawalIndexesAndValidate(
   beneficiary: string
 ) {
   try {
-    const localIndexPredicate = (timestamp: any) => {
-      return timestamp.toNumber() < Date.now() / 1000;
+    var lockedGoldIndex: number;
+    const localIndexPredicate = (timestamp: string) => {
+      return Number(timestamp) < Date.now() / 1000;
     };
-    const goldindexPredicate = (goldIndex: any) =>
-      goldIndex.time.toString() == localTimestamp.toString();
 
     // get pending withdrawals
     const localPendingWithdrawals = await accountContract.getPendingWithdrawals(beneficiary);
@@ -63,20 +68,29 @@ async function getPendingWithdrawalIndexesAndValidate(
       throw new Error("mismatched list");
     }
 
-    const localTimestampList: [] = localPendingWithdrawals[1];
+    const localValueList: string[] = localPendingWithdrawals[0];
+    const localTimestampList: string[] = localPendingWithdrawals[1];
 
     // find index for released funds
-    const localIndex = localTimestampList.findIndex(localIndexPredicate);
-    const localValue = localPendingWithdrawals[0][localIndex];
-    const localTimestamp = localPendingWithdrawals[1][localIndex];
+    const localIndex: number = localTimestampList.findIndex(localIndexPredicate);
+
+    if (localIndex === -1) {
+      lockedGoldIndex = -1;
+      return { localIndex, lockedGoldIndex };
+    }
+
+    const localValue = localValueList[localIndex];
+    const localTimestamp = localTimestampList[localIndex];
+
+    const goldIndexPredicate = (goldIndex: any) =>
+      goldIndex.time.toString() == localTimestamp.toString() &&
+      goldIndex.value.toString() == localValue.toString();
 
     // find lockedGold index where timestamps are equal
 
-    var lockedGoldIndex = lockedPendingWithdrawals.findIndex(goldindexPredicate);
-
-    // verify that values of at both indexes are equal.
-    if (lockedPendingWithdrawals[lockedGoldIndex].value.toString() !== localValue.toString()) {
-      console.log(chalk.red("values at indexes are not equal."));
+    lockedGoldIndex = lockedPendingWithdrawals.findIndex(goldIndexPredicate);
+    if (lockedGoldIndex === -1) {
+      throw "No matching pending withdrawal. Locked Gold index not found.";
     }
 
     return { localIndex, lockedGoldIndex };
