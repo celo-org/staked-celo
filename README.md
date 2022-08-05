@@ -262,3 +262,4 @@ networks: {
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style and how to contribute.
+All communication and contributions to this project are subject to the [Celo Code of Conduct](code-of-conduct.md).
