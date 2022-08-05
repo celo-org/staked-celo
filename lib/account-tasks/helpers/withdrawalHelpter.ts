@@ -13,16 +13,17 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
     const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
     const activeGroups: [] = await managerContract.getGroups();
     const groupList = deprecatedGroups.concat(activeGroups);
-    console.log("groupList:", groupList);
+    console.log("DEBUG: groupList:", groupList);
 
     for (var group of groupList) {
-      console.log(chalk.yellow("current group", group));
+      console.log(chalk.yellow("DEBUG: Current group", group));
 
       // check what the beneficiary withdrawal amount is for each group.
       const scheduledWithdrawalAmount: BigNumber =
         await accountContract.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiaryAddress);
+
       console.log(
-        chalk.green("scheduled withdrawal amount from group:", scheduledWithdrawalAmount)
+        chalk.green(`DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount}`)
       );
 
       if (scheduledWithdrawalAmount.gt(0)) {
@@ -30,7 +31,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         const immediateWithdrawalAmount: BigNumber = await accountContract.scheduledVotesForGroup(
           group
         );
-        console.log("immediateWithdrawalAmount:", immediateWithdrawalAmount);
+        console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount);
         let remainingRevokeAmount;
         if (immediateWithdrawalAmount.gt(scheduledWithdrawalAmount)) {
           remainingRevokeAmount = BigNumber.from(0);
