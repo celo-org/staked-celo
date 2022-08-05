@@ -1,8 +1,9 @@
-<!-- Inherited from https://github.com/celo-org/website/blob/master/src/content/code-of-conduct.md -->
 ---
 title: Celo Community Code of Conduct
 description: The Celo Code of Conduct is one of the ways we bring our value of connectedness into practice.
 ---
+
+<!-- Inherited from https://github.com/celo-org/website/blob/master/src/content/code-of-conduct.md -->
 
 ### 1. Purpose
 The Celo Code of Conduct is one of the ways we bring our value of connectedness into practice. A primary goal of the Celo community is to be welcoming and inclusive to the largest number of contributors, with the most varied and diverse backgrounds possible.
