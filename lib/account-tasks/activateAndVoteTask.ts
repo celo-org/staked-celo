@@ -7,8 +7,13 @@ import { activateAndvote } from "./helpers/activateAndVoteHelper";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 task(ACCOUNT_ACTIVATE_AND_VOTE, "Activate CELO and vote for validator groups")
   .addOptionalParam("from", "Address to send transactions from", undefined, types.string)
-  .addOptionalParam("deploymentsPath", "Path of deployed contracts data", undefined, types.string)
-  .addFlag("usePrivateKey", "Use private key stored in .env file to sign transactions")
+  .addOptionalParam(
+    "deploymentsPath",
+    "Path of deployed contracts data. Used when connecting to a local node.",
+    undefined,
+    types.string
+  )
+  .addFlag("usePrivateKey", "Determines if private key in environment is used or not.")
   .setAction(async ({ from, deploymentsPath, usePrivateKey }, hre) => {
     try {
       let hostUrl;
