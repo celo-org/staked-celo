@@ -16,8 +16,6 @@ export async function finishPendingWithdrawals(
 
     console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
 
-    // let hasClaimableWithdrawals: boolean = true;
-
     while (true) {
       const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexesAndValidate(
         accountContract,

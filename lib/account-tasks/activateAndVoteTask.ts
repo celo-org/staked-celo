@@ -3,49 +3,30 @@ import chalk from "chalk";
 
 import { ACCOUNT_ACTIVATE_AND_VOTE } from "../tasksNames";
 import { activateAndvote } from "./helpers/activateAndVoteHelper";
+import { setHreConfigs } from "./helpers/taskAction";
+import {
+  ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
+  DEPLOYMENTS_PATH_DESCRIPTION,
+  DEPLOYMENTS_PATH_PARAM_NAME,
+  FROM_DESCRIPTION,
+  FROM_PARAM_NAME,
+  USE_PRIVATE_KEY_DESCRIPTION,
+  USE_PRIVATE_KEY_PARAM_NAME,
+} from "./helpers/staticVariables";
 
-const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-task(ACCOUNT_ACTIVATE_AND_VOTE, "Activate CELO and vote for validator groups")
-  .addOptionalParam("from", "Address to send transactions from", undefined, types.string)
+task(ACCOUNT_ACTIVATE_AND_VOTE, ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
+  .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
   .addOptionalParam(
-    "deploymentsPath",
-    "Path of deployed contracts data. Used when connecting to a local node.",
+    DEPLOYMENTS_PATH_PARAM_NAME,
+    DEPLOYMENTS_PATH_DESCRIPTION,
     undefined,
     types.string
   )
-  .addFlag("usePrivateKey", "Determines if private key in environment is used or not.")
+  .addFlag(USE_PRIVATE_KEY_PARAM_NAME, USE_PRIVATE_KEY_DESCRIPTION)
   .setAction(async ({ from, deploymentsPath, usePrivateKey }, hre) => {
     try {
-      let hostUrl;
-      const networks = hre.config.networks;
-      const targetNetwork = hre.network.name;
-
-      if (targetNetwork == "local") {
-        if (deploymentsPath === undefined) {
-          throw new Error("Must specify contracts deployment data file path.");
-        } else {
-          hre.config.external = {
-            deployments: {
-              local: [deploymentsPath],
-            },
-          };
-        }
-      }
-
-      if (from !== undefined) {
-        networks[targetNetwork].from = from;
-      }
-
-      //@ts-ignore Property 'url' does not exist on type 'NetworkConfig'.
-      hostUrl = String(networks[targetNetwork].url);
-      // If transacting via remote host, then use private key from .env automatically.
-      if (hostUrl.includes("https")) {
-        networks[targetNetwork].accounts = [`0x${privateKey}`];
-      }
-
-      if (usePrivateKey) {
-        networks[targetNetwork].accounts = [`0x${privateKey}`];
-      }
+      console.log("Starting stakedCelo:account:activateAndvote task...");
+      setHreConfigs(hre, from, deploymentsPath, usePrivateKey);
 
       await activateAndvote(hre);
     } catch (error) {

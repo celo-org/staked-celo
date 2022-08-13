@@ -71,9 +71,9 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         const lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
         const greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
 
-        /// Given that validators are sorted by total votes and that revoking pending votes happen before active votes.
-        /// One must acccount for any pending votes that would get removed from the total votes when revoking active votes
-        /// in the same transaction.
+        // Given that validators are sorted by total votes and that revoking pending votes happen before active votes.
+        // One must acccount for any pending votes that would get removed from the total votes when revoking active votes
+        // in the same transaction.
         const toRevokeFromActive = remainingRevokeAmount;
 
         console.log("toRevokeFromActive:", toRevokeFromActive);

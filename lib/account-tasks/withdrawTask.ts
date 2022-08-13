@@ -2,63 +2,35 @@ import chalk from "chalk";
 import { task, types } from "hardhat/config";
 
 import { ACCOUNT_WITHDRAW } from "../tasksNames";
+import {
+  BENEFICIARY_DESCRIPTION,
+  BENEFICIARY_PARAM_NAME,
+  DEPLOYMENTS_PATH_DESCRIPTION,
+  DEPLOYMENTS_PATH_PARAM_NAME,
+  FROM_DESCRIPTION,
+  FROM_PARAM_NAME,
+  USE_PRIVATE_KEY_DESCRIPTION,
+  USE_PRIVATE_KEY_PARAM_NAME,
+  WITHDRAW_TASK_DESCRIPTION,
+} from "./helpers/staticVariables";
+import { setHreConfigs } from "./helpers/taskAction";
 import { withdraw } from "./helpers/withdrawalHelpter";
 
-const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-
-task(ACCOUNT_WITHDRAW, "Withdraws CELO from account contract.")
-  .addParam("beneficiary", "The address of the account to withdraw for.", undefined, types.string)
+task(ACCOUNT_WITHDRAW, WITHDRAW_TASK_DESCRIPTION)
+  .addParam(BENEFICIARY_PARAM_NAME, BENEFICIARY_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
   .addOptionalParam(
-    "from",
-    "The address of the account used to sign transactions.",
+    DEPLOYMENTS_PATH_PARAM_NAME,
+    DEPLOYMENTS_PATH_DESCRIPTION,
     undefined,
     types.string
   )
-  .addOptionalParam(
-    "deploymentsPath",
-    "Path of deployed contracts data. Used when connecting to a local node.",
-    undefined,
-    types.string
-  )
-  .addFlag(
-    "usePrivateKey",
-    "Determines if private key in environment is used or not. Private key will be used automatically if network url is a remote host."
-  )
+  .addFlag(USE_PRIVATE_KEY_PARAM_NAME, USE_PRIVATE_KEY_DESCRIPTION)
   .setAction(async ({ beneficiary, from, deploymentsPath, usePrivateKey }, hre) => {
     try {
-      console.log("Starting stakedCelo:withdraw task...");
-      let hostUrl;
-      const networks = hre.config.networks;
-      const targetNetwork = hre.network.name;
+      console.log("Starting stakedCelo:account:withdraw task...");
 
-      if (targetNetwork == "local") {
-        if (deploymentsPath === undefined) {
-          throw new Error("Must specify contracts deployment data file path.");
-        } else {
-          hre.config.external = {
-            deployments: {
-              local: [deploymentsPath],
-            },
-          };
-        }
-      }
-
-      if (from !== undefined) {
-        networks[targetNetwork].from = from;
-      }
-
-      //@ts-ignore Property 'url' does not exist on type 'NetworkConfig'.
-
-      hostUrl = String(networks[targetNetwork].url);
-      // If deploying via remote host, then deployment will use private key from .env automatically.
-      if (hostUrl.includes("https")) {
-        networks[targetNetwork].accounts = [`0x${privateKey}`];
-      }
-
-      // User can optionally specify using a private key irrespective of deploying to remote network or not.
-      if (usePrivateKey) {
-        networks[targetNetwork].accounts = [`0x${privateKey}`];
-      }
+      setHreConfigs(hre, from, deploymentsPath, usePrivateKey);
 
       await withdraw(hre, beneficiary);
     } catch (error) {
