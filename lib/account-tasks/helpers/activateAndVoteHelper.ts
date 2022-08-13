@@ -26,7 +26,7 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
     console.log(chalk.yellow(`amount scheduled for group:`), amountScheduled.toString());
 
     if (amountScheduled > hre.ethers.BigNumber.from(0) || canActivateForGroup) {
-      var { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
+      const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
         group,
         amountScheduled.toString()
       );

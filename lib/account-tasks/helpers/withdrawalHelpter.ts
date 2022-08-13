@@ -32,6 +32,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
           group
         );
         console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount);
+
         let remainingRevokeAmount;
         if (immediateWithdrawalAmount.gt(scheduledWithdrawalAmount)) {
           remainingRevokeAmount = BigNumber.from(0);

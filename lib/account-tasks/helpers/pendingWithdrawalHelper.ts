@@ -16,8 +16,9 @@ export async function finishPendingWithdrawals(
 
     console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
 
-    let hasClaimableWithdrawals: boolean = true;
-    while (hasClaimableWithdrawals) {
+    // let hasClaimableWithdrawals: boolean = true;
+
+    while (true) {
       const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexesAndValidate(
         accountContract,
         lockedGoldWrapper,
@@ -25,8 +26,7 @@ export async function finishPendingWithdrawals(
       );
 
       if (localIndex < 0) {
-        hasClaimableWithdrawals = false;
-        return;
+        break;
       }
 
       console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
@@ -51,9 +51,9 @@ async function getPendingWithdrawalIndexesAndValidate(
   accountContract: Contract,
   lockedGoldWrapper: LockedGoldWrapper,
   beneficiary: string
-) {
+): Promise<{ localIndex: number; lockedGoldIndex: number }> {
   try {
-    var lockedGoldIndex: number;
+    let lockedGoldIndex: number;
     const localIndexPredicate = (timestamp: string) => {
       return Number(timestamp) < Date.now() / 1000;
     };
