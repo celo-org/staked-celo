@@ -11,8 +11,7 @@ export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 export const BLOCKS_PER_EPOCH = 100;
 
 const MIN_VALIDATOR_LOCKED_CELO = Web3.utils.toWei("10000", "ether");
-export const MINUTE = 60;
-const HOUR = 60 * MINUTE;
+const HOUR = 60 * 60;
 export const DAY = 24 * HOUR;
 export const LOCKED_GOLD_UNLOCKING_PERIOD = 3 * DAY;
 

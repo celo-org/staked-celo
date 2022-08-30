@@ -24,14 +24,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     // minDelay 4 Days, to protect against stakedCelo withdrawals
-    args: [minDelay * MINUTE],
+    args: [minDelay],
     proxy: {
       proxyArgs: ["{implementation}", "{data}"],
       upgradeIndex: 0,
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [multisigOwners, requiredConfirmations, delay * MINUTE],
+        args: [multisigOwners, requiredConfirmations, delay],
       },
     },
   });
