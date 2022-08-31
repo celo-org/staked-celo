@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { DAY } from "../test-ts/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -24,14 +23,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     // minDelay 4 Days, to protect against stakedCelo withdrawals
-    args: [minDelay * DAY],
+    args: [minDelay],
     proxy: {
       proxyArgs: ["{implementation}", "{data}"],
       upgradeIndex: 0,
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [multisigOwners, requiredConfirmations, delay * DAY],
+        args: [multisigOwners, requiredConfirmations, delay],
       },
     },
   });
