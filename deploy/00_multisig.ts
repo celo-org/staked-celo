@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import { getNoProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -8,6 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployer = namedAccounts.deployer;
   const minDelay = Number(process.env.TIME_LOCK_MIN_DELAY);
   const delay = Number(process.env.TIME_LOCK_DELAY);
+  const noProxy = getNoProxy();
 
   let multisigOwners: string[] = [];
   for (let key in namedAccounts) {
@@ -24,15 +26,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     // minDelay 4 Days, to protect against stakedCelo withdrawals
     args: [minDelay],
-    proxy: {
-      proxyArgs: ["{implementation}", "{data}"],
-      upgradeIndex: 0,
-      proxyContract: "ERC1967Proxy",
-      execute: {
-        methodName: "initialize",
-        args: [multisigOwners, requiredConfirmations, delay],
-      },
-    },
+    proxy: noProxy
+      ? undefined
+      : {
+          proxyArgs: ["{implementation}", "{data}"],
+          upgradeIndex: 0,
+          proxyContract: "ERC1967Proxy",
+          execute: {
+            methodName: "initialize",
+            args: [multisigOwners, requiredConfirmations, delay],
+          },
+        },
   });
 };
 
