@@ -106,17 +106,10 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       // User can optionally specify using a private key irrespective of deploying to remote network or not.
       if (taskArgs["usePrivateKey"]) {
         networks[targetNetwork].accounts = [`0x${privateKey}`];
-        console.log(targetNetwork, taskArgs["usePrivateKey"], networks[targetNetwork].accounts, [
-          `0x${privateKey}`,
-        ]);
       }
 
       hre.config.networks = networks;
-      console.log(
-        "Deploying with the following network settings...",
-        hre.config.networks[targetNetwork],
-        hre.config.namedAccounts
-      );
+      console.log("Deploying with the following network settings...", hre.config.namedAccounts);
       return await hre.run("deploy", taskArgs);
     } catch (error) {
       console.log(error);

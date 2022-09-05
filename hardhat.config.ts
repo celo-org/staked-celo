@@ -87,7 +87,7 @@ module.exports = {
     mainnet: {
       url: `https://forno.celo.org/`,
       gas: 13000000,
-      gasPrice: 100000000000,
+      gasPrice: 20000000000,
     },
   },
   solidity: {

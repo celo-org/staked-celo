@@ -1,9 +1,9 @@
 # StakedCelo
 
-NOTE: audit in progress, not for production use.
-
 StakedCelo is a liquid staking derivative of CELO, the native token on the Celo
 blockchain.
+
+Users can deposit CELO to the Staked Celo smart contract and receive stCelo tokens in return, allowing them to earn staking rewards.
 
 ## Testing
 
@@ -300,3 +300,4 @@ networks: {
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style and how to contribute.
+All communication and contributions to this project are subject to the [Celo Code of Conduct](code-of-conduct.md).
