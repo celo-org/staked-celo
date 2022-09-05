@@ -1,5 +1,4 @@
 import { task, types } from "hardhat/config";
-import { MultiSig } from "../typechain-types/MultiSig";
 import { UPGRADE_PROPOSAL } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -61,7 +60,7 @@ task(UPGRADE_PROPOSAL, "Proposes upgrade of implementation of contract.")
         if (args["usePrivateKey"]) {
           networks[targetNetwork].accounts = [`0x${privateKey}`];
         }
-        const multisig: MultiSig = await hre.ethers.getContract("MultiSig");
+        const multisig = await hre.ethers.getContract("MultiSig");
 
         const upgradeEncoded = multisig.interface.encodeFunctionData("upgradeTo", [
           args.newImplementation,
