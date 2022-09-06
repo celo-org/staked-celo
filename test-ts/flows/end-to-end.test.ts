@@ -1,6 +1,5 @@
 import hre, { ethers } from "hardhat";
 import { Account } from "../../typechain-types/Account";
-import { Account__factory } from "../../typechain-types/factories/Account__factory";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -11,19 +10,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   ADDRESS_ZERO,
   LOCKED_GOLD_UNLOCKING_PERIOD,
-  mineToNextEpoch,
   randomSigner,
   registerValidator,
   registerValidatorGroup,
-  REGISTRY_ADDRESS,
   resetNetwork,
   timeTravel,
 } from "../utils";
 import { Manager } from "../../typechain-types/Manager";
 import { MockStakedCelo } from "../../typechain-types/MockStakedCelo";
 import { MockStakedCelo__factory } from "../../typechain-types/factories/MockStakedCelo__factory";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 after(() => {
   hre.kit.stop();
@@ -39,10 +34,6 @@ describe("e2e", () => {
 
   let depositor: SignerWithAddress;
   let owner: SignerWithAddress;
-  let nonManager: SignerWithAddress;
-  let beneficiary: SignerWithAddress;
-  let otherBeneficiary: SignerWithAddress;
-  let nonBeneficiary: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
@@ -55,10 +46,6 @@ describe("e2e", () => {
     await resetNetwork();
 
     [depositor] = await randomSigner(parseUnits("300"));
-    [nonManager] = await randomSigner(parseUnits("100"));
-    [beneficiary] = await randomSigner(parseUnits("100"));
-    [otherBeneficiary] = await randomSigner(parseUnits("100"));
-    [nonBeneficiary] = await randomSigner(parseUnits("100"));
     [owner] = await randomSigner(parseUnits("100"));
 
     groups = [];
@@ -88,7 +75,7 @@ describe("e2e", () => {
   });
 
   beforeEach(async () => {
-    const testAccountDeployment = await hre.deployments.fixture("TestAccount");
+    await hre.deployments.fixture("TestAccount");
     const owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
@@ -115,6 +102,29 @@ describe("e2e", () => {
     const groupList = await managerContract.getGroups();
     console.log(`Groups: ${groupList}`);
 
+    await backendActivateAndVote(groupList);
+
+    const withdrawStakedCelo = await managerContract.connect(depositor).withdraw(100);
+    await withdrawStakedCelo.wait();
+
+    stCelo = await stakedCelo.balanceOf(depositor.address);
+    expect(stCelo).to.eq(0);
+
+    await backendWithdrawal(groupList);
+
+    const depositorBeforeWithdrawalBalance = await depositor.getBalance();
+    console.log("depositorBeforeWithdrawalBalance", depositorBeforeWithdrawalBalance.toString());
+
+    await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
+
+    const finishPendingWithdrawal = account.finishPendingWithdrawal(depositor.address, 0, 0);
+    await (await finishPendingWithdrawal).wait();
+    const depositorAfterWithdrawalBalance = await depositor.getBalance();
+    console.log("depositorAfterWithdrawalBalance", depositorAfterWithdrawalBalance.toString());
+    expect(depositorAfterWithdrawalBalance.gt(depositorBeforeWithdrawalBalance)).to.be.true;
+  });
+
+  async function backendActivateAndVote(groupList: string[]) {
     for (var group of groupList) {
       // Using election contract to make this `hasActivatablePendingVotes` call.
       // This allows to check activatable pending votes for a specified group,
@@ -143,15 +153,9 @@ describe("e2e", () => {
         console.log("celoForGroup", celoForGroup.toString());
       }
     }
+  }
 
-    const withdrawStakedCelo = await managerContract.connect(depositor).withdraw(100);
-    await withdrawStakedCelo.wait();
-
-    stCelo = await stakedCelo.balanceOf(depositor.address);
-    expect(stCelo).to.eq(0);
-
-    // Withdraw backend
-
+  async function backendWithdrawal(groupList: string[]) {
     for (var group of groupList) {
       // check what the beneficiary withdrawal amount is for each group.
       const scheduledWithdrawalAmount = ethers.BigNumber.from(
@@ -161,10 +165,10 @@ describe("e2e", () => {
       if (scheduledWithdrawalAmount.gt(0)) {
         let remainingRevokeAmount = ethers.BigNumber.from("0");
         let toRevokeFromPending = ethers.BigNumber.from("0");
-        let lesserAfterPendingRevoke: string = ZERO_ADDRESS;
-        let greaterAfterPendingRevoke: string = ZERO_ADDRESS;
-        let lesserAfterActiveRevoke: string = ZERO_ADDRESS;
-        let greaterAfterActiveRevoke: string = ZERO_ADDRESS;
+        let lesserAfterPendingRevoke: string = ADDRESS_ZERO;
+        let greaterAfterPendingRevoke: string = ADDRESS_ZERO;
+        let lesserAfterActiveRevoke: string = ADDRESS_ZERO;
+        let greaterAfterActiveRevoke: string = ADDRESS_ZERO;
 
         console.log(`scheduledWithdrawalAmount: ${scheduledWithdrawalAmount}`);
 
@@ -236,18 +240,7 @@ describe("e2e", () => {
         console.log(`Withdraw from ${group}, receipt status: ${receipt.status}`);
       }
     }
-
-    const depositorBeforeWithdrawalBalance = await depositor.getBalance();
-    console.log("depositorBeforeWithdrawalBalance", depositorBeforeWithdrawalBalance.toString());
-
-    await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
-
-    const finishPendingWithdrawal = account.finishPendingWithdrawal(depositor.address, 0, 0);
-    await (await finishPendingWithdrawal).wait();
-    const depositorAfterWithdrawalBalance = await depositor.getBalance();
-    console.log("depositorBeforeWithdrawalBalance", depositorBeforeWithdrawalBalance.toString());
-    expect(depositorAfterWithdrawalBalance.gt(depositorBeforeWithdrawalBalance)).to.be.true;
-  });
+  }
 
   // find index of group in list of groups voted for by account.
   async function findGroupIndex(
