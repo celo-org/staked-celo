@@ -16,6 +16,7 @@ const { network } = argv;
 config({ path: network === "" || !network || network === "devchain" ? ".env" : `.env.${network}` });
 
 import "./lib/deployTask";
+import "./lib/account-tasks/accountTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
