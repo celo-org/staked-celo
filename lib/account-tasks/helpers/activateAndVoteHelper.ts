@@ -3,12 +3,12 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
   const accountContract = await hre.ethers.getContract("Account");
-  const ManagerContract = await hre.ethers.getContract("Manager");
+  const managerContract = await hre.ethers.getContract("Manager");
 
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
-  const groupList = await ManagerContract.getGroups();
+  const groupList = await managerContract.getGroups();
   console.log("groups:", groupList);
 
   for (var group of groupList) {

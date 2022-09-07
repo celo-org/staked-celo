@@ -14,7 +14,7 @@ import {
   WITHDRAW_TASK_DESCRIPTION,
 } from "./helpers/staticVariables";
 import { setHreConfigs } from "./helpers/taskAction";
-import { withdraw } from "./helpers/withdrawalHelpter";
+import { withdraw } from "./helpers/withdrawalHelper";
 
 task(ACCOUNT_WITHDRAW, WITHDRAW_TASK_DESCRIPTION)
   .addParam(BENEFICIARY_PARAM_NAME, BENEFICIARY_DESCRIPTION, undefined, types.string)
