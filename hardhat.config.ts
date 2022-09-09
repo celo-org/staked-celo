@@ -17,6 +17,7 @@ config({ path: network === "" || !network || network === "devchain" ? ".env" : `
 
 import "./lib/deployTask";
 import "./lib/account-tasks/accountTask";
+import "./lib/multiSig-tasks/multiSigTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -57,9 +58,15 @@ module.exports = {
   networks: {
     local: {
       url: "http://localhost:8545",
+      gas: 13000000,
+      gasPrice: 100000000000,
     },
     devchain: {
       url: "http://localhost:7545",
+      // Having to set a default value for gas, as the provider does not estimate
+      // gas properly when signing using ledger HW, resulting in an error.
+      gas: 2100000,
+      gasPrice: 8000000000,
     },
     hardhat: {
       forking: {
