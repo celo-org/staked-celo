@@ -16,6 +16,7 @@ const { network } = argv;
 config({ path: network === "" || !network || network === "devchain" ? ".env" : `.env.${network}` });
 
 import "./lib/deployTask";
+import "./lib/account-tasks/accountTask";
 import "./lib/multiSig-tasks/multiSigTask";
 
 // You need to export an object to set up your config
