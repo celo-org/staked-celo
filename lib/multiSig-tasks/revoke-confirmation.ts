@@ -16,8 +16,8 @@ task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
   .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ proposalId, account, useLedger }, hre) => {
     try {
-      await setLocalNodeDeploymentPath(hre);
       const signer = await getSigner(hre, account, useLedger);
+      await setLocalNodeDeploymentPath(hre);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract.connect(signer).revokeConfirmation(proposalId, { type: 0 });
       const receipt = await tx.wait();

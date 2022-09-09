@@ -15,8 +15,8 @@ task(MULTISIG_EXECUTE_PROPOSAL, "Execute a proposal")
   .addFlag("useLedger", "Use ledger hardware wallet")
   .setAction(async ({ proposalId, account, useLedger }, hre) => {
     try {
-      await setLocalNodeDeploymentPath(hre);
       const signer = await getSigner(hre, account, useLedger);
+      await setLocalNodeDeploymentPath(hre);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract.connect(signer).executeProposal(proposalId, { type: 0 });
       const receipt = await tx.wait();

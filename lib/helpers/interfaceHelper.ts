@@ -3,6 +3,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { LedgerSigner } from "@anders-t/ethers-ledger";
 import chalk from "chalk";
 
+const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+
 export async function getSigner(
   hre: HardhatRuntimeEnvironment,
   account: string,
@@ -16,6 +18,12 @@ export async function getSigner(
       if (account === undefined) {
         throw new Error("Account is required when not using Ledger wallet.");
       }
+      if (privateKey) {
+        const networks = hre.config.networks;
+        const targetNetwork = hre.network.name;
+        networks[targetNetwork].accounts = [`0x${privateKey}`];
+      }
+
       if (hre.ethers.utils.isAddress(account)) {
         signer = await hre.ethers.getSigner(account);
       } else {
@@ -36,6 +44,10 @@ export function parseEvents(receipt: ContractReceipt, eventName: string) {
 
 export async function setLocalNodeDeploymentPath(hre: HardhatRuntimeEnvironment) {
   try {
+    const targetNetwork = hre.network;
+    if (targetNetwork.name !== "local") {
+      return;
+    }
     const currentNetworkId = await hre.ethers.provider.getNetwork();
 
     switch (currentNetworkId.chainId) {
