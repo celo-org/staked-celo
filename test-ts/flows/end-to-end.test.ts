@@ -1,4 +1,4 @@
-import hre, { ethers } from "hardhat";
+import hre from "hardhat";
 import { Account } from "../../typechain-types/Account";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
@@ -90,10 +90,6 @@ describe("e2e", () => {
     multisigContract = await hre.ethers.getContract("MultiSig");
 
     stakedCelo = await hre.ethers.getContract("StakedCelo");
-  });
-
-  it("deposit and withdraw", async () => {
-    managerContract.setDependencies(stakedCelo.address, account.address);
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
 
@@ -120,7 +116,9 @@ describe("e2e", () => {
       proposalId: 0,
       account: multisigOwner0.address,
     });
+  });
 
+  it("deposit and withdraw", async () => {
     await managerContract.connect(depositor).deposit({ value: 100 });
     let stCelo = await stakedCelo.balanceOf(depositor.address);
     expect(stCelo).to.eq(100);
