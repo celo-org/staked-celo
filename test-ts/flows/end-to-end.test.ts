@@ -19,6 +19,7 @@ import {
 import { Manager } from "../../typechain-types/Manager";
 import { MockStakedCelo } from "../../typechain-types/MockStakedCelo";
 import { MockStakedCelo__factory } from "../../typechain-types/factories/MockStakedCelo__factory";
+import { ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_WITHDRAW } from "../../lib/tasksNames";
 
 after(() => {
   hre.kit.stop();
@@ -84,9 +85,6 @@ describe("e2e", () => {
   });
 
   it("deposit and withdraw", async () => {
-    const depositorInitialBalance = await depositor.getBalance();
-    console.log("depositorInitialBalance", depositorInitialBalance.toString());
-
     managerContract.setDependencies(stakedCelo.address, account.address);
 
     for (let i = 0; i < 3; i++) {
@@ -96,13 +94,7 @@ describe("e2e", () => {
     let stCelo = await stakedCelo.balanceOf(depositor.address);
     expect(stCelo).to.eq(100);
 
-    const depositorAfterDepositBalance = await depositor.getBalance();
-    console.log("depositorAfterDepositBalance", depositorAfterDepositBalance.toString());
-
-    const groupList = await managerContract.getGroups();
-    console.log(`Groups: ${groupList}`);
-
-    await backendActivateAndVote(groupList);
+    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
 
     const withdrawStakedCelo = await managerContract.connect(depositor).withdraw(100);
     await withdrawStakedCelo.wait();
@@ -110,149 +102,15 @@ describe("e2e", () => {
     stCelo = await stakedCelo.balanceOf(depositor.address);
     expect(stCelo).to.eq(0);
 
-    await backendWithdrawal(groupList);
+    await hre.run(ACCOUNT_WITHDRAW, { beneficiary: depositor.address });
 
     const depositorBeforeWithdrawalBalance = await depositor.getBalance();
-    console.log("depositorBeforeWithdrawalBalance", depositorBeforeWithdrawalBalance.toString());
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
     const finishPendingWithdrawal = account.finishPendingWithdrawal(depositor.address, 0, 0);
     await (await finishPendingWithdrawal).wait();
     const depositorAfterWithdrawalBalance = await depositor.getBalance();
-    console.log("depositorAfterWithdrawalBalance", depositorAfterWithdrawalBalance.toString());
     expect(depositorAfterWithdrawalBalance.gt(depositorBeforeWithdrawalBalance)).to.be.true;
   });
-
-  async function backendActivateAndVote(groupList: string[]) {
-    for (var group of groupList) {
-      // Using election contract to make this `hasActivatablePendingVotes` call.
-      // This allows to check activatable pending votes for a specified group,
-      // as opposed to using the `ElectionWrapper.hasActivatablePendingVotes`
-      // which checks if account has activatable pending votes from any group.
-      const canActivateForGroup = await (election as any).hasActivatablePendingVotes(
-        account.address,
-        group
-      );
-
-      const amountScheduled = await account.scheduledVotesForGroup(group);
-      console.log(`Current group: ${group}`);
-      console.log(`Can activate for group: ${canActivateForGroup}`);
-      console.log(`Amount scheduled for group: ${amountScheduled.toString()}`);
-
-      if (amountScheduled.toNumber() > 0 || canActivateForGroup) {
-        const { lesser, greater } = await (election as any).findLesserAndGreaterAfterVote(
-          group,
-          amountScheduled.toString()
-        );
-
-        const txObject = await account.activateAndVote(group, lesser, greater);
-        const receipt = await txObject.wait();
-        console.log(`Activate And Vote for ${group}, receipt status: ${receipt.status}`);
-        const celoForGroup = await account.getCeloForGroup(group);
-        console.log("celoForGroup", celoForGroup.toString());
-      }
-    }
-  }
-
-  async function backendWithdrawal(groupList: string[]) {
-    for (var group of groupList) {
-      // check what the beneficiary withdrawal amount is for each group.
-      const scheduledWithdrawalAmount = ethers.BigNumber.from(
-        await account.scheduledWithdrawalsForGroupAndBeneficiary(group, depositor.address)
-      );
-
-      if (scheduledWithdrawalAmount.gt(0)) {
-        let remainingRevokeAmount = ethers.BigNumber.from("0");
-        let toRevokeFromPending = ethers.BigNumber.from("0");
-        let lesserAfterPendingRevoke: string = ADDRESS_ZERO;
-        let greaterAfterPendingRevoke: string = ADDRESS_ZERO;
-        let lesserAfterActiveRevoke: string = ADDRESS_ZERO;
-        let greaterAfterActiveRevoke: string = ADDRESS_ZERO;
-
-        console.log(`scheduledWithdrawalAmount: ${scheduledWithdrawalAmount}`);
-
-        const immediateWithdrawalAmount = ethers.BigNumber.from(
-          await account.scheduledVotesForGroup(group)
-        );
-        console.log(`immediateWithdrawalAmount: ${immediateWithdrawalAmount}`);
-
-        if (immediateWithdrawalAmount.lt(scheduledWithdrawalAmount)) {
-          remainingRevokeAmount = scheduledWithdrawalAmount.sub(immediateWithdrawalAmount);
-
-          console.log(`remainingRevokeAmount: ${remainingRevokeAmount}`);
-
-          // get AccountContract pending votes for group.
-          const groupVote = await election.getVotesForGroupByAccount(account.address, group);
-          const pendingVotes = ethers.BigNumber.from(groupVote.pending.toString());
-
-          console.log(`pendingVotes: ${pendingVotes}`);
-
-          // amount to revoke from pending
-          toRevokeFromPending = remainingRevokeAmount.lt(pendingVotes)
-            ? remainingRevokeAmount
-            : pendingVotes;
-
-          console.log(`toRevokeFromPending: ${toRevokeFromPending}`);
-
-          // find lesser and greater for pending votes
-          const lesserAndGreaterAfterPendingRevoke = await (
-            election as any
-          ).findLesserAndGreaterAfterVote(group, toRevokeFromPending.mul(-1).toString());
-          lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
-          greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
-
-          console.log(`toRevokeFromActive: ${remainingRevokeAmount.sub(toRevokeFromPending)}`);
-
-          // find lesser and greater for active votes
-          // Given that validators are sorted by total votes and that revoking pending votes happen before active votes.
-          // One must acccount for any pending votes that would get removed from the total votes when also revoking active votes
-          // in the same transaction.
-          const lesserAndGreaterAfterActiveRevoke = await (
-            election as any
-          ).findLesserAndGreaterAfterVote(group, remainingRevokeAmount.mul(-1).toString());
-          lesserAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.lesser;
-          greaterAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.greater;
-        }
-        // find index of group
-        const index = await findGroupIndex(election, group, account.address);
-
-        console.log(`Finalizing`);
-        console.log(`BeneficiaryAddress: ${depositor.address}`);
-        console.log(`Group: ${group}`);
-        console.log(`LesserAfterPendingRevoke: ${lesserAfterPendingRevoke}`);
-        console.log(`GreaterAfterPendingRevoke: ${greaterAfterPendingRevoke}`);
-        console.log(`LesserAfterActiveRevoke: ${lesserAfterActiveRevoke}`);
-        console.log(`GreaterAfterActiveRevoke: ${greaterAfterActiveRevoke}`);
-        console.log(`Index: ${index}`);
-
-        const txObject = await account.withdraw(
-          depositor.address,
-          group,
-          lesserAfterPendingRevoke,
-          greaterAfterPendingRevoke,
-          lesserAfterActiveRevoke,
-          greaterAfterActiveRevoke,
-          index
-        );
-        const receipt = await txObject.wait();
-
-        console.log(`Withdraw from ${group}, receipt status: ${receipt.status}`);
-      }
-    }
-  }
-
-  // find index of group in list of groups voted for by account.
-  async function findGroupIndex(
-    electionWrapper: ElectionWrapper,
-    group: string,
-    account: string
-  ): Promise<number> {
-    try {
-      const list = await electionWrapper.getGroupsVotedForByAccount(account);
-      return list.indexOf(group);
-    } catch (error) {
-      throw error;
-    }
-  }
 });
