@@ -59,7 +59,9 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
 
           // amount to revoke from pending
           toRevokeFromPending = BigNumber.from(
-            Math.min(remainingRevokeAmount.toNumber(), pendingVotes.toNumber())
+            remainingRevokeAmount.lt(BigNumber.from(pendingVotes.toString())) // Math.min
+              ? remainingRevokeAmount.toString()
+              : pendingVotes.toString()
           );
 
           console.log("toRevokeFromPending:", toRevokeFromPending);
