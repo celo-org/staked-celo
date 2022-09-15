@@ -6,6 +6,7 @@
     "url": "https://github.com/celo-org/staked-celo"
   },
   "devDependencies": {
+    "@anders-t/ethers-ledger": "^1.0.4",
     "@celo/celo-devchain": "^5.0.0",
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^1.5.2",
@@ -24,6 +25,7 @@
     "@types/node": "^17.0.17",
     "@types/yargs": "^17.0.10",
     "chai": "^4.3.6",
+    "chalk": "4.1.2",
     "dotenv": "^16.0.1",
     "ethereum-waffle": "^3.4.0",
     "ethereumjs-util": "^7.1.4",
@@ -46,8 +48,8 @@
     "compile": "yarn hardhat clean && yarn run hardhat compile",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
-    "devchain": "yarn run celo-devchain --port 7545 --core v7",
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
+    "devchain": "yarn run celo-devchain --port 7545 --core v7",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
     "lint:ts": "prettier --write ./**/*.ts",
