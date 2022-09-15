@@ -299,7 +299,7 @@ networks: {
 1. Make your changes to smart contract (eg Manager.sol)
 2. Run command
 ``` bash
-> yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployed address]" --use-private-key
+yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployer address]" --use-private-key
 ``` 
 Example
 ``` bash
