@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { DeployFunction } from "@pahor167/hardhat-deploy/types";
 
 const DESIRED_MIN_VOTES_PER_GROUP = 10;
 

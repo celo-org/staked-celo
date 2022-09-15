@@ -4,7 +4,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
-import "hardhat-deploy";
+import "@pahor167/hardhat-deploy";
 import "./lib/contractkit.plugin";
 import minimist from "minimist";
 import { config } from "dotenv";

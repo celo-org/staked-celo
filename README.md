@@ -259,52 +259,38 @@ networks: {
 ```
 ## Upgrade contract
 1. Make sure that your deployments/[network] folder is empty/deleted
-2. Set following variables in .env.[network] file
-``` bash
-NO_PROXY = true           # Deploys only implementation of contract (without proxy contract)
-NO_DEPENDENCIES = true    # Doesn't deploy any dependencies of specified deploy script
-
-# optional based on which contract will be updated
-MANAGER_ADDRESS = 0xaddress           # for Account contract
-STAKED_CELO_ADDRESS = 0xaddress       # for RebasedStakedCelo contract
-ACCOUNT_ADDRESS = 0xaddress           # for RebasedStakedCelo contract
-MULTISIG_ADDRESS = 0xaddress          # for RebasedStakedCelo contract
-```
-3. Run command
+2. Run command
 ``` bash
 > yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployed address]" --use-private-key
 ``` 
 Example
 ``` bash
-> yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags Account --from "0x7E71FB21D0B30F5669f8F387D4A1114294F8E418" --use-private-key
+> yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core --from "0x7E71FB21D0B30F5669f8F387D4A1114294F8E418" --use-private-key
 ```
-4. Verify deployed smart contracts (It will verify whatever is in deployments/[network] folder)
+Since contracts are being owned by MultiSig deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
+
+Example of change in Account.sol deployment
+
+``` bash
+reusing "MultiSig_Implementation" at 0xF2549E83Fdb86bebe7e1E2c64FB3a2BB2bBeb333
+deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e4a2b735918b2dd78707db19cd1)...: deployed at 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 with 3825742 gas
+Error: ERROR processing /Users/pahor/repo/2/staked-celo/deploy/01_manager.ts:
+```
+
+From above example we can see that our new implementation addres is *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000*
+
+3. Verify deployed smart contracts (It will verify whatever is in deployments/[network] folder)
 ``` bash
 > yarn verify:deploy --network [network]
 ```
-5. Create multisig proposal to change implementation of proxy
-### Variant A
+4. Create multisig proposal to change implementation of proxy
 ``` bash
 > yarn hardhat propose:upgrade  --network [network] --show-stack-traces --from "0xaddress" --use-private-key --multisig 0xaddress --new-implementation 0xaddress --destination 0xaddress
 
 # example
 > yarn hardhat propose:upgrade  --network alfajores --show-stack-traces --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key --multisig 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --new-implementation 0x395252a53A657D82A5B4A035BBcb44bA71A9404d --destination 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab
 ```
-### Variant B
-``` ts
-// Example of manager upgrade code
-
-const manager: Manager = await hre.ethers.getContract("Manager");
-const multisigProxyAddress = "0xaddress"
-const managerProxy = "0xaddress"
-const newImplementation = "0xaddress"
-
-const upgradeEncoded = manager.interface.encodeFunctionData("upgradeTo", [newImplementation]);
-const submitProposal = multisig.attach(multisigProxyAddress).submitProposal([managerProxy], [0], [upgradeEncoded])
-const tx = await submitProposal
-await tx.wait()
-```
-6. Execute proposal once it is approved
+5. Execute proposal once it is approved
 
 
 

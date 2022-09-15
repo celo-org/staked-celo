@@ -29,7 +29,7 @@
     "ethereumjs-util": "^7.1.4",
     "ethers": "^5.5.4",
     "hardhat": "npm:@celo/hardhat@2.8.4",
-    "hardhat-deploy": "^0.10.5",
+    "@pahor167/hardhat-deploy": "^0.11.19",
     "husky": ">=6",
     "lint-staged": ">=10",
     "prettier": "^2.5.1",

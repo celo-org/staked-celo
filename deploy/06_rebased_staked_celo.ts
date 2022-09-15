@@ -1,17 +1,10 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
-import { getNoDependencies, getNoProxy } from "../lib/deploy-utils";
-
-const noDependencies = getNoDependencies();
+import { DeployFunction } from "@pahor167/hardhat-deploy/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const noProxy = getNoProxy();
-  const stakedCeloAddress =
-    process.env.STAKED_CELO_ADDRESS ?? (await hre.deployments.get("StakedCelo")).address;
-  const accountAddress =
-    process.env.ACCOUNT_ADDRESS ?? (await hre.deployments.get("Account")).address;
-  const multiSigAddress =
-    process.env.MULTISIG_ADDRESS ?? (await hre.deployments.get("MultiSig")).address;
+  const stakedCeloAddress = (await hre.deployments.get("StakedCelo")).address;
+  const accountAddress = (await hre.deployments.get("Account")).address;
+  const multiSigAddress = (await hre.deployments.get("MultiSig")).address;
 
   const { deploy } = hre.deployments;
 
@@ -19,22 +12,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployment = await deploy("RebasedStakedCelo", {
     from: deployer,
     log: true,
-    proxy: noProxy
-      ? undefined
-      : {
-          proxyArgs: ["{implementation}", "{data}"],
-          owner: multiSigAddress,
-          upgradeIndex: 0,
-          proxyContract: "ERC1967Proxy",
-          execute: {
-            methodName: "initialize",
-            args: [stakedCeloAddress, accountAddress, multiSigAddress],
-          },
+    proxy: {
+      proxyArgs: ["{implementation}", "{data}"],
+      owner: multiSigAddress,
+      proxyContract: "ERC1967Proxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [stakedCeloAddress, accountAddress, multiSigAddress],
         },
+      },
+    },
   });
 };
 
 func.id = "deploy_rebased_staked_celo";
 func.tags = ["RebasedStakedCelo", "core"];
-func.dependencies = noDependencies ? undefined : ["StakedCelo", "Account", "MultiSig"];
+func.dependencies = ["StakedCelo", "Account", "MultiSig"];
 export default func;

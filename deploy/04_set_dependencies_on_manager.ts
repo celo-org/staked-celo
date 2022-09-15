@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { DeployFunction } from "@pahor167/hardhat-deploy/types";
 import { Manager } from "../typechain-types/Manager";
 import { executeAndWait } from "../lib/deploy-utils";
 
