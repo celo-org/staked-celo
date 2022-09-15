@@ -296,7 +296,7 @@ networks: {
   },
 ```
 ## Upgrade contract
-1. Make sure that your deployments/[network] folder is empty/deleted
+1. Make your changes to smart contract (eg Manager.sol)
 2. Run command
 ``` bash
 > yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployed address]" --use-private-key
@@ -307,7 +307,7 @@ Example
 ```
 Since contracts are being owned by MultiSig deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
 
-Example of change in Account.sol deployment
+Example of change in Manager.sol deployment
 
 ``` bash
 reusing "MultiSig_Implementation" at 0xF2549E83Fdb86bebe7e1E2c64FB3a2BB2bBeb333
@@ -315,7 +315,7 @@ deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e
 Error: ERROR processing /Users/pahor/repo/2/staked-celo/deploy/01_manager.ts:
 ```
 
-From above example we can see that our new implementation addres is *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000*
+From above example we can see that our new implementation address is *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000*
 
 3. Verify deployed smart contracts (It will verify whatever is in deployments/[network] folder)
 ``` bash
@@ -326,11 +326,18 @@ From above example we can see that our new implementation addres is *0x1B8Ee2E0A
 > yarn hardhat propose:upgrade  --network [network] --show-stack-traces --from "0xaddress" --use-private-key --multisig 0xaddress --new-implementation 0xaddress --destination 0xaddress
 
 # example
-> yarn hardhat propose:upgrade  --network alfajores --show-stack-traces --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key --multisig 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --new-implementation 0x395252a53A657D82A5B4A035BBcb44bA71A9404d --destination 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab
+> yarn hardhat propose:upgrade  --network alfajores --show-stack-traces --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key --multisig 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --new-implementation *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000* --destination 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab
 ```
+Please note that --new-implementation is from step 2
+
 5. Execute proposal once it is approved
 
+``` bash
+> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId [index of proposal] --account 0xaddress
 
+# example
+> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
+```
 
 ## Contributing
 

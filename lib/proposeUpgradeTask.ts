@@ -1,5 +1,5 @@
 import { task, types } from "hardhat/config";
-import { UPGRADE_PROPOSAL } from "./tasksNames";
+import { MULTISIG_SUBMIT_PROPOSAL, UPGRADE_PROPOSAL } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
 // Defaults
@@ -65,10 +65,13 @@ task(UPGRADE_PROPOSAL, "Proposes upgrade of implementation of contract.")
         const upgradeEncoded = multisig.interface.encodeFunctionData("upgradeTo", [
           args.newImplementation,
         ]);
-        const tx = await multisig
-          .attach(args.multisig)
-          .submitProposal([args.destination], [0], [upgradeEncoded]);
-        await tx.wait();
+
+        await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
+          destinations: args.destination,
+          values: 0,
+          payloads: upgradeEncoded,
+          account: args.from,
+        });
       } catch (error) {
         console.log(error);
       }
