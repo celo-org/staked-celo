@@ -19,9 +19,12 @@ export async function getSigner(
         throw new Error("Account is required when not using Ledger wallet.");
       }
       if (privateKey) {
+        // Will default to using a private key if found.
         const networks = hre.config.networks;
         const targetNetwork = hre.network.name;
         networks[targetNetwork].accounts = [`0x${privateKey}`];
+      } else {
+        console.log(chalk.yellow("Private key not found. Using remote account"));
       }
 
       if (hre.ethers.utils.isAddress(account)) {

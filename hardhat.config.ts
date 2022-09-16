@@ -18,6 +18,7 @@ config({ path: network === "" || !network || network === "devchain" ? ".env" : `
 import "./lib/deployTask";
 import "./lib/account-tasks/accountTask";
 import "./lib/multiSig-tasks/multiSigTask";
+import "./lib/manager-tasks/managerTask";
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
