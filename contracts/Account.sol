@@ -500,7 +500,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /**
      * @notice Returns the number of pending withdrawals for a beneficiary.
      * @param beneficiary The address of the beneficiary who initiated the pending withdrawal.
-     * @return The numbers of pending withdrawals for `beneficiary`
+     * @return The number of pending withdrawals for `beneficiary`
      */
     function getNumberPendingWithdrawals(address beneficiary) external view returns (uint256) {
         return pendingWithdrawals[beneficiary].length;
