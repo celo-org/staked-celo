@@ -5,16 +5,16 @@ import { ACCOUNT_ACTIVATE_AND_VOTE } from "../tasksNames";
 import { activateAndvote } from "./helpers/activateAndVoteHelper";
 import { setHreConfigs } from "./helpers/taskAction";
 import {
-  ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
+  ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
   DEPLOYMENTS_PATH_DESCRIPTION,
   DEPLOYMENTS_PATH_PARAM_NAME,
   FROM_DESCRIPTION,
   FROM_PARAM_NAME,
   USE_PRIVATE_KEY_DESCRIPTION,
   USE_PRIVATE_KEY_PARAM_NAME,
-} from "./helpers/staticVariables";
+} from "../helpers/staticVariables";
 
-task(ACCOUNT_ACTIVATE_AND_VOTE, ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
+task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
   .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
   .addOptionalParam(
     DEPLOYMENTS_PATH_PARAM_NAME,

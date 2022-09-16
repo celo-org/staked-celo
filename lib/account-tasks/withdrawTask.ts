@@ -11,12 +11,12 @@ import {
   FROM_PARAM_NAME,
   USE_PRIVATE_KEY_DESCRIPTION,
   USE_PRIVATE_KEY_PARAM_NAME,
-  WITHDRAW_TASK_DESCRIPTION,
-} from "./helpers/staticVariables";
+  ACCOUNT_WITHDRAW_TASK_DESCRIPTION,
+} from "../helpers/staticVariables";
 import { setHreConfigs } from "./helpers/taskAction";
 import { withdraw } from "./helpers/withdrawalHelper";
 
-task(ACCOUNT_WITHDRAW, WITHDRAW_TASK_DESCRIPTION)
+task(ACCOUNT_WITHDRAW, ACCOUNT_WITHDRAW_TASK_DESCRIPTION)
   .addParam(BENEFICIARY_PARAM_NAME, BENEFICIARY_DESCRIPTION, undefined, types.string)
   .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
   .addOptionalParam(
