@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 import chalk from "chalk";
 
 import { ACCOUNT_FINISH_PENDING_WITHDRAWAL } from "../tasksNames";
-import { finishPendingWithdrawals } from "./helpers/pendingWithdrawalHelper";
+import { finishPendingWithdrawals } from "./helpers/finishPendingWithdrawalHelper";
 import { setHreConfigs } from "./helpers/taskAction";
 import {
   BENEFICIARY_DESCRIPTION,
