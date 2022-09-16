@@ -4,6 +4,10 @@ import chalk from "chalk";
 import { MULTISIG_REVOKE_CONFIRMATION } from "../tasksNames";
 
 import { getSigner, parseEvents, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import {
+  USE_NODE_ACCOUNT_DESCRIPTION,
+  USE_NODE_ACCOUNT_PARAM_NAME,
+} from "../helpers/staticVariables";
 
 task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
   .addParam("proposalId", "ID of the proposal", undefined, types.int)
@@ -14,9 +18,10 @@ task(MULTISIG_REVOKE_CONFIRMATION, "Revoke a proposal confirmation")
     types.string
   )
   .addFlag("useLedger", "Use ledger hardware wallet")
-  .setAction(async ({ proposalId, account, useLedger }, hre) => {
+  .addFlag(USE_NODE_ACCOUNT_PARAM_NAME, USE_NODE_ACCOUNT_DESCRIPTION)
+  .setAction(async ({ proposalId, account, useLedger, useNodeAccount }, hre) => {
     try {
-      const signer = await getSigner(hre, account, useLedger);
+      const signer = await getSigner(hre, account, useLedger, useNodeAccount);
       await setLocalNodeDeploymentPath(hre);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract.connect(signer).revokeConfirmation(proposalId, { type: 0 });

@@ -8,7 +8,8 @@ const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 export async function getSigner(
   hre: HardhatRuntimeEnvironment,
   account: string,
-  useLedger: boolean
+  useLedger: boolean,
+  useRemoteAccount: boolean
 ): Promise<Signer> {
   let signer: Signer;
   try {
@@ -16,15 +17,16 @@ export async function getSigner(
       signer = new LedgerSigner(hre.ethers.provider);
     } else {
       if (account === undefined) {
-        throw new Error("Account is required when not using Ledger wallet.");
+        throw "Account is required when not using Ledger device.";
       }
-      if (privateKey) {
+      if (!useRemoteAccount) {
+        if (privateKey === undefined) {
+          throw "Private key not found.";
+        }
         // Will default to using a private key if found.
         const networks = hre.config.networks;
         const targetNetwork = hre.network.name;
         networks[targetNetwork].accounts = [`0x${privateKey}`];
-      } else {
-        console.log(chalk.yellow("Private key not found. Using remote account"));
       }
 
       if (hre.ethers.utils.isAddress(account)) {

@@ -4,6 +4,7 @@ export const AMOUNT_PARAM_NAME = "amount";
 export const DEPLOYMENTS_PATH_PARAM_NAME = "deploymentsPath";
 export const USE_PRIVATE_KEY_PARAM_NAME = "usePrivateKey";
 export const USE_LEDGER_PARAM_NAME = "useLedger";
+export const USE_NODE_ACCOUNT_PARAM_NAME = "useNodeAccount";
 
 export const BENEFICIARY_DESCRIPTION = "The address of the account to withdraw for.";
 export const FROM_DESCRIPTION = "The address of the account used to sign transactions.";
@@ -13,7 +14,9 @@ export const DEPLOYMENTS_PATH_DESCRIPTION =
 export const USE_PRIVATE_KEY_DESCRIPTION =
   "Determines if private key in environment is used or not. Private key will be used automatically if network url is a remote host.";
 export const USE_LEDGER_DESCRIPTION =
-  "Determines if ledger hardware wallet is used or not. Private key will be used automatically if available.";
+  "Determines if ledger hardware wallet is used for signing transactions.";
+export const USE_NODE_ACCOUNT_DESCRIPTION =
+  "Determines if node account is used for signing transactions. This could be either a local or a remote node.";
 
 // ACCOUNT TASK DESCRIPTIONS
 export const ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION =
