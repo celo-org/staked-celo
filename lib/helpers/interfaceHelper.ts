@@ -9,7 +9,7 @@ export async function getSigner(
   hre: HardhatRuntimeEnvironment,
   account: string,
   useLedger: boolean,
-  useRemoteAccount: boolean
+  useNodeAccount: boolean
 ): Promise<Signer> {
   let signer: Signer;
   try {
@@ -19,7 +19,7 @@ export async function getSigner(
       if (account === undefined) {
         throw "Account is required when not using Ledger device.";
       }
-      if (!useRemoteAccount) {
+      if (!useNodeAccount) {
         if (privateKey === undefined) {
           throw "Private key not found.";
         }
