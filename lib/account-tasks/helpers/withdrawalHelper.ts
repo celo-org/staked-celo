@@ -2,20 +2,18 @@ import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { BigNumber } from "ethers";
-import { Account } from "../../../typechain-types/Account";
-import { Manager } from "../../../typechain-types/Manager";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
 export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
   try {
     const electionWrapper = await hre.kit.contracts.getElection();
-    const accountContract = (await hre.ethers.getContract("Account")) as Account;
-    const managerContract = (await hre.ethers.getContract("Manager")) as Manager;
+    const accountContract = await hre.ethers.getContract("Account");
+    const managerContract = await hre.ethers.getContract("Manager");
 
     // Use deprecated and active groups to get the full list of groups with potential withdrawals.
-    const deprecatedGroups = await managerContract.getDeprecatedGroups();
-    const activeGroups = await managerContract.getGroups();
+    const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
+    const activeGroups: [] = await managerContract.getGroups();
     const groupList = deprecatedGroups.concat(activeGroups);
     console.log("DEBUG: groupList:", groupList);
 
