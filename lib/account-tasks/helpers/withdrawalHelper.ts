@@ -2,18 +2,20 @@ import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { BigNumber } from "ethers";
+import { Account } from "../../../typechain-types/Account";
+import { Manager } from "../../../typechain-types/Manager";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
 export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
   try {
     const electionWrapper = await hre.kit.contracts.getElection();
-    const accountContract = await hre.ethers.getContract("Account");
-    const managerContract = await hre.ethers.getContract("Manager");
+    const accountContract = (await hre.ethers.getContract("Account")) as Account;
+    const managerContract = (await hre.ethers.getContract("Manager")) as Manager;
 
     // Use deprecated and active groups to get the full list of groups with potential withdrawals.
-    const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
-    const activeGroups: [] = await managerContract.getGroups();
+    const deprecatedGroups = await managerContract.getDeprecatedGroups();
+    const activeGroups = await managerContract.getGroups();
     const groupList = deprecatedGroups.concat(activeGroups);
     console.log("DEBUG: groupList:", groupList);
 
@@ -25,7 +27,9 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         await accountContract.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiaryAddress);
 
       console.log(
-        chalk.green(`DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount}`)
+        chalk.green(
+          `DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount.toString()}. Beneficiary: ${beneficiaryAddress}, group: ${group} `
+        )
       );
 
       if (scheduledWithdrawalAmount.gt(0)) {
@@ -41,12 +45,12 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         const immediateWithdrawalAmount: BigNumber = await accountContract.scheduledVotesForGroup(
           group
         );
-        console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount);
+        console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
 
         if (immediateWithdrawalAmount.lt(scheduledWithdrawalAmount)) {
           remainingRevokeAmount = scheduledWithdrawalAmount.sub(immediateWithdrawalAmount);
 
-          console.log("remainingRevokeAmount:", remainingRevokeAmount);
+          console.log("remainingRevokeAmount:", remainingRevokeAmount.toString());
 
           // get AccountContract pending votes for group.
           const groupVote = await electionWrapper.getVotesForGroupByAccount(
@@ -55,7 +59,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
           );
           const pendingVotes = groupVote.pending;
 
-          console.log("pendingVotes:", pendingVotes);
+          console.log("pendingVotes:", pendingVotes.toString());
 
           // amount to revoke from pending
           toRevokeFromPending = BigNumber.from(
@@ -64,7 +68,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
               : pendingVotes.toString()
           );
 
-          console.log("toRevokeFromPending:", toRevokeFromPending);
+          console.log("toRevokeFromPending:", toRevokeFromPending.toString());
 
           // find lesser and greater for pending votes
           const lesserAndGreaterAfterPendingRevoke =
@@ -77,7 +81,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
           greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
 
           // Given that validators are sorted by total votes and that revoking pending votes happen before active votes.
-          // One must acccount for any pending votes that would get removed from the total votes when revoking active votes
+          // One must account for any pending votes that would get removed from the total votes when revoking active votes
           // in the same transaction.
 
           // find lesser and greater for active votes
@@ -101,7 +105,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         console.log("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
         console.log("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
         console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
-        console.log("index:", index);
+        console.log("group index:", index);
 
         const tx = await accountContract.withdraw(
           beneficiaryAddress,

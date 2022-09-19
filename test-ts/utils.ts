@@ -4,6 +4,7 @@ import { Wallet, BigNumber as EthersBigNumber } from "ethers";
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { zeroAddress } from "ethereumjs-util";
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -210,5 +211,22 @@ export async function resetNetwork() {
         },
       },
     ],
+  });
+}
+
+export async function distributeEpochRewards(group: string, amount: string) {
+  const electionWrapper = await hre.kit.contracts.getElection();
+  const electionContract = electionWrapper["contract"];
+
+  await impersonateAccount(zeroAddress());
+
+  const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
+    group,
+    // @ts-ignore: BigNumber types library conflict.
+    amount
+  );
+
+  await electionContract.methods.distributeEpochRewards(group, amount, lesser, greater).send({
+    from: zeroAddress(),
   });
 }

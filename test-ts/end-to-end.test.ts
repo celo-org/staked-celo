@@ -1,5 +1,5 @@
-import hre, { ethers } from "hardhat";
-import { Account } from "../../typechain-types/Account";
+import hre from "hardhat";
+import { Account } from "../typechain-types/Account";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -8,7 +8,7 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
-  impersonateAccount,
+  distributeEpochRewards,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
@@ -16,18 +16,16 @@ import {
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
-} from "../utils";
-import { Manager } from "../../typechain-types/Manager";
+} from "./utils";
+import { Manager } from "../typechain-types/Manager";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
   ACCOUNT_WITHDRAW,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
-} from "../../lib/tasksNames";
-import { StakedCelo } from "../../typechain-types/StakedCelo";
-import { MultiSig } from "../../typechain-types/MultiSig";
-import { zeroAddress } from "ethereumjs-util";
-import { NULL_ADDRESS } from "@celo/contractkit";
+} from "../lib/tasksNames";
+import { StakedCelo } from "../typechain-types/StakedCelo";
+import { MultiSig } from "../typechain-types/MultiSig";
 
 after(() => {
   hre.kit.stop();
@@ -42,7 +40,9 @@ describe("e2e", () => {
   let managerContract: Manager;
   let multisigContract: MultiSig;
 
-  let depositor: SignerWithAddress;
+  let depositor0: SignerWithAddress;
+  let depositor1: SignerWithAddress;
+  let depositor2: SignerWithAddress;
   let owner: SignerWithAddress;
 
   let groups: SignerWithAddress[];
@@ -62,7 +62,9 @@ describe("e2e", () => {
       MULTISIG_REQUIRED_CONFIRMATIONS: "1",
     };
 
-    [depositor] = await randomSigner(parseUnits("300"));
+    [depositor0] = await randomSigner(parseUnits("300"));
+    [depositor1] = await randomSigner(parseUnits("300"));
+    [depositor2] = await randomSigner(parseUnits("300"));
     [owner] = await randomSigner(parseUnits("100"));
 
     groups = [];
@@ -124,55 +126,51 @@ describe("e2e", () => {
 
   it("deposit and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from("10000000000000000");
+    const rewardsGroup0 = hre.ethers.BigNumber.from("1000000000000000000");
+    const rewardsGroup1 = hre.ethers.BigNumber.from("2000000000000000000");
+    const rewardsGroup2 = hre.ethers.BigNumber.from("3500000000000000000");
 
-    await managerContract.connect(depositor).deposit({ value: amountOfCeloToDeposit });
-    let stCelo = await stakedCelo.balanceOf(depositor.address);
+    await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
+    let stCelo = await stakedCelo.balanceOf(depositor1.address);
     expect(stCelo).to.eq(amountOfCeloToDeposit);
 
-    const electionContract = (await hre.kit.contracts.getElection())["contract"];
-
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
-
     await mineToNextEpoch(hre.web3);
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
 
-    await impersonateAccount(zeroAddress());
-
-    await electionContract.methods
-      .distributeEpochRewards(
-        groups[0].address,
-        "1000000000000000000",
-        groups[2].address,
-        NULL_ADDRESS
-      )
-      .send({
-        from: zeroAddress(),
-      });
+    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
+    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
 
     const withdrawStakedCelo = await managerContract
-      .connect(depositor)
+      .connect(depositor1)
       .withdraw(amountOfCeloToDeposit);
     await withdrawStakedCelo.wait();
 
-    stCelo = await stakedCelo.balanceOf(depositor.address);
+    stCelo = await stakedCelo.balanceOf(depositor1.address);
     expect(stCelo).to.eq(0);
 
-    await hre.run(ACCOUNT_WITHDRAW, { beneficiary: depositor.address });
+    await hre.run(ACCOUNT_WITHDRAW, { beneficiary: depositor1.address });
 
-    const depositorBeforeWithdrawalBalance = await depositor.getBalance();
+    const depositorBeforeWithdrawalBalance = await depositor1.getBalance();
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
-    const finishPendingWithdrawal = await account.finishPendingWithdrawal(depositor.address, 0, 0);
-    await finishPendingWithdrawal.wait();
+    for (let i = 0; i < groups.length; i++) {
+      const finishPendingWithdrawal = await account.finishPendingWithdrawal(
+        depositor1.address,
+        0,
+        0
+      );
+      await finishPendingWithdrawal.wait();
+    }
 
-    const depositorAfterWithdrawalBalance = await depositor.getBalance();
+    const depositorAfterWithdrawalBalance = await depositor1.getBalance();
     expect(depositorAfterWithdrawalBalance.gt(depositorBeforeWithdrawalBalance)).to.be.true;
 
     const rewardsReceived = depositorAfterWithdrawalBalance
       .sub(depositorBeforeWithdrawalBalance)
       .sub(amountOfCeloToDeposit);
-
-    expect(rewardsReceived.gt(0)).to.be.true;
+    expect(rewardsReceived.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2))).to.be.true;
   });
 });
