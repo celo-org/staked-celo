@@ -31,14 +31,7 @@ const tests: ProxyDeployTestData[] = [
 ];
 
 describe("Contract deployed via proxy", () => {
-  // let owner: SignerWithAddress;
-  // let deployer: SignerWithAddress;
   let multisigOwner0: SignerWithAddress;
-
-  beforeEach(async () => {
-    // owner = await hre.ethers.getNamedSigner("owner");
-    // deployer = await hre.ethers.getNamedSigner("deployer");
-  });
 
   tests.forEach((test) => {
     describe(test.contractName, () => {
@@ -64,12 +57,9 @@ describe("Contract deployed via proxy", () => {
         const contractDeployment = await hre.deployments.get(test.contractName);
 
         expect(contractDeployment.implementation).to.exist;
-        // Helping typescript out
-        if (contractDeployment.implementation === undefined) return;
-
         expect(contract.address).not.to.eq(contractDeployment.implementation);
 
-        const implementation = contractFactory.attach(contractDeployment.implementation);
+        const implementation = contractFactory.attach(contractDeployment.implementation as string);
         await expect(implementation.initialize(...test.initializeArgs)).revertedWith(
           "Initializable: contract is already initialized"
         );
