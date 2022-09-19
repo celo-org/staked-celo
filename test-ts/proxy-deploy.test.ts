@@ -1,9 +1,10 @@
 import { expect } from "chai";
 import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { randomAddress, randomSigner } from "./utils";
+import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
 import { parseUnits } from "ethers/lib/utils";
 import { Contract, ContractFactory } from "ethers";
+import { Deployment } from "hardhat-deploy/types";
 
 interface ProxyDeployTestData {
   contractName: string;
@@ -37,19 +38,31 @@ const tests: ProxyDeployTestData[] = [
 ];
 
 describe("Contract deployed via proxy", () => {
-  let owner: SignerWithAddress;
-  let deployer: SignerWithAddress;
+  // let owner: SignerWithAddress;
+  // let deployer: SignerWithAddress;
+  let multisigOwner0: SignerWithAddress;
 
   beforeEach(async () => {
-    owner = await hre.ethers.getNamedSigner("owner");
-    deployer = await hre.ethers.getNamedSigner("deployer");
+    // owner = await hre.ethers.getNamedSigner("owner");
+    // deployer = await hre.ethers.getNamedSigner("deployer");
   });
 
   tests.forEach((test) => {
     describe(test.contractName, () => {
       let contractFactory: ContractFactory;
+      let multiSig: Deployment;
       beforeEach(async () => {
-        await hre.deployments.fixture(test.fixtureName);
+        process.env = {
+          ...process.env,
+          TIME_LOCK_MIN_DELAY: "1",
+          TIME_LOCK_DELAY: "1",
+          MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+        };
+
+        await hre.deployments.fixture("core");
+
+        multiSig = await hre.deployments.get("MultiSig");
+        multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
         contractFactory = await hre.ethers.getContractFactory(test.contractName);
       });
 
@@ -79,29 +92,32 @@ describe("Contract deployed via proxy", () => {
         });
 
         it("is owned by the multisig", async () => {
-          expect(await contract.owner()).to.eq(
-            test.ownerIsDeployer ? deployer.address : owner.address
-          );
+          expect(await contract.owner()).to.eq(multiSig.address);
         });
 
         describe("when called by the owner", () => {
           it("can transfer ownership", async () => {
-            await expect(
-              contract
-                .connect(test.ownerIsDeployer ? deployer : owner)
-                .transferOwnership(newOwner.address)
-            ).not.reverted;
+            await submitAndExecuteProposal(
+              multisigOwner0.address,
+              [contract.address],
+              ["0"],
+              [contract.interface.encodeFunctionData("transferOwnership", [newOwner.address])]
+            );
+
             expect(await contract.owner()).to.eq(newOwner.address);
           });
 
           it("can update the implementation", async () => {
             const newImplementation = (await contractFactory.deploy()).address;
 
-            await expect(
-              contract.connect(test.ownerIsDeployer ? deployer : owner).upgradeTo(newImplementation)
-            )
-              .emit(contract, "Upgraded")
-              .withArgs(newImplementation);
+            await submitAndExecuteProposal(
+              multisigOwner0.address,
+              [contract.address],
+              ["0"],
+              [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])]
+            );
+
+            await waitForEvent(contract, "Upgraded", newImplementation);
           });
         });
 

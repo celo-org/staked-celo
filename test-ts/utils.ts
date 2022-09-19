@@ -1,10 +1,11 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
-import { Wallet, BigNumber as EthersBigNumber } from "ethers";
+import { Wallet, BigNumber as EthersBigNumber, Contract } from "ethers";
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { zeroAddress } from "ethereumjs-util";
+import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -228,5 +229,44 @@ export async function distributeEpochRewards(group: string, amount: string) {
 
   await electionContract.methods.distributeEpochRewards(group, amount, lesser, greater).send({
     from: zeroAddress(),
+  });
+}
+
+export async function submitAndExecuteProposal(
+  account: string,
+  destinations: string[],
+  values: string[],
+  payloads: string[]
+) {
+  await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
+    destinations: destinations.join(","),
+    values: values.join(","),
+    payloads: payloads.join(","),
+    account: account,
+  });
+
+  await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
+    proposalId: 0,
+    account: account,
+  });
+}
+
+export async function waitForEvent(
+  contract: Contract,
+  eventName: string,
+  expectedValue: string,
+  timeout: number = 10000
+) {
+  await new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      reject(
+        `Event ${eventName} with expectedValue: ${expectedValue} wasn't emitted in timely manner.`
+      );
+    }, timeout);
+    contract.on(eventName, (implementation) => {
+      if (implementation == expectedValue) {
+        resolve();
+      }
+    });
   });
 }

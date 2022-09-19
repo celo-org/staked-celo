@@ -12,6 +12,7 @@ import {
   registerValidator,
   registerValidatorGroup,
   resetNetwork,
+  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
 import { Manager } from "../typechain-types/Manager";
@@ -102,18 +103,7 @@ describe("e2e", () => {
         managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
       );
     }
-
-    await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
-      destinations: destinations.join(","),
-      values: values.join(","),
-      payloads: payloads.join(","),
-      account: multisigOwner0.address,
-    });
-
-    await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
-      proposalId: 0,
-      account: multisigOwner0.address,
-    });
+    await submitAndExecuteProposal(multisigOwner0.address, destinations, values, payloads);
   });
 
   it("deposit and withdraw", async () => {
