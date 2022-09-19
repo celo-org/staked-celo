@@ -1,8 +1,5 @@
 import hre from "hardhat";
 import { Account } from "../typechain-types/Account";
-import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
-import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -32,17 +29,17 @@ after(() => {
 });
 
 describe("e2e", () => {
-  let accountsInstance: AccountsWrapper;
-  let lockedGold: LockedGoldWrapper;
-  let election: ElectionWrapper;
-
-  let account: Account;
+  let accountContract: Account;
   let managerContract: Manager;
   let multisigContract: MultiSig;
 
+  // deposits CELO, receives stCELO, but never withdraws it
   let depositor0: SignerWithAddress;
+  // deposits CELO, receives stCELO, withdraws stCELO including rewards
   let depositor1: SignerWithAddress;
+  // deposits CELO after rewards are distributed -> depositor will receive less stCELO than deposited CELO
   let depositor2: SignerWithAddress;
+
   let owner: SignerWithAddress;
 
   let groups: SignerWithAddress[];
@@ -82,19 +79,14 @@ describe("e2e", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidator(groups[i], validators[i], validatorWallet);
     }
-
-    accountsInstance = await hre.kit.contracts.getAccounts();
-    lockedGold = await hre.kit.contracts.getLockedGold();
-    election = await hre.kit.contracts.getElection();
   });
 
   beforeEach(async () => {
     await hre.deployments.fixture("core");
-    account = await hre.ethers.getContract("Account");
+    accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
-    managerContract = managerContract.attach(await account.manager());
+    managerContract = managerContract.attach(await accountContract.manager());
     multisigContract = await hre.ethers.getContract("MultiSig");
-
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
@@ -143,12 +135,6 @@ describe("e2e", () => {
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
 
-    const electionContract = (await hre.kit.contracts.getElection())["contract"];
-    console.log(
-      "getTotalVotesForEligibleValidatorGroups2",
-      await electionContract.methods.getTotalVotesForEligibleValidatorGroups().call()
-    );
-
     const withdrawStakedCelo = await managerContract
       .connect(depositor1)
       .withdraw(amountOfCeloToDeposit);
@@ -163,18 +149,22 @@ describe("e2e", () => {
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
-    console.log("getPendingWithdrawals 0", await account.getPendingWithdrawals(depositor0.address));
-
-    const { timestamps } = await account.getPendingWithdrawals(depositor1.address);
+    const { timestamps } = await accountContract.getPendingWithdrawals(depositor1.address);
 
     for (let i = 0; i < timestamps.length; i++) {
-      const finishPendingWithdrawal = await account.finishPendingWithdrawal(
+      const finishPendingWithdrawal = await accountContract.finishPendingWithdrawal(
         depositor1.address,
         0,
         0
       );
       await finishPendingWithdrawal.wait();
     }
+
+    await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
+    const depositor2StakedCeloBalance = await stakedCeloContract.balanceOf(depositor2.address);
+    expect(
+      depositor2StakedCeloBalance.gt(0) && depositor2StakedCeloBalance.lt(amountOfCeloToDeposit)
+    ).to.be.true;
 
     const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
     expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
@@ -184,7 +174,7 @@ describe("e2e", () => {
     const rewardsReceived = depositor1AfterWithdrawalBalance
       .sub(depositor1BeforeWithdrawalBalance)
       .sub(amountOfCeloToDeposit);
-    console.log("Rewards received", rewardsReceived.toString());
+
     expect(rewardsReceived.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(2))).to.be
       .true;
   });
