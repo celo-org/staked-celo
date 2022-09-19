@@ -8,31 +8,24 @@ import { Deployment } from "hardhat-deploy/types";
 
 interface ProxyDeployTestData {
   contractName: string;
-  fixtureName: string;
   initializeArgs: any[];
-  ownerIsDeployer?: boolean;
 }
 
 const tests: ProxyDeployTestData[] = [
   {
     contractName: "StakedCelo",
-    fixtureName: "TestStakedCelo",
     initializeArgs: [randomAddress(), randomAddress()],
   },
   {
     contractName: "Account",
-    fixtureName: "TestAccount",
     initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
   },
   {
     contractName: "Manager",
-    fixtureName: "TestManager",
     initializeArgs: [randomAddress(), randomAddress()],
-    ownerIsDeployer: true,
   },
   {
     contractName: "RebasedStakedCelo",
-    fixtureName: "TestRebasedStakedCelo",
     initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
   },
 ];
