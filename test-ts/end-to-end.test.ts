@@ -50,7 +50,7 @@ describe("e2e", () => {
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
 
-  let stakedCelo: StakedCelo;
+  let stakedCeloContract: StakedCelo;
 
   before(async () => {
     await resetNetwork();
@@ -95,7 +95,7 @@ describe("e2e", () => {
     managerContract = managerContract.attach(await account.manager());
     multisigContract = await hre.ethers.getContract("MultiSig");
 
-    stakedCelo = await hre.ethers.getContract("StakedCelo");
+    stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
 
@@ -130,9 +130,10 @@ describe("e2e", () => {
     const rewardsGroup1 = hre.ethers.BigNumber.from("2000000000000000000");
     const rewardsGroup2 = hre.ethers.BigNumber.from("3500000000000000000");
 
+    await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
-    let stCelo = await stakedCelo.balanceOf(depositor1.address);
-    expect(stCelo).to.eq(amountOfCeloToDeposit);
+    let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
     await mineToNextEpoch(hre.web3);
@@ -142,21 +143,31 @@ describe("e2e", () => {
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
 
+    const electionContract = (await hre.kit.contracts.getElection())["contract"];
+    console.log(
+      "getTotalVotesForEligibleValidatorGroups2",
+      await electionContract.methods.getTotalVotesForEligibleValidatorGroups().call()
+    );
+
     const withdrawStakedCelo = await managerContract
       .connect(depositor1)
       .withdraw(amountOfCeloToDeposit);
     await withdrawStakedCelo.wait();
 
-    stCelo = await stakedCelo.balanceOf(depositor1.address);
-    expect(stCelo).to.eq(0);
+    depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    expect(depositor1StakedCeloBalance).to.eq(0);
 
     await hre.run(ACCOUNT_WITHDRAW, { beneficiary: depositor1.address });
 
-    const depositorBeforeWithdrawalBalance = await depositor1.getBalance();
+    const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
-    for (let i = 0; i < groups.length; i++) {
+    console.log("getPendingWithdrawals 0", await account.getPendingWithdrawals(depositor0.address));
+
+    const { timestamps } = await account.getPendingWithdrawals(depositor1.address);
+
+    for (let i = 0; i < timestamps.length; i++) {
       const finishPendingWithdrawal = await account.finishPendingWithdrawal(
         depositor1.address,
         0,
@@ -165,12 +176,16 @@ describe("e2e", () => {
       await finishPendingWithdrawal.wait();
     }
 
-    const depositorAfterWithdrawalBalance = await depositor1.getBalance();
-    expect(depositorAfterWithdrawalBalance.gt(depositorBeforeWithdrawalBalance)).to.be.true;
+    const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
+    expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+    const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
+    expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
 
-    const rewardsReceived = depositorAfterWithdrawalBalance
-      .sub(depositorBeforeWithdrawalBalance)
+    const rewardsReceived = depositor1AfterWithdrawalBalance
+      .sub(depositor1BeforeWithdrawalBalance)
       .sub(amountOfCeloToDeposit);
-    expect(rewardsReceived.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2))).to.be.true;
+    console.log("Rewards received", rewardsReceived.toString());
+    expect(rewardsReceived.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(2))).to.be
+      .true;
   });
 });
