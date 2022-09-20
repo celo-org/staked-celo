@@ -18,8 +18,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
   }
 
-  // error SenderMustBeMultisigWallet(address account);
-
   const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
   const deployment = await catchNotOwnerForProxy(
