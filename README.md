@@ -315,7 +315,7 @@ deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e
 Error: ERROR processing /Users/pahor/repo/2/staked-celo/deploy/01_manager.ts:
 ```
 
-From above example we can see that our new implementation address is *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000*
+From above example we can see that our new implementation address is `0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000`
 
 3. Verify deployed smart contracts (It will verify whatever is in deployments/[network] folder)
 ``` bash
