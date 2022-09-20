@@ -305,7 +305,7 @@ Example
 ``` bash
 > yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags proxy --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key
 ```
-Since contracts are owned by MultiSig, the deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
+Since contracts are owned by MultiSig, proxy implementations will be deployed but upgrade itself will not go through (see example below).
 
 Example of change in Manager.sol deployment
 
@@ -332,7 +332,7 @@ Please note that this script expects to have particular contract present in depl
 > yarn hardhat encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
 ```
 
-Please note that args is from step 2
+Please note that args are from step 2
 
 Example of encoded proposal payload
 ``` bash
@@ -348,11 +348,10 @@ encoded payload:
 > yarn stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
 ```
 
-
 6. Execute proposal once it is approved
 
 ``` bash
-> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId [index of proposal] --account 0xaddress
+> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId [index of proposal] --account [address]
 
 # example
 > yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
