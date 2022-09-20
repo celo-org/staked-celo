@@ -614,7 +614,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                     groupsWithVotes[j]
                 );
                 j--;
-                j--;
             }
         }
     }
