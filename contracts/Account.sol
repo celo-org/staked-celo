@@ -249,9 +249,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address[] calldata groups,
         uint256[] calldata withdrawals
     ) external onlyManager {
-        if (groups.length != withdrawals.length) {
-            revert GroupsAndVotesArrayLengthsMismatch();
-        }
+        // if (groups.length != withdrawals.length) {
+        //     revert GroupsAndVotesArrayLengthsMismatch();
+        // }
 
         uint256 totalWithdrawalsDelta;
 

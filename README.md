@@ -303,7 +303,7 @@ yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [
 ``` 
 Example
 ``` bash
-> yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core --from "0x7E71FB21D0B30F5669f8F387D4A1114294F8E418" --use-private-key
+> yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags proxy --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key
 ```
 Since contracts are owned by MultiSig, the deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
 
@@ -312,7 +312,7 @@ Example of change in Manager.sol deployment
 ``` bash
 reusing "MultiSig_Implementation" at 0xF2549E83Fdb86bebe7e1E2c64FB3a2BB2bBeb333
 deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e4a2b735918b2dd78707db19cd1)...: deployed at 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 with 3825742 gas
-Error: ERROR processing /Users/pahor/repo/2/staked-celo/deploy/01_manager.ts:
+Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually.
 ```
 
 From above example we can see that our new implementation address is `0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000`

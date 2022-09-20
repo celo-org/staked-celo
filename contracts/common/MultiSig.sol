@@ -792,6 +792,7 @@ contract MultiSig is Initializable, UUPSUpgradeable {
         proposal.payloads = payloads;
 
         proposalCount++;
+        proposalCount++;
         emit ProposalAdded(proposalId);
     }
 
