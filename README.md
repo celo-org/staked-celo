@@ -321,16 +321,35 @@ From above example we can see that our new implementation address is `0x1B8Ee2E0
 ``` bash
 > yarn verify:deploy --network [network]
 ```
-4. Create multisig proposal to change implementation of proxy
+4. Generate payload for proposal
+
+Please note that this script expects to have particular contract present in deployments/[network] folder
+
 ``` bash
-> yarn hardhat propose:upgrade  --network [network] --show-stack-traces --from "0xaddress" --use-private-key --multisig 0xaddress --new-implementation 0xaddress --destination 0xaddress
+> yarn hardhat encode:proposal:payload --contract [contract name] --function [function name] --args [arguments separated by ,] --network [network]
 
 # example
-> yarn hardhat propose:upgrade  --network alfajores --show-stack-traces --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key --multisig 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --new-implementation *0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000* --destination 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab
+> yarn hardhat encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
 ```
-Please note that --new-implementation is from step 2
 
-5. Execute proposal once it is approved
+Please note that args is from step 2
+
+Example of encoded proposal payload
+``` bash
+encoded payload:
+0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418
+```
+
+5. Submit multisig proposal to change implementation of proxy
+``` bash
+> yarn stakedCelo:multiSig:submitProposal --destinations [destinations separated by ,] --values [transaction values separated by ,] --payloads [payloads separated by , from previous step] --account [address] --network [network]
+
+# example
+> yarn stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
+```
+
+
+6. Execute proposal once it is approved
 
 ``` bash
 > yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId [index of proposal] --account 0xaddress

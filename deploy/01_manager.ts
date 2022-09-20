@@ -15,7 +15,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     proxy: {
-      owner: deployer,
       proxyArgs: ["{implementation}", "{data}"],
       proxyContract: "ERC1967Proxy",
       execute: {
@@ -37,5 +36,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.id = "deploy_manager";
 func.tags = ["Manager", "core"];
-// func.dependencies = ["MultiSig"];
+func.dependencies = ["MultiSig"];
 export default func;
