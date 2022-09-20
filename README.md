@@ -342,19 +342,19 @@ encoded payload:
 
 5. Submit multisig proposal to change implementation of proxy
 ``` bash
-> yarn stakedCelo:multiSig:submitProposal --destinations [destinations separated by ,] --values [transaction values separated by ,] --payloads [payloads separated by , from previous step] --account [address] --network [network]
+> yarn hardhat stakedCelo:multiSig:submitProposal --destinations [destinations separated by ,] --values [transaction values separated by ,] --payloads [payloads separated by , from previous step] --account [address] --network [network]
 
 # example
-> yarn stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
+> yarn hardhat stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
 ```
 
 6. Execute proposal once it is approved
 
 ``` bash
-> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId [index of proposal] --account [address]
+> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposal-id [index of proposal] --account [address]
 
 # example
-> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposalId 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
+> yarn hardhat stakedCelo:multiSig:executeProposal --network alfajores --proposal-id 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
 ```
 
 ## Contributing
