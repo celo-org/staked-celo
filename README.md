@@ -305,7 +305,7 @@ Example
 ``` bash
 > yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core --from "0x7E71FB21D0B30F5669f8F387D4A1114294F8E418" --use-private-key
 ```
-Since contracts are being owned by MultiSig deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
+Since contracts are owned by MultiSig, the deployment will in the end FAIL since our deployer doesn't have rights to upgrade proxy. 
 
 Example of change in Manager.sol deployment
 
