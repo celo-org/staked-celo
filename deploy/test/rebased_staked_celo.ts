@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "@pahor167/hardhat-deploy/types";
+import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const stakedCelo = await hre.deployments.get("MockStakedCelo");
