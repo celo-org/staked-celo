@@ -6,33 +6,28 @@ import { finishPendingWithdrawals } from "./helpers/finishPendingWithdrawalHelpe
 import { setHreConfigs } from "./helpers/taskAction";
 import {
   BENEFICIARY_DESCRIPTION,
-  BENEFICIARY_PARAM_NAME,
+  BENEFICIARY,
   DEPLOYMENTS_PATH_DESCRIPTION,
-  DEPLOYMENTS_PATH_PARAM_NAME,
+  DEPLOYMENTS_PATH,
   ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION,
-  FROM_DESCRIPTION,
-  FROM_PARAM_NAME,
+  ACCOUNT_DESCRIPTION,
+  ACCOUNT,
   USE_PRIVATE_KEY_DESCRIPTION,
-  USE_PRIVATE_KEY_PARAM_NAME,
+  USE_PRIVATE_KEY,
 } from "../helpers/staticVariables";
 
 task(ACCOUNT_FINISH_PENDING_WITHDRAWAL, ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION)
-  .addParam(BENEFICIARY_PARAM_NAME, BENEFICIARY_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(
-    DEPLOYMENTS_PATH_PARAM_NAME,
-    DEPLOYMENTS_PATH_DESCRIPTION,
-    undefined,
-    types.string
-  )
-  .addFlag(USE_PRIVATE_KEY_PARAM_NAME, USE_PRIVATE_KEY_DESCRIPTION)
-  .setAction(async ({ beneficiary, from, deploymentsPath, usePrivateKey }, hre) => {
+  .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(DEPLOYMENTS_PATH, DEPLOYMENTS_PATH_DESCRIPTION, undefined, types.string)
+  .addFlag(USE_PRIVATE_KEY, USE_PRIVATE_KEY_DESCRIPTION)
+  .setAction(async (args, hre) => {
     try {
       console.log("Starting stakedCelo:account:finishPendingWithdrawals task...");
 
-      setHreConfigs(hre, from, deploymentsPath, usePrivateKey);
+      setHreConfigs(hre, args[ACCOUNT], args[DEPLOYMENTS_PATH], args[USE_PRIVATE_KEY]);
 
-      await finishPendingWithdrawals(hre, beneficiary);
+      await finishPendingWithdrawals(hre, args[BENEFICIARY]);
     } catch (error) {
       console.log(chalk.red("Error finishing pending withdrawals:"), error);
     }

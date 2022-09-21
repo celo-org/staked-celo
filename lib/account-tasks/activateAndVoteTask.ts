@@ -7,26 +7,21 @@ import { setHreConfigs } from "./helpers/taskAction";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
   DEPLOYMENTS_PATH_DESCRIPTION,
-  DEPLOYMENTS_PATH_PARAM_NAME,
-  FROM_DESCRIPTION,
-  FROM_PARAM_NAME,
+  DEPLOYMENTS_PATH,
+  ACCOUNT_DESCRIPTION,
+  ACCOUNT,
   USE_PRIVATE_KEY_DESCRIPTION,
-  USE_PRIVATE_KEY_PARAM_NAME,
+  USE_PRIVATE_KEY,
 } from "../helpers/staticVariables";
 
 task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
-  .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(
-    DEPLOYMENTS_PATH_PARAM_NAME,
-    DEPLOYMENTS_PATH_DESCRIPTION,
-    undefined,
-    types.string
-  )
-  .addFlag(USE_PRIVATE_KEY_PARAM_NAME, USE_PRIVATE_KEY_DESCRIPTION)
-  .setAction(async ({ from, deploymentsPath, usePrivateKey }, hre) => {
+  .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(DEPLOYMENTS_PATH, DEPLOYMENTS_PATH_DESCRIPTION, undefined, types.string)
+  .addFlag(USE_PRIVATE_KEY, USE_PRIVATE_KEY_DESCRIPTION)
+  .setAction(async (args, hre) => {
     try {
       console.log("Starting stakedCelo:account:activateAndvote task...");
-      setHreConfigs(hre, from, deploymentsPath, usePrivateKey);
+      setHreConfigs(hre, args[ACCOUNT], args[DEPLOYMENTS_PATH], args[USE_PRIVATE_KEY]);
 
       await activateAndvote(hre);
     } catch (error) {
