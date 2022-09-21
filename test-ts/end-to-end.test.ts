@@ -5,6 +5,7 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
+  activateValidators,
   distributeEpochRewards,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
@@ -12,18 +13,11 @@ import {
   registerValidator,
   registerValidatorGroup,
   resetNetwork,
-  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
 import { Manager } from "../typechain-types/Manager";
-import {
-  ACCOUNT_ACTIVATE_AND_VOTE,
-  ACCOUNT_WITHDRAW,
-  MULTISIG_EXECUTE_PROPOSAL,
-  MULTISIG_SUBMIT_PROPOSAL,
-} from "../lib/tasksNames";
+import { ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { StakedCelo } from "../typechain-types/StakedCelo";
-import { MultiSig } from "../typechain-types/MultiSig";
 
 after(() => {
   hre.kit.stop();
@@ -32,7 +26,6 @@ after(() => {
 describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
-  let multisigContract: MultiSig;
 
   // deposits CELO, receives stCELO, but never withdraws it
   let depositor0: SignerWithAddress;
@@ -40,8 +33,6 @@ describe("e2e", () => {
   let depositor1: SignerWithAddress;
   // deposits CELO after rewards are distributed -> depositor will receive less stCELO than deposited CELO
   let depositor2: SignerWithAddress;
-
-  let owner: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
@@ -63,7 +54,6 @@ describe("e2e", () => {
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
     [depositor2] = await randomSigner(parseUnits("300"));
-    [owner] = await randomSigner(parseUnits("100"));
 
     groups = [];
     groupAddresses = [];
@@ -87,23 +77,10 @@ describe("e2e", () => {
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     managerContract = managerContract.attach(await accountContract.manager());
-    multisigContract = await hre.ethers.getContract("MultiSig");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-
-    const payloads: string[] = [];
-    const destinations: string[] = [];
-    const values: string[] = [];
-
-    for (let i = 0; i < 3; i++) {
-      destinations.push(managerContract.address);
-      values.push("0");
-      payloads.push(
-        managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
-      );
-    }
-    await submitAndExecuteProposal(multisigOwner0.address, destinations, values, payloads);
+    await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
   });
 
   it("deposit and withdraw", async () => {

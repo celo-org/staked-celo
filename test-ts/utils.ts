@@ -4,8 +4,8 @@ import { Wallet, BigNumber as EthersBigNumber, Contract } from "ethers";
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { zeroAddress } from "ethereumjs-util";
 import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
+import { Manager } from "../typechain-types/Manager";
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -91,6 +91,25 @@ export async function registerValidator(
   await tx.sendAndWaitForReceipt({
     from: group.address,
   });
+}
+
+export async function activateValidators(
+  managerContract: Manager,
+  multisigOwner: string,
+  groupAddresses: string[]
+) {
+  const payloads: string[] = [];
+  const destinations: string[] = [];
+  const values: string[] = [];
+
+  for (let i = 0; i < 3; i++) {
+    destinations.push(managerContract.address);
+    values.push("0");
+    payloads.push(
+      managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+    );
+  }
+  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 // ---- Account utils ----
@@ -219,7 +238,7 @@ export async function distributeEpochRewards(group: string, amount: string) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = electionWrapper["contract"];
 
-  await impersonateAccount(zeroAddress());
+  await impersonateAccount(ADDRESS_ZERO);
 
   const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
     group,
@@ -228,7 +247,7 @@ export async function distributeEpochRewards(group: string, amount: string) {
   );
 
   await electionContract.methods.distributeEpochRewards(group, amount, lesser, greater).send({
-    from: zeroAddress(),
+    from: ADDRESS_ZERO,
   });
 }
 
