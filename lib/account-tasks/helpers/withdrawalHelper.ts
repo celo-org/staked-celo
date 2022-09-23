@@ -113,7 +113,7 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
 
         const receipt = await tx.wait();
 
-        console.log(receipt);
+        console.log(chalk.yellow("receipt status"), receipt.status);
       }
     }
   } catch (error) {

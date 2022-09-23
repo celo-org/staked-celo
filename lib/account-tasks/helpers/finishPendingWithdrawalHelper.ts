@@ -38,7 +38,7 @@ export async function finishPendingWithdrawals(
       );
       const receipt = await tx.wait();
 
-      console.log("receipt:", receipt);
+      console.log(chalk.yellow("receipt status"), receipt.status);
     }
   } catch (error) {
     throw error;
