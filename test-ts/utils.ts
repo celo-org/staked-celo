@@ -151,7 +151,7 @@ async function setBalance(address: string, balance: EthersBigNumber) {
   ]);
 }
 
-export async function impersonateAccount(address: string) {
+async function impersonateAccount(address: string) {
   await hre.network.provider.send("hardhat_impersonateAccount", [address]);
 }
 

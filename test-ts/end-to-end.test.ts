@@ -76,7 +76,6 @@ describe("e2e", () => {
     await hre.deployments.fixture("core");
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
-    managerContract = managerContract.attach(await accountContract.manager());
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
