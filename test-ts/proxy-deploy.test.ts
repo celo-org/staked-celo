@@ -1,80 +1,123 @@
 import { expect } from "chai";
 import hre from "hardhat";
-import { StakedCelo__factory } from "../typechain-types/factories/StakedCelo__factory";
-import { StakedCelo } from "../typechain-types/StakedCelo";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { randomAddress, randomSigner } from "./utils";
+import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
 import { parseUnits } from "ethers/lib/utils";
+import { Contract, ContractFactory } from "ethers";
+import { Deployment } from "hardhat-deploy/types";
+
+interface ProxyDeployTestData {
+  contractName: string;
+  initializeArgs: any[];
+}
+
+const tests: ProxyDeployTestData[] = [
+  {
+    contractName: "StakedCelo",
+    initializeArgs: [randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "Account",
+    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "Manager",
+    initializeArgs: [randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "RebasedStakedCelo",
+    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+  },
+];
 
 describe("Contract deployed via proxy", () => {
-  let StakedCelo: StakedCelo__factory;
-  let owner: SignerWithAddress;
+  let multisigOwner0: SignerWithAddress;
 
-  before(async () => {
-    owner = await hre.ethers.getNamedSigner("owner");
-  });
+  tests.forEach((test) => {
+    describe(test.contractName, () => {
+      let contractFactory: ContractFactory;
+      let multiSig: Deployment;
+      beforeEach(async () => {
+        process.env = {
+          ...process.env,
+          TIME_LOCK_MIN_DELAY: "1",
+          TIME_LOCK_DELAY: "1",
+          MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+        };
 
-  beforeEach(async () => {
-    await hre.deployments.fixture("TestStakedCelo");
-    StakedCelo = await hre.ethers.getContractFactory("StakedCelo");
-  });
+        await hre.deployments.fixture("core");
 
-  it("the implementation can not be initialized", async () => {
-    const stakedCelo = await hre.ethers.getContract("StakedCelo");
-    const stakedCeloDeployment = await hre.deployments.get("StakedCelo");
-
-    expect(stakedCeloDeployment.implementation).to.exist;
-    // Helping typescript out
-    if (stakedCeloDeployment.implementation === undefined) return;
-
-    expect(stakedCelo.address).not.to.eq(stakedCeloDeployment.implementation);
-
-    const implementation = StakedCelo.attach(stakedCeloDeployment.implementation);
-    await expect(implementation.initialize(randomAddress(), randomAddress())).revertedWith(
-      "Initializable: contract is already initialized"
-    );
-  });
-
-  describe("the contract", () => {
-    let stakedCelo: StakedCelo;
-    let newOwner: SignerWithAddress;
-
-    beforeEach(async () => {
-      stakedCelo = await hre.ethers.getContract("StakedCelo");
-      [newOwner] = await randomSigner(parseUnits("100"));
-    });
-
-    it("is owned by the multisig", async () => {
-      expect(await stakedCelo.owner()).to.eq(owner.address);
-    });
-
-    describe("when called by the owner", () => {
-      it("can transfer ownership", async () => {
-        await expect(stakedCelo.connect(owner).transferOwnership(newOwner.address)).not.reverted;
-        expect(await stakedCelo.owner()).to.eq(newOwner.address);
+        multiSig = await hre.deployments.get("MultiSig");
+        multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+        contractFactory = await hre.ethers.getContractFactory(test.contractName);
       });
 
-      it("can update the implementation", async () => {
-        const newImplementation = (await StakedCelo.deploy()).address;
+      it("the implementation can not be initialized", async () => {
+        const contract = await hre.ethers.getContract(test.contractName);
+        const contractDeployment = await hre.deployments.get(test.contractName);
 
-        await expect(stakedCelo.connect(owner).upgradeTo(newImplementation))
-          .emit(stakedCelo, "Upgraded")
-          .withArgs(newImplementation);
-      });
-    });
+        expect(contractDeployment.implementation).to.exist;
+        expect(contract.address).not.to.eq(contractDeployment.implementation);
 
-    describe("when called by somebody else", () => {
-      it("fails when trying to transfer ownership", async () => {
-        await expect(stakedCelo.connect(newOwner).transferOwnership(newOwner.address)).revertedWith(
-          "Ownable: caller is not the owner"
+        const implementation = contractFactory.attach(contractDeployment.implementation as string);
+        await expect(implementation.initialize(...test.initializeArgs)).revertedWith(
+          "Initializable: contract is already initialized"
         );
       });
 
-      it("fails when trying to upgrade", async () => {
-        const newImplementation = (await StakedCelo.deploy()).address;
-        await expect(stakedCelo.connect(newOwner).upgradeTo(newImplementation)).revertedWith(
-          "Ownable: caller is not the owner"
-        );
+      describe("the contract", () => {
+        let contract: Contract;
+        let newOwner: SignerWithAddress;
+
+        beforeEach(async () => {
+          contract = await hre.ethers.getContract(test.contractName);
+          [newOwner] = await randomSigner(parseUnits("100"));
+        });
+
+        it("is owned by the multisig", async () => {
+          expect(await contract.owner()).to.eq(multiSig.address);
+        });
+
+        describe("when called by the owner", () => {
+          it("can transfer ownership", async () => {
+            await submitAndExecuteProposal(
+              multisigOwner0.address,
+              [contract.address],
+              ["0"],
+              [contract.interface.encodeFunctionData("transferOwnership", [newOwner.address])]
+            );
+
+            expect(await contract.owner()).to.eq(newOwner.address);
+          });
+
+          it("can update the implementation", async () => {
+            const newImplementation = (await contractFactory.deploy()).address;
+
+            await submitAndExecuteProposal(
+              multisigOwner0.address,
+              [contract.address],
+              ["0"],
+              [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])]
+            );
+
+            await waitForEvent(contract, "Upgraded", newImplementation);
+          });
+        });
+
+        describe("when called by somebody else", () => {
+          it("fails when trying to transfer ownership", async () => {
+            await expect(
+              contract.connect(newOwner).transferOwnership(newOwner.address)
+            ).revertedWith("Ownable: caller is not the owner");
+          });
+
+          it("fails when trying to upgrade", async () => {
+            const newImplementation = (await contractFactory.deploy()).address;
+            await expect(contract.connect(newOwner).upgradeTo(newImplementation)).revertedWith(
+              "Ownable: caller is not the owner"
+            );
+          });
+        });
       });
     });
   });
