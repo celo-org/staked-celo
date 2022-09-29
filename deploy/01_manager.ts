@@ -11,8 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
 
-  
-  const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager")
+  const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
 
   const deployment = await catchNotOwnerForProxy(
     deploy("Manager", {
@@ -32,7 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 
   if (isManagerAlreadyDeployed) {
-    console.log("Manager proxy was already deployed - skipping group activation")
+    console.log("Manager proxy was already deployed - skipping group activation");
     return;
   }
 
