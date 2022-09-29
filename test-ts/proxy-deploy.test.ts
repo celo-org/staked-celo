@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
 import { parseUnits } from "ethers/lib/utils";
 import { Contract, ContractFactory } from "ethers";
-import { Deployment } from "hardhat-deploy/types";
+import { Deployment } from "@celo/staked-celo-hardhat-deploy/types";
 
 interface ProxyDeployTestData {
   contractName: string;
