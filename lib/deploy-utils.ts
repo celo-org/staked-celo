@@ -1,5 +1,4 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import hre, { ethers, kit, web3 } from "hardhat";
+import { web3 } from "hardhat";
 
 export const executeAndWait = async (operation: any) => {
   const tx = await operation;

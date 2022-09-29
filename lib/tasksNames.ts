@@ -13,8 +13,9 @@ export const MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED =
   "stakedCelo:multiSig:isProposalTimelockReached";
 export const MULTISIG_IS_OWNER = "stakedCelo:multiSig:isOwner";
 export const MULTISIG_IS_CONFIRMED_BY = "stakedCelo:multiSig:isConfirmedBy";
+export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD = "stakedCelo:multiSig:encode:proposal:payload";
 export const STAKED_CELO_DEPLOY = "stakedCelo:deploy";
-export const ENCODE_PROPOSAL_PAYLOAD = "encode:proposal:payload";
+
 export const ACCOUNT_ACTIVATE_AND_VOTE = "stakedCelo:account:activateAndVote";
 export const ACCOUNT_WITHDRAW = "stakedCelo:account:withdraw";
 export const ACCOUNT_FINISH_PENDING_WITHDRAWAL = "stakedCelo:account:finishPendingWithdrawal";

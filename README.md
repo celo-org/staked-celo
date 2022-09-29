@@ -326,10 +326,10 @@ From above example we can see that our new implementation address is `0x1B8Ee2E0
 Please note that this script expects to have particular contract present in deployments/[network] folder
 
 ``` bash
-> yarn hardhat encode:proposal:payload --contract [contract name] --function [function name] --args [arguments separated by ,] --network [network]
+> yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract [contract name] --function [function name] --args [arguments separated by ,] --network [network]
 
 # example
-> yarn hardhat encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
+> yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
 ```
 
 Please note that args are from step 2
