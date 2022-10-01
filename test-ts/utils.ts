@@ -1,9 +1,11 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
-import { Wallet, BigNumber as EthersBigNumber } from "ethers";
+import { Wallet, BigNumber as EthersBigNumber, Contract } from "ethers";
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
+import { Manager } from "../typechain-types/Manager";
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -89,6 +91,25 @@ export async function registerValidator(
   await tx.sendAndWaitForReceipt({
     from: group.address,
   });
+}
+
+export async function activateValidators(
+  managerContract: Manager,
+  multisigOwner: string,
+  groupAddresses: string[]
+) {
+  const payloads: string[] = [];
+  const destinations: string[] = [];
+  const values: string[] = [];
+
+  for (let i = 0; i < 3; i++) {
+    destinations.push(managerContract.address);
+    values.push("0");
+    payloads.push(
+      managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+    );
+  }
+  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 // ---- Account utils ----
@@ -210,5 +231,61 @@ export async function resetNetwork() {
         },
       },
     ],
+  });
+}
+
+export async function distributeEpochRewards(group: string, amount: string) {
+  const electionWrapper = await hre.kit.contracts.getElection();
+  const electionContract = electionWrapper["contract"];
+
+  await impersonateAccount(ADDRESS_ZERO);
+
+  const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
+    group,
+    // @ts-ignore: BigNumber types library conflict.
+    amount
+  );
+
+  await electionContract.methods.distributeEpochRewards(group, amount, lesser, greater).send({
+    from: ADDRESS_ZERO,
+  });
+}
+
+export async function submitAndExecuteProposal(
+  account: string,
+  destinations: string[],
+  values: string[],
+  payloads: string[]
+) {
+  await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
+    destinations: destinations.join(","),
+    values: values.join(","),
+    payloads: payloads.join(","),
+    account: account,
+  });
+
+  await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
+    proposalId: 0,
+    account: account,
+  });
+}
+
+export async function waitForEvent(
+  contract: Contract,
+  eventName: string,
+  expectedValue: string,
+  timeout: number = 10000
+) {
+  await new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      reject(
+        `Event ${eventName} with expectedValue: ${expectedValue} wasn't emitted in timely manner.`
+      );
+    }, timeout);
+    contract.on(eventName, (implementation) => {
+      if (implementation == expectedValue) {
+        resolve();
+      }
+    });
   });
 }
