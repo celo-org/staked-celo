@@ -45,6 +45,8 @@ export const ACCOUNT_WITHDRAW_TASK_DESCRIPTION = "Withdraws CELO from account co
 
 // MANAGER TASK DESCRIPTIONS
 export const MANAGER_DEPOSIT_TASK_DESCRIPTION = "Deposits CELO in staked CELO protocol.";
+export const MANAGER_GET_DEPRECATED_GROUPS_TASK_DESCRIPTION = "Returns list of deprecated groups";
+export const MANAGER_GET_GROUPS_TASK_DESCRIPTION = "Returns all groups voting for";
 export const MANAGER_WITHDRAW_TASK_DESCRIPTION = "Withdraws stCELO from staked CELO protocol.";
 
 // MULTISIG TASK DESCRIPTIONS
