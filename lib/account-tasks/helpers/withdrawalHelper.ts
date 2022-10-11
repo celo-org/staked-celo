@@ -1,11 +1,15 @@
 import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import { BigNumber } from "ethers";
+import { BigNumber, Signer } from "ethers";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
-export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddress: string) {
+export async function withdraw(
+  hre: HardhatRuntimeEnvironment,
+  signer: Signer,
+  beneficiaryAddress: string
+) {
   try {
     const electionWrapper = await hre.kit.contracts.getElection();
     const accountContract = await hre.ethers.getContract("Account");
@@ -105,15 +109,17 @@ export async function withdraw(hre: HardhatRuntimeEnvironment, beneficiaryAddres
         console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
         console.log("group index:", index);
 
-        const tx = await accountContract.withdraw(
-          beneficiaryAddress,
-          group,
-          lesserAfterPendingRevoke,
-          greaterAfterPendingRevoke,
-          lesserAfterActiveRevoke,
-          greaterAfterActiveRevoke,
-          index
-        );
+        const tx = await accountContract
+          .connect(signer)
+          .withdraw(
+            beneficiaryAddress,
+            group,
+            lesserAfterPendingRevoke,
+            greaterAfterPendingRevoke,
+            lesserAfterActiveRevoke,
+            greaterAfterActiveRevoke,
+            index
+          );
 
         const receipt = await tx.wait();
 

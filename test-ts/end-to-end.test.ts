@@ -27,6 +27,7 @@ describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
 
+  const deployerAccountName: String = "deployer";
   // deposits CELO, receives stCELO, but never withdraws it
   let depositor0: SignerWithAddress;
   // deposits CELO, receives stCELO, withdraws stCELO including rewards
@@ -94,9 +95,15 @@ describe("e2e", () => {
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
     await mineToNextEpoch(hre.web3);
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
 
     await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
@@ -110,7 +117,11 @@ describe("e2e", () => {
     depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(0);
 
-    await hre.run(ACCOUNT_WITHDRAW, { beneficiary: depositor1.address });
+    await hre.run(ACCOUNT_WITHDRAW, {
+      beneficiary: depositor1.address,
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
 
     const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
 

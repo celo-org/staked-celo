@@ -3,27 +3,29 @@ import chalk from "chalk";
 
 import { ACCOUNT_ACTIVATE_AND_VOTE } from "../tasksNames";
 import { activateAndvote } from "./helpers/activateAndVoteHelper";
-import { setHreConfigs } from "./helpers/taskAction";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
-  DEPLOYMENTS_PATH_DESCRIPTION,
-  DEPLOYMENTS_PATH,
   ACCOUNT_DESCRIPTION,
   ACCOUNT,
-  USE_PRIVATE_KEY_DESCRIPTION,
-  USE_PRIVATE_KEY,
+  USE_LEDGER,
+  USE_LEDGER_DESCRIPTION,
+  USE_NODE_ACCOUNT,
+  USE_NODE_ACCOUNT_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(DEPLOYMENTS_PATH, DEPLOYMENTS_PATH_DESCRIPTION, undefined, types.string)
-  .addFlag(USE_PRIVATE_KEY, USE_PRIVATE_KEY_DESCRIPTION)
+  .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
+  .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
   .setAction(async (args, hre) => {
     try {
       console.log("Starting stakedCelo:account:activateAndvote task...");
-      setHreConfigs(hre, args[ACCOUNT], args[DEPLOYMENTS_PATH], args[USE_PRIVATE_KEY]);
 
-      await activateAndvote(hre);
+      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
+      await setLocalNodeDeploymentPath(hre);
+
+      await activateAndvote(hre, signer);
     } catch (error) {
       console.log(chalk.red("Error activating and voting"), error);
     }
