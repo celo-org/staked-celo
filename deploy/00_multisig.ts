@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { catchNotOwnerForProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -19,24 +20,27 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
-  const deployment = await deploy("MultiSig", {
-    from: deployer,
-    log: true,
-    // minDelay 4 Days, to protect against stakedCelo withdrawals
-    args: [minDelay],
-    proxy: {
-      proxyArgs: ["{implementation}", "{data}"],
-      upgradeIndex: 0,
-      proxyContract: "ERC1967Proxy",
-      execute: {
-        methodName: "initialize",
-        args: [multisigOwners, requiredConfirmations, delay],
+  const deployment = await catchNotOwnerForProxy(
+    deploy("MultiSig", {
+      from: deployer,
+      log: true,
+      // minDelay 4 Days, to protect against stakedCelo withdrawals
+      args: [minDelay],
+      proxy: {
+        proxyArgs: ["{implementation}", "{data}"],
+        proxyContract: "ERC1967Proxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [multisigOwners, requiredConfirmations, delay],
+          },
+        },
       },
-    },
-  });
+    })
+  );
 };
 
 func.id = "deploy_multisig";
-func.tags = ["MultiSig", "core"];
+func.tags = ["MultiSig", "core", "proxy"];
 func.dependencies = [];
 export default func;
