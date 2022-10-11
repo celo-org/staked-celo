@@ -4,15 +4,18 @@ import { setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
 
 import { MANAGER_GET_DEPRECATED_GROUPS } from "../tasksNames";
 import { MANAGER_GET_DEPRECATED_GROUPS_TASK_DESCRIPTION } from "../helpers/staticVariables";
-import { getDeprecatedGroups } from "./helpers/getDeprecatedGroups";
 
 task(MANAGER_GET_DEPRECATED_GROUPS, MANAGER_GET_DEPRECATED_GROUPS_TASK_DESCRIPTION).setAction(
   async (_, hre) => {
     try {
-      await setLocalNodeDeploymentPath(hre);
       console.log("Starting stakedCelo:manager:getDeprecatedGroups task...");
 
-      await getDeprecatedGroups(hre);
+      await setLocalNodeDeploymentPath(hre);
+      const managerContract = await hre.ethers.getContract("Manager");
+
+      const deprecatedGroups = await managerContract.getDeprecatedGroups();
+
+      console.log(chalk.yellow("Deprecated Groups:"), deprecatedGroups);
     } catch (error) {
       console.log(chalk.red("Error getting deprecated groups:"), error);
     }
