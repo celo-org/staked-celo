@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import { Manager } from "../typechain-types/Manager";
 import { Account } from "../typechain-types/Account";
 import { StakedCelo } from "../typechain-types/StakedCelo";

@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
-import { executeAndWait } from "../lib/deploy-utils";
+import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { catchNotOwnerForProxy, executeAndWait } from "../lib/deploy-utils";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
   validatorGroupsString ? validatorGroupsString.split(",") : [];
@@ -11,19 +11,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
 
-  const deployment = await deploy("Manager", {
-    from: deployer,
-    log: true,
-    proxy: {
-      proxyArgs: ["{implementation}", "{data}"],
-      upgradeIndex: 0,
-      proxyContract: "ERC1967Proxy",
-      execute: {
-        methodName: "initialize",
-        args: [hre.ethers.constants.AddressZero, deployer],
+  const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
+
+  const deployment = await catchNotOwnerForProxy(
+    deploy("Manager", {
+      from: deployer,
+      log: true,
+      proxy: {
+        proxyArgs: ["{implementation}", "{data}"],
+        proxyContract: "ERC1967Proxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [hre.ethers.constants.AddressZero, deployer],
+          },
+        },
       },
-    },
-  });
+    })
+  );
+
+  if (isManagerAlreadyDeployed) {
+    console.log("Manager proxy was already deployed - skipping group activation");
+    return;
+  }
 
   const manager = await hre.ethers.getContract("Manager");
 
@@ -34,6 +44,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_manager";
-func.tags = ["Manager", "core"];
+func.tags = ["Manager", "core", "proxy"];
 func.dependencies = ["MultiSig"];
 export default func;
