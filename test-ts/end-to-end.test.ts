@@ -49,7 +49,7 @@ describe("e2e", () => {
       TIME_LOCK_MIN_DELAY: "1",
       TIME_LOCK_DELAY: "1",
       MULTISIG_REQUIRED_CONFIRMATIONS: "1",
-      VALIDATOR_GROUPS: ""
+      VALIDATOR_GROUPS: "",
     };
 
     [depositor0] = await randomSigner(parseUnits("300"));
