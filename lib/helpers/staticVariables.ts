@@ -11,6 +11,9 @@ export const USE_LEDGER = "useLedger";
 export const USE_NODE_ACCOUNT = "useNodeAccount";
 export const USE_PRIVATE_KEY = "usePrivateKey";
 export const VALUES = "values";
+export const CONTRACT = "contract";
+export const FUNCTION = "function";
+export const ARGS = "args";
 
 // PARAM DESCRIPTIONS
 export const AMOUNT_DESCRIPTION =
@@ -33,6 +36,9 @@ export const USE_PRIVATE_KEY_DESCRIPTION =
   "Determines if private key in environment is used or not. Private key will be used automatically if network url is a remote host.";
 export const VALUES_DESCRIPTION =
   "The CELO values involved in the proposal if any | Use comma separated values for multiple entries.";
+export const CONTRACT_DESCRIPTION = "Name of the contract.";
+export const FUNCTION_DESCRIPTION = "Name of the function.";
+export const ARGS_DESCRIPTION = "Arguments of function separated by ,";
 
 // ACCOUNT TASK DESCRIPTIONS
 export const ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION =
@@ -69,3 +75,5 @@ export const MULTISIG_REVOKE_CONFIRMATION_TASK_DESCRIPTION = "Revoke a proposal 
 export const MULTISIG_SCHEDULE_PROPOSAL_TASK_DESCRIPTION = "Schedule a proposal.";
 export const MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION =
   "Submit a proposal to the multiSig contract.";
+export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION =
+  "Encodes function payload on contract for proposal.";

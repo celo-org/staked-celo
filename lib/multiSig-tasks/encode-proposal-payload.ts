@@ -1,10 +1,19 @@
 import { task } from "hardhat/config";
+import {
+  ARGS,
+  ARGS_DESCRIPTION,
+  CONTRACT,
+  CONTRACT_DESCRIPTION,
+  FUNCTION,
+  FUNCTION_DESCRIPTION,
+  MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION,
+} from "../helpers/staticVariables";
 import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../tasksNames";
 
-task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, "Encodes function payload on contract for proposal.")
-  .addParam("contract", "Name of the contract")
-  .addParam("function", "Name of the function")
-  .addParam("args", "Arguments of function separated by ,")
+task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION)
+  .addParam(CONTRACT, CONTRACT_DESCRIPTION)
+  .addParam(FUNCTION, FUNCTION_DESCRIPTION)
+  .addParam(ARGS, ARGS_DESCRIPTION)
   .setAction(
     async (
       args: {
