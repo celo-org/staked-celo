@@ -3,7 +3,7 @@ import chalk from "chalk";
 
 import { MULTISIG_SCHEDULE_PROPOSAL } from "../tasksNames";
 
-import { getSigner, parseEvents, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, parseEvents } from "../helpers/interfaceHelper";
 import {
   ACCOUNT_DESCRIPTION,
   ACCOUNT,
@@ -23,8 +23,12 @@ task(MULTISIG_SCHEDULE_PROPOSAL, MULTISIG_SCHEDULE_PROPOSAL_TASK_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
   .setAction(async (args, hre) => {
     try {
-      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(
+        hre,
+        args[ACCOUNT],
+        args[USE_LEDGER],
+        args[USE_NODE_ACCOUNT]
+      );
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)

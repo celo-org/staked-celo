@@ -14,7 +14,7 @@ import {
   USE_NODE_ACCOUNT,
   USE_LEDGER,
 } from "../helpers/staticVariables";
-import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_FINISH_PENDING_WITHDRAWAL, ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION)
   .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
@@ -25,8 +25,12 @@ task(ACCOUNT_FINISH_PENDING_WITHDRAWAL, ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_D
     try {
       console.log("Starting stakedCelo:account:finishPendingWithdrawals task...");
 
-      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(
+        hre,
+        args[ACCOUNT],
+        args[USE_LEDGER],
+        args[USE_NODE_ACCOUNT]
+      );
 
       await finishPendingWithdrawals(hre, signer, args[BENEFICIARY]);
     } catch (error) {

@@ -14,7 +14,7 @@ import {
   USE_LEDGER_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { withdraw } from "./helpers/withdrawalHelper";
-import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_WITHDRAW, ACCOUNT_WITHDRAW_TASK_DESCRIPTION)
   .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
@@ -25,8 +25,12 @@ task(ACCOUNT_WITHDRAW, ACCOUNT_WITHDRAW_TASK_DESCRIPTION)
     try {
       console.log("Starting stakedCelo:account:withdraw task...");
 
-      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(
+        hre,
+        args[ACCOUNT],
+        args[USE_LEDGER],
+        args[USE_NODE_ACCOUNT]
+      );
 
       await withdraw(hre, signer, args[BENEFICIARY]);
     } catch (error) {

@@ -5,7 +5,7 @@ import chalk from "chalk";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
-export async function getSigner(
+async function getSigner(
   hre: HardhatRuntimeEnvironment,
   account: string,
   useLedger: boolean,
@@ -40,6 +40,17 @@ export async function getSigner(
   } catch (error) {
     throw error;
   }
+}
+
+export async function getSignerAndSetDeploymentPath(
+  hre: HardhatRuntimeEnvironment,
+  account: string,
+  useLedger: boolean,
+  useNodeAccount: boolean
+): Promise<Signer> {
+  const signer = await getSigner(hre, account, useLedger, useNodeAccount);
+  await setLocalNodeDeploymentPath(hre);
+  return signer;
 }
 
 export function parseEvents(receipt: ContractReceipt, eventName: string) {

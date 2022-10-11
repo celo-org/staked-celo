@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { task, types } from "hardhat/config";
-import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
 
 import { MANAGER_DEPOSIT } from "../tasksNames";
 import {
@@ -23,8 +23,13 @@ task(MANAGER_DEPOSIT, MANAGER_DEPOSIT_TASK_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
   .setAction(async (args, hre) => {
     try {
-      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(
+        hre,
+        args[ACCOUNT],
+        args[USE_LEDGER],
+        args[USE_NODE_ACCOUNT]
+      );
+
       console.log("Starting stakedCelo:manager:deposit task...");
 
       await deposit(hre, signer, args[AMOUNT]);

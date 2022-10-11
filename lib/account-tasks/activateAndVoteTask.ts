@@ -12,7 +12,7 @@ import {
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
 } from "../helpers/staticVariables";
-import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
@@ -22,8 +22,12 @@ task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
     try {
       console.log("Starting stakedCelo:account:activateAndvote task...");
 
-      const signer = await getSigner(hre, args[ACCOUNT], args[USE_LEDGER], args[USE_NODE_ACCOUNT]);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(
+        hre,
+        args[ACCOUNT],
+        args[USE_LEDGER],
+        args[USE_NODE_ACCOUNT]
+      );
 
       await activateAndvote(hre, signer);
     } catch (error) {
