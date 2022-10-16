@@ -14,25 +14,20 @@ import {
   USE_LEDGER_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { withdraw } from "./helpers/withdrawalHelper";
-import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_WITHDRAW, ACCOUNT_WITHDRAW_TASK_DESCRIPTION)
   .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log("Starting stakedCelo:account:withdraw task...");
 
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
-      await withdraw(hre, signer, args[BENEFICIARY]);
+      await withdraw(hre, signer, args.beneficiary!);
     } catch (error) {
       console.log(chalk.red("Error withdrawing CELO:"), error);
     }

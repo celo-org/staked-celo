@@ -3,7 +3,7 @@ import chalk from "chalk";
 
 import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
-import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
   DESTINATIONS,
   DESTINATIONS_DESCRIPTION,
@@ -27,22 +27,17 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
         .submitProposal(
-          args[DESTINATIONS].split(","),
-          args[VALUES].split(","),
-          args[PAYLOADS].split(","),
+          args.destinations!.split(","),
+          args.values!.split(","),
+          args.payloads!.split(","),
           {
             type: 0,
           }

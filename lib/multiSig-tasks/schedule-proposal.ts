@@ -3,7 +3,11 @@ import chalk from "chalk";
 
 import { MULTISIG_SCHEDULE_PROPOSAL } from "../tasksNames";
 
-import { getSignerAndSetDeploymentPath, parseEvents } from "../helpers/interfaceHelper";
+import {
+  getSignerAndSetDeploymentPath,
+  parseEvents,
+  TransactionArguments,
+} from "../helpers/interfaceHelper";
 import {
   ACCOUNT_DESCRIPTION,
   ACCOUNT,
@@ -21,18 +25,13 @@ task(MULTISIG_SCHEDULE_PROPOSAL, MULTISIG_SCHEDULE_PROPOSAL_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
-        .scheduleProposal(args[PROPOSAL_ID], { type: 0 });
+        .scheduleProposal(args.proposalId!, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "ProposalScheduled");
     } catch (error) {

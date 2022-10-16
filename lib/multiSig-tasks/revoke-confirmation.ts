@@ -3,7 +3,11 @@ import chalk from "chalk";
 
 import { MULTISIG_REVOKE_CONFIRMATION } from "../tasksNames";
 
-import { getSignerAndSetDeploymentPath, parseEvents } from "../helpers/interfaceHelper";
+import {
+  getSignerAndSetDeploymentPath,
+  parseEvents,
+  TransactionArguments,
+} from "../helpers/interfaceHelper";
 import {
   ACCOUNT_DESCRIPTION,
   ACCOUNT,
@@ -20,18 +24,13 @@ task(MULTISIG_REVOKE_CONFIRMATION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
-        .revokeConfirmation(args[PROPOSAL_ID], { type: 0 });
+        .revokeConfirmation(args.proposalId!, { type: 0 });
       const receipt = await tx.wait();
       parseEvents(receipt, "ConfirmationRevoked");
     } catch (error) {

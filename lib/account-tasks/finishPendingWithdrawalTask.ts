@@ -14,25 +14,20 @@ import {
   USE_NODE_ACCOUNT,
   USE_LEDGER,
 } from "../helpers/staticVariables";
-import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_FINISH_PENDING_WITHDRAWAL, ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION)
   .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log("Starting stakedCelo:account:finishPendingWithdrawals task...");
 
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
-      await finishPendingWithdrawals(hre, signer, args[BENEFICIARY]);
+      await finishPendingWithdrawals(hre, signer, args.beneficiary!);
     } catch (error) {
       console.log(chalk.red("Error finishing pending withdrawals:"), error);
     }

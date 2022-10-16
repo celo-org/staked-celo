@@ -12,22 +12,17 @@ import {
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
 } from "../helpers/staticVariables";
-import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 
 task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log("Starting stakedCelo:account:activateAndvote task...");
 
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
       await activateAndvote(hre, signer);
     } catch (error) {

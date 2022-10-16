@@ -5,11 +5,23 @@ import chalk from "chalk";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
+export interface TransactionArguments {
+  destinations?: string;
+  values?: string;
+  payloads?: string;
+  amount?: string;
+  proposalId?: string;
+  beneficiary?: string;
+  account?: string;
+  useLedger: boolean;
+  useNodeAccount: boolean;
+}
+
 async function getSigner(
   hre: HardhatRuntimeEnvironment,
-  account: string,
   useLedger: boolean,
-  useNodeAccount: boolean
+  useNodeAccount: boolean,
+  account?: string
 ): Promise<Signer> {
   let signer: Signer;
   try {
@@ -44,11 +56,9 @@ async function getSigner(
 
 export async function getSignerAndSetDeploymentPath(
   hre: HardhatRuntimeEnvironment,
-  account: string,
-  useLedger: boolean,
-  useNodeAccount: boolean
+  txArgs: TransactionArguments
 ): Promise<Signer> {
-  const signer = await getSigner(hre, account, useLedger, useNodeAccount);
+  const signer = await getSigner(hre, txArgs.useLedger, txArgs.useNodeAccount, txArgs.account);
   await setLocalNodeDeploymentPath(hre);
   return signer;
 }

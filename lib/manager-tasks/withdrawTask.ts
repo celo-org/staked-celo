@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { task, types } from "hardhat/config";
-import { getSignerAndSetDeploymentPath } from "../helpers/interfaceHelper";
 
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import { MANAGER_WITHDRAW } from "../tasksNames";
 import {
   ACCOUNT_DESCRIPTION,
@@ -20,18 +20,13 @@ task(MANAGER_WITHDRAW, MANAGER_WITHDRAW_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .setAction(async (args, hre) => {
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log("Starting stakedCelo:manager:withdraw task...");
-      const signer = await getSignerAndSetDeploymentPath(
-        hre,
-        args[ACCOUNT],
-        args[USE_LEDGER],
-        args[USE_NODE_ACCOUNT]
-      );
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
       const managerContract = await hre.ethers.getContract("Manager");
-      const tx = await managerContract.connect(signer).withdraw(args[AMOUNT], { type: 0 });
+      const tx = await managerContract.connect(signer).withdraw(args.amount!, { type: 0 });
       const receipt = await tx.wait();
       console.log(chalk.yellow("receipt status"), receipt.status);
     } catch (error) {
