@@ -5,10 +5,23 @@ import chalk from "chalk";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
-export async function getSigner(
+export interface TransactionArguments {
+  destinations?: string;
+  values?: string;
+  payloads?: string;
+  amount?: string;
+  proposalId?: string;
+  beneficiary?: string;
+  account?: string;
+  useLedger: boolean;
+  useNodeAccount: boolean;
+}
+
+async function getSigner(
   hre: HardhatRuntimeEnvironment,
-  account: string,
-  useLedger: boolean
+  useLedger: boolean,
+  useNodeAccount: boolean,
+  account?: string
 ): Promise<Signer> {
   let signer: Signer;
   try {
@@ -16,9 +29,13 @@ export async function getSigner(
       signer = new LedgerSigner(hre.ethers.provider);
     } else {
       if (account === undefined) {
-        throw new Error("Account is required when not using Ledger wallet.");
+        throw "Account is required when not using Ledger device.";
       }
-      if (privateKey) {
+      if (!useNodeAccount) {
+        if (privateKey === undefined) {
+          throw "Private key not found.";
+        }
+        // Will default to using a private key if found.
         const networks = hre.config.networks;
         const targetNetwork = hre.network.name;
         networks[targetNetwork].accounts = [`0x${privateKey}`];
@@ -35,6 +52,15 @@ export async function getSigner(
   } catch (error) {
     throw error;
   }
+}
+
+export async function getSignerAndSetDeploymentPath(
+  hre: HardhatRuntimeEnvironment,
+  txArgs: TransactionArguments
+): Promise<Signer> {
+  const signer = await getSigner(hre, txArgs.useLedger, txArgs.useNodeAccount, txArgs.account);
+  await setLocalNodeDeploymentPath(hre);
+  return signer;
 }
 
 export function parseEvents(receipt: ContractReceipt, eventName: string) {

@@ -3,44 +3,45 @@ import chalk from "chalk";
 
 import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
-import { getSigner, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
+import {
+  DESTINATIONS,
+  DESTINATIONS_DESCRIPTION,
+  ACCOUNT_DESCRIPTION,
+  ACCOUNT,
+  MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION,
+  PAYLOADS,
+  PAYLOADS_DESCRIPTION,
+  USE_LEDGER_DESCRIPTION,
+  USE_LEDGER,
+  USE_NODE_ACCOUNT_DESCRIPTION,
+  USE_NODE_ACCOUNT,
+  VALUES,
+  VALUES_DESCRIPTION,
+} from "../helpers/staticVariables";
 
-task(MULTISIG_SUBMIT_PROPOSAL, "Submit a proposal to the multiSig contract")
-  .addParam(
-    "destinations",
-    "The addresses at which the operations are targeted | Use comma separated values for multiple entries.",
-    undefined,
-    types.string
-  )
-  .addParam(
-    "values",
-    "The CELO values involved in the proposal if any | Use comma separated values for multiple entries",
-    undefined,
-    types.string
-  )
-  .addParam(
-    "payloads",
-    "The payloads of the proposal| Use comma separated values for multiple entries",
-    undefined,
-    types.string
-  )
-  .addOptionalParam(
-    "account",
-    "Named account or address of multiSig owner",
-    undefined,
-    types.string
-  )
-  .addFlag("useLedger", "Use ledger hardware wallet")
-  .setAction(async ({ destinations, values, payloads, account, useLedger }, hre) => {
+task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
+  .addParam(DESTINATIONS, DESTINATIONS_DESCRIPTION, undefined, types.string)
+  .addParam(VALUES, VALUES_DESCRIPTION, undefined, types.string)
+  .addParam(PAYLOADS, PAYLOADS_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+  .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
+  .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
-      const signer = await getSigner(hre, account, useLedger);
-      await setLocalNodeDeploymentPath(hre);
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
+
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
-        .submitProposal(destinations.split(","), values.split(","), payloads.split(","), {
-          type: 0,
-        });
+        .submitProposal(
+          args.destinations!.split(","),
+          args.values!.split(","),
+          args.payloads!.split(","),
+          {
+            type: 0,
+          }
+        );
       const receipt = await tx.wait();
       const events = receipt.events;
       if (events !== undefined) {

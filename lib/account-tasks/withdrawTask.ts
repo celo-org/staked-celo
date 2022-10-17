@@ -4,35 +4,30 @@ import { task, types } from "hardhat/config";
 import { ACCOUNT_WITHDRAW } from "../tasksNames";
 import {
   BENEFICIARY_DESCRIPTION,
-  BENEFICIARY_PARAM_NAME,
-  DEPLOYMENTS_PATH_DESCRIPTION,
-  DEPLOYMENTS_PATH_PARAM_NAME,
-  FROM_DESCRIPTION,
-  FROM_PARAM_NAME,
-  USE_PRIVATE_KEY_DESCRIPTION,
-  USE_PRIVATE_KEY_PARAM_NAME,
-  WITHDRAW_TASK_DESCRIPTION,
-} from "./helpers/staticVariables";
-import { setHreConfigs } from "./helpers/taskAction";
+  BENEFICIARY,
+  ACCOUNT_DESCRIPTION,
+  ACCOUNT,
+  ACCOUNT_WITHDRAW_TASK_DESCRIPTION,
+  USE_LEDGER,
+  USE_NODE_ACCOUNT,
+  USE_NODE_ACCOUNT_DESCRIPTION,
+  USE_LEDGER_DESCRIPTION,
+} from "../helpers/staticVariables";
 import { withdraw } from "./helpers/withdrawalHelper";
+import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 
-task(ACCOUNT_WITHDRAW, WITHDRAW_TASK_DESCRIPTION)
-  .addParam(BENEFICIARY_PARAM_NAME, BENEFICIARY_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(FROM_PARAM_NAME, FROM_DESCRIPTION, undefined, types.string)
-  .addOptionalParam(
-    DEPLOYMENTS_PATH_PARAM_NAME,
-    DEPLOYMENTS_PATH_DESCRIPTION,
-    undefined,
-    types.string
-  )
-  .addFlag(USE_PRIVATE_KEY_PARAM_NAME, USE_PRIVATE_KEY_DESCRIPTION)
-  .setAction(async ({ beneficiary, from, deploymentsPath, usePrivateKey }, hre) => {
+task(ACCOUNT_WITHDRAW, ACCOUNT_WITHDRAW_TASK_DESCRIPTION)
+  .addParam(BENEFICIARY, BENEFICIARY_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+  .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
+  .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
+  .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log("Starting stakedCelo:account:withdraw task...");
 
-      setHreConfigs(hre, from, deploymentsPath, usePrivateKey);
+      const signer = await getSignerAndSetDeploymentPath(hre, args);
 
-      await withdraw(hre, beneficiary);
+      await withdraw(hre, signer, args.beneficiary!);
     } catch (error) {
       console.log(chalk.red("Error withdrawing CELO:"), error);
     }

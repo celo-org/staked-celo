@@ -1,7 +1,8 @@
 import chalk from "chalk";
+import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
+export async function activateAndvote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
   const managerContract = await hre.ethers.getContract("Manager");
 
@@ -35,7 +36,7 @@ export async function activateAndvote(hre: HardhatRuntimeEnvironment) {
 
       console.log(chalk.green("greater:"), greater);
 
-      const tx = await accountContract.activateAndVote(group, lesser, greater);
+      const tx = await accountContract.connect(signer).activateAndVote(group, lesser, greater);
 
       const receipt = await tx.wait();
       console.log(chalk.yellow("receipt status"), receipt.status);
