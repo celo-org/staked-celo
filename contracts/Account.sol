@@ -695,4 +695,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         return (pendingWithdrawal.value, pendingWithdrawal.timestamp);
     }
+
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        IGovernance.VoteValue[] calldata voteValues,
+        // solhint-disable-next-line
+        uint256[] calldata weights
+    ) public onlyManager {
+        // getGovernance().votePartially(proposalId, index, voteValues, weights);
+        getGovernance().vote(proposalId, index, voteValues[0]);
+    }
 }

@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
+import "./IGovernance.sol";
+
 interface IAccount {
     function getTotalCelo() external view returns (uint256);
 
@@ -14,5 +16,12 @@ interface IAccount {
         address beneficiary,
         address[] calldata group,
         uint256[] calldata withdrawals
+    ) external;
+
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        IGovernance.VoteValue[] calldata voteValues,
+        uint256[] calldata weights
     ) external;
 }
