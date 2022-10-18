@@ -1,11 +1,22 @@
-import hre from "hardhat";
+import hre, { kit } from "hardhat";
 import { BigNumber } from "ethers";
 import BigNumberJs from "bignumber.js";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
+
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
+
+import { MockValidators } from "../typechain-types/MockValidators";
+import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
+
+import { MockRegistry } from "../typechain-types/MockRegistry";
+import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
 import { expect } from "chai";
@@ -13,6 +24,10 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
+  removeMembersFromGroup,
+  deregisterValidatorGroup,
+  impersonateAccount,
+  mineToNextEpoch,
   randomSigner,
   registerValidator,
   registerValidatorGroup,
@@ -29,14 +44,21 @@ after(() => {
 describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
+  let lockedGoldContract: MockLockedGold;
+  let validatorsContract: MockValidators;
+
+  let registryContract: MockRegistry;
+
   let manager: Manager;
 
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
+  let validators: ValidatorsWrapper;
 
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
   let someone: SignerWithAddress;
+  let mockSlasher: SignerWithAddress;
   let depositor: SignerWithAddress;
   let voter: SignerWithAddress;
   let groups: SignerWithAddress[];
@@ -47,7 +69,9 @@ describe("Manager", () => {
   before(async function () {
     this.timeout(100000);
     await resetNetwork();
+    lockedGold = await hre.kit.contracts.getLockedGold();
     election = await hre.kit.contracts.getElection();
+    validators = await hre.kit.contracts.getValidators();
 
     await hre.deployments.fixture("TestManager");
     manager = await hre.ethers.getContract("Manager");
@@ -55,6 +79,7 @@ describe("Manager", () => {
     [owner] = await randomSigner(parseUnits("100"));
     [nonOwner] = await randomSigner(parseUnits("100"));
     [someone] = await randomSigner(parseUnits("100"));
+    [mockSlasher] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
 
@@ -62,6 +87,21 @@ describe("Manager", () => {
       await hre.ethers.getContractFactory("MockAccount")
     ).connect(owner) as MockAccount__factory;
     account = await accountFactory.deploy();
+
+    const lockedGoldFactory: MockLockedGold__factory = (
+      await hre.ethers.getContractFactory("MockLockedGold")
+    ).connect(owner) as MockLockedGold__factory;
+    lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
+
+    const validatorsFactory: MockValidators__factory = (
+      await hre.ethers.getContractFactory("MockValidators")
+    ).connect(owner) as MockValidators__factory;
+    validatorsContract = validatorsFactory.attach(validators.address);
+
+    const registryFactory: MockRegistry__factory = (
+      await hre.ethers.getContractFactory("MockRegistry")
+    ).connect(owner) as MockRegistry__factory;
+    registryContract = registryFactory.attach(REGISTRY_ADDRESS);
 
     const stakedCeloFactory: MockStakedCelo__factory = (
       await hre.ethers.getContractFactory("MockStakedCelo")
@@ -78,7 +118,7 @@ describe("Manager", () => {
       groupAddresses.push(group.address);
     }
 
-    lockedGold = await hre.kit.contracts.getLockedGold();
+    // lockedGold = await hre.kit.contracts.getLockedGold();
     for (let i = 0; i < 11; i++) {
       if (i == 1) {
         // For groups[1] we register an extra validator so it has a higher voting limit.
@@ -279,6 +319,120 @@ describe("Manager", () => {
         await expect(
           manager.connect(nonOwner).deprecateGroup(deprecatedGroup.address)
         ).revertedWith("Ownable: caller is not the owner");
+      });
+    });
+
+    describe("when the group is not elected", () => {
+      // does the group have enough vote to be considered elected
+      // (does any of it's validators meet the electability threshold?)
+      // does the group has at least one elected validators?
+      // electValidatorSigners() => need electability treshold
+      beforeEach(async () => {
+        // These numbers are derived from a system of linear equations such that
+        // given 12 validators registered, as above, we have the following
+        // limits for the first three groups:
+        // group[0] and group[2]: 95864 Locked CELO
+        // group[1]: 143796 Locked CELO
+        // and the remaining receivable votes are [40, 100, 200] (in CELO) for
+        // the three groups, respectively.
+        const votes = [parseUnits("95824"), parseUnits("143696"), parseUnits("95664")];
+
+        const accounts = await hre.kit.contracts.getAccounts();
+        await accounts.createAccount().sendAndWaitForReceipt({
+          from: voter.address,
+        });
+
+        for (let i = 0; i < 3; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          console.log(groupAddresses[i]);
+          await lockedGold.lock().sendAndWaitForReceipt({
+            from: voter.address,
+            value: votes[i].toString(),
+          });
+        }
+
+        // We have to do this in a separate loop because the voting limits
+        // depend on total locked CELO. The votes we want to cast are very close
+        // to the final limit we'll arrive at, so we first lock all CELO, then
+        // cast it as votes.
+        for (let i = 0; i < 3; i++) {
+          const voteTx = await election.vote(
+            groupAddresses[i],
+            new BigNumberJs(votes[i].toString())
+          );
+          await voteTx.sendAndWaitForReceipt({ from: voter.address });
+        }
+        //TODO: need to activate
+
+        const electedVal = await election.electValidatorSigners();
+        console.log(electedVal);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(groupAddresses[1]);
+      });
+    });
+
+    describe("when the group has low uptime score", () => {
+      //TODO
+      // set uptime =0.99
+      //
+    });
+
+    describe.only("when the group is not registered", () => {
+      beforeEach(async () => {
+        await deregisterValidatorGroup(deprecatedGroup);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(deprecatedGroup.address);
+      });
+    });
+
+    describe("when the group has no members", () => {
+      // if voting for a group that has no members, i get no rewards.
+      beforeEach(async () => {
+        await removeMembersFromGroup(deprecatedGroup);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(deprecatedGroup.address);
+      });
+    });
+
+    describe("when the group is slashed", () => {
+      beforeEach(async () => {
+        // const bytes = hre.web3.utils.soliditySha3({
+        //   type: "string",
+        //   value: "MockSlasher",
+        // });
+
+        const coreContractsOwnerAddr = await registryContract.owner();
+
+        await impersonateAccount(coreContractsOwnerAddr);
+        const coreContractsOwner = await hre.ethers.getSigner(coreContractsOwnerAddr);
+
+        await registryContract
+          .connect(coreContractsOwner)
+          .setAddressFor("MockSlasher", mockSlasher.address);
+
+        await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
+        await account.setCeloForGroup(deprecatedGroup.address, 100);
+        await validatorsContract
+          .connect(mockSlasher)
+          .halveSlashingMultiplier(deprecatedGroup.address);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(groupAddresses[1]);
       });
     });
   });

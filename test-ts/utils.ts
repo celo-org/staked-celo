@@ -6,6 +6,8 @@ import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
+import { CeloTxReceipt } from "@celo/connect";
+
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -93,6 +95,35 @@ export async function registerValidator(
   });
 }
 
+export async function removeMembersFromGroup(group: SignerWithAddress) {
+  // get validators contract
+  const validators = await kit.contracts.getValidators();
+
+  // get validator group
+  const validatorGroup = await validators.getValidatorGroup(group.address);
+
+  // deaffiliate then deregister
+  let txs: Promise<CeloTxReceipt>[] = [];
+  for (let validator of validatorGroup.members) {
+    const tx = validators.removeMember(validator).sendAndWaitForReceipt({ from: group.address });
+    txs.push(tx);
+  }
+
+  await Promise.all(txs);
+}
+
+export async function deregisterValidatorGroup(group: SignerWithAddress) {
+  const validators = await kit.contracts.getValidators();
+  await removeMembersFromGroup(group);
+  const groupRequirementEndTime = await validators.getGroupLockedGoldRequirements();
+
+  await timeTravel(groupRequirementEndTime.duration.toNumber() + 2 * DAY);
+
+  await (
+    await validators.deregisterValidatorGroup(group.address)
+  ).sendAndWaitForReceipt({ from: group.address });
+}
+
 export async function activateValidators(
   managerContract: Manager,
   multisigOwner: string,
@@ -151,7 +182,7 @@ async function setBalance(address: string, balance: EthersBigNumber) {
   ]);
 }
 
-async function impersonateAccount(address: string) {
+export async function impersonateAccount(address: string) {
   await hre.network.provider.send("hardhat_impersonateAccount", [address]);
 }
 
