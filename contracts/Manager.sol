@@ -220,8 +220,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address[] memory electedValidatorSigners = election.electValidatorSigners();
 
         for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
-            console.log(electedValidatorSigners[i], groupMember);
-
             if (electedValidatorSigners[i] == groupMember) {
                 return true;
             }

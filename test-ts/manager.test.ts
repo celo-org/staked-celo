@@ -359,7 +359,6 @@ describe("Manager", () => {
         // cast it as votes.
         for (let i = 0; i < 11; i++) {
           if (i == 1) {
-            console.log("skipping group", groupAddresses[i]);
             continue;
           }
 
