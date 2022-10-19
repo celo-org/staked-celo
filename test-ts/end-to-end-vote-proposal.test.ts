@@ -24,7 +24,6 @@ import {
   Proposal,
   ProposalTransaction,
 } from "@celo/contractkit/lib/wrappers/Governance";
-import { NULL_ADDRESS } from "@celo/contractkit";
 
 after(() => {
   hre.kit.stop();
@@ -216,15 +215,27 @@ describe("e2e governance vote", () => {
     expect(expectedVotingPower).to.eq(depositor1VotingPower);
     expect(voteRecord.yesVotes).to.eq(depositor1VotingPower);
 
-    // const transferStCeloTx = await stakedCeloContract.connect(depositor1).transfer(managerContract.address, amountOfCeloToDeposit);
-    // await transferStCeloTx.wait()
+    await expect(
+      stakedCeloContract
+        .connect(depositor1)
+        .transfer(managerContract.address, amountOfCeloToDeposit)
+    ).revertedWith("Not enough stCelo");
 
-    // const governanceVoteRecord = await governanceWrapper.getVoteRecord(accountContract.address, proposalId)
-    // console.log("governanceVoteRecord", JSON.stringify(governanceVoteRecord))
+    const stageDurations = await governanceWrapper.stageDurations();
 
-    // const stageDurations = await governanceWrapper.stageDurations()
+    await timeTravel(stageDurations.Referendum.toNumber() + 1);
 
-    // await timeTravel(stageDurations.Referendum.toNumber())
+    const transferStCeloTx = await stakedCeloContract
+      .connect(depositor1)
+      .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
+    const receipt1 = await transferStCeloTx.wait();
+    console.log("gasCost1", receipt1.gasUsed.toString());
+
+    const transferStCeloTx2 = await stakedCeloContract
+      .connect(depositor1)
+      .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
+    const receipt2 = await transferStCeloTx2.wait();
+    console.log("gasCost2", receipt2.gasUsed.toString());
 
     // const unlockStakedCeloTx = await managerContract.unlockStCelo(amountOfCeloToDeposit);
     // await unlockStakedCeloTx.wait()

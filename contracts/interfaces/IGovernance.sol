@@ -9,6 +9,17 @@ interface IGovernance {
         Yes
     }
 
+    enum Stage {
+        None,
+        Queued,
+        Approval,
+        Referendum,
+        Execution,
+        Expiration
+    }
+
+    function concurrentProposals() external returns (uint256);
+
     function votePartially(
         uint256 proposalId,
         uint256 index,
@@ -23,4 +34,6 @@ interface IGovernance {
         uint256 index,
         VoteValue value
     ) external;
+
+    function getProposalStage(uint256 proposalId) external view returns (IGovernance.Stage);
 }

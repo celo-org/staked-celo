@@ -2,10 +2,14 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
+import "./interfaces/IManager.sol";
+
+// import "hardhat/console.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation
@@ -78,10 +82,10 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingR
         if (lockedBalance > 0 && from != address(0)) {
             uint256 currentBalance = balanceOf(from);
             if (currentBalance - lockedBalance < amount) {
-                IGovernance governance = getGovernance();
-                uint256 lockedGoldInVoting = governance.getAmountOfGoldUsedForVoting(from);
-                require(currentBalance - lockedGoldInVoting >= amount, "Not enough stCelo");
-                _lockedBalances[from] = lockedGoldInVoting;
+                IManager managerContract = IManager(manager);
+                uint256 lockedStakedCeloInVoting = managerContract.getLockedStCeloInVoting(from);
+                require(currentBalance - lockedStakedCeloInVoting >= amount, "Not enough stCelo");
+                _lockedBalances[from] = lockedStakedCeloInVoting;
             }
         }
     }

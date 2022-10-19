@@ -38,11 +38,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     struct Voter {
         // Key of proposalId
         mapping(uint256 => VoterRecord) proposalVotes;
+        uint256[] votedProposalIds;
     }
 
     struct VoterRecord {
+        uint256 proposalId;
         uint256[] weights;
         IGovernance.VoteValue[] values;
+        uint256 totalWeighs;
     }
 
     mapping(address => Voter) private voters;
@@ -664,23 +667,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 stakedCeloBalance = stakedCelo.balanceOf(msg.sender);
         require(stakedCeloBalance > 0, "No staked celo");
-        require(
-            getTotalWeightRequested(weights) <= toCelo(stakedCeloBalance),
-            "Not enough celo to vote"
-        );
+        uint256 totalWeights = getTotalWeightRequested(weights);
+        require(totalWeights <= toCelo(stakedCeloBalance), "Not enough celo to vote");
 
         Voter storage voter = voters[msg.sender];
 
         VoterRecord storage previousVoterRecord = voter.proposalVotes[proposalId];
-        VoterRecord memory currentVoterRecord = VoterRecord(weights, voteValues);
-        ProposalVoteRecord storage proposalVoteRecord = voteRecords[proposalId];
+        VoterRecord memory currentVoterRecord = VoterRecord(
+            proposalId,
+            weights,
+            voteValues,
+            totalWeights
+        );
+        ProposalVoteRecord memory proposalVoteRecord = voteRecords[proposalId];
 
         updateProposalVoteRecord(proposalVoteRecord, previousVoterRecord, currentVoterRecord);
-
-        IGovernance.VoteValue[] memory voteProposalValues = new IGovernance.VoteValue[](3);
-        voteProposalValues[0] = IGovernance.VoteValue.Yes;
-        voteProposalValues[1] = IGovernance.VoteValue.No;
-        voteProposalValues[2] = IGovernance.VoteValue.Abstain;
 
         uint256[] memory proposalWeights = new uint256[](3);
         proposalWeights[0] = proposalVoteRecord.yesVotes;
@@ -688,7 +689,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         proposalWeights[2] = proposalVoteRecord.abstainVotes;
 
         stakedCelo.lockBalance(msg.sender, stakedCeloBalance);
-        account.voteProposal(proposalId, index, voteProposalValues, proposalWeights);
+        account.voteProposal(proposalId, index, generateVoteProposalValues(), proposalWeights);
 
         voteRecords[proposalId] = ProposalVoteRecord(
             proposalId,
@@ -697,9 +698,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             proposalWeights[2]
         );
 
+        if (previousVoterRecord.proposalId == 0) {
+            voter.votedProposalIds.push(proposalId);
+        }
+
         voter.proposalVotes[proposalId] = currentVoterRecord;
 
         emit ProposalVoted(msg.sender, proposalId, voteValues, weights);
+    }
+
+    function generateVoteProposalValues() public view returns (IGovernance.VoteValue[] memory) {
+        IGovernance.VoteValue[] memory voteProposalValues = new IGovernance.VoteValue[](3);
+        voteProposalValues[0] = IGovernance.VoteValue.Yes;
+        voteProposalValues[1] = IGovernance.VoteValue.No;
+        voteProposalValues[2] = IGovernance.VoteValue.Abstain;
+
+        return voteProposalValues;
     }
 
     /**
@@ -709,7 +723,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param currentVoterRecord expect
      */
     function updateProposalVoteRecord(
-        ProposalVoteRecord storage proposalVoteRecord,
+        ProposalVoteRecord memory proposalVoteRecord,
         VoterRecord storage previousVoterRecord,
         VoterRecord memory currentVoterRecord
     ) private {
@@ -732,6 +746,23 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 proposalVoteRecord.abstainVotes += currentVoterRecord.weights[i];
             }
         }
+    }
+
+    function getLockedStCeloInVoting(address accountAddress) public returns (uint256 lockedAmount) {
+        Voter storage voter = voters[accountAddress];
+        IGovernance governance = getGovernance();
+
+        for (uint256 i = voter.votedProposalIds.length; i > 0; i--) {
+            uint256 proposalId = voter.votedProposalIds[i - 1];
+            IGovernance.Stage stage = governance.getProposalStage(proposalId);
+            if (stage == IGovernance.Stage.Referendum) {
+                lockedAmount += voter.proposalVotes[proposalId].totalWeighs;
+            } else if (stage > IGovernance.Stage.Referendum) {
+                voter.votedProposalIds.pop();
+            }
+        }
+
+        return toStakedCelo(lockedAmount);
     }
 
     /**
