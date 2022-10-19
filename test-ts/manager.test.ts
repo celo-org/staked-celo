@@ -14,6 +14,9 @@ import { MockValidators__factory } from "../typechain-types/factories/MockValida
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
 
+import { MockElection } from "../typechain-types/MockElection";
+import { MockElection__factory } from "../typechain-types/factories/MockElection__factory";
+
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
 
@@ -45,6 +48,7 @@ describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
   let lockedGoldContract: MockLockedGold;
+  // let electionContract: MockElection;
   let validatorsContract: MockValidators;
 
   let registryContract: MockRegistry;
@@ -92,6 +96,11 @@ describe("Manager", () => {
       await hre.ethers.getContractFactory("MockLockedGold")
     ).connect(owner) as MockLockedGold__factory;
     lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
+
+    // const electionFactory: MockElection__factory = (
+    //   await hre.ethers.getContractFactory("MockElection")
+    // ).connect(owner) as MockElection__factory;
+    // electionContract = electionFactory.attach(election.address);
 
     const validatorsFactory: MockValidators__factory = (
       await hre.ethers.getContractFactory("MockValidators")
@@ -322,11 +331,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("when the group is not elected", () => {
-      // does the group have enough vote to be considered elected
-      // (does any of it's validators meet the electability threshold?)
-      // does the group has at least one elected validators?
-      // electValidatorSigners() => need electability treshold
+    describe.only("when the group is not elected", () => {
       beforeEach(async () => {
         // These numbers are derived from a system of linear equations such that
         // given 12 validators registered, as above, we have the following
@@ -335,19 +340,16 @@ describe("Manager", () => {
         // group[1]: 143796 Locked CELO
         // and the remaining receivable votes are [40, 100, 200] (in CELO) for
         // the three groups, respectively.
-        const votes = [parseUnits("95824"), parseUnits("143696"), parseUnits("95664")];
 
         const accounts = await hre.kit.contracts.getAccounts();
         await accounts.createAccount().sendAndWaitForReceipt({
           from: voter.address,
         });
 
-        for (let i = 0; i < 3; i++) {
-          await manager.activateGroup(groupAddresses[i]);
-          console.log(groupAddresses[i]);
+        for (let i = 0; i < 11; i++) {
           await lockedGold.lock().sendAndWaitForReceipt({
             from: voter.address,
-            value: votes[i].toString(),
+            value: parseUnits("95824").toString(),
           });
         }
 
@@ -355,21 +357,31 @@ describe("Manager", () => {
         // depend on total locked CELO. The votes we want to cast are very close
         // to the final limit we'll arrive at, so we first lock all CELO, then
         // cast it as votes.
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 11; i++) {
+          if (i == 1) {
+            console.log("skipping group", groupAddresses[i]);
+            continue;
+          }
+
           const voteTx = await election.vote(
             groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
+            new BigNumberJs(parseUnits("95824").toString())
           );
           await voteTx.sendAndWaitForReceipt({ from: voter.address });
         }
-        //TODO: need to activate
 
-        const electedVal = await election.electValidatorSigners();
-        console.log(electedVal);
+        await mineToNextEpoch(kit.web3);
+
+        // activate votes
+        const activateTxs = await election.activate(voter.address);
+
+        for (let i = 0; i < activateTxs.length; i++) {
+          await activateTxs[i].sendAndWaitForReceipt({ from: voter.address });
+        }
       });
 
       it("should deprecate group", async () => {
-        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+        await expect(await manager.deprecateBadGroup(groupAddresses[1]))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(groupAddresses[1]);
       });
@@ -381,7 +393,7 @@ describe("Manager", () => {
       //
     });
 
-    describe.only("when the group is not registered", () => {
+    describe("when the group is not registered", () => {
       beforeEach(async () => {
         await deregisterValidatorGroup(deprecatedGroup);
       });

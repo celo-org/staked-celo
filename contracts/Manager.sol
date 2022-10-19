@@ -9,6 +9,8 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 
+import "../node_modules/hardhat/console.sol";
+
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
  * of stCELO and implementing strategies for voting and unvoting of deposited or
@@ -209,6 +211,73 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateGroup(address group) external onlyOwner {
+        _deprecateGroup(group);
+    }
+
+    function isGroupMemberElected(address groupMember) public view returns (bool) {
+        IElection election = getElection();
+
+        address[] memory electedValidatorSigners = election.electValidatorSigners();
+
+        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
+            console.log(electedValidatorSigners[i], groupMember);
+
+            if (electedValidatorSigners[i] == groupMember) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function deprecateBadGroup(address group) external {
+        IValidators validators = getValidators();
+
+        // add check if group is !registered
+        if (!validators.isValidatorGroup(group)) {
+            _deprecateGroup(group);
+            return;
+        }
+
+        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
+            .getValidatorGroup(group);
+
+        // check if group has no members
+        if (members.length == 0) {
+            _deprecateGroup(group);
+            return;
+        }
+        // check for recent slash
+        if ((slashMultiplier) < 10**24) {
+            _deprecateGroup(group);
+            return;
+        }
+        // check for elected members
+        uint256 counter = 0;
+        for (uint256 i = 0; i < members.length; i++) {
+            if (!isGroupMemberElected(members[i])) {
+                counter += 1;
+                if (counter >= members.length / 2) {
+                    _deprecateGroup(group);
+                    return;
+                }
+            }
+        }
+
+        // TODO: add check for uptime --> required uptime calculation.
+        // TODO: add check for reward multiplier --> required uptime calculation.
+        // TODO: add check for group epoch reward --> required uptime calculation.
+        // TODO: add check for epoch score --> required uptime calculation.
+        // validators.calculateGroupEpochScore(uptimes);
+
+        //add check for % block signed
+    }
+
+    /**
+     * @notice Marks a group as deprecated.
+     * @param group The group to deprecate.
+     */
+    function _deprecateGroup(address group) private {
         if (!activeGroups.remove(group)) {
             revert GroupNotActive(group);
         }
