@@ -117,7 +117,7 @@ describe("Manager", () => {
     ).connect(owner) as MockStakedCelo__factory;
     stakedCelo = await stakedCeloFactory.deploy();
 
-    manager.setDependencies(stakedCelo.address, account.address);
+    await manager.setDependencies(stakedCelo.address, account.address);
 
     groups = [];
     groupAddresses = [];
@@ -150,7 +150,7 @@ describe("Manager", () => {
     await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe("#activateGroup()", () => {
+  describe.only("#activateGroup()", () => {
     it("adds a group", async () => {
       await manager.activateGroup(groupAddresses[0]);
       const activeGroups = await manager.getGroups();
@@ -188,7 +188,7 @@ describe("Manager", () => {
           .withArgs(groupAddresses[3]);
       });
 
-      it("reverts when trying to add an existing group", async () => {
+      it.only("reverts when trying to add an existing group", async () => {
         await expect(manager.activateGroup(groupAddresses[1])).revertedWith(
           `GroupAlreadyAdded("${groupAddresses[1]}")`
         );
@@ -331,7 +331,7 @@ describe("Manager", () => {
       });
     });
 
-    describe.only("when the group is not elected", () => {
+    describe("when the group is not elected", () => {
       beforeEach(async () => {
         // These numbers are derived from a system of linear equations such that
         // given 12 validators registered, as above, we have the following
@@ -380,17 +380,21 @@ describe("Manager", () => {
       });
 
       it("should deprecate group", async () => {
-        await expect(await manager.deprecateBadGroup(groupAddresses[1]))
+        await expect(await manager.deprecateUnhealthyGroup(groupAddresses[1]))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(groupAddresses[1]);
       });
     });
 
-    describe("when the group has low uptime score", () => {
-      //TODO
-      // set uptime =0.99
-      //
-    });
+    // describe.only("when the group has low uptime score", () => {
+    //   //TODO
+    //   // set uptime =0.99
+    //   //
+    //   beforeEach(async () => {
+    //    election.getVoterRewards
+    //    election.getGroupVoterRewards
+    //   });
+    // });
 
     describe("when the group is not registered", () => {
       beforeEach(async () => {
@@ -398,7 +402,7 @@ describe("Manager", () => {
       });
 
       it("should deprecate group", async () => {
-        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(deprecatedGroup.address);
       });
@@ -411,7 +415,7 @@ describe("Manager", () => {
       });
 
       it("should deprecate group", async () => {
-        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(deprecatedGroup.address);
       });
@@ -441,7 +445,7 @@ describe("Manager", () => {
       });
 
       it("should deprecate group", async () => {
-        await expect(await manager.deprecateBadGroup(deprecatedGroup.address))
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(groupAddresses[1]);
       });
