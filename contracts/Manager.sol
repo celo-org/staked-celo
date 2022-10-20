@@ -9,8 +9,6 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 
-import "../node_modules/hardhat/console.sol";
-
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
  * of stCELO and implementing strategies for voting and unvoting of deposited or
@@ -134,6 +132,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error ZeroWithdrawal();
 
     /**
+     * @notice Used when a group does not meet the validator group health requirements.
+     * @param group The group's address.
+     */
+    error GroupNotEligible(address group);
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -172,6 +176,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * Election contract).
      */
     function activateGroup(address group) external onlyOwner {
+        if (!isValidGroup(group)) {
+            revert GroupNotEligible(group);
+        }
+
         if (activeGroups.contains(group)) {
             revert GroupAlreadyAdded(group);
         }
@@ -214,7 +222,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         _deprecateGroup(group);
     }
 
-    function isGroupMemberElected(address groupMember) public view returns (bool) {
+    function isGroupMemberElected(address groupMember) private view returns (bool) {
         IElection election = getElection();
 
         address[] memory electedValidatorSigners = election.electValidatorSigners();
@@ -228,6 +236,38 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return false;
     }
 
+    function isValidGroup(address group) private view returns (bool) {
+        IValidators validators = getValidators();
+
+        // add check if group is !registered
+        if (!validators.isValidatorGroup(group)) {
+            return false;
+        }
+
+        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
+            .getValidatorGroup(group);
+
+        // check if group has no members
+        if (members.length == 0) {
+            return false;
+        }
+        // check for recent slash
+        if ((slashMultiplier) < 10**24) {
+            return false;
+        }
+        // check for elected members
+        uint256 counter = 0;
+        for (uint256 i = 0; i < members.length; i++) {
+            if (!isGroupMemberElected(members[i])) {
+                counter += 1;
+                if (counter >= members.length / 2) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /**
      * @notice Marks an unhealthy group as deprecated.
      * @param group The group to deprecate if unhealthy.
@@ -236,46 +276,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateUnhealthyGroup(address group) external {
-        IValidators validators = getValidators();
-
-        // add check if group is !registered
-        if (!validators.isValidatorGroup(group)) {
-            _deprecateGroup(group);
-            return;
+        if (!isValidGroup(group)) {
+            _deprecateGroup((group));
         }
-
-        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
-            .getValidatorGroup(group);
-
-        // check if group has no members
-        if (members.length == 0) {
-            _deprecateGroup(group);
-            return;
-        }
-        // check for recent slash
-        if ((slashMultiplier) < 10**24) {
-            _deprecateGroup(group);
-            return;
-        }
-        // check for elected members
-        uint256 counter = 0;
-        for (uint256 i = 0; i < members.length; i++) {
-            if (!isGroupMemberElected(members[i])) {
-                counter += 1;
-                if (counter >= members.length / 2) {
-                    _deprecateGroup(group);
-                    return;
-                }
-            }
-        }
-
-        // TODO: add check for uptime --> required uptime calculation.
-        // TODO: add check for reward multiplier --> required uptime calculation.
-        // TODO: add check for group epoch reward --> required uptime calculation.
-        // TODO: add check for epoch score --> required uptime calculation.
-        // validators.calculateGroupEpochScore(uptimes);
-
-        //add check for % block signed
     }
 
     /**
