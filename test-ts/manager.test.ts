@@ -1,4 +1,4 @@
-import hre, { kit } from "hardhat";
+import hre from "hardhat";
 import { BigNumber } from "ethers";
 import BigNumberJs from "bignumber.js";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
@@ -13,10 +13,6 @@ import { MockValidators } from "../typechain-types/MockValidators";
 import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
-
-import { MockElection } from "../typechain-types/MockElection";
-import { MockElection__factory } from "../typechain-types/factories/MockElection__factory";
-
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
 
@@ -30,12 +26,13 @@ import {
   removeMembersFromGroup,
   deregisterValidatorGroup,
   impersonateAccount,
-  mineToNextEpoch,
   randomSigner,
   registerValidator,
   registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
+  electMinimumNumberOfValidators,
+  electGroup,
 } from "./utils";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
@@ -48,9 +45,7 @@ describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
   let lockedGoldContract: MockLockedGold;
-  // let electionContract: MockElection;
   let validatorsContract: MockValidators;
-
   let registryContract: MockRegistry;
 
   let manager: Manager;
@@ -97,11 +92,6 @@ describe("Manager", () => {
     ).connect(owner) as MockLockedGold__factory;
     lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
 
-    // const electionFactory: MockElection__factory = (
-    //   await hre.ethers.getContractFactory("MockElection")
-    // ).connect(owner) as MockElection__factory;
-    // electionContract = electionFactory.attach(election.address);
-
     const validatorsFactory: MockValidators__factory = (
       await hre.ethers.getContractFactory("MockValidators")
     ).connect(owner) as MockValidators__factory;
@@ -118,6 +108,14 @@ describe("Manager", () => {
     stakedCelo = await stakedCeloFactory.deploy();
 
     await manager.setDependencies(stakedCelo.address, account.address);
+    // create voter accounts
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: someone.address,
+    });
 
     groups = [];
     groupAddresses = [];
@@ -126,8 +124,7 @@ describe("Manager", () => {
       groups.push(group);
       groupAddresses.push(group.address);
     }
-
-    // lockedGold = await hre.kit.contracts.getLockedGold();
+    // register validators and validator groups
     for (let i = 0; i < 11; i++) {
       if (i == 1) {
         // For groups[1] we register an extra validator so it has a higher voting limit.
@@ -140,6 +137,9 @@ describe("Manager", () => {
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
       await registerValidator(groups[i], validator, validatorWallet);
     }
+
+    // elect validators
+    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -150,7 +150,7 @@ describe("Manager", () => {
     await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe.only("#activateGroup()", () => {
+  describe("#activateGroup()", () => {
     it("adds a group", async () => {
       await manager.activateGroup(groupAddresses[0]);
       const activeGroups = await manager.getGroups();
@@ -188,7 +188,7 @@ describe("Manager", () => {
           .withArgs(groupAddresses[3]);
       });
 
-      it.only("reverts when trying to add an existing group", async () => {
+      it("reverts when trying to add an existing group", async () => {
         await expect(manager.activateGroup(groupAddresses[1])).revertedWith(
           `GroupAlreadyAdded("${groupAddresses[1]}")`
         );
@@ -199,7 +199,8 @@ describe("Manager", () => {
       let additionalGroup: SignerWithAddress;
 
       beforeEach(async () => {
-        [additionalGroup] = await randomSigner(parseUnits("100"));
+        additionalGroup = groups[10];
+        await electGroup(additionalGroup.address, someone);
 
         for (let i = 0; i < 10; i++) {
           await manager.activateGroup(groups[i].address);
@@ -330,53 +331,34 @@ describe("Manager", () => {
         ).revertedWith("Ownable: caller is not the owner");
       });
     });
+  });
+
+  describe("#deprecateUnhealthyGroup()", async () => {
+    let deprecatedGroup: SignerWithAddress;
+
+    beforeEach(async () => {
+      deprecatedGroup = groups[1];
+      for (let i = 0; i < 3; i++) {
+        await manager.activateGroup(groups[i].address);
+      }
+    });
 
     describe("when the group is not elected", () => {
       beforeEach(async () => {
-        // These numbers are derived from a system of linear equations such that
-        // given 12 validators registered, as above, we have the following
-        // limits for the first three groups:
-        // group[0] and group[2]: 95864 Locked CELO
-        // group[1]: 143796 Locked CELO
-        // and the remaining receivable votes are [40, 100, 200] (in CELO) for
-        // the three groups, respectively.
+        const groupVotes = await election.getVotesForGroupByAccount(
+          voter.address,
+          deprecatedGroup.address
+        );
 
-        const accounts = await hre.kit.contracts.getAccounts();
-        await accounts.createAccount().sendAndWaitForReceipt({
-          from: voter.address,
-        });
-
-        for (let i = 0; i < 11; i++) {
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: parseUnits("95824").toString(),
-          });
+        const revokeTx = await election.revoke(
+          voter.address,
+          deprecatedGroup.address,
+          groupVotes.active
+        );
+        for (let i = 0; i < revokeTx.length; i++) {
+          await revokeTx[i].sendAndWaitForReceipt({ from: voter.address });
         }
-
-        // We have to do this in a separate loop because the voting limits
-        // depend on total locked CELO. The votes we want to cast are very close
-        // to the final limit we'll arrive at, so we first lock all CELO, then
-        // cast it as votes.
-        for (let i = 0; i < 11; i++) {
-          if (i == 1) {
-            continue;
-          }
-
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(parseUnits("95824").toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
-        }
-
-        await mineToNextEpoch(kit.web3);
-
-        // activate votes
-        const activateTxs = await election.activate(voter.address);
-
-        for (let i = 0; i < activateTxs.length; i++) {
-          await activateTxs[i].sendAndWaitForReceipt({ from: voter.address });
-        }
+        await electGroup(groups[10].address, someone);
       });
 
       it("should deprecate group", async () => {
@@ -385,16 +367,6 @@ describe("Manager", () => {
           .withArgs(groupAddresses[1]);
       });
     });
-
-    // describe.only("when the group has low uptime score", () => {
-    //   //TODO
-    //   // set uptime =0.99
-    //   //
-    //   beforeEach(async () => {
-    //    election.getVoterRewards
-    //    election.getGroupVoterRewards
-    //   });
-    // });
 
     describe("when the group is not registered", () => {
       beforeEach(async () => {
@@ -702,18 +674,13 @@ describe("Manager", () => {
     describe("when groups are close to their voting limit", () => {
       beforeEach(async () => {
         // These numbers are derived from a system of linear equations such that
-        // given 12 validators registered, as above, we have the following
+        // given 12 validators registered and elected, as above, we have the following
         // limits for the first three groups:
         // group[0] and group[2]: 95864 Locked CELO
-        // group[1]: 143796 Locked CELO
+        // group[1]: 143797 Locked CELO
         // and the remaining receivable votes are [40, 100, 200] (in CELO) for
         // the three groups, respectively.
-        const votes = [parseUnits("95824"), parseUnits("143696"), parseUnits("95664")];
-
-        const accounts = await hre.kit.contracts.getAccounts();
-        await accounts.createAccount().sendAndWaitForReceipt({
-          from: voter.address,
-        });
+        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
         for (let i = 0; i < 3; i++) {
           await manager.activateGroup(groupAddresses[i]);

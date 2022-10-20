@@ -7,6 +7,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
 import { CeloTxReceipt } from "@celo/connect";
+import { parseUnits } from "ethers/lib/utils";
+import BigNumberJs from "bignumber.js";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -141,6 +143,47 @@ export async function activateValidators(
     );
   }
   await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
+}
+
+export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
+  const lockedGold = await kit.contracts.getLockedGold();
+  const election = await kit.contracts.getElection();
+
+  await lockedGold.lock().sendAndWaitForReceipt({
+    from: voter.address,
+    value: parseUnits("1").toString(),
+  });
+
+  const voteTx = await election.vote(groupAddress, new BigNumberJs(parseUnits("1").toString()));
+  await voteTx.sendAndWaitForReceipt({ from: voter.address });
+}
+
+export async function activateVotesForGroup(voter: SignerWithAddress) {
+  const election = await kit.contracts.getElection();
+  const activateTxs = await election.activate(voter.address);
+
+  for (let i = 0; i < activateTxs.length; i++) {
+    await activateTxs[i].sendAndWaitForReceipt({ from: voter.address });
+  }
+}
+
+export async function electMinimumNumberOfValidators(
+  groups: SignerWithAddress[],
+  voter: SignerWithAddress
+) {
+  for (let i = 0; i < 10; i++) {
+    await voteForGroup(groups[i].address, voter);
+  }
+  await mineToNextEpoch(kit.web3);
+
+  // activate votes
+  await activateVotesForGroup(voter);
+}
+
+export async function electGroup(groupAddress: string, voter: SignerWithAddress) {
+  await voteForGroup(groupAddress, voter);
+  await mineToNextEpoch(kit.web3);
+  await activateVotesForGroup(voter);
 }
 
 // ---- Account utils ----
