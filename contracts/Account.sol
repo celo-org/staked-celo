@@ -703,7 +703,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         // solhint-disable-next-line
         uint256[] calldata weights
     ) public onlyManager {
-        // getGovernance().votePartially(proposalId, index, voteValues, weights);
-        getGovernance().vote(proposalId, index, voteValues[0]);
+        getGovernance().votePartially(proposalId, index, voteValues, weights);
     }
 }

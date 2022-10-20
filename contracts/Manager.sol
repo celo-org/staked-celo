@@ -48,8 +48,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 totalWeighs;
     }
 
-    mapping(address => Voter) private voters;
-
     /**
      * @notice An instance of the StakedCelo contract this Manager manages.
      */
@@ -74,6 +72,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     EnumerableSet.AddressSet private deprecatedGroups;
 
     mapping(uint256 => ProposalVoteRecord) private voteRecords;
+    mapping(address => Voter) private voters;
+    // proposalId => proposal timestamp
+    mapping(uint256 => uint256) private proposalTimestamps;
+    uint256 private referendumDuration;
 
     /**
      * @notice Emitted when a new group is activated for voting.
@@ -705,9 +707,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         voter.proposalVotes[proposalId] = currentVoterRecord;
 
         emit ProposalVoted(msg.sender, proposalId, voteValues, weights);
+
+        if (proposalTimestamps[proposalId] == 0) {
+            proposalTimestamps[proposalId] = getProposalTimestamp(proposalId);
+        }
     }
 
-    function generateVoteProposalValues() public view returns (IGovernance.VoteValue[] memory) {
+    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
+        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
+        return timestamp;
+    }
+
+    function generateVoteProposalValues() public pure returns (IGovernance.VoteValue[] memory) {
         IGovernance.VoteValue[] memory voteProposalValues = new IGovernance.VoteValue[](3);
         voteProposalValues[0] = IGovernance.VoteValue.Yes;
         voteProposalValues[1] = IGovernance.VoteValue.No;
@@ -726,7 +737,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         ProposalVoteRecord memory proposalVoteRecord,
         VoterRecord storage previousVoterRecord,
         VoterRecord memory currentVoterRecord
-    ) private {
+    ) private view {
         for (uint256 i = 0; i < previousVoterRecord.values.length; i++) {
             if (previousVoterRecord.values[i] == IGovernance.VoteValue.Yes) {
                 proposalVoteRecord.yesVotes -= previousVoterRecord.weights[i];
@@ -750,20 +761,49 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     function getLockedStCeloInVoting(address accountAddress) public returns (uint256 lockedAmount) {
         Voter storage voter = voters[accountAddress];
-        IGovernance governance = getGovernance();
 
-        for (uint256 i = voter.votedProposalIds.length; i > 0; i--) {
-            uint256 proposalId = voter.votedProposalIds[i - 1];
-            IGovernance.Stage stage = governance.getProposalStage(proposalId);
-            if (stage == IGovernance.Stage.Referendum) {
-                lockedAmount += voter.proposalVotes[proposalId].totalWeighs;
-            } else if (stage > IGovernance.Stage.Referendum) {
+        uint256 i = voter.votedProposalIds.length;
+        while (i > 0) {
+            uint256 proposalId = voter.votedProposalIds[--i];
+            uint256 proposalTimestamp = proposalTimestamps[proposalId];
+
+            if (proposalTimestamp == 0) {
                 voter.votedProposalIds.pop();
+                continue;
+            }
+
+            if (block.timestamp < proposalTimestamp + referendumDuration) {
+                lockedAmount = Math.max(lockedAmount, voter.proposalVotes[proposalId].totalWeighs);
+            } else {
+                voter.votedProposalIds.pop();
+                delete proposalTimestamps[proposalId];
             }
         }
 
         return toStakedCelo(lockedAmount);
     }
+
+    // function getLockedStCeloInVotingView(address accountAddress)
+    // public view returns (uint256 lockedAmount) {
+    //     Voter storage voter = voters[accountAddress];
+
+    //     uint256 i = voter.votedProposalIds.length;
+    //     while (i > 0) {
+    //         uint256 proposalId = voter.votedProposalIds[--i];
+    //         uint256 proposalTimestamp = proposalTimestamps[proposalId];
+
+    //         if (proposalTimestamp == 0) {
+    //             continue;
+    //         }
+
+    //         if (block.timestamp < proposalTimestamp + referendumDuration) {
+    //             lockedAmount =
+    //             Math.max(lockedAmount, voter.proposalVotes[proposalId].totalWeighs);
+    //         }
+    //     }
+
+    //     return toStakedCelo(lockedAmount);
+    // }
 
     /**
      * @notice Returns sum of input weights.
@@ -777,6 +817,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         return totalVotesRequested;
+    }
+
+    function setReferendumDuration(uint256 newReferendumDuration) public onlyOwner {
+        referendumDuration = newReferendumDuration;
     }
 
     function getVoteWeight(address accountAddress) public view returns (uint256) {

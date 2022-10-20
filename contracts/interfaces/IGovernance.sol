@@ -36,4 +36,15 @@ interface IGovernance {
     ) external;
 
     function getProposalStage(uint256 proposalId) external view returns (IGovernance.Stage);
+
+    function getProposal(uint256 proposalId)
+        external
+        view
+        returns (
+            address,
+            uint256,
+            uint256,
+            uint256,
+            string memory
+        );
 }

@@ -102,28 +102,43 @@ describe("e2e governance vote", () => {
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
-    const minDeposit = await governanceWrapper.minDeposit();
+    // const minDeposit = await governanceWrapper.minDeposit();
 
-    console.log("minDeposit", minDeposit.toString());
+    // const ownertx: ProposalTransaction = {
+    //   value: "0",
+    //   to: managerContract.address,
+    //   input: managerContract.interface.encodeFunctionData("owner"),
+    // };
 
-    const ownertx: ProposalTransaction = {
-      value: "0",
-      to: managerContract.address,
-      input: managerContract.interface.encodeFunctionData("owner"),
-    };
-    const proposal: Proposal = [ownertx];
+    // const ownertx2: ProposalTransaction = {
+    //   value: "0",
+    //   to: accountContract.address,
+    //   input: accountContract.interface.encodeFunctionData("owner"),
+    // };
 
-    const tx = await governanceWrapper.propose(proposal, "http://www.descriptionUrl.com");
+    // const proposal: Proposal = [ownertx];
+    // const proposal2: Proposal = [ownertx2];
 
-    await tx.send({ from: depositor1.address, value: minDeposit.toString() });
+    // const dequeueFrequency = await governanceWrapper.dequeueFrequency();
 
-    const queue = await governanceWrapper.getQueue();
+    // await timeTravel(dequeueFrequency.toNumber() + 1);
 
-    const dequeueFrequency = await governanceWrapper.dequeueFrequency();
-    await timeTravel(dequeueFrequency.toNumber() + 1);
-    const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
-    await dequeueProposalIfReadyTx.send({ from: depositor1.address });
-    const dequeue = await governanceWrapper.getDequeue();
+    // const tx = await governanceWrapper.propose(proposal, "http://www.descriptionUrl.com");
+    // await tx.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    // await timeTravel(dequeueFrequency.toNumber() + 1)
+
+    // const tx2 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    // await tx2.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    // await timeTravel(dequeueFrequency.toNumber() + 1)
+
+    // const tx3 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    // await tx3.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    // await timeTravel(dequeueFrequency.toNumber() + 1);
+    // const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
+    // await dequeueProposalIfReadyTx.send({ from: depositor1.address });
     const approver = await governanceWrapper.getApprover();
     impersonateAccount(approver);
 
@@ -132,17 +147,19 @@ describe("e2e governance vote", () => {
       to: approver,
       value: hre.web3.utils.toWei("10"),
     });
-    const approveTx = await governanceWrapper.approve(1);
-    await approveTx.send({ from: approver });
+    // const approveTx = await governanceWrapper.approve(1);
+    // await approveTx.send({ from: approver });
 
-    const stageDurations = await governanceWrapper.stageDurations();
-    await timeTravel(stageDurations.Approval.toNumber());
+    // const stageDurations = await governanceWrapper.stageDurations();
+    // await timeTravel(stageDurations.Approval.toNumber());
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
   });
 
   it("vote proposal", async () => {
+    const stageDurations = await governanceWrapper.stageDurations();
+
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from("10000000000000000");
     const rewardsGroup0 = hre.ethers.BigNumber.from("1000000000000000000");
     const rewardsGroup1 = hre.ethers.BigNumber.from("2000000000000000000");
@@ -161,6 +178,44 @@ describe("e2e governance vote", () => {
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
 
+    const minDeposit = await governanceWrapper.minDeposit();
+
+    const ownertx: ProposalTransaction = {
+      value: "0",
+      to: managerContract.address,
+      input: managerContract.interface.encodeFunctionData("owner"),
+    };
+
+    const ownertx2: ProposalTransaction = {
+      value: "0",
+      to: accountContract.address,
+      input: accountContract.interface.encodeFunctionData("owner"),
+    };
+
+    const proposal: Proposal = [ownertx];
+    const proposal2: Proposal = [ownertx2];
+
+    const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx = await governanceWrapper.propose(proposal, "http://www.descriptionUrl.com");
+    await tx.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx2 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    await tx2.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx3 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    await tx3.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+    const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
+    await dequeueProposalIfReadyTx.send({ from: depositor1.address });
+
     // const withdrawStakedCelo = await managerContract
     //   .connect(depositor1)
     //   .withdraw(amountOfCeloToDeposit);
@@ -175,6 +230,8 @@ describe("e2e governance vote", () => {
 
     const proposalId = 1;
     const index = 0;
+    const proposalId2 = 1;
+    const index2 = 0;
 
     const depositor1VotingPower = await managerContract.getVoteWeight(depositor1.address);
 
@@ -182,16 +239,11 @@ describe("e2e governance vote", () => {
       .connect(depositor1)
       .functions.voteProposal(proposalId, index, [VoteValue.Yes], [depositor1VotingPower]);
     const voteProposalReceipt = await voteProposalTx.wait();
-    if (voteProposalReceipt.events !== undefined) {
-      for (var i = 0; i < voteProposalReceipt.events!.length; i++) {
-        console.log(
-          "new event emitted:",
-          voteProposalReceipt.events[i].event,
-          `(${voteProposalReceipt.events[i].args})`
-        );
-      }
-    }
-    // console.log("voteProposalResult.events", JSON.stringify(voteProposalReceipt))
+
+    const voteProposal2Tx = await managerContract
+      .connect(depositor1)
+      .functions.voteProposal(proposalId2, index2, [VoteValue.Yes], [depositor1VotingPower]);
+    await voteProposal2Tx.wait();
 
     const depositor1StakedCeloBalanceAfterVoting = await stakedCeloContract.balanceOf(
       depositor1.address
@@ -204,7 +256,6 @@ describe("e2e governance vote", () => {
     expect(depositor1LockedStakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
     const voteRecord = await managerContract.getVoteRecord(proposalId);
-    console.log("voteRecord", JSON.stringify(voteRecord.map((vr) => vr.toString())));
 
     expect(voteRecord.proposalId.eq(proposalId)).to.be.true;
     const expectedVotingPower = rewardsGroup0
@@ -221,21 +272,21 @@ describe("e2e governance vote", () => {
         .transfer(managerContract.address, amountOfCeloToDeposit)
     ).revertedWith("Not enough stCelo");
 
-    const stageDurations = await governanceWrapper.stageDurations();
-
     await timeTravel(stageDurations.Referendum.toNumber() + 1);
+
+    const unlockReceipt = await (
+      await stakedCeloContract.connect(depositor1).unlockBalance(depositor1.address)
+    ).wait();
 
     const transferStCeloTx = await stakedCeloContract
       .connect(depositor1)
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
     const receipt1 = await transferStCeloTx.wait();
-    console.log("gasCost1", receipt1.gasUsed.toString());
 
     const transferStCeloTx2 = await stakedCeloContract
       .connect(depositor1)
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
     const receipt2 = await transferStCeloTx2.wait();
-    console.log("gasCost2", receipt2.gasUsed.toString());
 
     // const unlockStakedCeloTx = await managerContract.unlockStCelo(amountOfCeloToDeposit);
     // await unlockStakedCeloTx.wait()

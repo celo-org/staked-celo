@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./common/UsingRegistryUpgradeable.sol";
@@ -9,7 +10,7 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation
@@ -61,32 +62,31 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingR
 
     function lockBalance(address account, uint256 amount) external onlyManager {
         uint256 lockedBalance = _lockedBalances[account];
-        _lockedBalances[account] = lockedBalance + amount;
+        _lockedBalances[account] = Math.max(lockedBalance, amount);
     }
 
     function lockedBalanceOf(address account) public view returns (uint256) {
         return _lockedBalances[account];
     }
 
-    function lockedBalanceInVotingOf(address account) public view returns (uint256) {
-        IGovernance governance = getGovernance();
-        return governance.getAmountOfGoldUsedForVoting(account);
-    }
-
     function _beforeTokenTransfer(
         address from,
         address,
         uint256 amount
-    ) internal override {
+    ) internal view override {
         uint256 lockedBalance = _lockedBalances[from];
         if (lockedBalance > 0 && from != address(0)) {
             uint256 currentBalance = balanceOf(from);
-            if (currentBalance - lockedBalance < amount) {
-                IManager managerContract = IManager(manager);
-                uint256 lockedStakedCeloInVoting = managerContract.getLockedStCeloInVoting(from);
-                require(currentBalance - lockedStakedCeloInVoting >= amount, "Not enough stCelo");
-                _lockedBalances[from] = lockedStakedCeloInVoting;
-            }
+            require(currentBalance - lockedBalance >= amount, "Not enough stCelo");
         }
+    }
+
+    function unlockBalance(address account) public {
+        require(_lockedBalances[account] > 0, "No locked stCelo");
+        _lockedBalances[account] = IManager(manager).getLockedStCeloInVoting(account);
+    }
+
+    function overrideUnlockBalance(address account, uint256 newUnlockBalance) public onlyOwner {
+        _lockedBalances[account] = newUnlockBalance;
     }
 }
