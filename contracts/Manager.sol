@@ -228,7 +228,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return false;
     }
 
-    function deprecateBadGroup(address group) external {
+    /**
+     * @notice Marks an unhealthy group as deprecated.
+     * @param group The group to deprecate if unhealthy.
+     * @dev A deprecated group will remain in the `deprecatedGroups` array as
+     * long as it is still being voted for by the Account contract. Deprecated
+     * groups will be the first to have their votes withdrawn.
+     */
+    function deprecateUnhealthyGroup(address group) external {
         IValidators validators = getValidators();
 
         // add check if group is !registered
