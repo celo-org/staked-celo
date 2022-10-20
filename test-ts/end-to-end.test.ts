@@ -7,6 +7,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   activateValidators,
   distributeEpochRewards,
+  electMinimumNumberOfValidators,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
@@ -34,6 +35,7 @@ describe("e2e", () => {
   let depositor1: SignerWithAddress;
   // deposits CELO after rewards are distributed -> depositor will receive less stCELO than deposited CELO
   let depositor2: SignerWithAddress;
+  let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
@@ -56,15 +58,21 @@ describe("e2e", () => {
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
     [depositor2] = await randomSigner(parseUnits("300"));
-
+    [voter] = await randomSigner(parseUnits("300"));
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
     groups = [];
     groupAddresses = [];
     validators = [];
     validatorAddresses = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 10; i++) {
       const [group] = await randomSigner(parseUnits("11000"));
       groups.push(group);
-      groupAddresses.push(groups[i].address);
+      if (i < 3) {
+        groupAddresses.push(groups[i].address);
+      }
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
       validators.push(validator);
       validatorAddresses.push(validators[i].address);
@@ -72,6 +80,7 @@ describe("e2e", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidator(groups[i], validators[i], validatorWallet);
     }
+    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -153,7 +162,9 @@ describe("e2e", () => {
       .sub(depositor1BeforeWithdrawalBalance)
       .sub(amountOfCeloToDeposit);
 
-    expect(rewardsReceived.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(2))).to.be
-      .true;
+    expect(rewardsReceived).to.be.closeTo(
+      rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(301),
+      hre.ethers.BigNumber.from("100000000000000")
+    );
   });
 });
