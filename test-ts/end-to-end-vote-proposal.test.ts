@@ -24,6 +24,7 @@ import {
   Proposal,
   ProposalTransaction,
 } from "@celo/contractkit/lib/wrappers/Governance";
+import { Vote } from "../typechain-types/Vote";
 
 after(() => {
   hre.kit.stop();
@@ -45,6 +46,7 @@ enum VoteValue {
 describe("e2e governance vote", () => {
   let accountContract: Account;
   let managerContract: Manager;
+  let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
 
   // deposits CELO, receives stCELO, but never withdraws it
@@ -100,6 +102,7 @@ describe("e2e governance vote", () => {
     governanceWrapper = await hre.kit.contracts.getGovernance();
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
+    voteContract = await hre.ethers.getContract("Vote");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     // const minDeposit = await governanceWrapper.minDeposit();
@@ -230,20 +233,26 @@ describe("e2e governance vote", () => {
 
     const proposalId = 1;
     const index = 0;
-    const proposalId2 = 1;
-    const index2 = 0;
+    const proposalId2 = 2;
+    const index2 = 1;
 
-    const depositor1VotingPower = await managerContract.getVoteWeight(depositor1.address);
+    const depositor0VotingPower = await voteContract.getVoteWeight(depositor0.address);
+    const depositor1VotingPower = await voteContract.getVoteWeight(depositor1.address);
 
-    const voteProposalTx = await managerContract
+    const voteProposalTx = await voteContract
       .connect(depositor1)
       .functions.voteProposal(proposalId, index, [VoteValue.Yes], [depositor1VotingPower]);
     const voteProposalReceipt = await voteProposalTx.wait();
 
-    const voteProposal2Tx = await managerContract
+    const voteProposal2Tx = await voteContract
       .connect(depositor1)
       .functions.voteProposal(proposalId2, index2, [VoteValue.Yes], [depositor1VotingPower]);
     await voteProposal2Tx.wait();
+
+    const voteProposal2Depositor0Tx = await voteContract
+      .connect(depositor0)
+      .functions.voteProposal(proposalId2, index2, [VoteValue.Yes], [depositor0VotingPower]);
+    await voteProposal2Depositor0Tx.wait();
 
     const depositor1StakedCeloBalanceAfterVoting = await stakedCeloContract.balanceOf(
       depositor1.address
@@ -255,9 +264,12 @@ describe("e2e governance vote", () => {
     );
     expect(depositor1LockedStakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
-    const voteRecord = await managerContract.getVoteRecord(proposalId);
+    const voteRecord = await voteContract.getVoteRecord(proposalId);
+    const voteRecord2 = await voteContract.getVoteRecord(proposalId2);
 
     expect(voteRecord.proposalId.eq(proposalId)).to.be.true;
+    console.log("voteRecord", JSON.stringify(voteRecord));
+    console.log("voteRecord2", JSON.stringify(voteRecord2));
     const expectedVotingPower = rewardsGroup0
       .add(rewardsGroup1)
       .add(rewardsGroup2)
@@ -265,6 +277,29 @@ describe("e2e governance vote", () => {
       .add(amountOfCeloToDeposit);
     expect(expectedVotingPower).to.eq(depositor1VotingPower);
     expect(voteRecord.yesVotes).to.eq(depositor1VotingPower);
+
+    const governanceContract = governanceWrapper["contract"];
+
+    const totalVotesProposal1 = await governanceContract.methods.getVoteTotals(proposalId).call();
+    const yesVotesProposal1 = totalVotesProposal1[0];
+    expect(yesVotesProposal1).to.eq(depositor1VotingPower);
+
+    const totalVotesProposal2 = await governanceContract.methods.getVoteTotals(proposalId2).call();
+    const yesVotesProposal2 = totalVotesProposal2[0];
+    expect(yesVotesProposal2).to.eq(depositor1VotingPower.add(depositor0VotingPower));
+
+    const voteProposal2Depositor0TxChangeVotesToNo = await voteContract
+      .connect(depositor0)
+      .functions.voteProposal(proposalId2, index2, [VoteValue.No], [depositor0VotingPower]);
+    await voteProposal2Depositor0Tx.wait();
+
+    const totalVotesProposal2AfterChangeToNo = await governanceContract.methods
+      .getVoteTotals(proposalId2)
+      .call();
+    const yesVotesProposal2AfterChangeToNo = totalVotesProposal2AfterChangeToNo[0];
+    const noVotesProposal2AfterChangeToNo = totalVotesProposal2AfterChangeToNo[1];
+    expect(yesVotesProposal2AfterChangeToNo).to.eq(depositor0VotingPower);
+    expect(noVotesProposal2AfterChangeToNo).to.eq(depositor1VotingPower);
 
     await expect(
       stakedCeloContract

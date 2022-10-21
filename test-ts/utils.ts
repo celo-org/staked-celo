@@ -109,6 +109,7 @@ export async function activateValidators(
       managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
     );
   }
+
   await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 

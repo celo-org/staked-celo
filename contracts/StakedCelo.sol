@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
-import "./interfaces/IManager.sol";
+import "./interfaces/IVote.sol";
 
 import "hardhat/console.sol";
 
@@ -16,8 +16,19 @@ import "hardhat/console.sol";
  * @title An ERC-20 token that is a fungible and transferrable representation
  * of reward-earning voted LockedGold (i.e. locked CELO).
  */
-contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingRegistryUpgradeable {
+contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     mapping(address => uint256) private _lockedBalances;
+
+    address public voteContract;
+
+    error CallerNotVoteContract(address caller);
+
+    modifier onlyVoteContract() {
+        if (voteContract != msg.sender) {
+            revert CallerNotVoteContract(msg.sender);
+        }
+        _;
+    }
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -31,15 +42,10 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingR
      * @param _manager The address of the Manager contract.
      * @param _owner The address to set as the owner.
      */
-    function initialize(
-        address _manager,
-        address _owner,
-        address _registry
-    ) external initializer {
+    function initialize(address _manager, address _owner) external initializer {
         __ERC20_init("Staked CELO", "stCELO");
         __Managed_init(_manager);
         _transferOwnership(_owner);
-        __UsingRegistry_init(_registry);
     }
 
     /**
@@ -60,7 +66,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingR
         _burn(from, amount);
     }
 
-    function lockBalance(address account, uint256 amount) external onlyManager {
+    function lockBalance(address account, uint256 amount) external onlyVoteContract {
         uint256 lockedBalance = _lockedBalances[account];
         _lockedBalances[account] = Math.max(lockedBalance, amount);
     }
@@ -83,10 +89,17 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, UsingR
 
     function unlockBalance(address account) public {
         require(_lockedBalances[account] > 0, "No locked stCelo");
-        _lockedBalances[account] = IManager(manager).getLockedStCeloInVoting(account);
+        _lockedBalances[account] = IVote(voteContract).getLockedStCeloInVoting(account);
     }
 
     function overrideUnlockBalance(address account, uint256 newUnlockBalance) public onlyOwner {
         _lockedBalances[account] = newUnlockBalance;
+    }
+
+    function setVoteContract(address _voteContract) public onlyOwner {
+        if (_voteContract == address(0)) {
+            revert NullAddress();
+        }
+        voteContract = _voteContract;
     }
 }
