@@ -25,14 +25,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   removeMembersFromGroup,
   deregisterValidatorGroup,
-  impersonateAccount,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
   electMinimumNumberOfValidators,
   electGroup,
+  registerValidatorAndOnlyAffiliateToGroup,
+  updateGroupSlashingMultiplier,
 } from "./utils";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
@@ -128,15 +129,15 @@ describe("Manager", () => {
         // For groups[1] we register an extra validator so it has a higher voting limit.
         await registerValidatorGroup(groups[i], 2);
         const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidator(groups[i], validator, validatorWallet);
+        await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
       } else {
         await registerValidatorGroup(groups[i], 1);
       }
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      await registerValidator(groups[i], validator, validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
     }
 
-    await electMinimumNumberOfValidators(groups, voter);
+    await electMinimumNumberOfValidators(groups, voter); // first 10 groups
   });
 
   beforeEach(async () => {
@@ -164,6 +165,67 @@ describe("Manager", () => {
       await expect(manager.connect(nonOwner).activateGroup(groupAddresses[0])).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+
+    describe("when group is not registered", () => {
+      it("reverts when trying to add an unregistered group", async () => {
+        let unregisteredGroup: SignerWithAddress;
+        [unregisteredGroup] = await randomSigner(parseUnits("100"));
+
+        await expect(manager.activateGroup(unregisteredGroup.address)).revertedWith(
+          `GroupNotEligible("${unregisteredGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group has no members", () => {
+      let noMemberedGroup: SignerWithAddress;
+      beforeEach(async () => {
+        [noMemberedGroup] = await randomSigner(parseUnits("21000"));
+        await registerValidatorGroup(noMemberedGroup);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        await registerValidatorAndOnlyAffiliateToGroup(noMemberedGroup, validator, validatorWallet);
+      });
+
+      it("reverts when trying to add a group with no members", async () => {
+        await expect(manager.activateGroup(noMemberedGroup.address)).revertedWith(
+          `GroupNotEligible("${noMemberedGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group is not elected", () => {
+      it("reverts when trying to add non elected group", async () => {
+        const nonElectedGroup = groups[10];
+        await expect(manager.activateGroup(nonElectedGroup.address)).revertedWith(
+          `GroupNotEligible("${nonElectedGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group has low slash multiplier", () => {
+      let slashedGroup: SignerWithAddress;
+      beforeEach(async () => {
+        [slashedGroup] = await randomSigner(parseUnits("21000"));
+        await registerValidatorGroup(slashedGroup);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        await registerValidatorAndAddToGroupMembers(slashedGroup, validator, validatorWallet);
+        await electGroup(slashedGroup.address, someone);
+
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          slashedGroup,
+          mockSlasher
+        );
+      });
+
+      it("reverts when trying to add slashed group", async () => {
+        await expect(manager.activateGroup(slashedGroup.address)).revertedWith(
+          `GroupNotEligible("${slashedGroup.address}")`
+        );
+      });
     });
 
     describe("when some groups are already added", () => {
@@ -330,7 +392,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#deprecateUnhealthyGroup()", async () => {
+  describe("#deprecateUnhealthyGroup()", () => {
     let deprecatedGroup: SignerWithAddress;
 
     beforeEach(async () => {
@@ -392,19 +454,13 @@ describe("Manager", () => {
 
     describe("when the group is slashed", () => {
       beforeEach(async () => {
-        const coreContractsOwnerAddr = await registryContract.owner();
-
-        await impersonateAccount(coreContractsOwnerAddr);
-        const coreContractsOwner = await hre.ethers.getSigner(coreContractsOwnerAddr);
-
-        await registryContract
-          .connect(coreContractsOwner)
-          .setAddressFor("MockSlasher", mockSlasher.address);
-
-        await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
-        await validatorsContract
-          .connect(mockSlasher)
-          .halveSlashingMultiplier(deprecatedGroup.address);
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          deprecatedGroup,
+          mockSlasher
+        );
       });
 
       it("should deprecate group", async () => {
@@ -415,7 +471,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#deposit()", async () => {
+  describe("#deposit()", () => {
     it("reverts when there are no active groups", async () => {
       await expect(manager.connect(depositor).deposit({ value: 100 })).revertedWith(
         "NoActiveGroups()"
@@ -755,7 +811,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#withdraw()", async () => {
+  describe("#withdraw()", () => {
     it("reverts when there are no active or deprecated groups", async () => {
       await expect(manager.connect(depositor).withdraw(100)).revertedWith("NoGroups()");
     });
