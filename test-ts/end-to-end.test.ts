@@ -44,7 +44,8 @@ describe("e2e", () => {
 
   let stakedCeloContract: StakedCelo;
 
-  before(async () => {
+  before(async function (this: any) {
+    this.timeout(0); // Disable test timeout
     await resetNetwork();
 
     process.env = {
