@@ -11,7 +11,7 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
@@ -78,7 +78,7 @@ describe("e2e", () => {
       validatorAddresses.push(validators[i].address);
 
       await registerValidatorGroup(groups[i]);
-      await registerValidator(groups[i], validators[i], validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
     await electMinimumNumberOfValidators(groups, voter);
   });
