@@ -47,10 +47,6 @@ abstract contract UsingRegistryUpgradeable is Initializable {
     /// @notice The registry ID for the Validator contract.
     bytes32 private constant VALIDATORS_REGISTRY_ID = keccak256(abi.encodePacked("Validators"));
 
-    /// @notice The registry ID for the GovernanceSlasher contract.
-    bytes32 private constant GOVERNANCE_SLASHER_REGISTRY_ID =
-        keccak256(abi.encodePacked("GovernanceSlasher"));
-
     /// @notice The Registry.
     IRegistry public registry;
 

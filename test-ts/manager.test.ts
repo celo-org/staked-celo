@@ -5,19 +5,19 @@ import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 
-import { Manager } from "../typechain-types/Manager";
-import { MockAccount } from "../typechain-types/MockAccount";
-import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
-
-import { MockValidators } from "../typechain-types/MockValidators";
-import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+import { MockValidators } from "../typechain-types/MockValidators";
+import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 
+import { Manager } from "../typechain-types/Manager";
+import { MockAccount } from "../typechain-types/MockAccount";
+import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
+
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -108,7 +108,6 @@ describe("Manager", () => {
     stakedCelo = await stakedCeloFactory.deploy();
 
     await manager.setDependencies(stakedCelo.address, account.address);
-    // create voter accounts
     const accounts = await hre.kit.contracts.getAccounts();
     await accounts.createAccount().sendAndWaitForReceipt({
       from: voter.address,
@@ -124,7 +123,6 @@ describe("Manager", () => {
       groups.push(group);
       groupAddresses.push(group.address);
     }
-    // register validators and validator groups
     for (let i = 0; i < 11; i++) {
       if (i == 1) {
         // For groups[1] we register an extra validator so it has a higher voting limit.
@@ -138,7 +136,6 @@ describe("Manager", () => {
       await registerValidator(groups[i], validator, validatorWallet);
     }
 
-    // elect validators
     await electMinimumNumberOfValidators(groups, voter);
   });
 
@@ -395,11 +392,6 @@ describe("Manager", () => {
 
     describe("when the group is slashed", () => {
       beforeEach(async () => {
-        // const bytes = hre.web3.utils.soliditySha3({
-        //   type: "string",
-        //   value: "MockSlasher",
-        // });
-
         const coreContractsOwnerAddr = await registryContract.owner();
 
         await impersonateAccount(coreContractsOwnerAddr);
@@ -410,7 +402,6 @@ describe("Manager", () => {
           .setAddressFor("MockSlasher", mockSlasher.address);
 
         await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
-        await account.setCeloForGroup(deprecatedGroup.address, 100);
         await validatorsContract
           .connect(mockSlasher)
           .halveSlashingMultiplier(deprecatedGroup.address);

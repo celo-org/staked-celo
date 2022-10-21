@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "../interfaces/IRegistry.sol";
 
-// import "../Initializable.sol";
-
 /**
  * @title Routes identifiers to addresses.
  */
