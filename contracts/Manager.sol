@@ -222,6 +222,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         _deprecateGroup(group);
     }
 
+    /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @return Whether or not the group member is elected.
+     */
     function isGroupMemberElected(address groupMember) private view returns (bool) {
         IElection election = getElection();
 
@@ -236,7 +241,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return false;
     }
 
-    function isValidGroup(address group) private view returns (bool) {
+    /**
+     * @notice Checks if a group meets the validator group health requirements.
+     * @param group The group to check for.
+     * @return Whether or not the group is valid.
+     */
+    function isValidGroup(address group) public view returns (bool) {
         IValidators validators = getValidators();
 
         // add check if group is !registered
