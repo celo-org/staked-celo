@@ -138,6 +138,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupNotEligible(address group);
 
     /**
+     * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
+     * @param group The group's address.
+     */
+    error HealthyGroup(address group);
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -262,14 +268,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             return false;
         }
         // check for recent slash
-        if ((slashMultiplier) < 10**24) {
+        if (slashMultiplier < 10**24) {
             return false;
         }
         // check for majority of members are elected.
         uint256 counter = 0;
         for (uint256 i = 0; i < members.length; i++) {
             if (!isGroupMemberElected(members[i])) {
-                counter += 1;
+                counter++;
                 if (counter >= members.length / 2) {
                     return false;
                 }
@@ -288,7 +294,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function deprecateUnhealthyGroup(address group) external {
         if (!isValidGroup(group)) {
             _deprecateGroup((group));
+            return;
         }
+        revert HealthyGroup(group);
     }
 
     /**

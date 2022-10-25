@@ -38,7 +38,7 @@ describe("e2e", () => {
   let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
-  let groupAddresses: string[];
+  let activatedGroupAddresses: string[];
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
 
@@ -65,14 +65,14 @@ describe("e2e", () => {
       from: voter.address,
     });
     groups = [];
-    groupAddresses = [];
+    activatedGroupAddresses = [];
     validators = [];
     validatorAddresses = [];
     for (let i = 0; i < 10; i++) {
       const [group] = await randomSigner(parseUnits("11000"));
       groups.push(group);
       if (i < 3) {
-        groupAddresses.push(groups[i].address);
+        activatedGroupAddresses.push(groups[i].address);
       }
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
       validators.push(validator);
@@ -91,7 +91,7 @@ describe("e2e", () => {
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
+    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
   it("deposit and withdraw", async () => {

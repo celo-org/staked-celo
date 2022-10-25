@@ -25,9 +25,7 @@ contract MockValidators {
         address,
         bytes calldata
     ) external returns (bool) {
-        // silence complier error that this function can be pure
-
-        return true;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function updatePublicKeys(
@@ -37,9 +35,7 @@ contract MockValidators {
         bytes calldata,
         bytes calldata
     ) external returns (bool) {
-        // silence complier error that this function can be pure
-
-        return true;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function setValidator(address account) external {
@@ -96,9 +92,7 @@ contract MockValidators {
     }
 
     function calculateGroupEpochScore(uint256[] calldata uptimes) external view returns (uint256) {
-        // silence complier error that this function can be pure
-
-        return uptimes[0];
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function getTopGroupValidators(address group, uint256 n)
@@ -138,7 +132,6 @@ contract MockValidators {
     }
 
     function getValidatorGroupSlashingMultiplier(address) external view returns (uint256) {
-        // silence complier error that this function can be pure
-        return FIXED1_UINT;
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

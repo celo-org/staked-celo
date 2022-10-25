@@ -177,7 +177,7 @@ export async function voteForGroup(groupAddress: string, voter: SignerWithAddres
 export async function activateVotesForGroup(voter: SignerWithAddress) {
   const election = await kit.contracts.getElection();
   const activateTxs = await election.activate(voter.address);
-  let txs: Promise<CeloTxReceipt>[] = [];
+  const txs: Promise<CeloTxReceipt>[] = [];
   for (let i = 0; i < activateTxs.length; i++) {
     const tx = activateTxs[i].sendAndWaitForReceipt({ from: voter.address });
     txs.push(tx);
@@ -189,8 +189,10 @@ export async function electMinimumNumberOfValidators(
   groups: SignerWithAddress[],
   voter: SignerWithAddress
 ) {
-  let txs: Promise<void>[] = [];
-  for (let i = 0; i < 10; i++) {
+  const election = await kit.contracts.getElection();
+  const { min } = await election.electableValidators();
+  const txs: Promise<void>[] = [];
+  for (let i = 0; i < min.toNumber(); i++) {
     const tx = voteForGroup(groups[i].address, voter);
     txs.push(tx);
   }

@@ -402,6 +402,12 @@ describe("Manager", () => {
       }
     });
 
+    it("should revert when group is healthy", async () => {
+      await expect(manager.deprecateUnhealthyGroup(groupAddresses[1])).revertedWith(
+        `HealthyGroup("${groupAddresses[1]}")`
+      );
+    });
+
     describe("when the group is not elected", () => {
       beforeEach(async () => {
         const groupVotes = await election.getVotesForGroupByAccount(
