@@ -63,17 +63,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     uint256 public totalScheduledWithdrawals;
 
-    address public voteContract;
-
-    error CallerNotVoteContract(address caller);
-
-    modifier onlyVoteContract() {
-        if (voteContract != msg.sender) {
-            revert CallerNotVoteContract(msg.sender);
-        }
-        _;
-    }
-
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
      * @param group The validator group the CELO is intended to vote for.
@@ -710,17 +699,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     function voteProposal(
         uint256 proposalId,
         uint256 index,
-        IGovernance.VoteValue[] calldata voteValues,
-        // solhint-disable-next-line
-        uint256[] calldata weights
-    ) public onlyVoteContract {
-        getGovernance().votePartially(proposalId, index, voteValues, weights);
-    }
-
-    function setVoteContract(address _voteContract) public onlyOwner {
-        if (_voteContract == address(0)) {
-            revert NullAddress();
-        }
-        voteContract = _voteContract;
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public onlyManager {
+        getGovernance().votePartially(proposalId, index, yesVotes, noVotes, abstainVotes);
     }
 }

@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
-import "./interfaces/IVote.sol";
+import "./interfaces/IManager.sol";
 
 import "hardhat/console.sol";
 
@@ -19,16 +19,8 @@ import "hardhat/console.sol";
 contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     mapping(address => uint256) private _lockedBalances;
 
-    address public voteContract;
-
-    error CallerNotVoteContract(address caller);
-
-    modifier onlyVoteContract() {
-        if (voteContract != msg.sender) {
-            revert CallerNotVoteContract(msg.sender);
-        }
-        _;
-    }
+    event Locked(address account, uint256 amount);
+    event Unlocked(address account, uint256 amount);
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -66,9 +58,11 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         _burn(from, amount);
     }
 
-    function lockBalance(address account, uint256 amount) external onlyVoteContract {
+    function lockBalance(address account, uint256 amount) external onlyManager {
+        require(balanceOf(account) >= amount, "Not enough stCelo to lock");
         uint256 lockedBalance = _lockedBalances[account];
         _lockedBalances[account] = Math.max(lockedBalance, amount);
+        emit Locked(account, amount);
     }
 
     function lockedBalanceOf(address account) public view returns (uint256) {
@@ -88,18 +82,15 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     }
 
     function unlockBalance(address account) public {
-        require(_lockedBalances[account] > 0, "No locked stCelo");
-        _lockedBalances[account] = IVote(voteContract).getLockedStCeloInVoting(account);
+        uint256 previouslyLocked = _lockedBalances[account];
+        require(previouslyLocked > 0, "No locked stCelo");
+        _lockedBalances[account] = IManager(manager).getLockedStCeloInVoting(account);
+        if (previouslyLocked != _lockedBalances[account]) {
+            emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
+        }
     }
 
     function overrideUnlockBalance(address account, uint256 newUnlockBalance) public onlyOwner {
         _lockedBalances[account] = newUnlockBalance;
-    }
-
-    function setVoteContract(address _voteContract) public onlyOwner {
-        if (_voteContract == address(0)) {
-            revert NullAddress();
-        }
-        voteContract = _voteContract;
     }
 }

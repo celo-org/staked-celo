@@ -13,6 +13,7 @@ describe("StakedCelo", () => {
   let owner: SignerWithAddress;
   let manager: SignerWithAddress;
   let nonManager: SignerWithAddress;
+
   let anAccount: SignerWithAddress;
 
   before(async () => {
@@ -108,6 +109,46 @@ describe("StakedCelo", () => {
       await expect(stakedCelo.connect(manager).setManager(nonManager.address)).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+  });
+
+  describe("#lockBalance", () => {
+    const balanceToLock = 100;
+    it("should revert if called by non vote", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).lockBalance(anAccount.address, balanceToLock)
+      ).to.revertedWith(`CallerNotVoteContract("${nonManager.address}")`);
+    });
+
+    it("should revert if account doesn't have enough stCelo", async () => {
+      await expect(
+        stakedCelo.connect(manager).lockBalance(anAccount.address, balanceToLock)
+      ).to.revertedWith("Not enough stCelo to lock");
+    });
+
+    describe("When Account has stCelo", () => {
+      const stCeloOwned = 100;
+      beforeEach(async () => {
+        await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
+      });
+      describe("Emits locked Event", async () => {
+        await expect(stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned))
+          .to.emit(stakedCelo, "Locked")
+          .withArgs(anAccount.address, stCeloOwned);
+      });
+
+      it("Locks max amount", async () => {
+        const balancesToLock = [10, 20, 5];
+
+        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[0]);
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[0]);
+
+        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[1]);
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+
+        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[2]);
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+      });
     });
   });
 });

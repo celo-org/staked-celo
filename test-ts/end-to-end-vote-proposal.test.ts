@@ -239,19 +239,19 @@ describe("e2e governance vote", () => {
     const depositor0VotingPower = await voteContract.getVoteWeight(depositor0.address);
     const depositor1VotingPower = await voteContract.getVoteWeight(depositor1.address);
 
-    const voteProposalTx = await voteContract
+    const voteProposalTx = await managerContract
       .connect(depositor1)
-      .functions.voteProposal(proposalId, index, [VoteValue.Yes], [depositor1VotingPower]);
+      .functions.voteProposal(proposalId, index, depositor1VotingPower, 0, 0);
     const voteProposalReceipt = await voteProposalTx.wait();
 
-    const voteProposal2Tx = await voteContract
+    const voteProposal2Tx = await managerContract
       .connect(depositor1)
-      .functions.voteProposal(proposalId2, index2, [VoteValue.Yes], [depositor1VotingPower]);
+      .functions.voteProposal(proposalId2, index2, depositor1VotingPower, 0, 0);
     await voteProposal2Tx.wait();
 
-    const voteProposal2Depositor0Tx = await voteContract
+    const voteProposal2Depositor0Tx = await managerContract
       .connect(depositor0)
-      .functions.voteProposal(proposalId2, index2, [VoteValue.Yes], [depositor0VotingPower]);
+      .functions.voteProposal(proposalId2, index2, depositor0VotingPower, 0, 0);
     await voteProposal2Depositor0Tx.wait();
 
     const depositor1StakedCeloBalanceAfterVoting = await stakedCeloContract.balanceOf(
@@ -288,10 +288,10 @@ describe("e2e governance vote", () => {
     const yesVotesProposal2 = totalVotesProposal2[0];
     expect(yesVotesProposal2).to.eq(depositor1VotingPower.add(depositor0VotingPower));
 
-    const voteProposal2Depositor0TxChangeVotesToNo = await voteContract
+    const voteProposal2Depositor0TxChangeVotesToNo = await managerContract
       .connect(depositor0)
-      .functions.voteProposal(proposalId2, index2, [VoteValue.No], [depositor0VotingPower]);
-    await voteProposal2Depositor0Tx.wait();
+      .functions.voteProposal(proposalId2, index2, 0, depositor0VotingPower, 0);
+    await voteProposal2Depositor0TxChangeVotesToNo.wait();
 
     const totalVotesProposal2AfterChangeToNo = await governanceContract.methods
       .getVoteTotals(proposalId2)

@@ -21,7 +21,8 @@ interface IAccount {
     function voteProposal(
         uint256 proposalId,
         uint256 index,
-        IGovernance.VoteValue[] calldata voteValues,
-        uint256[] calldata weights
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
     ) external;
 }

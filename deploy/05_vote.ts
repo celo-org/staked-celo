@@ -12,6 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const isVoteAlreadyDeployed = await hre.deployments.getOrNull("Vote");
 
+  const managerAddress = (await hre.deployments.get("Manager")).address;
   const deployment = await catchNotOwnerForProxy(
     deploy("Vote", {
       from: deployer,
@@ -22,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         execute: {
           init: {
             methodName: "initialize",
-            args: [hre.ethers.constants.AddressZero, deployer],
+            args: [hre.ethers.constants.AddressZero, deployer, managerAddress],
           },
         },
       },

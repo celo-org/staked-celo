@@ -30,6 +30,8 @@ describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
   let manager: Manager;
+  let vote: SignerWithAddress;
+  let nonVote: SignerWithAddress;
 
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
@@ -57,6 +59,8 @@ describe("Manager", () => {
     [someone] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
+    [vote] = await randomSigner(parseUnits("100"));
+    [nonVote] = await randomSigner(parseUnits("100"));
 
     const accountFactory: MockAccount__factory = (
       await hre.ethers.getContractFactory("MockAccount")
@@ -68,7 +72,8 @@ describe("Manager", () => {
     ).connect(owner) as MockStakedCelo__factory;
     stakedCelo = await stakedCeloFactory.deploy();
 
-    manager.setDependencies(stakedCelo.address, account.address);
+    await manager.setDependencies(stakedCelo.address, account.address);
+    await manager.connect(owner).setVoteContract(vote.address);
 
     groups = [];
     groupAddresses = [];
@@ -958,6 +963,26 @@ describe("Manager", () => {
           expect(stCelo).to.eq(90);
         });
       });
+    });
+  });
+
+  describe("#setVoteContract()", () => {
+    it("sets the vote contract", async () => {
+      await manager.connect(owner).setVoteContract(nonVote.address);
+      const newVoteContract = await manager.voteContract();
+      expect(newVoteContract).to.eq(nonVote.address);
+    });
+
+    it("emits a VoteContractSet event", async () => {
+      await expect(manager.connect(owner).setVoteContract(nonVote.address))
+        .to.emit(manager, "VoteContractSet")
+        .withArgs(nonVote.address);
+    });
+
+    it("cannot be called by a non-Owner account", async () => {
+      await expect(manager.connect(owner).setVoteContract(nonVote.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });

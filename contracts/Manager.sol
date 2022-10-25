@@ -9,6 +9,7 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./interfaces/IGovernance.sol";
+import "./interfaces/IVote.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
@@ -50,6 +51,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * of because the Account contract is still voting for them.
      */
     EnumerableSet.AddressSet private deprecatedGroups;
+
+    address public voteContract;
+
+    event VoteContractSet(address indexed voteContract);
 
     /**
      * @notice Emitted when a new group is activated for voting.
@@ -617,5 +622,50 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 j--;
             }
         }
+    }
+
+    function setVoteContract(address _voteContract) public onlyOwner {
+        require(_voteContract != address(0), "Null address");
+        voteContract = _voteContract;
+        emit VoteContractSet(_voteContract);
+    }
+
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        IVote vote = IVote(voteContract);
+
+        (
+            uint256 stakedCeloBalance,
+            uint256 totalYesVotes,
+            uint256 totalNoVotes,
+            uint256 totalAbstainVotes
+        ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
+
+        stakedCelo.lockBalance(msg.sender, stakedCeloBalance);
+        account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    function revokeVotes(uint256 proposalId, uint256 index) external {
+        IVote vote = IVote(voteContract);
+
+        (
+            uint256 stakedCeloBalance,
+            uint256 totalYesVotes,
+            uint256 totalNoVotes,
+            uint256 totalAbstainVotes
+        ) = vote.revokeVotes(msg.sender, proposalId);
+
+        stakedCelo.lockBalance(msg.sender, stakedCeloBalance);
+        account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    function getLockedStCeloInVoting(address accountAddress) external returns (uint256) {
+        IVote vote = IVote(voteContract);
+        return vote.getLockedStCeloInVoting(accountAddress);
     }
 }

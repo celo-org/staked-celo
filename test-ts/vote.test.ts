@@ -105,7 +105,6 @@ describe("Vote", () => {
 
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
-    [depositor2] = await randomSigner(parseUnits("300"));
 
     groups = [];
     groupAddresses = [];
@@ -130,7 +129,6 @@ describe("Vote", () => {
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     voteContract = await hre.ethers.getContract("Vote");
-    stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
@@ -174,9 +172,9 @@ describe("Vote", () => {
     });
 
     it("should revert when account has no stCelo", async () => {
-      expect(
-        voteContract.voteProposal(proposal1Id, proposal1Index, [VoteValue.Yes], [1])
-      ).revertedWith("No staked celo");
+      expect(managerContract.voteProposal(proposal1Id, proposal1Index, 1, 0, 0)).revertedWith(
+        "No staked celo"
+      );
     });
 
     describe("when stCelo deposited", () => {
@@ -192,14 +190,9 @@ describe("Vote", () => {
         const abstainVotes = hre.web3.utils.toWei("1");
 
         await expect(
-          voteContract
+          managerContract
             .connect(depositor0)
-            .voteProposal(
-              proposal1Id,
-              proposal1Index,
-              [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-              [yesVotes, noVotes, abstainVotes]
-            )
+            .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes)
         ).revertedWith("Not enough celo to vote");
       });
 
@@ -209,14 +202,9 @@ describe("Vote", () => {
         const abstainVotes = hre.web3.utils.toWei("1");
 
         beforeEach(async () => {
-          await voteContract
+          await managerContract
             .connect(depositor0)
-            .voteProposal(
-              proposal1Id,
-              proposal1Index,
-              [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-              [yesVotes, noVotes, abstainVotes]
-            );
+            .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
         });
 
         it("should return correct votes from governance contract", async () => {
@@ -228,13 +216,14 @@ describe("Vote", () => {
           const noVotesRevote = hre.web3.utils.toWei("3");
           const abstainVotesRevote = hre.web3.utils.toWei("1");
 
-          await voteContract
+          await managerContract
             .connect(depositor0)
             .voteProposal(
               proposal1Id,
               proposal1Index,
-              [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-              [yesVotesRevote, noVotesRevote, abstainVotesRevote]
+              yesVotesRevote,
+              noVotesRevote,
+              abstainVotesRevote
             );
 
           await checkGovernanceTotalVotes(
@@ -270,48 +259,32 @@ describe("Vote", () => {
       });
 
       it("should return correct votes from governance contract", async () => {
-        console.log(
-          "governanceWrapper.getDequeue()",
-          JSON.stringify(await governanceWrapper.getDequeue())
-        );
-        console.log(
-          "isQueuedProposalExpired",
-          await governanceWrapper.isDequeuedProposalExpired(proposal1Id)
-        );
-        await voteContract
+        await managerContract
           .connect(depositor0)
-          .voteProposal(
-            proposal2Id,
-            proposal2Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotes[0], noVotes[0], abstainVotes[0]]
-          );
+          .voteProposal(proposal2Id, proposal2Index, yesVotes[0], noVotes[0], abstainVotes[0]);
 
-        await voteContract
+        await managerContract
           .connect(depositor0)
-          .voteProposal(
-            proposal3Id,
-            proposal3Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotes[1], noVotes[1], abstainVotes[1]]
-          );
+          .voteProposal(proposal3Id, proposal3Index, yesVotes[1], noVotes[1], abstainVotes[1]);
 
-        await voteContract
+        await managerContract
           .connect(depositor1)
           .voteProposal(
             proposal2Id,
             proposal2Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotesDepositor1[0], noVotesDepositor1[0], abstainVotesDepositor1[0]]
+            yesVotesDepositor1[0],
+            noVotesDepositor1[0],
+            abstainVotesDepositor1[0]
           );
 
-        await voteContract
+        await managerContract
           .connect(depositor1)
           .voteProposal(
             proposal3Id,
             proposal3Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotesDepositor1[1], noVotesDepositor1[1], abstainVotesDepositor1[1]]
+            yesVotesDepositor1[1],
+            noVotesDepositor1[1],
+            abstainVotesDepositor1[1]
           );
 
         await checkGovernanceTotalVotes(
@@ -360,14 +333,9 @@ describe("Vote", () => {
       const abstainVotes = hre.web3.utils.toWei("1");
 
       beforeEach(async () => {
-        await voteContract
+        await managerContract
           .connect(depositor0)
-          .voteProposal(
-            proposal1Id,
-            proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotes, noVotes, abstainVotes]
-          );
+          .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
       });
 
       it("should return voted record with correct values", async () => {
@@ -388,13 +356,14 @@ describe("Vote", () => {
         const noVotesRevote = hre.web3.utils.toWei("3");
         const abstainVotesRevote = hre.web3.utils.toWei("1");
 
-        await voteContract
+        await managerContract
           .connect(depositor0)
           .voteProposal(
             proposal1Id,
             proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotesRevote, noVotesRevote, abstainVotesRevote]
+            yesVotesRevote,
+            noVotesRevote,
+            abstainVotesRevote
           );
 
         const voteRecord = await voteContract.getVoteRecord(proposal1Id);
@@ -437,14 +406,9 @@ describe("Vote", () => {
         .add(BigNumber.from(abstainVotes));
 
       beforeEach(async () => {
-        await voteContract
+        await managerContract
           .connect(depositor0)
-          .voteProposal(
-            proposal1Id,
-            proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotes, noVotes, abstainVotes]
-          );
+          .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
       });
 
       it("should return locked celo", async () => {
@@ -463,13 +427,14 @@ describe("Vote", () => {
           .add(BigNumber.from(noVotesRevote))
           .add(BigNumber.from(abstainVotesRevote));
 
-        await voteContract
+        await managerContract
           .connect(depositor0)
           .voteProposal(
             proposal1Id,
             proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotesRevote, noVotesRevote, abstainVotesRevote]
+            yesVotesRevote,
+            noVotesRevote,
+            abstainVotesRevote
           );
 
         const lockedCeloInVotingView = await voteContract.getLockedStCeloInVotingView(
@@ -491,12 +456,21 @@ describe("Vote", () => {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVoting = await voteContract.getLockedStCeloInVoting(depositor0.address);
+      const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(depositor0.address);
       const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-      const event = lockedCeloInVotingReceipt.events?.find(
-        (event) => event.event === "LockedStCeloInVoting"
+
+      const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
+        .topics as string[];
+      const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+        event.topics.some((topic) => topic == eventTopics[0])
       );
-      expect(event?.args?.lockedCelo).to.eq(0);
+      const eventArgs = voteContract.interface.decodeEventLog(
+        voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
+        event!.data,
+        eventTopics
+      );
+
+      expect(eventArgs.lockedCelo).to.eq(0);
     });
 
     describe("when voted", async () => {
@@ -508,23 +482,28 @@ describe("Vote", () => {
         .add(BigNumber.from(abstainVotes));
 
       beforeEach(async () => {
-        await voteContract
+        await managerContract
           .connect(depositor0)
-          .voteProposal(
-            proposal1Id,
-            proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotes, noVotes, abstainVotes]
-          );
+          .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVoting = await voteContract.getLockedStCeloInVoting(depositor0.address);
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-        const event = lockedCeloInVotingReceipt.events?.find(
-          (event) => event.event === "LockedStCeloInVoting"
+        const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(
+          depositor0.address
         );
-        expect(event?.args?.lockedCelo).to.eq(totalVotes);
+        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+
+        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
+          .topics as string[];
+        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+          event.topics.some((topic) => topic == eventTopics[0])
+        );
+        const eventArgs = voteContract.interface.decodeEventLog(
+          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
+          event!.data,
+          eventTopics
+        );
+        expect(eventArgs.lockedCelo).to.eq(totalVotes);
       });
 
       it("should update locked celo when revoted", async () => {
@@ -536,21 +515,32 @@ describe("Vote", () => {
           .add(BigNumber.from(noVotesRevote))
           .add(BigNumber.from(abstainVotesRevote));
 
-        await voteContract
+        await managerContract
           .connect(depositor0)
           .voteProposal(
             proposal1Id,
             proposal1Index,
-            [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-            [yesVotesRevote, noVotesRevote, abstainVotesRevote]
+            yesVotesRevote,
+            noVotesRevote,
+            abstainVotesRevote
           );
 
-        const lockedCeloInVoting = await voteContract.getLockedStCeloInVoting(depositor0.address);
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-        const event = lockedCeloInVotingReceipt.events?.find(
-          (event) => event.event === "LockedStCeloInVoting"
+        const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(
+          depositor0.address
         );
-        expect(event?.args?.lockedCelo).to.eq(totalRevotes);
+        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+
+        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
+          .topics as string[];
+        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+          event.topics.some((topic) => topic == eventTopics[0])
+        );
+        const eventArgs = voteContract.interface.decodeEventLog(
+          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
+          event!.data,
+          eventTopics
+        );
+        expect(eventArgs?.lockedCelo).to.eq(totalRevotes);
       });
     });
   });
@@ -561,7 +551,9 @@ describe("Vote", () => {
     const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
 
     it("should revert when account has no stCelo", async () => {
-      expect(voteContract.revokeVotes(proposal1Id, proposal1Index)).revertedWith("No staked celo");
+      expect(managerContract.revokeVotes(proposal1Id, proposal1Index)).revertedWith(
+        "No staked celo"
+      );
     });
 
     describe("When deposited", async () => {
@@ -576,18 +568,13 @@ describe("Vote", () => {
         const abstainVotes = hre.web3.utils.toWei("1");
 
         beforeEach(async () => {
-          await voteContract
+          await managerContract
             .connect(depositor0)
-            .voteProposal(
-              proposal1Id,
-              proposal1Index,
-              [VoteValue.Yes, VoteValue.No, VoteValue.Abstain],
-              [yesVotes, noVotes, abstainVotes]
-            );
+            .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
         });
 
         it("should return voted record with correct values", async () => {
-          const voteRecord = await voteContract
+          const voteRecord = await managerContract
             .connect(depositor0)
             .revokeVotes(proposal1Id, proposal1Index);
           await checkGovernanceTotalVotes(proposal1Id, 0, 0, 0);

@@ -23,8 +23,9 @@ interface IGovernance {
     function votePartially(
         uint256 proposalId,
         uint256 index,
-        VoteValue[] calldata voteValues,
-        uint256[] calldata weights
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
     ) external returns (bool);
 
     function getAmountOfGoldUsedForVoting(address account) external view returns (uint256);

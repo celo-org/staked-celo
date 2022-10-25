@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
-import { Wallet, BigNumber as EthersBigNumber, Contract } from "ethers";
+import { Wallet, BigNumber as EthersBigNumber, Contract, BaseContract } from "ethers";
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
