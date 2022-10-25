@@ -668,4 +668,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         IVote vote = IVote(voteContract);
         return vote.getLockedStCeloInVoting(accountAddress);
     }
+
+    function unlockBalance(address accountAddress) public {
+        stakedCelo.unlockBalance(accountAddress);
+    }
 }

@@ -9,6 +9,7 @@ import "./Managed.sol";
 
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "hardhat/console.sol";
 
 contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     struct ProposalVoteRecord {
@@ -109,9 +110,15 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256 totalAbstainVotes
         )
     {
-        stakedCeloBalance = stakedCelo.balanceOf(accountVoter);
+        stakedCeloBalance =
+            stakedCelo.balanceOf(accountVoter) +
+            stakedCelo.lockedBalanceOf(accountVoter);
         require(stakedCeloBalance > 0, "No staked celo");
         uint256 totalWeights = yesVotes + noVotes + abstainVotes;
+        console.log("stakedCeloBalance: %s", stakedCeloBalance);
+        console.log("accountVoter: %s", accountVoter);
+        console.log("celoBalance: %s", toCelo(stakedCeloBalance));
+        console.log("totalWeights: %s", totalWeights);
         require(totalWeights <= toCelo(stakedCeloBalance), "Not enough celo to vote");
 
         Voter storage voter = voters[accountVoter];

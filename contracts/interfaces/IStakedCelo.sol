@@ -19,4 +19,8 @@ interface IStakedCelo {
     function balanceOf(address account) external view returns (uint256);
 
     function lockBalance(address account, uint256 amount) external;
+
+    function unlockBalance(address account) external;
+
+    function lockedBalanceOf(address account) external view returns (uint256);
 }

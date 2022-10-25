@@ -18,6 +18,7 @@ import "hardhat/console.sol";
  */
 contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     mapping(address => uint256) private _lockedBalances;
+    uint256 public totalLocked;
 
     event Locked(address account, uint256 amount);
     event Unlocked(address account, uint256 amount);
@@ -45,7 +46,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @param to The address that will receive the new stCELO.
      * @param amount The amount of stCELO to mint.
      */
-    function mint(address to, uint256 amount) external onlyManager {
+    function mint(address to, uint256 amount) public onlyManager {
         _mint(to, amount);
     }
 
@@ -54,43 +55,44 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @param from The address that will have its stCELO burned.
      * @param amount The amount of stCELO to burn.
      */
-    function burn(address from, uint256 amount) external onlyManager {
+    function burn(address from, uint256 amount) public onlyManager {
         _burn(from, amount);
     }
 
     function lockBalance(address account, uint256 amount) external onlyManager {
-        require(balanceOf(account) >= amount, "Not enough stCelo to lock");
         uint256 lockedBalance = _lockedBalances[account];
-        _lockedBalances[account] = Math.max(lockedBalance, amount);
-        emit Locked(account, amount);
+        if (lockedBalance < amount) {
+            _lockedBalances[account] = amount;
+            uint256 amountToBurn = amount - lockedBalance;
+            totalLocked += amountToBurn;
+            burn(account, amountToBurn);
+            emit Locked(account, amount);
+        }
     }
 
     function lockedBalanceOf(address account) public view returns (uint256) {
         return _lockedBalances[account];
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address,
-        uint256 amount
-    ) internal view override {
-        uint256 lockedBalance = _lockedBalances[from];
-        if (lockedBalance > 0 && from != address(0)) {
-            uint256 currentBalance = balanceOf(from);
-            require(currentBalance - lockedBalance >= amount, "Not enough stCelo");
-        }
-    }
-
     function unlockBalance(address account) public {
         uint256 previouslyLocked = _lockedBalances[account];
         require(previouslyLocked > 0, "No locked stCelo");
-        _lockedBalances[account] = IManager(manager).getLockedStCeloInVoting(account);
-        if (previouslyLocked != _lockedBalances[account]) {
+        uint256 newlyLocked = IManager(manager).getLockedStCeloInVoting(account);
+        if (previouslyLocked != newlyLocked) {
+            _lockedBalances[account] = newlyLocked;
+            uint256 amountToMint = previouslyLocked - newlyLocked;
+            mint(account, amountToMint);
+            totalLocked -= amountToMint;
             emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
         }
     }
 
-    function overrideUnlockBalance(address account, uint256 newUnlockBalance) public onlyOwner {
-        _lockedBalances[account] = newUnlockBalance;
+    function totalSupply() public view override returns (uint256) {
+        uint256 currentTotalSuply = super.totalSupply();
+        return currentTotalSuply + totalLocked;
+    }
+
+    function overrideLockBalance(address account, uint256 newLockBalance) public onlyOwner {
+        _lockedBalances[account] = newLockBalance;
     }
 }

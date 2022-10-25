@@ -80,6 +80,10 @@ describe("e2e governance vote", () => {
     [depositor1] = await randomSigner(parseUnits("300"));
     [depositor2] = await randomSigner(parseUnits("300"));
 
+    console.log("depositor0", depositor0.address);
+    console.log("depositor1", depositor1.address);
+    console.log("depositor2", depositor2.address);
+
     groups = [];
     groupAddresses = [];
     validators = [];
@@ -257,7 +261,7 @@ describe("e2e governance vote", () => {
     const depositor1StakedCeloBalanceAfterVoting = await stakedCeloContract.balanceOf(
       depositor1.address
     );
-    expect(depositor1StakedCeloBalanceAfterVoting).to.eq(amountOfCeloToDeposit);
+    expect(depositor1StakedCeloBalanceAfterVoting).to.eq(0);
 
     const depositor1LockedStakedCeloBalance = await stakedCeloContract.lockedBalanceOf(
       depositor1.address
@@ -305,13 +309,11 @@ describe("e2e governance vote", () => {
       stakedCeloContract
         .connect(depositor1)
         .transfer(managerContract.address, amountOfCeloToDeposit)
-    ).revertedWith("Not enough stCelo");
+    ).revertedWith("ERC20: transfer amount exceeds balance");
 
     await timeTravel(stageDurations.Referendum.toNumber() + 1);
 
-    const unlockReceipt = await (
-      await stakedCeloContract.connect(depositor1).unlockBalance(depositor1.address)
-    ).wait();
+    const unlockReceipt = await (await managerContract.unlockBalance(depositor1.address)).wait();
 
     const transferStCeloTx = await stakedCeloContract
       .connect(depositor1)
