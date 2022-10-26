@@ -52,8 +52,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     EnumerableSet.AddressSet private deprecatedGroups;
 
+    /**
+     * @notice Contract used during Governance voting.
+     */
     address public voteContract;
 
+    /**
+     * @notice Emitted when the vote contract is initially set or later modified.
+     * @param voteContract The new vote contract address.
+     */
     event VoteContractSet(address indexed voteContract);
 
     /**
