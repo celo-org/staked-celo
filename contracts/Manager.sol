@@ -624,12 +624,24 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
     }
 
+    /**
+     * @notice Sets vote contract address.
+     * @param _voteContract Vote contract address.
+     */
     function setVoteContract(address _voteContract) public onlyOwner {
         require(_voteContract != address(0), "Null address");
         voteContract = _voteContract;
         emit VoteContractSet(_voteContract);
     }
 
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
     function voteProposal(
         uint256 proposalId,
         uint256 index,
@@ -650,6 +662,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
+    /**
+     * @notice Revokes votes on already voted proposal.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     */
     function revokeVotes(uint256 proposalId, uint256 index) external {
         IVote vote = IVote(voteContract);
 
@@ -664,12 +681,32 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
-    function getLockedStCeloInVoting(address accountAddress) external returns (uint256) {
+    /**
+     * @notice Unlock balance of stCelo.
+     * @param accountAddress The account to be unlocked.
+     */
+    function getLockedStCeloInVotingAndUpdateHistory(address accountAddress)
+        external
+        returns (uint256)
+    {
         IVote vote = IVote(voteContract);
-        return vote.getLockedStCeloInVoting(accountAddress);
+        return vote.getLockedStCeloInVotingAndUpdateHistory(accountAddress);
     }
 
+    /**
+     * @notice Unlock balance of stCelo.
+     * @param accountAddress The account to be unlocked.
+     */
     function unlockBalance(address accountAddress) public {
         stakedCelo.unlockBalance(accountAddress);
+    }
+
+    /**
+     * @notice Overrides locked stBalance.
+     * @param accountAddress The account to be overriden.
+     * @param newLockBalance The new locked balance.
+     */
+    function overrideLockBalance(address accountAddress, uint256 newLockBalance) public onlyOwner {
+        stakedCelo.overrideLockBalance(accountAddress, newLockBalance);
     }
 }

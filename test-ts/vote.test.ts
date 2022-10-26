@@ -2,11 +2,9 @@ import hre, { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { StakedCelo } from "../typechain-types/StakedCelo";
 
 import {
   activateValidators,
-  ADDRESS_ZERO,
   mineToNextEpoch,
   randomSigner,
   registerValidator,
@@ -19,19 +17,11 @@ import {
   Proposal,
   ProposalTransaction,
 } from "@celo/contractkit/lib/wrappers/Governance";
-import { BigNumber, BigNumberish, Signer, Transaction } from "ethers";
-import manager from "../deploy/test/manager";
+import { BigNumber, BigNumberish, Signer } from "ethers";
 import { Account } from "../typechain-types/Account";
 import { Manager } from "../typechain-types/Manager";
 import { Vote } from "../typechain-types/Vote";
 import { ACCOUNT_ACTIVATE_AND_VOTE } from "../lib/tasksNames";
-
-enum VoteValue {
-  None = 0,
-  Abstain,
-  No,
-  Yes,
-}
 
 describe("Vote", () => {
   let accountContract: Account;
@@ -391,9 +381,7 @@ describe("Vote", () => {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVotingView = await voteContract.getLockedStCeloInVotingView(
-        depositor0.address
-      );
+      const lockedCeloInVotingView = await voteContract.getLockedStCeloInVoting(depositor0.address);
       expect(lockedCeloInVotingView).to.eq(0);
     });
 
@@ -412,7 +400,7 @@ describe("Vote", () => {
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVotingView = await voteContract.getLockedStCeloInVotingView(
+        const lockedCeloInVotingView = await voteContract.getLockedStCeloInVoting(
           depositor0.address
         );
         expect(lockedCeloInVotingView).to.eq(totalVotes);
@@ -437,7 +425,7 @@ describe("Vote", () => {
             abstainVotesRevote
           );
 
-        const lockedCeloInVotingView = await voteContract.getLockedStCeloInVotingView(
+        const lockedCeloInVotingView = await voteContract.getLockedStCeloInVoting(
           depositor0.address
         );
         expect(lockedCeloInVotingView).to.eq(totalRevotes);
@@ -456,7 +444,9 @@ describe("Vote", () => {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(depositor0.address);
+      const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
+        depositor0.address
+      );
       const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
 
       const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
@@ -488,7 +478,7 @@ describe("Vote", () => {
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(
+        const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
@@ -525,7 +515,7 @@ describe("Vote", () => {
             abstainVotesRevote
           );
 
-        const lockedCeloInVoting = await managerContract.getLockedStCeloInVoting(
+        const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();

@@ -9,7 +9,6 @@ import "./Managed.sol";
 
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
-import "hardhat/console.sol";
 
 contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     struct ProposalVoteRecord {
@@ -94,6 +93,18 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         account = IAccount(_account);
     }
 
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param accountVoter The account that is voting.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     * @return stakedCeloBalance Account's staked celo balance.
+     * @return totalYesVotes SUM of all AccountContract yes votes for proposal.
+     * @return totalNoVotes SUM of all AccountContract no votes for proposal.
+     * @return totalAbstainVotes SUM of all AccountContract abstain votes for proposal.
+     */
     function voteProposal(
         address accountVoter,
         uint256 proposalId,
@@ -115,10 +126,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             stakedCelo.lockedBalanceOf(accountVoter);
         require(stakedCeloBalance > 0, "No staked celo");
         uint256 totalWeights = yesVotes + noVotes + abstainVotes;
-        console.log("stakedCeloBalance: %s", stakedCeloBalance);
-        console.log("accountVoter: %s", accountVoter);
-        console.log("celoBalance: %s", toCelo(stakedCeloBalance));
-        console.log("totalWeights: %s", totalWeights);
         require(totalWeights <= toCelo(stakedCeloBalance), "Not enough celo to vote");
 
         Voter storage voter = voters[accountVoter];
@@ -169,6 +176,15 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         );
     }
 
+    /**
+     * @notice Revokes votes on already voted proposal.
+     * @param accountVoter The account that is voting.
+     * @param proposalId The ID of the proposal to vote on.
+     * @return stakedCeloBalance Account's staked celo balance.
+     * @return totalYesVotes SUM of all AccountContract yes votes for proposal.
+     * @return totalNoVotes SUM of all AccountContract no votes for proposal.
+     * @return totalAbstainVotes SUM of all AccountContract abstain votes for proposal.
+     */
     function revokeVotes(address accountVoter, uint256 proposalId)
         public
         onlyManager
@@ -182,12 +198,22 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         return voteProposal(accountVoter, proposalId, 0, 0, 0);
     }
 
+    /**
+     * @notice Returns save timestamp of proposal.
+     * @param proposalId The proposal UUID.
+     * @return The timestamp of proposal.
+     */
     function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
         (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
         return timestamp;
     }
 
-    function getLockedStCeloInVoting(address accountAddress)
+    /**
+     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * And it will remove voted proposals from account history if appropriate.
+     * @param accountAddress The account.
+     */
+    function getLockedStCeloInVotingAndUpdateHistory(address accountAddress)
         public
         onlyManager
         returns (uint256 lockedAmount)
@@ -221,7 +247,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         return stCelo;
     }
 
-    function getLockedStCeloInVotingView(address accountAddress)
+    /**
+     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * @param accountAddress The account.
+     */
+    function getLockedStCeloInVoting(address accountAddress)
         public
         view
         returns (uint256 lockedAmount)
@@ -263,15 +293,27 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         return totalVotesRequested;
     }
 
+    /**
+     * @notice Sets referendum duration. It should always be the same as in Governance.
+     * @param newReferendumDuration The new referendum duration.
+     */
     function setReferendumDuration(uint256 newReferendumDuration) public onlyOwner {
         referendumDuration = newReferendumDuration;
     }
 
+    /**
+     * @notice Returns vote weight of account owning stCelo.
+     * @param accountAddress The account.
+     */
     function getVoteWeight(address accountAddress) public view returns (uint256) {
         uint256 stakedCeloBalance = stakedCelo.balanceOf(accountAddress);
         return toCelo(stakedCeloBalance);
     }
 
+    /**
+     * @notice Gets vote record of proposal.
+     * @param proposalId The proposal UUID.
+     */
     function getVoteRecord(uint256 proposalId) public view returns (ProposalVoteRecord memory) {
         return voteRecords[proposalId];
     }

@@ -73,7 +73,6 @@ describe("Manager", () => {
     stakedCelo = await stakedCeloFactory.deploy();
 
     await manager.setDependencies(stakedCelo.address, account.address);
-    await manager.connect(owner).setVoteContract(vote.address);
 
     groups = [];
     groupAddresses = [];
@@ -980,7 +979,7 @@ describe("Manager", () => {
     });
 
     it("cannot be called by a non-Owner account", async () => {
-      await expect(manager.connect(owner).setVoteContract(nonVote.address)).revertedWith(
+      await expect(manager.connect(nonOwner).setVoteContract(nonVote.address)).revertedWith(
         "Ownable: caller is not the owner"
       );
     });

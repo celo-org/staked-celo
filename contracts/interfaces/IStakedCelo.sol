@@ -23,4 +23,6 @@ interface IStakedCelo {
     function unlockBalance(address account) external;
 
     function lockedBalanceOf(address account) external view returns (uint256);
+
+    function overrideLockBalance(address account, uint256 newLockBalance) external;
 }

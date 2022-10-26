@@ -4,7 +4,9 @@ pragma solidity 0.8.11;
 import "./IGovernance.sol";
 
 interface IVote {
-    function getLockedStCeloInVoting(address accountAddress) external returns (uint256);
+    function getLockedStCeloInVotingAndUpdateHistory(address accountAddress)
+        external
+        returns (uint256);
 
     function voteProposal(
         address accountVoter,

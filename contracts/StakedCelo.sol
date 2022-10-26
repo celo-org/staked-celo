@@ -59,6 +59,11 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         _burn(from, amount);
     }
 
+    /**
+     * @notice Locks stCELO from an address.
+     * @param account The address that will have its stCELO balance locked.
+     * @param amount The amount of stCELO to lock.
+     */
     function lockBalance(address account, uint256 amount) external onlyManager {
         uint256 lockedBalance = _lockedBalances[account];
         if (lockedBalance < amount) {
@@ -70,29 +75,56 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         }
     }
 
+    /**
+     * @notice Returns stCELO locked balance.
+     * @param account The address of locked stCELO balance.
+     * @return The amount of locked stCELO.
+     */
     function lockedBalanceOf(address account) public view returns (uint256) {
         return _lockedBalances[account];
     }
 
+    /**
+     * @notice Unlocks stCELO from an address.
+     * @param account The address that will have its stCELO balance unlocked.
+     */
     function unlockBalance(address account) public {
         uint256 previouslyLocked = _lockedBalances[account];
         require(previouslyLocked > 0, "No locked stCelo");
-        uint256 newlyLocked = IManager(manager).getLockedStCeloInVoting(account);
-        if (previouslyLocked != newlyLocked) {
-            _lockedBalances[account] = newlyLocked;
-            uint256 amountToMint = previouslyLocked - newlyLocked;
+        uint256 currentlyLocked = IManager(manager).getLockedStCeloInVotingAndUpdateHistory(
+            account
+        );
+        require(previouslyLocked >= currentlyLocked, "Not enough locked stCelo");
+        if (previouslyLocked != currentlyLocked) {
+            _lockedBalances[account] = currentlyLocked;
+            uint256 amountToMint = previouslyLocked - currentlyLocked;
             mint(account, amountToMint);
             totalLocked -= amountToMint;
             emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
         }
     }
 
+    /**
+     * @notice Returns total supply (unlocked + locked).
+     * @return The total supply.
+     */
     function totalSupply() public view override returns (uint256) {
         uint256 currentTotalSuply = super.totalSupply();
         return currentTotalSuply + totalLocked;
     }
 
-    function overrideLockBalance(address account, uint256 newLockBalance) public onlyOwner {
+    /**
+     * @notice Overides stCelo locked balance.
+     * @param account The address that will have its stCELO lock balance overriden.
+     * @param newLockBalance The desired lock balance.
+     */
+    function overrideLockBalance(address account, uint256 newLockBalance) public onlyManager {
+        uint256 previouslyLocked = _lockedBalances[account];
+        require(previouslyLocked >= newLockBalance, "Not enough locked stCelo");
         _lockedBalances[account] = newLockBalance;
+        uint256 amountToMint = previouslyLocked - newLockBalance;
+        mint(account, amountToMint);
+        totalLocked -= amountToMint;
+        emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
     }
 }

@@ -1,5 +1,6 @@
 import hre, { ethers } from "hardhat";
 import { Account } from "../typechain-types/Account";
+import { MockGovernance } from "../typechain-types/MockGovernance";
 import { Account__factory } from "../typechain-types/factories/Account__factory";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
@@ -28,6 +29,7 @@ describe("Account", () => {
   let accountsInstance: AccountsWrapper;
   let lockedGold: LockedGoldWrapper;
   let election: ElectionWrapper;
+  let governance: MockGovernance;
 
   let account: Account;
 
@@ -76,6 +78,7 @@ describe("Account", () => {
     const owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
+    governance = await hre.ethers.getContract("MockGovernance");
   });
 
   it("should create an account on the core Accounts contract", async () => {
@@ -1045,6 +1048,37 @@ describe("Account", () => {
           expect(votes).to.eq(40);
         });
       });
+    });
+  });
+
+  describe("#voteProposal", () => {
+    it("should should revert when not called by manager", async () => {
+      const proposalId = 3;
+      const index = 4;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      await expect(
+        account.connect(nonManager).voteProposal(proposalId, index, yes, no, abstain)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+
+    it("should pass correct values to governance contract", async () => {
+      const proposalId = 1;
+      const index = 0;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      // TODO: Uncomment once PR #72 is merged
+      // await account.connect(manager).voteProposal(proposalId, index, yes, no, abstain);
+
+      // expect(await governance.proposalId()).to.eq(proposalId);
+      // expect(await governance.index()).to.eq(index);
+      // expect(await governance.yesVotes()).to.eq(yes);
+      // expect(await governance.noVotes()).to.eq(no);
+      // expect(await governance.abstainVotes()).to.eq(abstain);
     });
   });
 });

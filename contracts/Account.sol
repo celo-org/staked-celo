@@ -696,6 +696,14 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         return (pendingWithdrawal.value, pendingWithdrawal.timestamp);
     }
 
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
     function voteProposal(
         uint256 proposalId,
         uint256 index,

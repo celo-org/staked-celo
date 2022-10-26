@@ -5,10 +5,15 @@ import { parseUnits } from "ethers/lib/utils";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { StakedCelo__factory } from "../typechain-types/factories/StakedCelo__factory";
 
-import { ADDRESS_ZERO, randomSigner, resetNetwork } from "./utils";
+import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork, timeTravel } from "./utils";
+import { zeroAddress } from "ethereumjs-util";
+import { GovernanceWrapper } from "@celo/contractkit/lib/wrappers/Governance";
+import { Manager } from "../typechain-types/Manager";
+import { MockManager } from "../typechain-types/MockManager";
 
 describe("StakedCelo", () => {
   let stakedCelo: StakedCelo;
+  let managerContract: MockManager;
 
   let owner: SignerWithAddress;
   let manager: SignerWithAddress;
@@ -19,7 +24,6 @@ describe("StakedCelo", () => {
   before(async () => {
     await resetNetwork();
     owner = await hre.ethers.getNamedSigner("owner");
-    [manager] = await randomSigner(parseUnits("100"));
     [nonManager] = await randomSigner(parseUnits("100"));
     [anAccount] = await randomSigner(parseUnits("100"));
   });
@@ -27,7 +31,18 @@ describe("StakedCelo", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestStakedCelo");
     stakedCelo = await hre.ethers.getContract("StakedCelo");
-    await stakedCelo.connect(owner).setManager(manager.address);
+    managerContract = await hre.ethers.getContract("MockManager");
+    await stakedCelo.connect(owner).setManager(managerContract.address);
+
+    await impersonateAccount(managerContract.address);
+    manager = await ethers.getSigner(managerContract.address);
+
+    const [randomSignerToFundManager] = await randomSigner(parseUnits("101"));
+    await hre.kit.sendTransaction({
+      from: randomSignerToFundManager.address,
+      to: manager.address,
+      value: parseUnits("100").toString(),
+    });
   });
 
   describe("#mint()", () => {
@@ -114,16 +129,16 @@ describe("StakedCelo", () => {
 
   describe("#lockBalance", () => {
     const balanceToLock = 100;
-    it("should revert if called by non vote", async () => {
+    it("should revert if called by non manager", async () => {
       await expect(
         stakedCelo.connect(nonManager).lockBalance(anAccount.address, balanceToLock)
-      ).to.revertedWith(`CallerNotVoteContract("${nonManager.address}")`);
+      ).to.revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
 
     it("should revert if account doesn't have enough stCelo", async () => {
       await expect(
         stakedCelo.connect(manager).lockBalance(anAccount.address, balanceToLock)
-      ).to.revertedWith("Not enough stCelo to lock");
+      ).to.revertedWith("ERC20: burn amount exceeds balance");
     });
 
     describe("When Account has stCelo", () => {
@@ -131,7 +146,7 @@ describe("StakedCelo", () => {
       beforeEach(async () => {
         await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
       });
-      describe("Emits locked Event", async () => {
+      it("Emits locked Event", async () => {
         await expect(stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned))
           .to.emit(stakedCelo, "Locked")
           .withArgs(anAccount.address, stCeloOwned);
@@ -142,12 +157,127 @@ describe("StakedCelo", () => {
 
         await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[0]);
         expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[0]);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
+          stCeloOwned - balancesToLock[0]
+        );
 
         await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[1]);
         expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
+          stCeloOwned - balancesToLock[1]
+        );
 
         await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[2]);
         expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
+          stCeloOwned - balancesToLock[1]
+        );
+      });
+
+      describe("When account has 50% balance locked", () => {
+        beforeEach(async () => {
+          await stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned / 2);
+        });
+
+        it("should fail to transfer unlocked + locked balance", async () => {
+          await expect(
+            stakedCelo.connect(anAccount).transfer(managerContract.address, stCeloOwned)
+          ).revertedWith(`ERC20: transfer amount exceeds balance`);
+        });
+
+        it("should allow to transfer unlocked balance", async () => {
+          expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+          expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+
+          await stakedCelo.connect(anAccount).transfer(managerContract.address, stCeloOwned / 2);
+
+          expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
+          expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+        });
+      });
+    });
+  });
+
+  describe("#unlockBalance", () => {
+    it("should revert when no locked stCelo", async () => {
+      await expect(stakedCelo.unlockBalance(anAccount.address)).revertedWith("No locked stCelo");
+    });
+
+    describe("When locked balance", () => {
+      const stCeloOwned = 100;
+      beforeEach(async () => {
+        await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
+        stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned);
+        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
+      });
+
+      it("should not unlock if manager contract return full locked amount", async () => {
+        await managerContract.setLockedStCelo(stCeloOwned);
+        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
+
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
+        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
+      });
+
+      it("should not unlock if manager contract return half locked amount", async () => {
+        await managerContract.setLockedStCelo(stCeloOwned / 2);
+        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
+
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
+      });
+
+      it("it should unlock if manager contract return 0 locked amount", async () => {
+        await managerContract.setLockedStCelo(0);
+        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
+
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(0);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned);
+        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
+      });
+    });
+  });
+
+  describe("#overrideLockBalance", () => {
+    const stCeloOwned = 100;
+
+    beforeEach(async () => {
+      await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
+    });
+
+    it("should revert when not an manager", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).overrideLockBalance(anAccount.address, 100)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+
+    it("should revert if there was no previous locked balance", async () => {
+      const balanceToOverrideTo = 99;
+      await expect(
+        stakedCelo.connect(manager).overrideLockBalance(anAccount.address, balanceToOverrideTo)
+      ).revertedWith("Not enough locked stCelo");
+    });
+
+    describe("When stCelo locked", () => {
+      beforeEach(async () => {
+        await stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned);
+      });
+
+      it("should change locked balance correctly", async () => {
+        const balanceToOverrideTo = 99;
+        await stakedCelo
+          .connect(manager)
+          .overrideLockBalance(anAccount.address, balanceToOverrideTo);
+
+        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balanceToOverrideTo);
+        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
+          stCeloOwned - balanceToOverrideTo
+        );
+        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
       });
     });
   });
