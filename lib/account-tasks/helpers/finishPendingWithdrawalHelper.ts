@@ -1,10 +1,11 @@
 import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
-import { Contract } from "ethers";
+import { Contract, Signer } from "ethers";
 
 export async function finishPendingWithdrawals(
   hre: HardhatRuntimeEnvironment,
+  signer: Signer,
   beneficiaryAddress: string
 ) {
   try {
@@ -31,14 +32,12 @@ export async function finishPendingWithdrawals(
       console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
       console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
 
-      const tx = await accountContract.finishPendingWithdrawal(
-        beneficiaryAddress,
-        localIndex,
-        lockedGoldIndex
-      );
+      const tx = await accountContract
+        .connect(signer)
+        .finishPendingWithdrawal(beneficiaryAddress, localIndex, lockedGoldIndex);
       const receipt = await tx.wait();
 
-      console.log("receipt:", receipt);
+      console.log(chalk.yellow("receipt status"), receipt.status);
     }
   } catch (error) {
     throw error;

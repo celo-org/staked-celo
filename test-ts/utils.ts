@@ -263,11 +263,13 @@ export async function submitAndExecuteProposal(
     values: values.join(","),
     payloads: payloads.join(","),
     account: account,
+    useNodeAccount: true,
   });
 
   await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
     proposalId: 0,
     account: account,
+    useNodeAccount: true,
   });
 }
 
