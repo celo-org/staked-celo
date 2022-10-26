@@ -292,11 +292,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateUnhealthyGroup(address group) external {
-        if (!isValidGroup(group)) {
-            _deprecateGroup((group));
-            return;
+        if (isValidGroup(group)) {
+            revert HealthyGroup(group);
         }
-        revert HealthyGroup(group);
+        _deprecateGroup((group));
     }
 
     /**
