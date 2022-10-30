@@ -229,25 +229,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if a group member is elected.
-     * @param groupMember The member of the group to check election status for.
-     * @return Whether or not the group member is elected.
-     */
-    function isGroupMemberElected(address groupMember) private view returns (bool) {
-        IElection election = getElection();
-
-        address[] memory electedValidatorSigners = election.electValidatorSigners();
-
-        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
-            if (electedValidatorSigners[i] == groupMember) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * @notice Checks if a group meets the validator group health requirements.
      * @param group The group to check for.
      * @return Whether or not the group is valid.
@@ -296,26 +277,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert HealthyGroup(group);
         }
         _deprecateGroup((group));
-    }
-
-    /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
-     */
-    function _deprecateGroup(address group) private {
-        if (!activeGroups.remove(group)) {
-            revert GroupNotActive(group);
-        }
-
-        emit GroupDeprecated(group);
-
-        if (account.getCeloForGroup(group) > 0) {
-            if (!deprecatedGroups.add(group)) {
-                revert FailedToAddDeprecatedGroup(group);
-            }
-        } else {
-            emit GroupRemoved(group);
-        }
     }
 
     /**
@@ -710,5 +671,44 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 j--;
             }
         }
+    }
+
+    /**
+     * @notice Marks a group as deprecated.
+     * @param group The group to deprecate.
+     */
+    function _deprecateGroup(address group) private {
+        if (!activeGroups.remove(group)) {
+            revert GroupNotActive(group);
+        }
+
+        emit GroupDeprecated(group);
+
+        if (account.getCeloForGroup(group) > 0) {
+            if (!deprecatedGroups.add(group)) {
+                revert FailedToAddDeprecatedGroup(group);
+            }
+        } else {
+            emit GroupRemoved(group);
+        }
+    }
+
+    /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @return Whether or not the group member is elected.
+     */
+    function isGroupMemberElected(address groupMember) private view returns (bool) {
+        IElection election = getElection();
+
+        address[] memory electedValidatorSigners = election.electValidatorSigners();
+
+        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
+            if (electedValidatorSigners[i] == groupMember) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
