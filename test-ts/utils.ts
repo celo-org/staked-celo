@@ -138,6 +138,12 @@ export async function randomSigner(
   return [signerWithAddress, wallet];
 }
 
+export async function getImpersonatedSigner(address: string) {
+  await impersonateAccount(address);
+  const signerWithAddress = await ethers.getSigner(address);
+  return signerWithAddress;
+}
+
 // Some function are finicky about whether they allow the input hex string to
 // start with 0x0... This function strips that first zero after 0x so the first
 // hex digit is non-0.

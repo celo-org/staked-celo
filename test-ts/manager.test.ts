@@ -13,6 +13,7 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
+  getImpersonatedSigner,
   randomSigner,
   registerValidator,
   registerValidatorGroup,
@@ -967,13 +968,19 @@ describe("Manager", () => {
 
   describe("#setVoteContract()", () => {
     it("sets the vote contract", async () => {
-      await manager.connect(owner).setVoteContract(nonVote.address);
+      const managerOwner = await manager.owner();
+      const ownerSigner = await getImpersonatedSigner(managerOwner);
+
+      await manager.connect(ownerSigner).setVoteContract(nonVote.address);
       const newVoteContract = await manager.voteContract();
       expect(newVoteContract).to.eq(nonVote.address);
     });
 
     it("emits a VoteContractSet event", async () => {
-      await expect(manager.connect(owner).setVoteContract(nonVote.address))
+      const managerOwner = await manager.owner();
+      const ownerSigner = await getImpersonatedSigner(managerOwner);
+
+      await expect(manager.connect(ownerSigner).setVoteContract(nonVote.address))
         .to.emit(manager, "VoteContractSet")
         .withArgs(nonVote.address);
     });
