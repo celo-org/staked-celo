@@ -8,6 +8,8 @@ import { MockAccount } from "../typechain-types/MockAccount";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
+import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
+import { MockVote } from "../typechain-types/MockVote";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -17,7 +19,6 @@ import {
   randomSigner,
   registerValidator,
   registerValidatorGroup,
-  REGISTRY_ADDRESS,
   resetNetwork,
 } from "./utils";
 
@@ -30,6 +31,7 @@ after(() => {
 describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
+  let voteContract: MockVote;
   let manager: Manager;
   let vote: SignerWithAddress;
   let nonVote: SignerWithAddress;
@@ -73,7 +75,16 @@ describe("Manager", () => {
     ).connect(owner) as MockStakedCelo__factory;
     stakedCelo = await stakedCeloFactory.deploy();
 
+    const mockVoteFactory: MockVote__factory = (
+      await hre.ethers.getContractFactory("MockVote")
+    ).connect(owner) as MockVote__factory;
+    voteContract = await mockVoteFactory.deploy();
+
     await manager.setDependencies(stakedCelo.address, account.address);
+
+    const managerOwner = await manager.owner();
+    const ownerSigner = await getImpersonatedSigner(managerOwner);
+    await manager.connect(ownerSigner).setVoteContract(voteContract.address);
 
     groups = [];
     groupAddresses = [];
@@ -989,6 +1000,106 @@ describe("Manager", () => {
       await expect(manager.connect(nonOwner).setVoteContract(nonVote.address)).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+  });
+
+  describe("#voteProposal()", () => {
+    const proposalId = 1;
+    const index = 0;
+    const yes = 10;
+    const no = 20;
+    const abstain = 30;
+
+    it("should call all subsequent contracts correctly", async () => {
+      const stakedCeloBalance = "1111";
+      await voteContract.setStakedCeloBalance(stakedCeloBalance);
+      await manager.voteProposal(proposalId, index, yes, no, abstain);
+
+      const stCeloLockedBalance = await stakedCelo.lockedBalance();
+      expect(stCeloLockedBalance).to.eq(BigNumber.from(stakedCeloBalance));
+
+      const voteProposalIdVoted = await voteContract.proposalId();
+      const voteYesVotesVoted = await voteContract.totalYesVotes();
+      const voteNoVotesVoted = await voteContract.totalNoVotes();
+      const voteAbstainVoteVoted = await voteContract.totalAbstainVotes();
+
+      const accountProposalIdVoted = await account.proposalIdVoted();
+      const accountIndexVoted = await account.indexVoted();
+      const accountYesVotesVoted = await account.yesVotesVoted();
+      const accountNoVotesVoted = await account.noVotesVoted();
+      const accountAbstainVoteVoted = await account.abstainVoteVoted();
+
+      expect(voteProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(voteYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(voteNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(voteAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+
+      expect(accountProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(accountIndexVoted).to.eq(BigNumber.from(index));
+      expect(accountYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(accountNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(accountAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+    });
+  });
+
+  describe("#revokeVotes()", () => {
+    const proposalId = 1;
+    const index = 0;
+    const yes = 10;
+    const no = 20;
+    const abstain = 30;
+
+    it("should call all subsequent contracts correctly", async () => {
+      const stakedCeloBalance = "1111";
+      await voteContract.setVotes(yes, no, abstain);
+      await voteContract.setStakedCeloBalance(stakedCeloBalance);
+      await manager.revokeVotes(proposalId, index);
+
+      const voteProposalIdVoted = await voteContract.revokeProposalId();
+
+      const accountProposalIdVoted = await account.proposalIdVoted();
+      const accountIndexVoted = await account.indexVoted();
+      const accountYesVotesVoted = await account.yesVotesVoted();
+      const accountNoVotesVoted = await account.noVotesVoted();
+      const accountAbstainVoteVoted = await account.abstainVoteVoted();
+
+      expect(voteProposalIdVoted).to.eq(BigNumber.from(proposalId));
+
+      expect(accountProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(accountIndexVoted).to.eq(BigNumber.from(index));
+      expect(accountYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(accountNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(accountAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+    });
+  });
+
+  describe("#unlockBalance()", () => {
+    it("should call all subsequent contracts correctly", async () => {
+      await manager.unlockBalance(nonVote.address);
+
+      const stCeloUnlockedFor = await stakedCelo.unlockedBalanceFor();
+      expect(stCeloUnlockedFor).to.eq(nonVote.address);
+    });
+  });
+
+  describe("#overrideLockBalance()", () => {
+    it("should call all subsequent contracts correctly", async () => {
+      const newLockBalance = 12456;
+      await manager.overrideLockBalance(nonVote.address, newLockBalance);
+
+      const overrideBalance = await stakedCelo.overrideBalance();
+      const overrideFor = await stakedCelo.overrideFor();
+      expect(overrideBalance).to.eq(newLockBalance);
+      expect(overrideFor).to.eq(nonVote.address);
+    });
+  });
+
+  describe("#updateHistoryAndReturnLockedStCeloInVoting()", () => {
+    it("should call all subsequent contracts correctly", async () => {
+      await manager.updateHistoryAndReturnLockedStCeloInVoting(nonVote.address);
+
+      const updatedHistoryFor = await voteContract.updatedHistoryFor();
+      expect(updatedHistoryFor).to.eq(nonVote.address);
     });
   });
 });

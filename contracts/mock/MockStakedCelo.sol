@@ -14,6 +14,10 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
     uint256 public lastMintAmount;
     address public lastBurnTarget;
     uint256 public lastBurnAmount;
+    uint256 public lockedBalance;
+    address public unlockedBalanceFor;
+    address public overrideFor;
+    uint256 public overrideBalance;
 
     function mint(address to, uint256 amount) external {
         lastMintTarget = to;
@@ -29,5 +33,18 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
         lastBurnTarget = from;
         lastBurnAmount = amount;
         _burn(from, amount);
+    }
+
+    function lockBalance(address, uint256 amount) external {
+        lockedBalance = amount;
+    }
+
+    function unlockBalance(address beneficiary) public {
+        unlockedBalanceFor = beneficiary;
+    }
+
+    function overrideLockBalance(address account, uint256 newLockBalance) public {
+        overrideFor = account;
+        overrideBalance = newLockBalance;
     }
 }

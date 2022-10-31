@@ -16,12 +16,17 @@ contract MockVote is IVote {
     uint256 public totalNoVotes;
     uint256 public totalAbstainVotes;
 
-    function updateHistoryAndReturnLockedStCeloInVoting(address)
+    address public revokeAccountVoter;
+    uint256 public revokeProposalId;
+
+    address public updatedHistoryFor;
+
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         external
-        pure
         override
         returns (uint256)
     {
+        updatedHistoryFor = beneficiary;
         return 111;
     }
 
@@ -50,6 +55,20 @@ contract MockVote is IVote {
         return (stakedCeloBalance, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
+    function setStakedCeloBalance(uint256 _stakedCeloBalance) public {
+        stakedCeloBalance = _stakedCeloBalance;
+    }
+
+    function setVotes(
+        uint256 yes,
+        uint256 no,
+        uint256 abstain
+    ) public {
+        totalYesVotes = yes;
+        totalNoVotes = no;
+        totalAbstainVotes = abstain;
+    }
+
     function revokeVotes(address _accountVoter, uint256 _proposalId)
         external
         override
@@ -60,8 +79,8 @@ contract MockVote is IVote {
             uint256
         )
     {
-        accountVoter = _accountVoter;
-        proposalId = _proposalId;
+        revokeAccountVoter = _accountVoter;
+        revokeProposalId = _proposalId;
         return (stakedCeloBalance, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 }
