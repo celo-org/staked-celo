@@ -690,14 +690,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Unlock balance of stCelo.
-     * @param accountAddress The account to be unlocked.
+     * @param beneficiary The account to be unlocked.
      */
-    function getLockedStCeloInVotingAndUpdateHistory(address accountAddress)
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         external
         returns (uint256)
     {
         IVote vote = IVote(voteContract);
-        return vote.getLockedStCeloInVotingAndUpdateHistory(accountAddress);
+        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
     }
 
     /**

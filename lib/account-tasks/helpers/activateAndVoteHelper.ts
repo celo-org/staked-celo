@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-export async function activateAndvote(hre: HardhatRuntimeEnvironment, signer: Signer) {
+export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
   const managerContract = await hre.ethers.getContract("Manager");
 

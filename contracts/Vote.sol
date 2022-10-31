@@ -11,6 +11,13 @@ import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 
 contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+    /**
+     * @notice Keeps track of total votes for proposal (votes of Account contract).
+     * @param proposalId The proposal UUID.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
     struct ProposalVoteRecord {
         uint256 proposalId;
         uint256 yesVotes;
@@ -18,12 +25,24 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         uint256 abstainVotes;
     }
 
+    /**
+     * @notice Votes of account.
+     * @param proposalVotes Votes per proposal UUID.
+     * @param votedProposalIds History of voted proposals that are still active.
+     */
     struct Voter {
         // Key of proposalId
         mapping(uint256 => VoterRecord) proposalVotes;
         uint256[] votedProposalIds;
     }
 
+    /**
+     * @notice Voter's votes for particular proposal.
+     * @param proposalId The proposal UIID.
+     * @param yesVotes The yes votes.
+     * @param noVotes The no votes.
+     * @param abstainVotes The abstain votes.
+     */
     struct VoterRecord {
         uint256 proposalId;
         uint256 yesVotes;
@@ -47,6 +66,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         uint256 abstainVotes
     );
 
+    /**
+     * @notice Emitted when unlock of stCELO is requested.
+     * @param account The account's address.
+     * @param lockedCelo The stCELO that is still being locked.
+     */
     event LockedStCeloInVoting(address account, uint256 lockedCelo);
 
     /**
@@ -59,25 +83,42 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      */
     IAccount internal account;
 
+    /**
+     * @notice Votes of Account's contract per proposal.
+     */
     mapping(uint256 => ProposalVoteRecord) private voteRecords;
+
+    /**
+     * @notice History of all voters.
+     */
     mapping(address => Voter) private voters;
-    // proposalId => proposal timestamp
+
+    /**
+     * @notice Timestamps of every voted proposal.
+     */
     mapping(uint256 => uint256) public proposalTimestamps;
+
+    /**
+     * @notice Duration of proposal in referendum stage
+     * (It has to be same as in Governance contrtact).
+     */
     uint256 public referendumDuration;
 
     /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
+     * @param _manager The address of the contract manager.
      */
     function initialize(
         address _registry,
         address _owner,
-        address manager
+        address _manager
     ) external initializer {
-        _transferOwnership(_owner);
         __UsingRegistry_init(_registry);
-        __Managed_init(manager);
+        __Managed_init(_manager);
+        _transferOwnership(_owner);
+        setReferendumDuration();
     }
 
     /**
@@ -211,14 +252,14 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     /**
      * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
      * And it will remove voted proposals from account history if appropriate.
-     * @param accountAddress The account.
+     * @param beneficiary The beneficiary.
      */
-    function getLockedStCeloInVotingAndUpdateHistory(address accountAddress)
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         public
         onlyManager
         returns (uint256 lockedAmount)
     {
-        Voter storage voter = voters[accountAddress];
+        Voter storage voter = voters[beneficiary];
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
@@ -243,20 +284,20 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         uint256 stCelo = toStakedCelo(lockedAmount);
-        emit LockedStCeloInVoting(accountAddress, stCelo);
+        emit LockedStCeloInVoting(beneficiary, stCelo);
         return stCelo;
     }
 
     /**
      * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
-     * @param accountAddress The account.
+     * @param beneficiary The account.
      */
-    function getLockedStCeloInVoting(address accountAddress)
+    function getLockedStCeloInVoting(address beneficiary)
         public
         view
         returns (uint256 lockedAmount)
     {
-        Voter storage voter = voters[accountAddress];
+        Voter storage voter = voters[beneficiary];
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
@@ -280,33 +321,19 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns sum of input weights.
-     * @param weights The weights to sum up.
-     * @return The sum of input weights.
-     */
-    function getTotalWeightRequested(uint256[] memory weights) private pure returns (uint256) {
-        uint256 totalVotesRequested = 0;
-        for (uint256 i = 0; i < weights.length; i++) {
-            totalVotesRequested += weights[i];
-        }
-
-        return totalVotesRequested;
-    }
-
-    /**
      * @notice Sets referendum duration. It should always be the same as in Governance.
-     * @param newReferendumDuration The new referendum duration.
      */
-    function setReferendumDuration(uint256 newReferendumDuration) public onlyOwner {
+    function setReferendumDuration() public onlyOwner {
+        uint256 newReferendumDuration = getGovernance().getReferendumStageDuration();
         referendumDuration = newReferendumDuration;
     }
 
     /**
      * @notice Returns vote weight of account owning stCelo.
-     * @param accountAddress The account.
+     * @param beneficiary The account.
      */
-    function getVoteWeight(address accountAddress) public view returns (uint256) {
-        uint256 stakedCeloBalance = stakedCelo.balanceOf(accountAddress);
+    function getVoteWeight(address beneficiary) public view returns (uint256) {
+        uint256 stakedCeloBalance = stakedCelo.balanceOf(beneficiary);
         return toCelo(stakedCeloBalance);
     }
 
@@ -350,5 +377,19 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         return (stCeloAmount * celoBalance) / stCeloSupply;
+    }
+
+    /**
+     * @notice Returns sum of input weights.
+     * @param weights The weights to sum up.
+     * @return The sum of input weights.
+     */
+    function getTotalWeightRequested(uint256[] memory weights) private pure returns (uint256) {
+        uint256 totalVotesRequested = 0;
+        for (uint256 i = 0; i < weights.length; i++) {
+            totalVotesRequested += weights[i];
+        }
+
+        return totalVotesRequested;
     }
 }

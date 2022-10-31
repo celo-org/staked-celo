@@ -5,6 +5,7 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
+  activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
   LOCKED_GOLD_UNLOCKING_PERIOD,
@@ -16,7 +17,7 @@ import {
   timeTravel,
 } from "./utils";
 import { Manager } from "../typechain-types/Manager";
-import { ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
+import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 
 after(() => {
@@ -95,15 +96,9 @@ describe("e2e", () => {
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
-      account: deployerAccountName,
-      useNodeAccount: true,
-    });
+    await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
-      account: deployerAccountName,
-      useNodeAccount: true,
-    });
+    await activateAndVoteTest();
 
     await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());

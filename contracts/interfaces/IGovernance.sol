@@ -20,4 +20,6 @@ interface IGovernance {
             uint256,
             string memory
         );
+
+    function getReferendumStageDuration() external view returns (uint256);
 }

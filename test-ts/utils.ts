@@ -4,7 +4,11 @@ import { Wallet, BigNumber as EthersBigNumber, Contract, BaseContract } from "et
 import Web3 from "web3";
 import hre, { ethers, kit, web3 } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
+import {
+  ACCOUNT_ACTIVATE_AND_VOTE,
+  MULTISIG_EXECUTE_PROPOSAL,
+  MULTISIG_SUBMIT_PROPOSAL,
+} from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -291,4 +295,15 @@ export async function waitForEvent(
       }
     });
   });
+}
+
+export async function activateAndVoteTest(deployerAccountName: string = "deployer") {
+  const activateAndVoteResult = await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+    account: deployerAccountName,
+    useNodeAccount: true,
+  });
+
+  if (activateAndVoteResult === "error") {
+    throw Error("Activate and vote failed!");
+  }
 }

@@ -1,15 +1,17 @@
-import hre, { ethers } from "hardhat";
+import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 
 import {
+  activateAndVoteTest,
   activateValidators,
   mineToNextEpoch,
   randomSigner,
   registerValidator,
   registerValidatorGroup,
   resetNetwork,
+  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
 import {
@@ -18,19 +20,17 @@ import {
   ProposalTransaction,
 } from "@celo/contractkit/lib/wrappers/Governance";
 import { BigNumber, BigNumberish, Signer } from "ethers";
-import { Account } from "../typechain-types/Account";
 import { Manager } from "../typechain-types/Manager";
 import { Vote } from "../typechain-types/Vote";
-import { ACCOUNT_ACTIVATE_AND_VOTE } from "../lib/tasksNames";
 
 describe("Vote", () => {
-  let accountContract: Account;
   let managerContract: Manager;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
+  let multisigOwner0: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
@@ -59,10 +59,9 @@ describe("Vote", () => {
 
   async function depositAndActivate(despositor: Signer, value: BigNumberish) {
     await managerContract.connect(despositor).deposit({ value });
-
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await activateAndVoteTest();
   }
 
   async function checkGovernanceTotalVotes(
@@ -95,6 +94,7 @@ describe("Vote", () => {
 
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
+    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
 
     groups = [];
     groupAddresses = [];
@@ -116,7 +116,6 @@ describe("Vote", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("core");
     governanceWrapper = await hre.kit.contracts.getGovernance();
-    accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     voteContract = await hre.ethers.getContract("Vote");
 
@@ -142,12 +141,20 @@ describe("Vote", () => {
     it("should return same as governance referendum", async () => {
       const governanceStageDurations = await governanceWrapper.stageDurations();
       const referendumDuration = await voteContract.referendumDuration();
-      expect(referendumDuration).to.eq(governanceStageDurations.Referendum);
+      expect(referendumDuration.toString()).to.eq(governanceStageDurations.Referendum.toString());
     });
 
-    it("should return deposited stCelo", async () => {
-      const newReferendumDuration = 567;
-      await (await voteContract.setReferendumDuration(newReferendumDuration)).wait();
+    it("should set new referendum duration and return same as governance", async () => {
+      const governanceStageDurations = await governanceWrapper.stageDurations();
+      const newReferendumDuration = governanceStageDurations.Referendum;
+
+      await submitAndExecuteProposal(
+        multisigOwner0.address,
+        [voteContract.address],
+        ["0"],
+        [voteContract.interface.encodeFunctionData("setReferendumDuration")]
+      );
+
       const referendumDuration = await voteContract.referendumDuration();
       expect(referendumDuration).to.eq(newReferendumDuration);
     });
@@ -444,7 +451,7 @@ describe("Vote", () => {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
+      const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
         depositor0.address
       );
       const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
@@ -478,7 +485,7 @@ describe("Vote", () => {
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
+        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
@@ -515,7 +522,7 @@ describe("Vote", () => {
             abstainVotesRevote
           );
 
-        const lockedCeloInVoting = await managerContract.getLockedStCeloInVotingAndUpdateHistory(
+        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();

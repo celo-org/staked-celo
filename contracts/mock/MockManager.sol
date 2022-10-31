@@ -15,7 +15,7 @@ contract MockManager is IManager {
         lockedStCelo = _lockedStCelo;
     }
 
-    function getLockedStCeloInVotingAndUpdateHistory(address)
+    function updateHistoryAndReturnLockedStCeloInVoting(address)
         external
         view
         override

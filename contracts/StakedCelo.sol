@@ -55,7 +55,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @param to The address that will receive the new stCELO.
      * @param amount The amount of stCELO to mint.
      */
-    function mint(address to, uint256 amount) public onlyManager {
+    function mint(address to, uint256 amount) external onlyManager {
         _mint(to, amount);
     }
 
@@ -64,7 +64,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @param from The address that will have its stCELO burned.
      * @param amount The amount of stCELO to burn.
      */
-    function burn(address from, uint256 amount) public onlyManager {
+    function burn(address from, uint256 amount) external onlyManager {
         _burn(from, amount);
     }
 
@@ -79,7 +79,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             _lockedBalances[account] = amount;
             uint256 amountToBurn = amount - lockedBalance;
             totalLocked += amountToBurn;
-            burn(account, amountToBurn);
+            _burn(account, amountToBurn);
             emit Locked(account, amount);
         }
     }
@@ -95,21 +95,21 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
 
     /**
      * @notice Unlocks stCELO from an address.
-     * @param account The address that will have its stCELO balance unlocked.
+     * @param beneficiary The address that will have its stCELO balance unlocked.
      */
-    function unlockBalance(address account) public {
-        uint256 previouslyLocked = _lockedBalances[account];
+    function unlockBalance(address beneficiary) public {
+        uint256 previouslyLocked = _lockedBalances[beneficiary];
         require(previouslyLocked > 0, "No locked stCelo");
-        uint256 currentlyLocked = IManager(manager).getLockedStCeloInVotingAndUpdateHistory(
-            account
+        uint256 currentlyLocked = IManager(manager).updateHistoryAndReturnLockedStCeloInVoting(
+            beneficiary
         );
         require(previouslyLocked >= currentlyLocked, "Not enough locked stCelo");
         if (previouslyLocked != currentlyLocked) {
-            _lockedBalances[account] = currentlyLocked;
+            _lockedBalances[beneficiary] = currentlyLocked;
             uint256 amountToMint = previouslyLocked - currentlyLocked;
-            mint(account, amountToMint);
+            _mint(beneficiary, amountToMint);
             totalLocked -= amountToMint;
-            emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
+            emit Unlocked(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
         }
     }
 
@@ -132,7 +132,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         require(previouslyLocked >= newLockBalance, "Not enough locked stCelo");
         _lockedBalances[account] = newLockBalance;
         uint256 amountToMint = previouslyLocked - newLockBalance;
-        mint(account, amountToMint);
+        _mint(account, amountToMint);
         totalLocked -= amountToMint;
         emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
     }

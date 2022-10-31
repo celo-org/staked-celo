@@ -16,7 +16,7 @@ contract MockVote is IVote {
     uint256 public totalNoVotes;
     uint256 public totalAbstainVotes;
 
-    function getLockedStCeloInVotingAndUpdateHistory(address)
+    function updateHistoryAndReturnLockedStCeloInVoting(address)
         external
         pure
         override

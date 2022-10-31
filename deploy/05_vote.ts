@@ -1,10 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import { catchNotOwnerForProxy, executeAndWait } from "../lib/deploy-utils";
-import { VoteValue } from "@celo/contractkit/lib/wrappers/Governance";
-
-const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
-  validatorGroupsString ? validatorGroupsString.split(",") : [];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -34,13 +30,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log("Vote proxy was already deployed - skipping group activation");
     return;
   }
-
-  const governance = await hre.kit.contracts.getGovernance();
-  const stageDurations = await governance.stageDurations();
-  const referendumDuration = stageDurations.Referendum;
-  const vote = await hre.ethers.getContract("Vote");
-  console.log("setting referendum duration to ", referendumDuration.toString());
-  await executeAndWait(vote.setReferendumDuration(referendumDuration));
 };
 
 func.id = "deploy_vote";

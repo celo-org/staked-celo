@@ -5,6 +5,7 @@ import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
+  activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
   impersonateAccount,
@@ -16,7 +17,6 @@ import {
   timeTravel,
 } from "./utils";
 import { Manager } from "../typechain-types/Manager";
-import { ACCOUNT_ACTIVATE_AND_VOTE } from "../lib/tasksNames";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   GovernanceWrapper,
@@ -110,9 +110,9 @@ describe("e2e governance vote", () => {
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE);
+    await activateAndVoteTest();
 
     await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
@@ -232,16 +232,16 @@ describe("e2e governance vote", () => {
 
     await timeTravel(stageDurations.Referendum.toNumber() + 1);
 
-    const unlockReceipt = await (await managerContract.unlockBalance(depositor1.address)).wait();
+    await (await managerContract.unlockBalance(depositor1.address)).wait();
 
     const transferStCeloTx = await stakedCeloContract
       .connect(depositor1)
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
-    const receipt1 = await transferStCeloTx.wait();
+    await transferStCeloTx.wait();
 
     const transferStCeloTx2 = await stakedCeloContract
       .connect(depositor1)
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
-    const receipt2 = await transferStCeloTx2.wait();
+    await transferStCeloTx2.wait();
   });
 });

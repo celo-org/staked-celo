@@ -30,7 +30,7 @@ contract MockGovernance is IGovernance {
         return true;
     }
 
-    function getProposal(uint256 proposalId)
+    function getProposal(uint256 _proposalId)
         external
         view
         override
@@ -43,5 +43,9 @@ contract MockGovernance is IGovernance {
         )
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getReferendumStageDuration() external pure returns (uint256) {
+        return 11;
     }
 }
