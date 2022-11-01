@@ -267,6 +267,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256 proposalTimestamp = proposalTimestamps[proposalId];
 
             if (proposalTimestamp == 0) {
+                voter.votedProposalIds[i] = voter.votedProposalIds[
+                    voter.votedProposalIds.length - 1
+                ];
                 voter.votedProposalIds.pop();
                 continue;
             }
@@ -278,6 +281,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
                     voterRecord.yesVotes + voterRecord.noVotes + voterRecord.abstainVotes
                 );
             } else {
+                voter.votedProposalIds[i] = voter.votedProposalIds[
+                    voter.votedProposalIds.length - 1
+                ];
                 voter.votedProposalIds.pop();
                 delete proposalTimestamps[proposalId];
             }
@@ -286,6 +292,16 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         uint256 stCelo = toStakedCelo(lockedAmount);
         emit LockedStCeloInVoting(beneficiary, stCelo);
         return stCelo;
+    }
+
+    /**
+     * @notice Retuns proposals still in referendum stage that voter voted on.
+     * @param voter The voter.
+     * @return Proposals in referendum stage.
+     * (For up to date result call updateHistoryAndReturnLockedStCeloInVoting first)
+     */
+    function getVotedStillRelevantProposals(address voter) public view returns (uint256[] memory) {
+        return voters[voter].votedProposalIds;
     }
 
     /**

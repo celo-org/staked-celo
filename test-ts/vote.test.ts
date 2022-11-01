@@ -37,9 +37,10 @@ describe("Vote", () => {
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
 
-  async function proposeNewProposal() {
+  async function proposeNewProposal(dequeue = true) {
     const minDeposit = await governanceWrapper.minDeposit();
     const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+    console.log("dequeueFrequency", dequeueFrequency.toString());
 
     const ownertx: ProposalTransaction = {
       value: "0",
@@ -52,9 +53,11 @@ describe("Vote", () => {
     const tx = await governanceWrapper.propose(proposal, "http://www.descriptionUrl.com");
     await tx.send({ from: depositor1.address, value: minDeposit.toString() });
 
-    await timeTravel(dequeueFrequency.toNumber() + 1);
-    const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
-    await dequeueProposalIfReadyTx.send({ from: depositor1.address });
+    if (dequeue) {
+      await timeTravel(dequeueFrequency.toNumber() + 1);
+      const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
+      await dequeueProposalIfReadyTx.send({ from: depositor1.address });
+    }
   }
 
   async function depositAndActivate(despositor: Signer, value: BigNumberish) {
@@ -538,6 +541,102 @@ describe("Vote", () => {
           eventTopics
         );
         expect(eventArgs?.lockedCelo).to.eq(totalRevotes);
+      });
+    });
+
+    describe("When voted on 3 proposals", () => {
+      let referendumDuration: BigNumber;
+
+      const proposal2Id = 2;
+      const proposal2Index = 1;
+
+      const proposal3Id = 3;
+      const proposal3Index = 2;
+
+      const yesVotes = hre.web3.utils.toWei("7");
+      const noVotes = hre.web3.utils.toWei("2");
+      const abstainVotes = hre.web3.utils.toWei("1");
+
+      const yesVotesProposal2 = hre.web3.utils.toWei("1");
+      const noVotesProposal2 = hre.web3.utils.toWei("2");
+      const abstainVotesProposal2 = hre.web3.utils.toWei("3");
+
+      const yesVotesProposal3 = hre.web3.utils.toWei("2");
+      const noVotesProposal3 = hre.web3.utils.toWei("3");
+      const abstainVotesProposal3 = hre.web3.utils.toWei("4");
+
+      beforeEach(async () => {
+        referendumDuration = await voteContract.referendumDuration();
+        console.log("referendumDuration", referendumDuration.toString());
+        // await timeTravel(referendumDuration.div(2).toNumber());
+        await proposeNewProposal(false);
+        await proposeNewProposal();
+        await managerContract
+          .connect(depositor0)
+          .voteProposal(
+            proposal2Id,
+            proposal2Index,
+            yesVotesProposal2,
+            noVotesProposal2,
+            abstainVotesProposal2
+          );
+
+        await managerContract
+          .connect(depositor0)
+          .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+        await managerContract
+          .connect(depositor0)
+          .voteProposal(
+            proposal3Id,
+            proposal3Index,
+            yesVotesProposal3,
+            noVotesProposal3,
+            abstainVotesProposal3
+          );
+      });
+
+      it("should return correct order of voted proposals", async () => {
+        console.log("proposal1", await governanceWrapper.getProposal(proposal2Id));
+
+        const votedProposals = await voteContract.getVotedStillRelevantProposals(
+          await depositor0.getAddress()
+        );
+        const proposal1Timestamp = await voteContract.proposalTimestamps(proposal1Id);
+        const proposal2Timestamp = await voteContract.proposalTimestamps(proposal2Id);
+        const proposal3Timestamp = await voteContract.proposalTimestamps(proposal3Id);
+
+        expect(votedProposals.length).to.equal(3);
+        expect(votedProposals[0]).to.equal(proposal2Id);
+        expect(votedProposals[1]).to.equal(proposal1Id);
+        expect(votedProposals[2]).to.equal(proposal3Id);
+
+        expect(proposal1Timestamp.toNumber()).to.greaterThan(0);
+        expect(proposal2Timestamp.toNumber()).to.greaterThan(0);
+        expect(proposal3Timestamp.toNumber()).to.greaterThan(0);
+      });
+
+      it("should remove expired proposal", async () => {
+        const dequeueFrequency = (await governanceWrapper.dequeueFrequency()).toNumber();
+        await timeTravel(referendumDuration.toNumber() - dequeueFrequency + 1);
+        await (
+          await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
+            await depositor0.getAddress()
+          )
+        ).wait();
+        const proposal1Timestamp = await voteContract.proposalTimestamps(proposal1Id);
+        const proposal2Timestamp = await voteContract.proposalTimestamps(proposal2Id);
+        const proposal3Timestamp = await voteContract.proposalTimestamps(proposal3Id);
+
+        const votedProposals = await voteContract.getVotedStillRelevantProposals(
+          await depositor0.getAddress()
+        );
+        expect(votedProposals.length).to.equal(2);
+        expect(votedProposals[0]).to.equal(proposal2Id);
+        expect(votedProposals[1]).to.equal(proposal3Id);
+
+        expect(proposal1Timestamp.toNumber()).to.eq(0);
+        expect(proposal2Timestamp.toNumber()).to.greaterThan(0);
+        expect(proposal3Timestamp.toNumber()).to.greaterThan(0);
       });
     });
   });
