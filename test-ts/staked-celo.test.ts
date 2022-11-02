@@ -1,9 +1,8 @@
-import hre, { ethers } from "hardhat";
+import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { StakedCelo } from "../typechain-types/StakedCelo";
-import { StakedCelo__factory } from "../typechain-types/factories/StakedCelo__factory";
 
 import { ADDRESS_ZERO, randomSigner, resetNetwork } from "./utils";
 
