@@ -243,12 +243,12 @@ describe("Vote", () => {
       const proposal3Index = 2;
       const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
 
-      const yesVotes = [hre.web3.utils.toWei("7"), hre.web3.utils.toWei("2")];
+      const yesVotes = [hre.web3.utils.toWei("6"), hre.web3.utils.toWei("2")];
       const noVotes = [hre.web3.utils.toWei("2"), hre.web3.utils.toWei("3")];
-      const abstainVotes = [hre.web3.utils.toWei("1"), hre.web3.utils.toWei("5")];
+      const abstainVotes = [hre.web3.utils.toWei("1"), hre.web3.utils.toWei("4")];
 
       const yesVotesDepositor1 = [hre.web3.utils.toWei("1"), hre.web3.utils.toWei("4")];
-      const noVotesDepositor1 = [hre.web3.utils.toWei("2"), hre.web3.utils.toWei("5")];
+      const noVotesDepositor1 = [hre.web3.utils.toWei("2"), hre.web3.utils.toWei("3")];
       const abstainVotesDepositor1 = [hre.web3.utils.toWei("3"), hre.web3.utils.toWei("1")];
 
       beforeEach(async () => {

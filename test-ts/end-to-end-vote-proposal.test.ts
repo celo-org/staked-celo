@@ -24,6 +24,7 @@ import {
   ProposalTransaction,
 } from "@celo/contractkit/lib/wrappers/Governance";
 import { Vote } from "../typechain-types/Vote";
+import { BigNumber } from "ethers";
 
 after(() => {
   hre.kit.stop();
@@ -162,6 +163,7 @@ describe("e2e governance vote", () => {
     const index2 = 1;
 
     const depositor0VotingPower = await voteContract.getVoteWeight(depositor0.address);
+    const depositor0VotedWeight = depositor0VotingPower.sub(100000);
     const depositor1VotingPower = await voteContract.getVoteWeight(depositor1.address);
 
     const voteProposalTx = await managerContract
@@ -176,7 +178,7 @@ describe("e2e governance vote", () => {
 
     const voteProposal2Depositor0Tx = await managerContract
       .connect(depositor0)
-      .functions.voteProposal(proposalId2, index2, depositor0VotingPower, 0, 0);
+      .functions.voteProposal(proposalId2, index2, depositor0VotedWeight, 0, 0);
     await voteProposal2Depositor0Tx.wait();
 
     const depositor1StakedCeloBalanceAfterVoting = await stakedCeloContract.balanceOf(
@@ -209,11 +211,11 @@ describe("e2e governance vote", () => {
 
     const totalVotesProposal2 = await governanceContract.methods.getVoteTotals(proposalId2).call();
     const yesVotesProposal2 = totalVotesProposal2[0];
-    expect(yesVotesProposal2).to.eq(depositor1VotingPower.add(depositor0VotingPower));
+    expect(yesVotesProposal2).to.eq(depositor1VotingPower.add(depositor0VotedWeight));
 
     const voteProposal2Depositor0TxChangeVotesToNo = await managerContract
       .connect(depositor0)
-      .functions.voteProposal(proposalId2, index2, 0, depositor0VotingPower, 0);
+      .functions.voteProposal(proposalId2, index2, 0, depositor0VotedWeight, 0);
     await voteProposal2Depositor0TxChangeVotesToNo.wait();
 
     const totalVotesProposal2AfterChangeToNo = await governanceContract.methods
@@ -221,8 +223,8 @@ describe("e2e governance vote", () => {
       .call();
     const yesVotesProposal2AfterChangeToNo = totalVotesProposal2AfterChangeToNo[0];
     const noVotesProposal2AfterChangeToNo = totalVotesProposal2AfterChangeToNo[1];
-    expect(yesVotesProposal2AfterChangeToNo).to.eq(depositor0VotingPower);
-    expect(noVotesProposal2AfterChangeToNo).to.eq(depositor1VotingPower);
+    expect(yesVotesProposal2AfterChangeToNo).to.eq(depositor1VotingPower);
+    expect(noVotesProposal2AfterChangeToNo).to.eq(depositor0VotedWeight);
 
     await expect(
       stakedCeloContract
@@ -243,5 +245,11 @@ describe("e2e governance vote", () => {
       .connect(depositor1)
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
     await transferStCeloTx2.wait();
+
+    const lockedStakedCeloDepositor0 = await stakedCeloContract.lockedBalanceOf(depositor0.address);
+    const lockedStakedCeloDepositor1 = await stakedCeloContract.lockedBalanceOf(depositor1.address);
+
+    expect(lockedStakedCeloDepositor1).to.eq(BigNumber.from(0));
+    expect(lockedStakedCeloDepositor0).to.eq(BigNumber.from("9999999999999693"));
   });
 });

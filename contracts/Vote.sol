@@ -141,7 +141,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param yesVotes The yes votes weight.
      * @param noVotes The no votes weight.
      * @param abstainVotes The abstain votes weight.
-     * @return stakedCeloBalance Account's staked celo balance.
+     * @return totalWeights Account's staked celo balance.
      * @return totalYesVotes SUM of all AccountContract yes votes for proposal.
      * @return totalNoVotes SUM of all AccountContract no votes for proposal.
      * @return totalAbstainVotes SUM of all AccountContract abstain votes for proposal.
@@ -156,14 +156,13 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         public
         onlyManager
         returns (
-            uint256 stakedCeloBalance,
+            uint256,
             uint256 totalYesVotes,
             uint256 totalNoVotes,
             uint256 totalAbstainVotes
         )
     {
-        stakedCeloBalance =
-            stakedCelo.balanceOf(accountVoter) +
+        uint256 stakedCeloBalance = stakedCelo.balanceOf(accountVoter) +
             stakedCelo.lockedBalanceOf(accountVoter);
         require(stakedCeloBalance > 0, "No staked celo");
         uint256 totalWeights = yesVotes + noVotes + abstainVotes;
@@ -210,7 +209,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         return (
-            stakedCeloBalance,
+            toStakedCelo(totalWeights),
             proposalVoteRecord.yesVotes,
             proposalVoteRecord.noVotes,
             proposalVoteRecord.abstainVotes
@@ -221,7 +220,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @notice Revokes votes on already voted proposal.
      * @param accountVoter The account that is voting.
      * @param proposalId The ID of the proposal to vote on.
-     * @return stakedCeloBalance Account's staked celo balance.
      * @return totalYesVotes SUM of all AccountContract yes votes for proposal.
      * @return totalNoVotes SUM of all AccountContract no votes for proposal.
      * @return totalAbstainVotes SUM of all AccountContract abstain votes for proposal.
@@ -230,13 +228,19 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         public
         onlyManager
         returns (
-            uint256 stakedCeloBalance,
             uint256 totalYesVotes,
             uint256 totalNoVotes,
             uint256 totalAbstainVotes
         )
     {
-        return voteProposal(accountVoter, proposalId, 0, 0, 0);
+        (, totalYesVotes, totalNoVotes, totalAbstainVotes) = voteProposal(
+            accountVoter,
+            proposalId,
+            0,
+            0,
+            0
+        );
+        return (totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
     /**

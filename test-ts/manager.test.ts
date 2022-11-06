@@ -1012,11 +1012,10 @@ describe("Manager", () => {
 
     it("should call all subsequent contracts correctly", async () => {
       const stakedCeloBalance = "1111";
-      await voteContract.setStakedCeloBalance(stakedCeloBalance);
       await manager.voteProposal(proposalId, index, yes, no, abstain);
 
       const stCeloLockedBalance = await stakedCelo.lockedBalance();
-      expect(stCeloLockedBalance).to.eq(BigNumber.from(stakedCeloBalance));
+      expect(stCeloLockedBalance).to.eq(BigNumber.from(yes + no + abstain));
 
       const voteProposalIdVoted = await voteContract.proposalId();
       const voteYesVotesVoted = await voteContract.totalYesVotes();
@@ -1052,7 +1051,6 @@ describe("Manager", () => {
     it("should call all subsequent contracts correctly", async () => {
       const stakedCeloBalance = "1111";
       await voteContract.setVotes(yes, no, abstain);
-      await voteContract.setStakedCeloBalance(stakedCeloBalance);
       await manager.revokeVotes(proposalId, index);
 
       const voteProposalIdVoted = await voteContract.revokeProposalId();

@@ -11,7 +11,6 @@ import "../interfaces/IVote.sol";
 contract MockVote is IVote {
     address public accountVoter;
     uint256 public proposalId;
-    uint256 public stakedCeloBalance;
     uint256 public totalYesVotes;
     uint256 public totalNoVotes;
     uint256 public totalAbstainVotes;
@@ -52,11 +51,12 @@ contract MockVote is IVote {
         totalNoVotes = _noVotes;
         totalAbstainVotes = _abstainVotes;
 
-        return (stakedCeloBalance, totalYesVotes, totalNoVotes, totalAbstainVotes);
-    }
-
-    function setStakedCeloBalance(uint256 _stakedCeloBalance) public {
-        stakedCeloBalance = _stakedCeloBalance;
+        return (
+            _yesVotes + _noVotes + _abstainVotes,
+            totalYesVotes,
+            totalNoVotes,
+            totalAbstainVotes
+        );
     }
 
     function setVotes(
@@ -75,12 +75,11 @@ contract MockVote is IVote {
         returns (
             uint256,
             uint256,
-            uint256,
             uint256
         )
     {
         revokeAccountVoter = _accountVoter;
         revokeProposalId = _proposalId;
-        return (stakedCeloBalance, totalYesVotes, totalNoVotes, totalAbstainVotes);
+        return (totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 }

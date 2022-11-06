@@ -659,13 +659,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         IVote vote = IVote(voteContract);
 
         (
-            uint256 stakedCeloBalance,
+            uint256 stCeloUsedForVoting,
             uint256 totalYesVotes,
             uint256 totalNoVotes,
             uint256 totalAbstainVotes
         ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
 
-        stakedCelo.lockBalance(msg.sender, stakedCeloBalance);
+        stakedCelo.lockBalance(msg.sender, stCeloUsedForVoting);
         account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
@@ -677,8 +677,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function revokeVotes(uint256 proposalId, uint256 index) external {
         IVote vote = IVote(voteContract);
 
-        (, uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote
-            .revokeVotes(msg.sender, proposalId);
+        (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
+            msg.sender,
+            proposalId
+        );
 
         account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }

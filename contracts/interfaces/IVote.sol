@@ -17,7 +17,7 @@ interface IVote {
     )
         external
         returns (
-            uint256 stakedCeloBalance,
+            uint256 stCeloUsedForVoting,
             uint256 totalYesVotes,
             uint256 totalNoVotes,
             uint256 totalAbstainVotes
@@ -26,7 +26,6 @@ interface IVote {
     function revokeVotes(address accountVoter, uint256 proposalId)
         external
         returns (
-            uint256 stakedCeloBalance,
             uint256 totalYesVotes,
             uint256 totalNoVotes,
             uint256 totalAbstainVotes
