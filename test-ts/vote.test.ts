@@ -196,6 +196,18 @@ describe("Vote", () => {
         ).revertedWith("Not enough celo to vote");
       });
 
+      it("should revert when voting for non existing proposal", async () => {
+        const yesVotes = hre.web3.utils.toWei("7");
+        const noVotes = hre.web3.utils.toWei("2");
+        const abstainVotes = hre.web3.utils.toWei("1");
+
+        await expect(
+          managerContract
+            .connect(depositor0)
+            .voteProposal(100, proposal1Index, yesVotes, noVotes, abstainVotes)
+        ).revertedWith("Proposal not dequeued");
+      });
+
       describe("when voted", async () => {
         const yesVotes = hre.web3.utils.toWei("7");
         const noVotes = hre.web3.utils.toWei("2");

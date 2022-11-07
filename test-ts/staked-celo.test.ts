@@ -3,12 +3,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { StakedCelo } from "../typechain-types/StakedCelo";
-import { StakedCelo__factory } from "../typechain-types/factories/StakedCelo__factory";
 
 import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork, timeTravel } from "./utils";
-import { zeroAddress } from "ethereumjs-util";
-import { GovernanceWrapper } from "@celo/contractkit/lib/wrappers/Governance";
-import { Manager } from "../typechain-types/Manager";
 import { MockManager } from "../typechain-types/MockManager";
 
 describe("StakedCelo", () => {

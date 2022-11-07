@@ -309,7 +309,7 @@ export async function activateAndVoteTest(deployerAccountName: string = "deploye
     useNodeAccount: true,
   });
 
-  if (activateAndVoteResult === "error") {
-    throw Error("Activate and vote failed!");
+  if (activateAndVoteResult != null) {
+    throw Error(`Activate and vote failed! ${activateAndVoteResult}`);
   }
 }

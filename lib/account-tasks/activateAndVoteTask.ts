@@ -27,6 +27,6 @@ task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
       await activateAndVote(hre, signer);
     } catch (error) {
       console.log(chalk.red("Error activating and voting:"), error);
-      return "error";
+      return error;
     }
   });

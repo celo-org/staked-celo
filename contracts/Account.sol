@@ -711,6 +711,13 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 noVotes,
         uint256 abstainVotes
     ) public onlyManager {
-        getGovernance().votePartially(proposalId, index, yesVotes, noVotes, abstainVotes);
+        bool voteResult = getGovernance().votePartially(
+            proposalId,
+            index,
+            yesVotes,
+            noVotes,
+            abstainVotes
+        );
+        require(voteResult == true, "Voting was not successful");
     }
 }

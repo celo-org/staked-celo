@@ -25,11 +25,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     })
   );
-
-  if (isVoteAlreadyDeployed) {
-    console.log("Vote proxy was already deployed - skipping group activation");
-    return;
-  }
 };
 
 func.id = "deploy_vote";

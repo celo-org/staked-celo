@@ -103,14 +103,13 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         uint256 currentlyLocked = IManager(manager).updateHistoryAndReturnLockedStCeloInVoting(
             beneficiary
         );
-        require(previouslyLocked >= currentlyLocked, "Not enough locked stCelo");
-        if (previouslyLocked != currentlyLocked) {
-            _lockedBalances[beneficiary] = currentlyLocked;
-            uint256 amountToMint = previouslyLocked - currentlyLocked;
-            _mint(beneficiary, amountToMint);
-            totalLocked -= amountToMint;
-            emit Unlocked(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
-        }
+        require(previouslyLocked > currentlyLocked, "Nothing to unlock");
+
+        _lockedBalances[beneficiary] = currentlyLocked;
+        uint256 amountToMint = previouslyLocked - currentlyLocked;
+        _mint(beneficiary, amountToMint);
+        totalLocked -= amountToMint;
+        emit Unlocked(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
     }
 
     /**

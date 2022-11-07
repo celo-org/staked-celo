@@ -14,6 +14,8 @@ export const MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED =
 export const MULTISIG_IS_OWNER = "stakedCelo:multiSig:isOwner";
 export const MULTISIG_IS_CONFIRMED_BY = "stakedCelo:multiSig:isConfirmedBy";
 export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD = "stakedCelo:multiSig:encode:proposal:payload";
+export const MULTISIG_SUBMIT_PROPOSAL_SET_VOTE = "stakedCelo:multisig:submitProposal:setVote";
+
 export const STAKED_CELO_DEPLOY = "stakedCelo:deploy";
 
 export const ACCOUNT_ACTIVATE_AND_VOTE = "stakedCelo:account:activateAndVote";
@@ -24,4 +26,3 @@ export const MANAGER_DEPOSIT = "stakedCelo:manager:deposit";
 export const MANAGER_WITHDRAW = "stakedCelo:manager:withdraw";
 export const MANAGER_GET_DEPRECATED_GROUPS = "stakedCelo:manager:getDeprecatedGroups";
 export const MANAGER_GET_GROUPS = "stakedCelo:manager:getGroups";
-export const MANAGER_SUBMIT_PROPOSAL_SET_VOTE = "stakedCelo:manager:submitProposal:setVote";

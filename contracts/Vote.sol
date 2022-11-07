@@ -171,12 +171,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         Voter storage voter = voters[accountVoter];
 
         VoterRecord storage previousVoterRecord = voter.proposalVotes[proposalId];
-        VoterRecord memory currentVoterRecord = VoterRecord(
-            proposalId,
-            yesVotes,
-            noVotes,
-            abstainVotes
-        );
         ProposalVoteRecord memory proposalVoteRecord = voteRecords[proposalId];
 
         // Subtract previous vote.
@@ -200,7 +194,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             voter.votedProposalIds.push(proposalId);
         }
 
-        voter.proposalVotes[proposalId] = currentVoterRecord;
+        voter.proposalVotes[proposalId] = VoterRecord(proposalId, yesVotes, noVotes, abstainVotes);
 
         emit ProposalVoted(accountVoter, proposalId, yesVotes, noVotes, abstainVotes);
 

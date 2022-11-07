@@ -8,7 +8,6 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
-import "./interfaces/IGovernance.sol";
 import "./interfaces/IVote.sol";
 
 /**
@@ -686,7 +685,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Unlock balance of stCelo.
+     * @notice Unlock balance of stCelo and update beneficiary vote history.
      * @param beneficiary The account to be unlocked.
      */
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
