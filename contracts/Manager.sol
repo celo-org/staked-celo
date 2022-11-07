@@ -706,7 +706,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Overrides locked stBalance.
+     * @notice Overrides locked stCelo balance.
      * @param accountAddress The account to be overriden.
      * @param newLockBalance The new locked balance.
      */
