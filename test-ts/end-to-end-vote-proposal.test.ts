@@ -178,14 +178,16 @@ describe("e2e governance vote", () => {
     const proposalId2 = 2;
     const index2 = 1;
 
+    const depositor0NonVotedVotes = 100000;
+
     const depositor0VotingPower = await voteContract.getVoteWeight(depositor0.address);
-    const depositor0VotedWeight = depositor0VotingPower.sub(100000);
+    const depositor0VotedWeight = depositor0VotingPower.sub(depositor0NonVotedVotes);
     const depositor1VotingPower = await voteContract.getVoteWeight(depositor1.address);
 
     const voteProposalTx = await managerContract
       .connect(depositor1)
       .functions.voteProposal(proposalId, index, depositor1VotingPower, 0, 0);
-    const voteProposalReceipt = await voteProposalTx.wait();
+    await voteProposalTx.wait();
 
     const voteProposal2Tx = await managerContract
       .connect(depositor1)
@@ -210,6 +212,10 @@ describe("e2e governance vote", () => {
     const voteRecord = await voteContract.getVoteRecord(proposalId);
 
     expect(voteRecord.proposalId.eq(proposalId)).to.be.true;
+
+    const depositor1StCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    const expectedVotingPower = await managerContract.toCelo(depositor1StCeloBalance);
+    expect(expectedVotingPower.toString(), depositor1VotingPower.toString());
     expect(voteRecord.yesVotes).to.eq(depositor1VotingPower);
 
     const governanceContract = governanceWrapper["contract"];
@@ -259,6 +265,8 @@ describe("e2e governance vote", () => {
     const lockedStakedCeloDepositor1 = await stakedCeloContract.lockedBalanceOf(depositor1.address);
 
     expect(lockedStakedCeloDepositor1).to.eq(BigNumber.from(0));
-    expect(lockedStakedCeloDepositor0).to.eq(BigNumber.from("9999999999968277"));
+
+    const depositor0StCeloVotedWith = await managerContract.toStakedCelo(depositor0VotedWeight);
+    expect(lockedStakedCeloDepositor0).to.eq(depositor0StCeloVotedWith);
   });
 });
