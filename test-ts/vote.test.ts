@@ -24,7 +24,8 @@ import { BigNumber, BigNumberish, Signer } from "ethers";
 import { Manager } from "../typechain-types/Manager";
 import { Vote } from "../typechain-types/Vote";
 
-describe("Vote", () => {
+describe("Vote", async function (this: any) {
+  this.timeout(0); // Disable test timeout
   let managerContract: Manager;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
