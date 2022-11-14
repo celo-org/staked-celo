@@ -1,5 +1,9 @@
 {
   "cSpell.words": ["solhint"],
   "mochaExplorer.files": "test-ts/**/*.test.ts",
-  "mochaExplorer.require": ["ts-node/register"],
+  "mochaExplorer.require": [
+    "ts-node/register"
+  ],
+  "mochaExplorer.debuggerConfig": "Debug Mocha Tests",
+  "solidity.compileUsingRemoteVersion": "v0.8.11+commit.d7f03943",
 }

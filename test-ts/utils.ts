@@ -2,7 +2,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
 import { Wallet, BigNumber as EthersBigNumber, Contract, BaseContract } from "ethers";
 import Web3 from "web3";
-import hre, { ethers, kit, web3 } from "hardhat";
+import hre, { ethers, kit } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
@@ -10,6 +10,10 @@ import {
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
+import { CeloTxReceipt } from "@celo/connect";
+import { parseUnits } from "ethers/lib/utils";
+import BigNumberJs from "bignumber.js";
+
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
 
@@ -49,7 +53,16 @@ export async function registerValidatorGroup(account: SignerWithAddress, members
 }
 
 // Locks the required CELO and registers as a validator in the group `groupAddress`
-export async function registerValidator(
+export async function registerValidatorAndAddToGroupMembers(
+  group: SignerWithAddress,
+  validator: SignerWithAddress,
+  validatorWallet: Wallet
+) {
+  await registerValidatorAndOnlyAffiliateToGroup(group, validator, validatorWallet);
+  await addValidatorToGroupMembers(group, validator);
+}
+
+export async function registerValidatorAndOnlyAffiliateToGroup(
   group: SignerWithAddress,
   validator: SignerWithAddress,
   validatorWallet: Wallet
@@ -88,13 +101,46 @@ export async function registerValidator(
   await validators.affiliate(group.address).sendAndWaitForReceipt({
     from: validator.address,
   });
+}
 
-  const numMembers = await validators.getValidatorGroupSize(group.address);
-  // Add the validator to the group
+export async function addValidatorToGroupMembers(
+  group: SignerWithAddress,
+  validator: SignerWithAddress
+) {
+  const validators = await kit.contracts.getValidators();
   const tx = await validators.addMember(group.address, validator.address);
   await tx.sendAndWaitForReceipt({
     from: group.address,
   });
+}
+
+export async function removeMembersFromGroup(group: SignerWithAddress) {
+  // get validators contract
+  const validators = await kit.contracts.getValidators();
+
+  // get validator group
+  const validatorGroup = await validators.getValidatorGroup(group.address);
+
+  // deaffiliate then deregister
+  let txs: Promise<CeloTxReceipt>[] = [];
+  for (let validator of validatorGroup.members) {
+    const tx = validators.removeMember(validator).sendAndWaitForReceipt({ from: group.address });
+    txs.push(tx);
+  }
+
+  await Promise.all(txs);
+}
+
+export async function deregisterValidatorGroup(group: SignerWithAddress) {
+  const validators = await kit.contracts.getValidators();
+  await removeMembersFromGroup(group);
+  const groupRequirementEndTime = await validators.getGroupLockedGoldRequirements();
+
+  await timeTravel(groupRequirementEndTime.duration.toNumber() + 2 * DAY);
+
+  await (
+    await validators.deregisterValidatorGroup(group.address)
+  ).sendAndWaitForReceipt({ from: group.address });
 }
 
 export async function activateValidators(
@@ -107,6 +153,10 @@ export async function activateValidators(
   const values: string[] = [];
 
   for (let i = 0; i < 3; i++) {
+    const isValidGroup = await managerContract.isValidGroup(groupAddresses[i]);
+    if (!isValidGroup) {
+      throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
+    }
     destinations.push(managerContract.address);
     values.push("0");
     payloads.push(
@@ -115,6 +165,72 @@ export async function activateValidators(
   }
 
   await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
+}
+
+export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
+  const lockedGold = await kit.contracts.getLockedGold();
+  const election = await kit.contracts.getElection();
+  await lockedGold.lock().sendAndWaitForReceipt({
+    from: voter.address,
+    value: parseUnits("1").toString(),
+  });
+
+  const voteTx = await election.vote(groupAddress, new BigNumberJs(parseUnits("1").toString()));
+  await voteTx.sendAndWaitForReceipt({ from: voter.address });
+}
+
+export async function activateVotesForGroup(voter: SignerWithAddress) {
+  const election = await kit.contracts.getElection();
+  const activateTxs = await election.activate(voter.address);
+  const txs: Promise<CeloTxReceipt>[] = [];
+  for (let i = 0; i < activateTxs.length; i++) {
+    const tx = activateTxs[i].sendAndWaitForReceipt({ from: voter.address });
+    txs.push(tx);
+  }
+  await Promise.all(txs);
+}
+
+export async function electMinimumNumberOfValidators(
+  groups: SignerWithAddress[],
+  voter: SignerWithAddress
+) {
+  const election = await kit.contracts.getElection();
+  const { min } = await election.electableValidators();
+  const txs: Promise<void>[] = [];
+  for (let i = 0; i < min.toNumber(); i++) {
+    const tx = voteForGroup(groups[i].address, voter);
+    txs.push(tx);
+  }
+
+  await Promise.all(txs);
+  await mineToNextEpoch(kit.web3);
+  await activateVotesForGroup(voter);
+}
+
+export async function electGroup(groupAddress: string, voter: SignerWithAddress) {
+  await voteForGroup(groupAddress, voter);
+  await mineToNextEpoch(kit.web3);
+  await activateVotesForGroup(voter);
+}
+
+export async function updateGroupSlashingMultiplier(
+  registryContract: any,
+  lockedGoldContract: any,
+  validatorsContract: any,
+  group: SignerWithAddress,
+  mockSlasher: SignerWithAddress
+) {
+  const coreContractsOwnerAddr = await registryContract.owner();
+
+  await impersonateAccount(coreContractsOwnerAddr);
+  const coreContractsOwner = await hre.ethers.getSigner(coreContractsOwnerAddr);
+
+  await registryContract
+    .connect(coreContractsOwner)
+    .setAddressFor("MockSlasher", mockSlasher.address);
+
+  await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
+  await validatorsContract.connect(mockSlasher).halveSlashingMultiplier(group.address);
 }
 
 // ---- Account utils ----
@@ -268,7 +384,7 @@ export async function submitAndExecuteProposal(
   values: string[],
   payloads: string[]
 ) {
-  await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
+  const proposalId = await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
     destinations: destinations.join(","),
     values: values.join(","),
     payloads: payloads.join(","),
@@ -276,11 +392,14 @@ export async function submitAndExecuteProposal(
     useNodeAccount: true,
   });
 
-  await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
-    proposalId: 0,
+  const executeProposalResult = await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
+    proposalId: proposalId,
     account: account,
     useNodeAccount: true,
   });
+  if (executeProposalResult != null) {
+    throw new Error("execute proposal failed " + executeProposalResult);
+  }
 }
 
 export async function waitForEvent(

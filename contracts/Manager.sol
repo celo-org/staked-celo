@@ -144,6 +144,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error ZeroWithdrawal();
 
     /**
+     * @notice Used when a group does not meet the validator group health requirements.
+     * @param group The group's address.
+     */
+    error GroupNotEligible(address group);
+
+    /**
+     * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
+     * @param group The group's address.
+     */
+    error HealthyGroup(address group);
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -182,6 +194,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * Election contract).
      */
     function activateGroup(address group) external onlyOwner {
+        if (!isValidGroup(group)) {
+            revert GroupNotEligible(group);
+        }
+
         if (activeGroups.contains(group)) {
             revert GroupAlreadyAdded(group);
         }
@@ -221,19 +237,58 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateGroup(address group) external onlyOwner {
-        if (!activeGroups.remove(group)) {
-            revert GroupNotActive(group);
+        _deprecateGroup(group);
+    }
+
+    /**
+     * @notice Checks if a group meets the validator group health requirements.
+     * @param group The group to check for.
+     * @return Whether or not the group is valid.
+     */
+    function isValidGroup(address group) public view returns (bool) {
+        IValidators validators = getValidators();
+
+        // add check if group is !registered
+        if (!validators.isValidatorGroup(group)) {
+            return false;
         }
 
-        emit GroupDeprecated(group);
+        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
+            .getValidatorGroup(group);
 
-        if (account.getCeloForGroup(group) > 0) {
-            if (!deprecatedGroups.add(group)) {
-                revert FailedToAddDeprecatedGroup(group);
+        // check if group has no members
+        if (members.length == 0) {
+            return false;
+        }
+        // check for recent slash
+        if (slashMultiplier < 10**24) {
+            return false;
+        }
+        // check for majority of members are elected.
+        uint256 counter = 0;
+        for (uint256 i = 0; i < members.length; i++) {
+            if (!isGroupMemberElected(members[i])) {
+                counter++;
+                if (counter >= members.length / 2) {
+                    return false;
+                }
             }
-        } else {
-            emit GroupRemoved(group);
         }
+        return true;
+    }
+
+    /**
+     * @notice Marks an unhealthy group as deprecated.
+     * @param group The group to deprecate if unhealthy.
+     * @dev A deprecated group will remain in the `deprecatedGroups` array as
+     * long as it is still being voted for by the Account contract. Deprecated
+     * groups will be the first to have their votes withdrawn.
+     */
+    function deprecateUnhealthyGroup(address group) external {
+        if (isValidGroup(group)) {
+            revert HealthyGroup(group);
+        }
+        _deprecateGroup((group));
     }
 
     /**
@@ -711,5 +766,44 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function overrideLockBalance(address accountAddress, uint256 newLockBalance) public onlyOwner {
         stakedCelo.overrideLockBalance(accountAddress, newLockBalance);
+    }
+
+    /**
+     * @notice Marks a group as deprecated.
+     * @param group The group to deprecate.
+     */
+    function _deprecateGroup(address group) private {
+        if (!activeGroups.remove(group)) {
+            revert GroupNotActive(group);
+        }
+
+        emit GroupDeprecated(group);
+
+        if (account.getCeloForGroup(group) > 0) {
+            if (!deprecatedGroups.add(group)) {
+                revert FailedToAddDeprecatedGroup(group);
+            }
+        } else {
+            emit GroupRemoved(group);
+        }
+    }
+
+    /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @return Whether or not the group member is elected.
+     */
+    function isGroupMemberElected(address groupMember) private view returns (bool) {
+        IElection election = getElection();
+
+        address[] memory electedValidatorSigners = election.electValidatorSigners();
+
+        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
+            if (electedValidatorSigners[i] == groupMember) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

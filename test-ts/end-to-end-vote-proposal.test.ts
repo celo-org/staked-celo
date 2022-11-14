@@ -8,10 +8,12 @@ import {
   activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
+  electMinimumNumberOfValidators,
   impersonateAccount,
   mineToNextEpoch,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorAndOnlyAffiliateToGroup,
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
@@ -38,15 +40,18 @@ describe("e2e governance vote", () => {
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
+  let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
+  let activatedGroupAddresses: string[];
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
 
   let stakedCeloContract: StakedCelo;
 
-  before(async () => {
+  before(async function (this: any) {
+    this.timeout(0); // Disable test timeout
     await resetNetwork();
 
     process.env = {
@@ -59,22 +64,33 @@ describe("e2e governance vote", () => {
 
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
+    [voter] = await randomSigner(parseUnits("300"));
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
 
     groups = [];
+    activatedGroupAddresses = [];
     groupAddresses = [];
     validators = [];
     validatorAddresses = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 10; i++) {
       const [group] = await randomSigner(parseUnits("11000"));
       groups.push(group);
+      if (i < 3) {
+        activatedGroupAddresses.push(groups[i].address);
+      }
       groupAddresses.push(groups[i].address);
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
       validators.push(validator);
       validatorAddresses.push(validators[i].address);
 
       await registerValidatorGroup(groups[i]);
-      await registerValidator(groups[i], validators[i], validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
+
+    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -95,7 +111,7 @@ describe("e2e governance vote", () => {
     });
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
+    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
   it("vote proposal", async () => {
@@ -192,15 +208,8 @@ describe("e2e governance vote", () => {
     expect(depositor1LockedStakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
     const voteRecord = await voteContract.getVoteRecord(proposalId);
-    const voteRecord2 = await voteContract.getVoteRecord(proposalId2);
 
     expect(voteRecord.proposalId.eq(proposalId)).to.be.true;
-    const expectedVotingPower = rewardsGroup0
-      .add(rewardsGroup1)
-      .add(rewardsGroup2)
-      .div(2)
-      .add(amountOfCeloToDeposit);
-    expect(expectedVotingPower).to.eq(depositor1VotingPower);
     expect(voteRecord.yesVotes).to.eq(depositor1VotingPower);
 
     const governanceContract = governanceWrapper["contract"];
@@ -250,6 +259,6 @@ describe("e2e governance vote", () => {
     const lockedStakedCeloDepositor1 = await stakedCeloContract.lockedBalanceOf(depositor1.address);
 
     expect(lockedStakedCeloDepositor1).to.eq(BigNumber.from(0));
-    expect(lockedStakedCeloDepositor0).to.eq(BigNumber.from("9999999999999693"));
+    expect(lockedStakedCeloDepositor0).to.eq(BigNumber.from("9999999999968277"));
   });
 });

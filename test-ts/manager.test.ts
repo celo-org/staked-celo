@@ -3,6 +3,15 @@ import { BigNumber } from "ethers";
 import BigNumberJs from "bignumber.js";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
+
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
+import { MockRegistry } from "../typechain-types/MockRegistry";
+import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+import { MockValidators } from "../typechain-types/MockValidators";
+import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
+
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
@@ -16,10 +25,17 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
   getImpersonatedSigner,
+  removeMembersFromGroup,
+  deregisterValidatorGroup,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
+  electMinimumNumberOfValidators,
+  electGroup,
+  registerValidatorAndOnlyAffiliateToGroup,
+  updateGroupSlashingMultiplier,
+  REGISTRY_ADDRESS,
 } from "./utils";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
@@ -32,16 +48,22 @@ describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
   let voteContract: MockVote;
+  let lockedGoldContract: MockLockedGold;
+  let validatorsContract: MockValidators;
+  let registryContract: MockRegistry;
+
   let manager: Manager;
   let vote: SignerWithAddress;
   let nonVote: SignerWithAddress;
 
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
+  let validators: ValidatorsWrapper;
 
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
   let someone: SignerWithAddress;
+  let mockSlasher: SignerWithAddress;
   let depositor: SignerWithAddress;
   let voter: SignerWithAddress;
   let groups: SignerWithAddress[];
@@ -52,7 +74,9 @@ describe("Manager", () => {
   before(async function () {
     this.timeout(100000);
     await resetNetwork();
+    lockedGold = await hre.kit.contracts.getLockedGold();
     election = await hre.kit.contracts.getElection();
+    validators = await hre.kit.contracts.getValidators();
 
     await hre.deployments.fixture("TestManager");
     manager = await hre.ethers.getContract("Manager");
@@ -60,6 +84,7 @@ describe("Manager", () => {
     [owner] = await randomSigner(parseUnits("100"));
     [nonOwner] = await randomSigner(parseUnits("100"));
     [someone] = await randomSigner(parseUnits("100"));
+    [mockSlasher] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
     [vote] = await randomSigner(parseUnits("100"));
@@ -69,6 +94,21 @@ describe("Manager", () => {
       await hre.ethers.getContractFactory("MockAccount")
     ).connect(owner) as MockAccount__factory;
     account = await accountFactory.deploy();
+
+    const lockedGoldFactory: MockLockedGold__factory = (
+      await hre.ethers.getContractFactory("MockLockedGold")
+    ).connect(owner) as MockLockedGold__factory;
+    lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
+
+    const validatorsFactory: MockValidators__factory = (
+      await hre.ethers.getContractFactory("MockValidators")
+    ).connect(owner) as MockValidators__factory;
+    validatorsContract = validatorsFactory.attach(validators.address);
+
+    const registryFactory: MockRegistry__factory = (
+      await hre.ethers.getContractFactory("MockRegistry")
+    ).connect(owner) as MockRegistry__factory;
+    registryContract = registryFactory.attach(REGISTRY_ADDRESS);
 
     const stakedCeloFactory: MockStakedCelo__factory = (
       await hre.ethers.getContractFactory("MockStakedCelo")
@@ -85,6 +125,13 @@ describe("Manager", () => {
     const managerOwner = await manager.owner();
     const ownerSigner = await getImpersonatedSigner(managerOwner);
     await manager.connect(ownerSigner).setVoteContract(voteContract.address);
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: someone.address,
+    });
 
     groups = [];
     groupAddresses = [];
@@ -93,20 +140,20 @@ describe("Manager", () => {
       groups.push(group);
       groupAddresses.push(group.address);
     }
-
-    lockedGold = await hre.kit.contracts.getLockedGold();
     for (let i = 0; i < 11; i++) {
       if (i == 1) {
         // For groups[1] we register an extra validator so it has a higher voting limit.
         await registerValidatorGroup(groups[i], 2);
         const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidator(groups[i], validator, validatorWallet);
+        await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
       } else {
         await registerValidatorGroup(groups[i], 1);
       }
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      await registerValidator(groups[i], validator, validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
     }
+
+    await electMinimumNumberOfValidators(groups, voter); // first 10 groups
   });
 
   beforeEach(async () => {
@@ -134,6 +181,67 @@ describe("Manager", () => {
       await expect(manager.connect(nonOwner).activateGroup(groupAddresses[0])).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+
+    describe("when group is not registered", () => {
+      it("reverts when trying to add an unregistered group", async () => {
+        let unregisteredGroup: SignerWithAddress;
+        [unregisteredGroup] = await randomSigner(parseUnits("100"));
+
+        await expect(manager.activateGroup(unregisteredGroup.address)).revertedWith(
+          `GroupNotEligible("${unregisteredGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group has no members", () => {
+      let noMemberedGroup: SignerWithAddress;
+      beforeEach(async () => {
+        [noMemberedGroup] = await randomSigner(parseUnits("21000"));
+        await registerValidatorGroup(noMemberedGroup);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        await registerValidatorAndOnlyAffiliateToGroup(noMemberedGroup, validator, validatorWallet);
+      });
+
+      it("reverts when trying to add a group with no members", async () => {
+        await expect(manager.activateGroup(noMemberedGroup.address)).revertedWith(
+          `GroupNotEligible("${noMemberedGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group is not elected", () => {
+      it("reverts when trying to add non elected group", async () => {
+        const nonElectedGroup = groups[10];
+        await expect(manager.activateGroup(nonElectedGroup.address)).revertedWith(
+          `GroupNotEligible("${nonElectedGroup.address}")`
+        );
+      });
+    });
+
+    describe("when group has low slash multiplier", () => {
+      let slashedGroup: SignerWithAddress;
+      beforeEach(async () => {
+        [slashedGroup] = await randomSigner(parseUnits("21000"));
+        await registerValidatorGroup(slashedGroup);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        await registerValidatorAndAddToGroupMembers(slashedGroup, validator, validatorWallet);
+        await electGroup(slashedGroup.address, someone);
+
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          slashedGroup,
+          mockSlasher
+        );
+      });
+
+      it("reverts when trying to add slashed group", async () => {
+        await expect(manager.activateGroup(slashedGroup.address)).revertedWith(
+          `GroupNotEligible("${slashedGroup.address}")`
+        );
+      });
     });
 
     describe("when some groups are already added", () => {
@@ -166,7 +274,8 @@ describe("Manager", () => {
       let additionalGroup: SignerWithAddress;
 
       beforeEach(async () => {
-        [additionalGroup] = await randomSigner(parseUnits("100"));
+        additionalGroup = groups[10];
+        await electGroup(additionalGroup.address, someone);
 
         for (let i = 0; i < 10; i++) {
           await manager.activateGroup(groups[i].address);
@@ -299,7 +408,92 @@ describe("Manager", () => {
     });
   });
 
-  describe("#deposit()", async () => {
+  describe("#deprecateUnhealthyGroup()", () => {
+    let deprecatedGroup: SignerWithAddress;
+
+    beforeEach(async () => {
+      deprecatedGroup = groups[1];
+      for (let i = 0; i < 3; i++) {
+        await manager.activateGroup(groups[i].address);
+      }
+    });
+
+    it("should revert when group is healthy", async () => {
+      await expect(manager.deprecateUnhealthyGroup(groupAddresses[1])).revertedWith(
+        `HealthyGroup("${groupAddresses[1]}")`
+      );
+    });
+
+    describe("when the group is not elected", () => {
+      beforeEach(async () => {
+        const groupVotes = await election.getVotesForGroupByAccount(
+          voter.address,
+          deprecatedGroup.address
+        );
+
+        const revokeTx = await election.revoke(
+          voter.address,
+          deprecatedGroup.address,
+          groupVotes.active
+        );
+        for (let i = 0; i < revokeTx.length; i++) {
+          await revokeTx[i].sendAndWaitForReceipt({ from: voter.address });
+        }
+        await electGroup(groups[10].address, someone);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateUnhealthyGroup(groupAddresses[1]))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(groupAddresses[1]);
+      });
+    });
+
+    describe("when the group is not registered", () => {
+      beforeEach(async () => {
+        await deregisterValidatorGroup(deprecatedGroup);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(deprecatedGroup.address);
+      });
+    });
+
+    describe("when the group has no members", () => {
+      // if voting for a group that has no members, i get no rewards.
+      beforeEach(async () => {
+        await removeMembersFromGroup(deprecatedGroup);
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(deprecatedGroup.address);
+      });
+    });
+
+    describe("when the group is slashed", () => {
+      beforeEach(async () => {
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          deprecatedGroup,
+          mockSlasher
+        );
+      });
+
+      it("should deprecate group", async () => {
+        await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
+          .to.emit(manager, "GroupDeprecated")
+          .withArgs(groupAddresses[1]);
+      });
+    });
+  });
+
+  describe("#deposit()", () => {
     it("reverts when there are no active groups", async () => {
       await expect(manager.connect(depositor).deposit({ value: 100 })).revertedWith(
         "NoActiveGroups()"
@@ -549,18 +743,13 @@ describe("Manager", () => {
     describe("when groups are close to their voting limit", () => {
       beforeEach(async () => {
         // These numbers are derived from a system of linear equations such that
-        // given 12 validators registered, as above, we have the following
+        // given 12 validators registered and elected, as above, we have the following
         // limits for the first three groups:
         // group[0] and group[2]: 95864 Locked CELO
-        // group[1]: 143796 Locked CELO
+        // group[1]: 143797 Locked CELO
         // and the remaining receivable votes are [40, 100, 200] (in CELO) for
         // the three groups, respectively.
-        const votes = [parseUnits("95824"), parseUnits("143696"), parseUnits("95664")];
-
-        const accounts = await hre.kit.contracts.getAccounts();
-        await accounts.createAccount().sendAndWaitForReceipt({
-          from: voter.address,
-        });
+        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
         for (let i = 0; i < 3; i++) {
           await manager.activateGroup(groupAddresses[i]);
@@ -644,7 +833,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#withdraw()", async () => {
+  describe("#withdraw()", () => {
     it("reverts when there are no active or deprecated groups", async () => {
       await expect(manager.connect(depositor).withdraw(100)).revertedWith("NoGroups()");
     });

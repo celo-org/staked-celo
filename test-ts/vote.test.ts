@@ -6,9 +6,10 @@ import { parseUnits } from "ethers/lib/utils";
 import {
   activateAndVoteTest,
   activateValidators,
+  electMinimumNumberOfValidators,
   mineToNextEpoch,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
   submitAndExecuteProposal,
@@ -31,8 +32,10 @@ describe("Vote", () => {
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
   let multisigOwner0: SignerWithAddress;
+  let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
+  let activatedGroupAddresses: string[];
   let groupAddresses: string[];
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
@@ -98,22 +101,33 @@ describe("Vote", () => {
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+    [voter] = await randomSigner(parseUnits("300"));
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
 
     groups = [];
+    activatedGroupAddresses = [];
     groupAddresses = [];
     validators = [];
     validatorAddresses = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 10; i++) {
       const [group] = await randomSigner(parseUnits("11000"));
       groups.push(group);
+      if (i < 3) {
+        activatedGroupAddresses.push(groups[i].address);
+      }
       groupAddresses.push(groups[i].address);
       const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
       validators.push(validator);
       validatorAddresses.push(validators[i].address);
 
       await registerValidatorGroup(groups[i]);
-      await registerValidator(groups[i], validators[i], validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
+
+    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -123,7 +137,7 @@ describe("Vote", () => {
     voteContract = await hre.ethers.getContract("Vote");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, groupAddresses);
+    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
   describe("#getVoteWeight()", () => {

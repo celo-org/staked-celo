@@ -14,9 +14,8 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
-  REGISTRY_ADDRESS,
   resetNetwork,
   timeTravel,
 } from "./utils";
@@ -65,7 +64,7 @@ describe("Account", () => {
       validatorAddresses.push(validators[i].address);
 
       await registerValidatorGroup(groups[i]);
-      await registerValidator(groups[i], validators[i], validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
 
     accountsInstance = await hre.kit.contracts.getAccounts();

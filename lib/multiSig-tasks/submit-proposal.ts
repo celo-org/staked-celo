@@ -44,11 +44,16 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
         );
       const receipt = await tx.wait();
       const events = receipt.events;
+      let proposalId = -1;
       if (events !== undefined) {
         for (var i = 0; i < events!.length; i++) {
+          if (events[i].event == "ProposalScheduled") {
+            proposalId = events[i].args[0].toNumber();
+          }
           console.log(chalk.green("new event emitted:"), events[i].event, `(${events[i].args})`);
         }
       }
+      return proposalId;
     } catch (error) {
       console.log(chalk.red("Error submitting proposal:"), error);
     }

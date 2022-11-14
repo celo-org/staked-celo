@@ -1,4 +1,4 @@
-import hre, { ethers } from "hardhat";
+import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
@@ -31,7 +31,7 @@ describe("StakedCelo", () => {
     await stakedCelo.connect(owner).setManager(managerContract.address);
 
     await impersonateAccount(managerContract.address);
-    manager = await ethers.getSigner(managerContract.address);
+    manager = await hre.ethers.getSigner(managerContract.address);
 
     const [randomSignerToFundManager] = await randomSigner(parseUnits("101"));
     await hre.kit.sendTransaction({
@@ -211,11 +211,10 @@ describe("StakedCelo", () => {
 
       it("should not unlock if manager contract return full locked amount", async () => {
         await managerContract.setLockedStCelo(stCeloOwned);
-        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
 
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned);
-        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
-        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
+        await expect(stakedCelo.connect(manager).unlockBalance(anAccount.address)).revertedWith(
+          `Nothing to unlock`
+        );
       });
 
       it("should not unlock if manager contract return half locked amount", async () => {
