@@ -11,6 +11,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_set_dependencies_on_vote";
-func.tags = ["SetDepsOnVote", "core"];
+func.tags = ["SetDepsOnVote", "core", "voteDeploy"];
 func.dependencies = ["Vote", "Account", "StakedCelo"];
 export default func;

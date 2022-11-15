@@ -30,14 +30,12 @@ task(MULTISIG_SUBMIT_PROPOSAL_SET_VOTE, MULTISIG_SUBMIT_PROPOSAL_SET_VOTE_DESCRI
         function: "setVoteContract",
         args: (await hre.deployments.get("Vote")).address,
       });
+      const managerAddress = (await hre.deployments.get("Manager")).address;
+      console.log(chalk.green("--destinations"), managerAddress);
+      console.log(chalk.green("--values"), "0");
+      console.log(chalk.green("--payloads"), payload);
 
-      await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
-        destinations: [(await hre.deployments.get("Manager")).address],
-        values: [0],
-        payloads: [payload],
-        account: args.account,
-        useNodeAccount: args.useNodeAccount,
-      });
+      console.log(chalk.yellow(`Please insert these values into ${MULTISIG_SUBMIT_PROPOSAL} task`));
     } catch (error) {
       console.log(chalk.red("Error getting groups:"), error);
     }

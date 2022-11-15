@@ -13,13 +13,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vote: Vote = await hre.ethers.getContract("Vote");
   const multisig = await hre.deployments.get("MultiSig");
 
-  await executeAndWait(account.transferOwnership(multisig.address));
-  await executeAndWait(stakedCelo.transferOwnership(multisig.address));
-  await executeAndWait(manager.transferOwnership(multisig.address));
-  await executeAndWait(vote.transferOwnership(multisig.address));
+  if ((await account.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(account.transferOwnership(multisig.address));
+  }
+  if ((await stakedCelo.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(stakedCelo.transferOwnership(multisig.address));
+  }
+  if ((await manager.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(manager.transferOwnership(multisig.address));
+  }
+  if ((await vote.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(vote.transferOwnership(multisig.address));
+  }
 };
 
 func.id = "deploy_transfer_to_multisig";
-func.tags = ["TransferAllContractsToMultisig", "core"];
+func.tags = ["TransferAllContractsToMultisig", "core", "voteDeploy"];
 func.dependencies = ["Manager", "Account", "StakedCelo", "MultiSig", "Vote"];
 export default func;

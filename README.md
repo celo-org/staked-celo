@@ -357,6 +357,17 @@ encoded payload:
 > yarn hardhat stakedCelo:multiSig:executeProposal --network alfajores --proposal-id 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
 ```
 
+## Vote deploy when rest of contracts is already deployed
+1. Run only deploy scripts related to Vote contract
+``` bash
+> yarn hardhat stakedCelo:deploy --show-stack-traces --network alfajores --tags voteDeploy
+```
+2. Run task to set Vote address in Manager contract
+``` bash
+> yarn hardhat stakedCelo:multisig:submitProposal:setVote --network alfajores
+```
+3. Insert returned values into submitProposal task (it can be found few lines above)
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style and how to contribute.
