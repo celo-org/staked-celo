@@ -432,3 +432,15 @@ export async function activateAndVoteTest(deployerAccountName: string = "deploye
     throw Error(`Activate and vote failed! ${activateAndVoteResult}`);
   }
 }
+
+export async function setGovernanceConcurrentProposals(count: number) {
+  const governanceWrapper = await hre.kit.contracts.getGovernance();
+  const governanceContract = governanceWrapper["contract"];
+
+  const governanceOwner = await (await governanceContract.methods.owner()).call();
+  const setConcurrentProposalsTx = await governanceContract.methods.setConcurrentProposals(count);
+  await impersonateAccount(governanceOwner);
+  await setConcurrentProposalsTx.send({
+    from: governanceOwner,
+  });
+}

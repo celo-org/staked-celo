@@ -7,11 +7,13 @@ import {
   activateAndVoteTest,
   activateValidators,
   electMinimumNumberOfValidators,
+  impersonateAccount,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
+  setGovernanceConcurrentProposals,
   submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
@@ -519,6 +521,38 @@ describe("Vote", async function (this: any) {
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+
+        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
+          .topics as string[];
+        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+          event.topics.some((topic) => topic == eventTopics[0])
+        );
+        const eventArgs = voteContract.interface.decodeEventLog(
+          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
+          event!.data,
+          eventTopics
+        );
+        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+      });
+
+      it("should return locked celo when voting on maximum number of proposals", async () => {
+        const currentMainnetConcurrentProposals = 3 * 7; // 3 proposals per day * week
+        setGovernanceConcurrentProposals(currentMainnetConcurrentProposals);
+        for (let i = 0; i < currentMainnetConcurrentProposals; i++) {
+          await proposeNewProposal(i === currentMainnetConcurrentProposals - 1); // dequeue only after the last proposal
+        }
+
+        for (let i = 0; i < currentMainnetConcurrentProposals; i++) {
+          await managerContract
+            .connect(depositor0)
+            .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
+        }
+
+        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
+          depositor0.address
+        );
+        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+        console.log("gas used:", lockedCeloInVotingReceipt.gasUsed.toString());
 
         const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
           .topics as string[];
