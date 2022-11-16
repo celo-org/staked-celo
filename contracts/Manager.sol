@@ -252,14 +252,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (slashMultiplier < 10**24) {
             return false;
         }
-        // check for majority of members are elected.
-        uint256 counter = 0;
+        // check that at least one member is elected.
         for (uint256 i = 0; i < members.length; i++) {
-            if (!isGroupMemberElected(members[i])) {
-                counter++;
-                if (counter >= members.length / 2) {
-                    return false;
-                }
+            if (isGroupMemberElected(members[i])) {
+                break;
+            } else if (i == (members.length - 1)) {
+                return false;
             }
         }
         return true;
