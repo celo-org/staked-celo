@@ -33,7 +33,7 @@
     "ethers": "^5.5.4",
     "hardhat": "npm:@celo/hardhat@2.12.5",
     "husky": ">=6",
-    "lint-staged": ">=10",
+    "lint-staged": "^13.0.3",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "1.0.0-beta.19",
     "solhint": "^3.3.7",
