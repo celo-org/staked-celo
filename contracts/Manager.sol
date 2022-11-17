@@ -255,12 +255,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         // check that at least one member is elected.
         for (uint256 i = 0; i < members.length; i++) {
             if (isGroupMemberElected(members[i])) {
-                break;
-            } else if (i == (members.length - 1)) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     /**
