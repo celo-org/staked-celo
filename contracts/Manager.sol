@@ -719,7 +719,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 totalAbstainVotes
         ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
 
-        stakedCelo.lockBalance(msg.sender, stCeloUsedForVoting);
+        stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
         account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
@@ -740,7 +740,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Unlock balance of stCelo and update beneficiary vote history.
+     * @notice Unlock balance of vote stCelo and update beneficiary vote history.
      * @param beneficiary The account to be unlocked.
      */
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
@@ -752,20 +752,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Unlock balance of stCelo.
+     * @notice Unlock vote balance of stCelo.
      * @param accountAddress The account to be unlocked.
      */
     function unlockBalance(address accountAddress) public {
-        stakedCelo.unlockBalance(accountAddress);
+        stakedCelo.unlockVoteBalance(accountAddress);
     }
 
     /**
-     * @notice Overrides locked stCelo balance.
+     * @notice Overrides locked vote stCelo balance.
      * @param accountAddress The account to be overriden.
      * @param newLockBalance The new locked balance.
      */
     function overrideLockBalance(address accountAddress, uint256 newLockBalance) public onlyOwner {
-        stakedCelo.overrideLockBalance(accountAddress, newLockBalance);
+        stakedCelo.overrideVoteLockBalance(accountAddress, newLockBalance);
     }
 
     /**

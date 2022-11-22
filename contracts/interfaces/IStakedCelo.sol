@@ -18,11 +18,11 @@ interface IStakedCelo {
 
     function balanceOf(address account) external view returns (uint256);
 
-    function lockBalance(address account, uint256 amount) external;
+    function lockVoteBalance(address account, uint256 amount) external;
 
-    function unlockBalance(address account) external;
+    function unlockVoteBalance(address account) external;
 
-    function lockedBalanceOf(address account) external view returns (uint256);
+    function lockedVoteBalanceOf(address account) external view returns (uint256);
 
-    function overrideLockBalance(address account, uint256 newLockBalance) external;
+    function overrideVoteLockBalance(address account, uint256 newLockBalance) external;
 }

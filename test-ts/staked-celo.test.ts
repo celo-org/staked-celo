@@ -134,7 +134,7 @@ describe("StakedCelo", () => {
     it("should revert if account doesn't have enough stCelo", async () => {
       await expect(
         stakedCelo.connect(manager).lockBalance(anAccount.address, balanceToLock)
-      ).to.revertedWith("ERC20: burn amount exceeds balance");
+      ).to.revertedWith("Not enough locked stCelo");
     });
 
     describe("When Account has stCelo", () => {

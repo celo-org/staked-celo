@@ -163,7 +163,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         )
     {
         uint256 stakedCeloBalance = stakedCelo.balanceOf(accountVoter) +
-            stakedCelo.lockedBalanceOf(accountVoter);
+            stakedCelo.lockedVoteBalanceOf(accountVoter);
         require(stakedCeloBalance > 0, "No staked celo");
         uint256 totalWeights = yesVotes + noVotes + abstainVotes;
         require(totalWeights <= toCelo(stakedCeloBalance), "Not enough celo to vote");
