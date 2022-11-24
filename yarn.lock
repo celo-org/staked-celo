@@ -143,6 +143,24 @@
     qs "^6.9.4"
     zksync-web3 "^0.8.1"
 
+"@celo/staked-celo-hardhat-deploy@celo-org/staked-celo-hardhat-deploy#soloseng/using-node-18":
+  version "0.11.21"
+  resolved "https://codeload.github.com/celo-org/staked-celo-hardhat-deploy/tar.gz/386329c71724f166e453f3fe13fdaac230e18878"
+  dependencies:
+    "@types/qs" "^6.9.7"
+    axios "^0.21.1"
+    chalk "^4.1.2"
+    chokidar "^3.5.2"
+    debug "^4.3.2"
+    enquirer "^2.3.6"
+    ethers "^5.5.3"
+    form-data "^4.0.0"
+    fs-extra "^10.0.0"
+    match-all "^1.2.6"
+    murmur-128 "^0.2.1"
+    qs "^6.9.4"
+    zksync-web3 "^0.8.1"
+
 "@celo/utils@1.5.2":
   version "1.5.2"
   resolved "http://localhost:4873/@celo/utils/-/utils-1.5.2.tgz#ddb7f3b50c801225ab41d2355fbe010976329099"
@@ -374,10 +392,10 @@
     bigint-crypto-utils "^3.0.23"
     ethereum-cryptography "^1.1.2"
 
-"@ethereumjs/evm@npm:@soloseng/ethereumjs-evm@1.2.2":
+"@ethereumjs/evm@npm:@celo/ethereumjs-evm@1.2.2":
   version "1.2.2"
-  resolved "https://registry.yarnpkg.com/@soloseng/ethereumjs-evm/-/ethereumjs-evm-1.2.2.tgz#33c554711a3526c7c0b8dc6b2bef27c2f43fdc01"
-  integrity sha512-ShAozDkKVyOOUaklcv4PDYHGur6HnHZi06VVkQukFq0SneulUyZc6JikDwR/d1aoTZhuhTHCPUyMibpvgYK3mg==
+  resolved "http://localhost:4873/@celo/ethereumjs-evm/-/ethereumjs-evm-1.2.2.tgz#8e1a9943c480bfb21a42d3d19fb403479f5226bc"
+  integrity sha512-K0CG5yacoFFcS5CWxjUPXGAQGrfV6hFkmc0tdZjKz6NaMq/0X4wji6prxg72qNPBC4nDqwc7ZdJxmaqSKHyBLg==
   dependencies:
     "@ethereumjs/common" "^3.0.1"
     "@ethereumjs/util" "^8.0.2"
@@ -435,15 +453,15 @@
     async "^3.2.4"
     ethereum-cryptography "^1.1.2"
 
-"@ethereumjs/vm@npm:@soloseng/ethereumjs-vm@6.2.1":
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/@soloseng/ethereumjs-vm/-/ethereumjs-vm-6.2.1.tgz#880d7c264e4b1b87b64b8a60034152fa51d65004"
-  integrity sha512-QxnBZpLEXjUu4grSBC1QWSmnQ1+H8EsKFxOxpy3+O8fh1UrTfMp1evCuXo62eYGEnVpgiEcwzjfszuaHJzaQDw==
+"@ethereumjs/vm@npm:@celo/ethereumjs-vm@6.2.0":
+  version "6.2.0"
+  resolved "http://localhost:4873/@celo/ethereumjs-vm/-/ethereumjs-vm-6.2.0.tgz#a6ea73a319c8875d074065596a9bc82bd7bd26c2"
+  integrity sha512-ZZbtbYpMMa9aJ1ZLARxlhOAY41s4PKcfFYTvFMLyAZJTrnQl7Oaj0y/gI6nrcTJcV6oq2HVc2MbTm5PnfiW58g==
   dependencies:
     "@ethereumjs/block" "^4.0.1"
     "@ethereumjs/blockchain" "^6.0.2"
     "@ethereumjs/common" "^3.0.1"
-    "@ethereumjs/evm" "npm:@soloseng/ethereumjs-evm@1.2.2"
+    "@ethereumjs/evm" "npm:@celo/ethereumjs-evm@1.2.2"
     "@ethereumjs/rlp" "^4.0.0"
     "@ethereumjs/statemanager" "^1.0.1"
     "@ethereumjs/trie" "^5.0.1"
@@ -5429,19 +5447,19 @@ har-validator@~5.1.3:
 
 "hardhat@npm:@celo/hardhat@2.12.6":
   version "2.12.6"
-  resolved "http://localhost:4873/@celo/hardhat/-/hardhat-2.12.6.tgz#789131677a38f79d8e50faa76dfcdb20a740b3be"
-  integrity sha512-W/8U25n/d7+tXmO9rBOrzdlMAgg7GWZs8sFOzq8858I4l3xq4sNr94v65X6kUhDBG6pp4uxrAv9qXF0Ta5FmYQ==
+  resolved "http://localhost:4873/@celo/hardhat/-/hardhat-2.12.6.tgz#b647fb864264d3c05575146ac6631c2749e706e1"
+  integrity sha512-DUyapP3jl1O81tB3LxoBx1RH5PKQdpvQ+FYQ720VjPPpmO1J0srHf8btSyNvccD0YJJwePUgOPGJNztfzWwRnw==
   dependencies:
     "@ethereumjs/block" "^4.0.0"
     "@ethereumjs/blockchain" "^6.0.0"
     "@ethereumjs/common" "^3.0.0"
-    "@ethereumjs/evm" "npm:@soloseng/ethereumjs-evm@1.2.2"
+    "@ethereumjs/evm" "npm:@celo/ethereumjs-evm@1.2.2"
     "@ethereumjs/rlp" "^4.0.0"
     "@ethereumjs/statemanager" "^1.0.0"
     "@ethereumjs/trie" "^5.0.0"
     "@ethereumjs/tx" "^4.0.0"
     "@ethereumjs/util" "^8.0.0"
-    "@ethereumjs/vm" "npm:@soloseng/ethereumjs-vm@6.2.1"
+    "@ethereumjs/vm" "npm:@celo/ethereumjs-vm@6.2.0"
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"
     "@nomicfoundation/solidity-analyzer" "^0.1.0"
