@@ -62,7 +62,8 @@
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy": "hardhat stakedCelo:deploy --show-stack-traces --tags core",
     "verify:deploy": "hardhat sourcify",
-    "tarchain": "ts-node scripts/tarchain.ts"
+    "tarchain": "ts-node scripts/tarchain.ts",
+    "standardize:artifacts": "ts-node scripts/standardize-artifacts.ts run"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",
