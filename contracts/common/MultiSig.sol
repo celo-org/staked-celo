@@ -841,4 +841,17 @@ contract MultiSig is Initializable, UUPSUpgradeable {
      */
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address) internal override onlyWallet {}
+
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 0, 0);
+    }
 }

@@ -46,4 +46,17 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     function burn(address from, uint256 amount) external onlyManager {
         _burn(from, amount);
     }
+
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 0, 0);
+    }
 }
