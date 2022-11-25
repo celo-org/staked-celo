@@ -107,6 +107,10 @@ jobs:
         with:
           path: master
           ref: master
+      
+      - name: Install master dependencies
+        run: yarn
+        working-directory: ./master
 
       - name: Generate master artifacts
         run: yarn generate:standard:artifacts --inputDir ../master
