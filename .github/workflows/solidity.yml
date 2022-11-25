@@ -103,7 +103,8 @@ jobs:
         run: yarn generate:standard:artifacts
 
       - name: Checkout master
-        run: git checkout master
+        uses: actions/checkout@v3
+          ref: master
 
       - name: Generate master artifacts
         run: yarn generate:standard:artifacts --outputDir artifactsPostProcessed_master
