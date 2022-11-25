@@ -105,13 +105,14 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@v3
         with:
+          path: master
           ref: master
 
       - name: Generate master artifacts
         run: yarn generate:standard:artifacts --outputDir artifactsPostProcessed_master
       
       - name: Compare artifacts
-        run: yarn compare:artifacts
+        run: yarn compare:artifacts -o master/artifactsPostProcessed -n artifactsPostProcessed
       
       # Cache or reuse node_modules from earlier completed job. 
       - name: Cache NPM
