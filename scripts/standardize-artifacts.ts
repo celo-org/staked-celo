@@ -64,7 +64,7 @@ yargs
   ).argv;
 
 async function runCmd(outputDir: string, inputDir: string) {
-  const inputDirResolved = inputDir ?? path.resolve(__dirname, "..");
+  const inputDirResolved = inputDir ? path.resolve(inputDir) : path.resolve(__dirname, "..");
   console.log("repoPath", inputDirResolved);
 
   const artifactDirectory = "/artifacts";

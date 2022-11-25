@@ -109,7 +109,7 @@ jobs:
           ref: master
 
       - name: Generate master artifacts
-        run: yarn generate:standard:artifacts --outputDir artifactsPostProcessed_master
+        run: yarn generate:standard:artifacts --inputDir ../master
       
       - name: Compare artifacts
         run: yarn compare:artifacts -o master/artifactsPostProcessed -n artifactsPostProcessed
