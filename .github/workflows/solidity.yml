@@ -112,6 +112,7 @@ jobs:
         run: yarn
         working-directory: ./master
 
+
       - name: Generate master artifacts
         run: yarn generate:standard:artifacts
         working-directory: ./master
