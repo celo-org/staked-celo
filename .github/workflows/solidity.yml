@@ -79,3 +79,41 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-        
+  
+  compatibility :
+
+    runs-on: ubuntu-latest
+
+    steps:
+    ## yarn.lock file contains git:// instead of https
+    ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
+      - run: git config --global url."https://".insteadOf git://
+      - name: Checkout commit
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with: 
+          node-version: '12.x'
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Generate standard artifacts
+        run: generate:standard:artifacts
+
+      - name: Checkout master and generate artifacts
+        run: yarn generate:standard:artifacts --outputDir artifactsPostProcessed_master
+      
+      - name: Compare artifacts
+        run: yarn compare:artifacts
+      
+      # Cache or reuse node_modules from earlier completed job. 
+      - name: Cache NPM
+        uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-        
+
