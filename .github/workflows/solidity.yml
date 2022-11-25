@@ -113,7 +113,7 @@ jobs:
         working-directory: ./master
 
       - name: Generate master artifacts
-        run: yarn generate:standard:artifacts --inputDir ../master
+        run: yarn generate:standard:artifacts
         working-directory: ./master
       
       - name: Compare artifacts
