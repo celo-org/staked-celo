@@ -71,8 +71,9 @@ async function runCmd(outputDir: string, inputDir: string) {
   const contractsDirectory = "contracts";
 
   const artifactsPostProcessed = "artifactsPostProcessed";
-  const artifactsPostProcessedPath =
-    outputDir ?? path.join(inputDirResolved, artifactsPostProcessed);
+  const artifactsPostProcessedPath = outputDir
+    ? path.resolve(outputDir)
+    : path.join(inputDirResolved, artifactsPostProcessed);
   if (existsSync(artifactsPostProcessedPath)) {
     removeFilesInDirectory(artifactsPostProcessedPath);
   } else {
