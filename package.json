@@ -65,7 +65,7 @@
     "verify:deploy": "hardhat sourcify",
     "tarchain": "ts-node scripts/tarchain.ts",
     "generate:standard:artifacts": "yarn clean && yarn compile && ts-node scripts/standardize-artifacts.ts run",
-    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -o artifactsPostProcessed_master -n artifactsPostProcessed"
+    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

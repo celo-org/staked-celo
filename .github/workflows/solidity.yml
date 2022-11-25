@@ -110,6 +110,7 @@ jobs:
 
       - name: Generate master artifacts
         run: yarn generate:standard:artifacts --inputDir ../master
+        working-directory: ./master
       
       - name: Compare artifacts
         run: yarn compare:artifacts -o master/artifactsPostProcessed -n artifactsPostProcessed
