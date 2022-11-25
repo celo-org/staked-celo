@@ -63,6 +63,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     uint256 public totalScheduledWithdrawals;
 
+    uint256 public pahor;
+
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
      * @param group The validator group the CELO is intended to vote for.
