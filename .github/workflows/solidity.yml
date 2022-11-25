@@ -100,9 +100,12 @@ jobs:
         run: yarn
 
       - name: Generate standard artifacts
-        run: generate:standard:artifacts
+        run: yarn generate:standard:artifacts
 
-      - name: Checkout master and generate artifacts
+      - name: Checkout master
+        run: git checkout master
+
+      - name: Generate master artifacts
         run: yarn generate:standard:artifacts --outputDir artifactsPostProcessed_master
       
       - name: Compare artifacts
