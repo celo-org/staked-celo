@@ -64,7 +64,7 @@
     "deploy": "hardhat stakedCelo:deploy --show-stack-traces --tags core",
     "verify:deploy": "hardhat sourcify",
     "tarchain": "ts-node scripts/tarchain.ts",
-    "generate:standard:artifacts": "yarn clean && yarn compile && ts-node scripts/standardize-artifacts.ts run",
+    "generate:standard:artifacts": "ts-node scripts/standardize-artifacts.ts run",
     "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check"
   },
   "author": "Celo Labs Inc.",

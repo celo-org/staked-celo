@@ -99,6 +99,9 @@ jobs:
       - name: Install dependencies
         run: yarn
 
+      - name: Compile contracts and generate typechain bindings
+        run: yarn compile
+
       - name: Generate standard artifacts
         run: yarn generate:standard:artifacts
 
@@ -117,7 +120,7 @@ jobs:
         working-directory: ./master
 
       - name: Generate master artifacts
-        run: yarn generate:standard:artifacts -inputDir ./master -outputDir ./master/artifactsPostProcessed
+        run: yarn generate:standard:artifacts --inputDir ./master --outputDir ./master/artifactsPostProcessed
       
       - name: Compare artifacts
         run: yarn compare:artifacts -o master/artifactsPostProcessed -n artifactsPostProcessed
