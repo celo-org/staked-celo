@@ -29,7 +29,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @param account The owner of unlocked stCelo.
      * @param amount The amount of unlocked stCelo.
      */
-    event Unlocked(address account, uint256 amount);
+    event UnlockedStCelo(address account, uint256 amount);
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
