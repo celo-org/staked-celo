@@ -6,8 +6,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
 
-  const isVoteAlreadyDeployed = await hre.deployments.getOrNull("Vote");
-
   const managerAddress = (await hre.deployments.get("Manager")).address;
   const deployment = await catchNotOwnerForProxy(
     deploy("Vote", {

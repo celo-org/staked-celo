@@ -3,7 +3,7 @@ import { task, types } from "hardhat/config";
 import { TransactionArguments } from "../helpers/interfaceHelper";
 
 import {
-  MULTISIG_SUBMIT_PROPOSAL_SET_VOTE as MULTISIG_ENCODE_SET_VOTE_PROPOSAL,
+  MULTISIG_SUBMIT_PROPOSAL_SET_DEPENDENCIES as MULTISIG_ENCODE_SET_VOTE_PROPOSAL,
   MULTISIG_ENCODE_PROPOSAL_PAYLOAD,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../tasksNames";
@@ -27,8 +27,12 @@ task(MULTISIG_ENCODE_SET_VOTE_PROPOSAL, MULTISIG_ENCODE_SET_VOTE_PROPOSAL_DESCRI
 
       const payload = await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
         contract: "Manager",
-        function: "setVoteContract",
-        args: (await hre.deployments.get("Vote")).address,
+        function: "setDependencies",
+        args: `${(await hre.deployments.get("StakedCelo")).address},${
+          (
+            await hre.deployments.get("Account")
+          ).address
+        },${(await hre.deployments.get("Vote")).address}`,
       });
       const managerAddress = (await hre.deployments.get("Manager")).address;
       console.log(chalk.green("--destinations"), managerAddress);

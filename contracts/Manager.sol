@@ -179,12 +179,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
+     * @param _vote The address of the Vote contract.
      */
-    function setDependencies(address _stakedCelo, address _account) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo empty address");
-        require(_account != address(0), "account empty address");
+    function setDependencies(
+        address _stakedCelo,
+        address _account,
+        address _vote
+    ) external onlyOwner {
+        require(_stakedCelo != address(0), "stakedCelo null address");
+        require(_account != address(0), "account null address");
+        require(_vote != address(0), "vote null address");
+
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
+        voteContract = _vote;
+        emit VoteContractSet(_vote);
     }
 
     /**
@@ -681,16 +690,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 j--;
             }
         }
-    }
-
-    /**
-     * @notice Sets vote contract address.
-     * @param _voteContract Vote contract address.
-     */
-    function setVoteContract(address _voteContract) public onlyOwner {
-        require(_voteContract != address(0), "Null address");
-        voteContract = _voteContract;
-        emit VoteContractSet(_voteContract);
     }
 
     /**

@@ -142,9 +142,9 @@ describe("StakedCelo", () => {
       beforeEach(async () => {
         await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
       });
-      it("Emits locked Event", async () => {
+      it("Emits LockedStCelo Event", async () => {
         await expect(stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned))
-          .to.emit(stakedCelo, "Locked")
+          .to.emit(stakedCelo, "LockedStCelo")
           .withArgs(anAccount.address, stCeloOwned);
       });
 

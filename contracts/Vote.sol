@@ -130,8 +130,8 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param _account The address of the Account contract.
      */
     function setDependencies(address _stakedCelo, address _account) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo empty address");
-        require(_account != address(0), "account empty address");
+        require(_stakedCelo != address(0), "stakedCelo null address");
+        require(_account != address(0), "account null address");
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
     }

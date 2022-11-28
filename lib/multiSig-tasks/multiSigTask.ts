@@ -13,4 +13,4 @@ import "./is-proposal-timelock-reached";
 import "./is-owner";
 import "./is-confirmed-by";
 import "./encode-proposal-payload";
-import "./encodeProposalSetVoteContract";
+import "./encodeProposalSetDependencies";

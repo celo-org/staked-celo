@@ -364,7 +364,7 @@ encoded payload:
 ```
 2. Run task to set Vote address in Manager contract
 ``` bash
-> yarn hardhat stakedCelo:multisig:submitProposal:setVote --network alfajores
+> yarn hardhat stakedCelo:multisig:submitProposal:setDependencies --network alfajores
 ```
 3. Insert returned values into submitProposal task (it can be found few lines above)
 

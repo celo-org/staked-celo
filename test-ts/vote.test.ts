@@ -6,7 +6,9 @@ import { parseUnits } from "ethers/lib/utils";
 import {
   activateAndVoteTest,
   activateValidators,
+  ADDRESS_ZERO,
   electMinimumNumberOfValidators,
+  getImpersonatedSigner,
   impersonateAccount,
   mineToNextEpoch,
   randomSigner,
@@ -36,6 +38,9 @@ describe("Vote", async function (this: any) {
   let depositor1: SignerWithAddress;
   let multisigOwner0: SignerWithAddress;
   let voter: SignerWithAddress;
+  let nonStakedCelo: SignerWithAddress;
+  let nonAccount: SignerWithAddress;
+  let nonOwner: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let activatedGroupAddresses: string[];
@@ -103,6 +108,9 @@ describe("Vote", async function (this: any) {
 
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
+    [nonStakedCelo] = await randomSigner(parseUnits("100"));
+    [nonOwner] = await randomSigner(parseUnits("100"));
+    [nonAccount] = await randomSigner(parseUnits("100"));
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     [voter] = await randomSigner(parseUnits("300"));
     const accounts = await hre.kit.contracts.getAccounts();
@@ -737,6 +745,38 @@ describe("Vote", async function (this: any) {
           await checkGovernanceTotalVotes(proposal1Id, 0, 0, 0);
         });
       });
+    });
+  });
+
+  describe("#setDependencies()", () => {
+    let ownerSigner: SignerWithAddress;
+
+    beforeEach(async () => {
+      const voteOwner = await voteContract.owner();
+      ownerSigner = await getImpersonatedSigner(voteOwner);
+      const tx = await nonOwner.sendTransaction({
+        to: ownerSigner.address,
+        value: parseUnits("1"),
+      });
+      await tx.wait();
+    });
+
+    it("reverts with zero stCelo address", async () => {
+      await expect(
+        voteContract.connect(ownerSigner).setDependencies(ADDRESS_ZERO, nonAccount.address)
+      ).revertedWith("stakedCelo null address");
+    });
+
+    it("reverts with zero account address", async () => {
+      await expect(
+        voteContract.connect(ownerSigner).setDependencies(nonStakedCelo.address, ADDRESS_ZERO)
+      ).revertedWith("account null address");
+    });
+
+    it("cannot be called by a non-Owner account", async () => {
+      await expect(
+        voteContract.connect(nonOwner).setDependencies(nonStakedCelo.address, nonAccount.address)
+      ).revertedWith("Ownable: caller is not the owner");
     });
   });
 });

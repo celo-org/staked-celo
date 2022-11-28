@@ -82,7 +82,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             unchecked {
                 _balances[account] = accountBalance - amountToSubtract;
             }
-            emit Locked(account, amount);
+            emit LockedStCelo(account, amount);
         }
     }
 
@@ -110,7 +110,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         _lockedBalances[beneficiary] = currentlyLocked;
         uint256 amountToAdd = previouslyLocked - currentlyLocked;
         _balances[beneficiary] += amountToAdd;
-        emit Unlocked(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
+        emit UnlockedStCelo(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
     }
 
     /**
@@ -124,6 +124,6 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         _lockedBalances[account] = newLockBalance;
         uint256 amountToAdd = previouslyLocked - newLockBalance;
         _balances[account] += amountToAdd;
-        emit Unlocked(account, previouslyLocked - _lockedBalances[account]);
+        emit UnlockedStCelo(account, previouslyLocked - _lockedBalances[account]);
     }
 }
