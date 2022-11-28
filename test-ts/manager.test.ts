@@ -219,6 +219,31 @@ describe("Manager", () => {
       });
     });
 
+    describe("when group has 3 validators, but only 1 is elected.", () => {
+      let gloup: SignerWithAddress;
+      beforeEach(async () => {
+        [gloup] = await randomSigner(parseUnits("31000"));
+        await registerValidatorGroup(gloup);
+
+        for (let i = 0; i < 3; i++) {
+          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+
+          if (i === 2) {
+            await registerValidatorAndAddToGroupMembers(gloup, validator, validatorWallet);
+            await electGroup(gloup.address, someone);
+          } else {
+            await registerValidatorAndOnlyAffiliateToGroup(gloup, validator, validatorWallet);
+          }
+        }
+      });
+
+      it("emits a GroupActivated event", async () => {
+        await expect(manager.activateGroup(gloup.address))
+          .to.emit(manager, "GroupActivated")
+          .withArgs(gloup.address);
+      });
+    });
+
     describe("when group has low slash multiplier", () => {
       let slashedGroup: SignerWithAddress;
       beforeEach(async () => {
@@ -376,7 +401,7 @@ describe("Manager", () => {
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
       });
 
-      it("does not add the group to the deprecatedd array", async () => {
+      it("does not add the group to the deprecated array", async () => {
         await manager.deprecateGroup(deprecatedGroup.address);
         const deprecatedGroups = await manager.getDeprecatedGroups();
         expect(deprecatedGroups).to.deep.eq([]);
@@ -471,6 +496,32 @@ describe("Manager", () => {
         await expect(await manager.deprecateUnhealthyGroup(deprecatedGroup.address))
           .to.emit(manager, "GroupDeprecated")
           .withArgs(deprecatedGroup.address);
+      });
+    });
+
+    describe("when group has 3 validators, but only 1 is elected.", () => {
+      let gloups: SignerWithAddress;
+      beforeEach(async () => {
+        [gloups] = await randomSigner(parseUnits("21000"));
+        await registerValidatorGroup(gloups);
+
+        for (let i = 0; i < 3; i++) {
+          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+
+          if (i === 2) {
+            await registerValidatorAndAddToGroupMembers(gloups, validator, validatorWallet);
+            await electGroup(gloups.address, someone);
+          } else {
+            await registerValidatorAndOnlyAffiliateToGroup(gloups, validator, validatorWallet);
+          }
+        }
+        await manager.activateGroup(gloups.address);
+      });
+
+      it("should revert with Healthy group message", async () => {
+        await expect(manager.deprecateUnhealthyGroup(gloups.address)).revertedWith(
+          `HealthyGroup("${gloups.address}")`
+        );
       });
     });
 
