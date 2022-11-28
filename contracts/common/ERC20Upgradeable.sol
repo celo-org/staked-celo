@@ -39,7 +39,7 @@ contract ERC20Upgradeable is
     IERC20Upgradeable,
     IERC20MetadataUpgradeable
 {
-    mapping(address => uint256) public _balances;
+    mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
 
@@ -392,11 +392,8 @@ contract ERC20Upgradeable is
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 amount
-    ) internal virtual // solhint-disable-next-line no-empty-blocks
-    {
-
-    }
+        uint256 amount // solhint-disable-next-line no-empty-blocks
+    ) internal virtual {}
 
     /**
      * @dev Hook that is called after any transfer of tokens. This includes
@@ -416,11 +413,8 @@ contract ERC20Upgradeable is
     function _afterTokenTransfer(
         address from,
         address to,
-        uint256 amount
-    ) internal virtual // solhint-disable-next-line no-empty-blocks
-    {
-
-    }
+        uint256 amount // solhint-disable-next-line no-empty-blocks
+    ) internal virtual {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

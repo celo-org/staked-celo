@@ -204,7 +204,7 @@ describe("e2e governance vote", () => {
     );
     expect(depositor1StakedCeloBalanceAfterVoting).to.eq(0);
 
-    const depositor1LockedStakedCeloBalance = await stakedCeloContract.lockedBalanceOf(
+    const depositor1LockedStakedCeloBalance = await stakedCeloContract.lockedVoteBalanceOf(
       depositor1.address
     );
     expect(depositor1LockedStakedCeloBalance).to.eq(amountOfCeloToDeposit);
@@ -261,8 +261,12 @@ describe("e2e governance vote", () => {
       .transfer(managerContract.address, amountOfCeloToDeposit.div(2));
     await transferStCeloTx2.wait();
 
-    const lockedStakedCeloDepositor0 = await stakedCeloContract.lockedBalanceOf(depositor0.address);
-    const lockedStakedCeloDepositor1 = await stakedCeloContract.lockedBalanceOf(depositor1.address);
+    const lockedStakedCeloDepositor0 = await stakedCeloContract.lockedVoteBalanceOf(
+      depositor0.address
+    );
+    const lockedStakedCeloDepositor1 = await stakedCeloContract.lockedVoteBalanceOf(
+      depositor1.address
+    );
 
     expect(lockedStakedCeloDepositor1).to.eq(BigNumber.from(0));
 

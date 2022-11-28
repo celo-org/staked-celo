@@ -123,17 +123,17 @@ describe("StakedCelo", () => {
     });
   });
 
-  describe("#lockBalance", () => {
+  describe("#lockVoteBalance", () => {
     const balanceToLock = 100;
     it("should revert if called by non manager", async () => {
       await expect(
-        stakedCelo.connect(nonManager).lockBalance(anAccount.address, balanceToLock)
+        stakedCelo.connect(nonManager).lockVoteBalance(anAccount.address, balanceToLock)
       ).to.revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
 
     it("should revert if account doesn't have enough stCelo", async () => {
       await expect(
-        stakedCelo.connect(manager).lockBalance(anAccount.address, balanceToLock)
+        stakedCelo.connect(manager).lockVoteBalance(anAccount.address, balanceToLock)
       ).to.revertedWith("Not enough locked stCelo");
     });
 
@@ -143,7 +143,7 @@ describe("StakedCelo", () => {
         await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
       });
       it("Emits locked Event", async () => {
-        await expect(stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned))
+        await expect(stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned))
           .to.emit(stakedCelo, "Locked")
           .withArgs(anAccount.address, stCeloOwned);
       });
@@ -151,20 +151,20 @@ describe("StakedCelo", () => {
       it("Locks max amount", async () => {
         const balancesToLock = [10, 20, 5];
 
-        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[0]);
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[0]);
+        await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, balancesToLock[0]);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(balancesToLock[0]);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
           stCeloOwned - balancesToLock[0]
         );
 
-        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[1]);
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+        await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, balancesToLock[1]);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
           stCeloOwned - balancesToLock[1]
         );
 
-        await stakedCelo.connect(manager).lockBalance(anAccount.address, balancesToLock[2]);
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
+        await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, balancesToLock[2]);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(balancesToLock[1]);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
           stCeloOwned - balancesToLock[1]
         );
@@ -172,7 +172,7 @@ describe("StakedCelo", () => {
 
       describe("When account has 50% balance locked", () => {
         beforeEach(async () => {
-          await stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned / 2);
+          await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned / 2);
         });
 
         it("should fail to transfer unlocked + locked balance", async () => {
@@ -183,61 +183,63 @@ describe("StakedCelo", () => {
 
         it("should allow to transfer unlocked balance", async () => {
           expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
-          expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+          expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
 
           await stakedCelo.connect(anAccount).transfer(managerContract.address, stCeloOwned / 2);
 
           expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
-          expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+          expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
         });
       });
     });
   });
 
-  describe("#unlockBalance", () => {
+  describe("#unlockVoteBalance", () => {
     it("should revert when no locked stCelo", async () => {
-      await expect(stakedCelo.unlockBalance(anAccount.address)).revertedWith("No locked stCelo");
+      await expect(stakedCelo.unlockVoteBalance(anAccount.address)).revertedWith(
+        "No locked stCelo"
+      );
     });
 
     describe("When locked balance", () => {
       const stCeloOwned = 100;
       beforeEach(async () => {
         await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
-        stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned);
+        stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(0);
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(stCeloOwned);
         expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
       });
 
       it("should not unlock if manager contract return full locked amount", async () => {
         await managerContract.setLockedStCelo(stCeloOwned);
 
-        await expect(stakedCelo.connect(manager).unlockBalance(anAccount.address)).revertedWith(
+        await expect(stakedCelo.connect(manager).unlockVoteBalance(anAccount.address)).revertedWith(
           `Nothing to unlock`
         );
       });
 
       it("should not unlock if manager contract return half locked amount", async () => {
         await managerContract.setLockedStCelo(stCeloOwned / 2);
-        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
+        await stakedCelo.connect(manager).unlockVoteBalance(anAccount.address);
 
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned / 2);
         expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
       });
 
       it("it should unlock if manager contract return 0 locked amount", async () => {
         await managerContract.setLockedStCelo(0);
-        await stakedCelo.connect(manager).unlockBalance(anAccount.address);
+        await stakedCelo.connect(manager).unlockVoteBalance(anAccount.address);
 
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(0);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(0);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned);
         expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
       });
     });
   });
 
-  describe("#overrideLockBalance", () => {
+  describe("#overrideVoteLockBalance", () => {
     const stCeloOwned = 100;
 
     beforeEach(async () => {
@@ -246,29 +248,31 @@ describe("StakedCelo", () => {
 
     it("should revert when not an manager", async () => {
       await expect(
-        stakedCelo.connect(nonManager).overrideLockBalance(anAccount.address, 100)
+        stakedCelo.connect(nonManager).overrideVoteLockBalance(anAccount.address, 100)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
 
     it("should revert if there was no previous locked balance", async () => {
       const balanceToOverrideTo = 99;
       await expect(
-        stakedCelo.connect(manager).overrideLockBalance(anAccount.address, balanceToOverrideTo)
+        stakedCelo.connect(manager).overrideVoteLockBalance(anAccount.address, balanceToOverrideTo)
       ).revertedWith("Not enough locked stCelo");
     });
 
     describe("When stCelo locked", () => {
       beforeEach(async () => {
-        await stakedCelo.connect(manager).lockBalance(anAccount.address, stCeloOwned);
+        await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned);
       });
 
       it("should change locked balance correctly", async () => {
         const balanceToOverrideTo = 99;
         await stakedCelo
           .connect(manager)
-          .overrideLockBalance(anAccount.address, balanceToOverrideTo);
+          .overrideVoteLockBalance(anAccount.address, balanceToOverrideTo);
 
-        expect(await stakedCelo.lockedBalanceOf(anAccount.address)).to.be.eq(balanceToOverrideTo);
+        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(
+          balanceToOverrideTo
+        );
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
           stCeloOwned - balanceToOverrideTo
         );

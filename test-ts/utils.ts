@@ -392,13 +392,14 @@ export async function submitAndExecuteProposal(
     useNodeAccount: true,
   });
 
-  const executeProposalResult = await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
-    proposalId: proposalId,
-    account: account,
-    useNodeAccount: true,
-  });
-  if (executeProposalResult != null) {
-    throw new Error("execute proposal failed " + executeProposalResult);
+  try {
+    await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
+      proposalId: proposalId,
+      account: account,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw new Error(`execute proposal failed ${JSON.stringify(error)}`);
   }
 }
 
@@ -423,13 +424,13 @@ export async function waitForEvent(
 }
 
 export async function activateAndVoteTest(deployerAccountName: string = "deployer") {
-  const activateAndVoteResult = await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
-    account: deployerAccountName,
-    useNodeAccount: true,
-  });
-
-  if (activateAndVoteResult != null) {
-    throw Error(`Activate and vote failed! ${activateAndVoteResult}`);
+  try {
+    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Activate and vote failed! ${JSON.stringify(error)}`);
   }
 }
 

@@ -35,15 +35,15 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
         _burn(from, amount);
     }
 
-    function lockBalance(address, uint256 amount) external {
+    function lockVoteBalance(address, uint256 amount) external {
         lockedBalance = amount;
     }
 
-    function unlockBalance(address beneficiary) public {
+    function unlockVoteBalance(address beneficiary) public {
         unlockedBalanceFor = beneficiary;
     }
 
-    function overrideLockBalance(address account, uint256 newLockBalance) public {
+    function overrideVoteLockBalance(address account, uint256 newLockBalance) public {
         overrideFor = account;
         overrideBalance = newLockBalance;
     }

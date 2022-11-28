@@ -36,6 +36,6 @@ task(MULTISIG_EXECUTE_PROPOSAL, MULTISIG_EXECUTE_PROPOSAL_TASK_DESCRIPTION)
       parseEvents(receipt, "TransactionExecuted");
     } catch (error) {
       console.log(chalk.red("Error executing proposal:"), error);
-      return error;
+      throw error;
     }
   });
