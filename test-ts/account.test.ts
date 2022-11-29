@@ -7,9 +7,12 @@ import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import electionContractData from "./code/abi/electionAbi.json";
 
 import {
   ADDRESS_ZERO,
+  getImpersonatedSigner,
+  impersonateAccount,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
@@ -18,6 +21,7 @@ import {
   resetNetwork,
   timeTravel,
 } from "./utils";
+import { assert } from "console";
 
 after(() => {
   hre.kit.stop();
@@ -1044,6 +1048,49 @@ describe("Account", () => {
           expect(votes).to.eq(40);
         });
       });
+    });
+  });
+
+  describe("#setAllowedToVoteOverMaxNumberOfGroups()", () => {
+    let owner: SignerWithAddress;
+
+    beforeEach(async () => {
+      const ownerAddress = await account.owner();
+      owner = await getImpersonatedSigner(ownerAddress);
+    });
+    it("reverts when not called by owner", async () => {
+      expect(account.setAllowedToVoteOverMaxNumberOfGroups(true)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("sets allowedToVoteOverMaxNumberOfGroups correctly", async () => {
+      // TODO: once contractkit updated - use just election contract from contractkit
+      const electionContract = new hre.kit.web3.eth.Contract(
+        electionContractData.abi as any,
+        election.address
+      );
+      const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+        electionContract.methods.allowedToVoteOverMaxNumberOfGroups(account.address);
+
+      const isAllowedToVoteOverMaxNumberOfGroupsFalse =
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.call();
+      expect(
+        isAllowedToVoteOverMaxNumberOfGroupsFalse,
+        "allowedToVoteOverMaxNumberOfGroups not set correctly"
+      ).to.be.false;
+
+      const setAllowedToVoteOverMaxNumberOfGroupsTx = await account
+        .connect(owner)
+        .setAllowedToVoteOverMaxNumberOfGroups(true);
+      await setAllowedToVoteOverMaxNumberOfGroupsTx.wait();
+
+      const isAllowedToVoteOverMaxNumberOfGroupsTrue =
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.call();
+      expect(
+        isAllowedToVoteOverMaxNumberOfGroupsTrue,
+        "allowedToVoteOverMaxNumberOfGroups not set correctly"
+      ).to.be.true;
     });
   });
 });

@@ -21,6 +21,7 @@ import { MockStakedCelo__factory } from "../typechain-types/factories/MockStaked
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import electionContractData from "./code/abi/electionAbi.json";
 
 import {
   removeMembersFromGroup,
@@ -34,6 +35,7 @@ import {
   electGroup,
   registerValidatorAndOnlyAffiliateToGroup,
   updateGroupSlashingMultiplier,
+  impersonateAccount,
 } from "./utils";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
@@ -295,6 +297,36 @@ describe("Manager", () => {
         await expect(manager.activateGroup(additionalGroup.address)).revertedWith(
           "MaxGroupsVotedForReached()"
         );
+      });
+
+      it("can add another group when enabled in Election contract", async () => {
+        const accountAddress = account.address;
+        const sendFundsTx = await nonOwner.sendTransaction({
+          value: parseUnits("1"),
+          to: accountAddress,
+        });
+        await sendFundsTx.wait();
+        await impersonateAccount(accountAddress);
+
+        const accountsContract = await hre.kit.contracts.getAccounts();
+        const createAccountTxObject = accountsContract.createAccount();
+        await createAccountTxObject.send({
+          from: accountAddress,
+        });
+        // TODO: once contractkit updated - use just election contract from contractkit
+        const electionContract = new hre.kit.web3.eth.Contract(
+          electionContractData.abi as any,
+          election.address
+        );
+        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+          from: accountAddress,
+        });
+
+        await expect(manager.activateGroup(additionalGroup.address))
+          .to.emit(manager, "GroupActivated")
+          .withArgs(additionalGroup.address);
       });
 
       describe("when some of the groups are currently deprecated", () => {

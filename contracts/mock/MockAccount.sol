@@ -62,4 +62,7 @@ contract MockAccount {
     function setScheduledVotes(address group, uint256 amount) external {
         scheduledVotesForGroup[group] = amount;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 }

@@ -695,4 +695,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         return (pendingWithdrawal.value, pendingWithdrawal.timestamp);
     }
+
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
+        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
 }

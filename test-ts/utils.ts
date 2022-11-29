@@ -407,3 +407,9 @@ export async function waitForEvent(
     });
   });
 }
+
+export async function getImpersonatedSigner(address: string) {
+  await impersonateAccount(address);
+  const signerWithAddress = await ethers.getSigner(address);
+  return signerWithAddress;
+}
