@@ -311,6 +311,7 @@ export function getFirstBlockNumberForEpoch(
 
 // `useGanache` allows for mining block directly on the ganache network
 export async function mineBlocks(blocks: number, useGanache?: boolean) {
+  // TODO: add type back once we update to latest hardhat
   let localProvider: any;
   if (useGanache) {
     localProvider = new ethers.providers.JsonRpcProvider("http://localhost:7545");
