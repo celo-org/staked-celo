@@ -26,6 +26,7 @@ import {
   timeTravel,
 } from "./utils";
 
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
@@ -737,9 +738,7 @@ describe("Vote", async function (this: any) {
         });
 
         it("should return voted record with correct values", async () => {
-          const voteRecord = await managerContract
-            .connect(depositor0)
-            .revokeVotes(proposal1Id, proposal1Index);
+          await managerContract.connect(depositor0).revokeVotes(proposal1Id, proposal1Index);
           await checkGovernanceTotalVotes(proposal1Id, 0, 0, 0);
         });
       });

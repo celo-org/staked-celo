@@ -68,6 +68,7 @@ describe("Manager", () => {
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let snapshotId: any;
 
   before(async function () {
@@ -182,8 +183,7 @@ describe("Manager", () => {
 
     describe("when group is not registered", () => {
       it("reverts when trying to add an unregistered group", async () => {
-        let unregisteredGroup: SignerWithAddress;
-        [unregisteredGroup] = await randomSigner(parseUnits("100"));
+        const [unregisteredGroup] = await randomSigner(parseUnits("100"));
 
         await expect(manager.activateGroup(unregisteredGroup.address)).revertedWith(
           `GroupNotEligible("${unregisteredGroup.address}")`
@@ -1122,7 +1122,7 @@ describe("Manager", () => {
 
         it("calculates CELO 1:1 with stCELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(100);
         });
@@ -1135,7 +1135,7 @@ describe("Manager", () => {
 
         it("calculates CELO 1:1 with stCELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(10);
         });
@@ -1154,7 +1154,7 @@ describe("Manager", () => {
 
         it("calculates more stCELO than the input CELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(200);
         });
@@ -1167,7 +1167,7 @@ describe("Manager", () => {
 
         it("calculates more stCELO than the input CELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(20);
         });
@@ -1187,7 +1187,7 @@ describe("Manager", () => {
 
         it("calculates less stCELO than the input CELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(50);
         });
@@ -1200,7 +1200,7 @@ describe("Manager", () => {
 
         it("calculates less stCELO than the input CELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(5);
         });

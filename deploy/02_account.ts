@@ -7,7 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const managerAddress = (await hre.deployments.get("Manager")).address;
   const { deployer } = await hre.getNamedAccounts();
-  const deployment = await catchNotOwnerForProxy(
+  await catchNotOwnerForProxy(
     deploy("Account", {
       from: deployer,
       log: true,

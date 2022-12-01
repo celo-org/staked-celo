@@ -10,9 +10,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const minDelay = Number(process.env.TIME_LOCK_MIN_DELAY);
   const delay = Number(process.env.TIME_LOCK_DELAY);
 
-  let multisigOwners: string[] = [];
-  for (let key in namedAccounts) {
-    var res = key.includes("multisigOwner");
+  const multisigOwners: string[] = [];
+  for (const key in namedAccounts) {
+    const res = key.includes("multisigOwner");
     if (res) {
       multisigOwners.push(namedAccounts[key]);
     }
@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
-  const deployment = await catchNotOwnerForProxy(
+  await catchNotOwnerForProxy(
     deploy("MultiSig", {
       from: deployer,
       log: true,

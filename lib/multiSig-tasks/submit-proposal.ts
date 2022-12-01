@@ -1,24 +1,22 @@
-import { task, types } from "hardhat/config";
 import chalk from "chalk";
-
-import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
-
+import { task, types } from "hardhat/config";
 import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
+  ACCOUNT,
+  ACCOUNT_DESCRIPTION,
   DESTINATIONS,
   DESTINATIONS_DESCRIPTION,
-  ACCOUNT_DESCRIPTION,
-  ACCOUNT,
   MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION,
   PAYLOADS,
   PAYLOADS_DESCRIPTION,
-  USE_LEDGER_DESCRIPTION,
   USE_LEDGER,
-  USE_NODE_ACCOUNT_DESCRIPTION,
+  USE_LEDGER_DESCRIPTION,
   USE_NODE_ACCOUNT,
+  USE_NODE_ACCOUNT_DESCRIPTION,
   VALUES,
   VALUES_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { MULTISIG_SUBMIT_PROPOSAL } from "../tasksNames";
 
 task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
   .addParam(DESTINATIONS, DESTINATIONS_DESCRIPTION, undefined, types.string)
@@ -46,7 +44,7 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
       const events = receipt.events;
       let proposalId = -1;
       if (events !== undefined) {
-        for (var i = 0; i < events!.length; i++) {
+        for (let i = 0; i < events!.length; i++) {
           if (events[i].event == "ProposalScheduled") {
             proposalId = events[i].args[0].toNumber();
           }

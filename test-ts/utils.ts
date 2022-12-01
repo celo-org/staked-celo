@@ -27,7 +27,7 @@ export const LOCKED_GOLD_UNLOCKING_PERIOD = 3 * DAY;
 // ---- Validator utils ----
 
 // Locks the required CELO and registers as a validator group.
-export async function registerValidatorGroup(account: SignerWithAddress, members: number = 1) {
+export async function registerValidatorGroup(account: SignerWithAddress, members = 1) {
   const accounts = await kit.contracts.getAccounts();
   const tx = accounts.createAccount();
   await tx.sendAndWaitForReceipt({
@@ -121,8 +121,8 @@ export async function removeMembersFromGroup(group: SignerWithAddress) {
   const validatorGroup = await validators.getValidatorGroup(group.address);
 
   // deaffiliate then deregister
-  let txs: Promise<CeloTxReceipt>[] = [];
-  for (let validator of validatorGroup.members) {
+  const txs: Promise<CeloTxReceipt>[] = [];
+  for (const validator of validatorGroup.members) {
     const tx = validators.removeMember(validator).sendAndWaitForReceipt({ from: group.address });
     txs.push(tx);
   }
@@ -406,7 +406,7 @@ export async function waitForEvent(
   contract: Contract,
   eventName: string,
   expectedValue: string,
-  timeout: number = 10000
+  timeout = 10000
 ) {
   await new Promise<void>((resolve, reject) => {
     setTimeout(() => {
@@ -422,7 +422,7 @@ export async function waitForEvent(
   });
 }
 
-export async function activateAndVoteTest(deployerAccountName: string = "deployer") {
+export async function activateAndVoteTest(deployerAccountName = "deployer") {
   try {
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
       account: deployerAccountName,

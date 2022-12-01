@@ -33,7 +33,6 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       console.log("Starting stakedCelo:deploy task...");
       const networks = hre.config.networks;
       const targetNetwork = hre.network.name;
-      let hostUrl;
 
       if (targetNetwork !== "hardhat") {
         const deployer = { [targetNetwork]: DEPLOYER };
@@ -97,7 +96,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       }
 
       //@ts-ignore Property 'url' does not exist on type 'NetworkConfig'.
-      hostUrl = String(networks[targetNetwork].url);
+      const hostUrl = String(networks[targetNetwork].url);
       // If deploying via remote host, then deployment will use private key from .env automatically.
       if (hostUrl.includes("https")) {
         networks[targetNetwork].accounts = [`0x${privateKey}`];

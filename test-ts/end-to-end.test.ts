@@ -28,7 +28,7 @@ describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
 
-  const deployerAccountName: String = "deployer";
+  const deployerAccountName = "deployer";
   // deposits CELO, receives stCELO, but never withdraws it
   let depositor0: SignerWithAddress;
   // deposits CELO, receives stCELO, withdraws stCELO including rewards
@@ -44,6 +44,7 @@ describe("e2e", () => {
 
   let stakedCeloContract: StakedCelo;
 
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
     this.timeout(0); // Disable test timeout
     await resetNetwork();

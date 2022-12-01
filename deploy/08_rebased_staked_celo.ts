@@ -10,7 +10,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
 
   const { deployer } = await hre.getNamedAccounts();
-  const deployment = await catchNotOwnerForProxy(
+  await catchNotOwnerForProxy(
     deploy("RebasedStakedCelo", {
       from: deployer,
       log: true,

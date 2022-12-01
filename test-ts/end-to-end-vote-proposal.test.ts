@@ -48,6 +48,7 @@ describe("e2e governance vote", () => {
 
   let stakedCeloContract: StakedCelo;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unused-vars
   before(async function (this: any) {
     this.timeout(0); // Disable test timeout
     await resetNetwork();
@@ -122,7 +123,7 @@ describe("e2e governance vote", () => {
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
-    let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    const depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
     await activateAndVoteTest();

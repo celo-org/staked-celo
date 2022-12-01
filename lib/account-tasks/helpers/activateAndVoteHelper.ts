@@ -12,7 +12,7 @@ export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Si
   const groupList = await managerContract.getGroups();
   console.log("groups:", groupList);
 
-  for (var group of groupList) {
+  for (const group of groupList) {
     // Using election contract to make this `hasActivatablePendingVotes` call.
     // This allows to check activatable pending votes for a specified group,
     // as opposed to using the `ElectionWrapper.hasActivatablePendingVotes`

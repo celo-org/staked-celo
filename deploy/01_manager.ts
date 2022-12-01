@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
 
-  const deployment = await catchNotOwnerForProxy(
+  await catchNotOwnerForProxy(
     deploy("Manager", {
       from: deployer,
       log: true,

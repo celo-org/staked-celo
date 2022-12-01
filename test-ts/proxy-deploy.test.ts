@@ -8,6 +8,7 @@ import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } f
 
 interface ProxyDeployTestData {
   contractName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initializeArgs: any[];
 }
 

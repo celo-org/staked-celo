@@ -52,6 +52,7 @@
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
     "devchain": "yarn run celo-devchain --port 7545 --file ./devChain/devchain.tar.gz    ",
     "lint": "yarn run lint:sol && yarn run lint:ts",
+    "lintts": "yarn run eslint ./",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
     "lint:ts": "prettier --write ./**/*.ts",
     "lint:ci": "yarn run lint:sol:ci && yarn run lint:ts:ci",
@@ -72,6 +73,9 @@
     "*.js": "prettier --write"
   },
   "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
     "prettier-plugin-organize-imports": "^3.2.1"
   }
 }
