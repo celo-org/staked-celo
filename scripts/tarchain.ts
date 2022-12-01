@@ -48,7 +48,7 @@ function runCmd(datadir: string, filename: string | undefined, monorepo: string)
 }
 
 export function execCmd(cmd: string, args: string[], options?: SpawnOptions) {
-  return new Promise<number>(async (resolve, reject) => {
+  return new Promise<number>((resolve, reject) => {
     const { ...spawnOptions } = options;
 
     const process = spawn(cmd, args, {

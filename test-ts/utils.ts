@@ -12,6 +12,9 @@ import {
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockRegistry } from "../typechain-types/MockRegistry";
+import { MockValidators } from "../typechain-types/MockValidators";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -213,9 +216,9 @@ export async function electGroup(groupAddress: string, voter: SignerWithAddress)
 }
 
 export async function updateGroupSlashingMultiplier(
-  registryContract: any,
-  lockedGoldContract: any,
-  validatorsContract: any,
+  registryContract: MockRegistry,
+  lockedGoldContract: MockLockedGold,
+  validatorsContract: MockValidators,
   group: SignerWithAddress,
   mockSlasher: SignerWithAddress
 ) {
