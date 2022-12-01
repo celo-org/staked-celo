@@ -28,6 +28,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_transfer_to_multisig";
-func.tags = ["TransferAllContractsToMultisig", "core", "voteDeploy"];
+func.tags = ["TransferAllContractsToMultisig", "core"];
 func.dependencies = ["Manager", "Account", "StakedCelo", "MultiSig", "Vote"];
 export default func;

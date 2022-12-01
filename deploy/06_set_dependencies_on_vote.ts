@@ -7,10 +7,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const stakedCelo = await hre.deployments.get("StakedCelo");
   const vote: Vote = await hre.ethers.getContract("Vote");
-  await executeAndWait(vote.setDependencies(stakedCelo.address, account.address));
+  const multisig = await hre.deployments.get("MultiSig");
+
+  if ((await vote.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(vote.setDependencies(stakedCelo.address, account.address));
+  }
 };
 
 func.id = "deploy_set_dependencies_on_vote";
-func.tags = ["SetDepsOnVote", "core", "voteDeploy"];
+func.tags = ["SetDepsOnVote", "core"];
 func.dependencies = ["Vote", "Account", "StakedCelo"];
 export default func;

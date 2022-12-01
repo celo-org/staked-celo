@@ -26,6 +26,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_vote";
-func.tags = ["Vote", "core", "proxy", "voteDeploy"];
+func.tags = ["Vote", "core", "proxy"];
 func.dependencies = ["MultiSig"];
 export default func;

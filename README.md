@@ -360,7 +360,7 @@ encoded payload:
 ## Vote deploy when rest of contracts is already deployed
 1. Run only deploy scripts related to Vote contract
 ``` bash
-> yarn hardhat stakedCelo:deploy --show-stack-traces --network alfajores --tags voteDeploy
+> yarn hardhat stakedCelo:deploy --show-stack-traces --network alfajores --tags core
 ```
 2. Run task to set Vote address in Manager contract
 ``` bash
