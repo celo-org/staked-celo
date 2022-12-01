@@ -1,42 +1,39 @@
-import hre from "hardhat";
-import { BigNumber } from "ethers";
-import BigNumberJs from "bignumber.js";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
-
-import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import BigNumberJs from "bignumber.js";
+import { expect } from "chai";
+import { BigNumber } from "ethers";
+import { parseUnits } from "ethers/lib/utils";
+import hre from "hardhat";
+import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
-import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
-import { MockValidators } from "../typechain-types/MockValidators";
+import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
 import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
-
+import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
-import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
-import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
-import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
+import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
-import { expect } from "chai";
-import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
 import {
-  getImpersonatedSigner,
-  removeMembersFromGroup,
+  ADDRESS_ZERO,
   deregisterValidatorGroup,
+  electGroup,
+  electMinimumNumberOfValidators,
+  getImpersonatedSigner,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
-  resetNetwork,
-  electMinimumNumberOfValidators,
-  electGroup,
   registerValidatorAndOnlyAffiliateToGroup,
-  updateGroupSlashingMultiplier,
+  registerValidatorGroup,
   REGISTRY_ADDRESS,
-  ADDRESS_ZERO,
+  removeMembersFromGroup,
+  resetNetwork,
+  updateGroupSlashingMultiplier,
 } from "./utils";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
@@ -54,7 +51,6 @@ describe("Manager", () => {
   let registryContract: MockRegistry;
 
   let manager: Manager;
-  let vote: SignerWithAddress;
   let nonVote: SignerWithAddress;
   let nonStakedCelo: SignerWithAddress;
   let nonAccount: SignerWithAddress;
@@ -90,7 +86,6 @@ describe("Manager", () => {
     [mockSlasher] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
-    [vote] = await randomSigner(parseUnits("100"));
     [nonVote] = await randomSigner(parseUnits("100"));
     [nonStakedCelo] = await randomSigner(parseUnits("100"));
     [nonAccount] = await randomSigner(parseUnits("100"));
@@ -1289,7 +1284,6 @@ describe("Manager", () => {
     const abstain = 30;
 
     it("should call all subsequent contracts correctly", async () => {
-      const stakedCeloBalance = "1111";
       await manager.voteProposal(proposalId, index, yes, no, abstain);
 
       const stCeloLockedBalance = await stakedCelo.lockedBalance();
@@ -1327,7 +1321,6 @@ describe("Manager", () => {
     const abstain = 30;
 
     it("should call all subsequent contracts correctly", async () => {
-      const stakedCeloBalance = "1111";
       await voteContract.setVotes(yes, no, abstain);
       await manager.revokeVotes(proposalId, index);
 

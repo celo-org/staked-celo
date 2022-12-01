@@ -1,10 +1,10 @@
-import { expect } from "chai";
-import hre from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
-import { parseUnits } from "ethers/lib/utils";
-import { Contract, ContractFactory } from "ethers";
 import { Deployment } from "@celo/staked-celo-hardhat-deploy/types";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { Contract, ContractFactory } from "ethers";
+import { parseUnits } from "ethers/lib/utils";
+import hre from "hardhat";
+import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
 
 interface ProxyDeployTestData {
   contractName: string;

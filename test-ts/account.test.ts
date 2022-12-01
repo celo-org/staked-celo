@@ -1,14 +1,12 @@
-import hre, { ethers } from "hardhat";
-import { Account } from "../typechain-types/Account";
-import { MockGovernance } from "../typechain-types/MockGovernance";
-import { Account__factory } from "../typechain-types/factories/Account__factory";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import hre from "hardhat";
+import { Account } from "../typechain-types/Account";
+import { MockGovernance } from "../typechain-types/MockGovernance";
 import {
   ADDRESS_ZERO,
   LOCKED_GOLD_UNLOCKING_PERIOD,

@@ -1,5 +1,5 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { catchNotOwnerForProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

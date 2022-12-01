@@ -1,18 +1,17 @@
+import { CeloTxReceipt } from "@celo/connect";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import BigNumber from "bignumber.js";
-import { Wallet, BigNumber as EthersBigNumber, Contract, BaseContract } from "ethers";
-import Web3 from "web3";
-import hre, { ethers, kit } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
+import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
+import { parseUnits } from "ethers/lib/utils";
+import hre, { ethers, kit } from "hardhat";
+import Web3 from "web3";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
 import { Manager } from "../typechain-types/Manager";
-import { CeloTxReceipt } from "@celo/connect";
-import { parseUnits } from "ethers/lib/utils";
-import BigNumberJs from "bignumber.js";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";

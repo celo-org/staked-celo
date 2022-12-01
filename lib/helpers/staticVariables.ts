@@ -48,8 +48,6 @@ export const MANAGER_DEPOSIT_TASK_DESCRIPTION = "Deposits CELO in staked CELO pr
 export const MANAGER_GET_DEPRECATED_GROUPS_TASK_DESCRIPTION = "Returns list of deprecated groups";
 export const MANAGER_GET_GROUPS_TASK_DESCRIPTION = "Returns all groups voting for";
 export const MANAGER_WITHDRAW_TASK_DESCRIPTION = "Withdraws stCELO from staked CELO protocol.";
-export const MULTISIG_SUBMIT_PROPOSAL_SET_VOTE_DESCRIPTION =
-  "Submits proposal for setting vote contract";
 
 // MULTISIG TASK DESCRIPTIONS
 export const MULTISIG_CONFIRM_PROPOSAL_TASK_DESCRIPTION = "Confirm a multiSig proposal.";
@@ -73,3 +71,5 @@ export const MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION =
   "Submit a proposal to the multiSig contract.";
 export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION =
   "Encodes function payload on contract for proposal.";
+export const MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES_DESCRIPTION =
+  "Encodes manager set dependencies";

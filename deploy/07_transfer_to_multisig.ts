@@ -1,9 +1,9 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
-import { Manager } from "../typechain-types/Manager";
-import { Account } from "../typechain-types/Account";
-import { StakedCelo } from "../typechain-types/StakedCelo";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
+import { Account } from "../typechain-types/Account";
+import { Manager } from "../typechain-types/Manager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

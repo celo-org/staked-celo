@@ -1,11 +1,10 @@
-import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { StakedCelo } from "../typechain-types/StakedCelo";
-
-import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork, timeTravel } from "./utils";
+import hre from "hardhat";
 import { MockManager } from "../typechain-types/MockManager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
+import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork } from "./utils";
 
 describe("StakedCelo", () => {
   let stakedCelo: StakedCelo;

@@ -14,8 +14,8 @@ export const MULTISIG_IS_PROPOSAL_TIMELOCK_REACHED =
 export const MULTISIG_IS_OWNER = "stakedCelo:multiSig:isOwner";
 export const MULTISIG_IS_CONFIRMED_BY = "stakedCelo:multiSig:isConfirmedBy";
 export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD = "stakedCelo:multiSig:encode:proposal:payload";
-export const MULTISIG_SUBMIT_PROPOSAL_SET_DEPENDENCIES =
-  "stakedCelo:multisig:submitProposal:setDependencies";
+export const MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES =
+  "stakedCelo:multisig:encode:managerSetDependencies";
 
 export const STAKED_CELO_DEPLOY = "stakedCelo:deploy";
 

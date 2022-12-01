@@ -1,7 +1,7 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
-import { Vote } from "../typechain-types/Vote";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
+import { Vote } from "../typechain-types/Vote";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");

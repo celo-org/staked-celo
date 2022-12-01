@@ -1,9 +1,9 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
-import { Manager } from "../typechain-types/Manager";
-import { executeAndWait } from "../lib/deploy-utils";
 import chalk from "chalk";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { executeAndWait } from "../lib/deploy-utils";
 import { MULTISIG_SUBMIT_PROPOSAL_SET_DEPENDENCIES } from "../lib/tasksNames";
+import { Manager } from "../typechain-types/Manager";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");

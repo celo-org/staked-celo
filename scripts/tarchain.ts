@@ -1,7 +1,7 @@
+import { spawn, SpawnOptions } from "child_process";
 import fs from "fs-extra";
 import path from "path";
 import yargs from "yargs";
-import { spawn, SpawnOptions } from "child_process";
 
 yargs
   .scriptName("tarchain")

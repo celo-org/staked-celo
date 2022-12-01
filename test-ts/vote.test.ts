@@ -1,15 +1,21 @@
-import hre from "hardhat";
+import {
+  GovernanceWrapper,
+  Proposal,
+  ProposalTransaction,
+} from "@celo/contractkit/lib/wrappers/Governance";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
-
+import hre from "hardhat";
+import { Manager } from "../typechain-types/Manager";
+import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
   activateValidators,
   ADDRESS_ZERO,
   electMinimumNumberOfValidators,
   getImpersonatedSigner,
-  impersonateAccount,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
@@ -19,14 +25,6 @@ import {
   submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
-import {
-  GovernanceWrapper,
-  Proposal,
-  ProposalTransaction,
-} from "@celo/contractkit/lib/wrappers/Governance";
-import { BigNumber, BigNumberish, Signer } from "ethers";
-import { Manager } from "../typechain-types/Manager";
-import { Vote } from "../typechain-types/Vote";
 
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout

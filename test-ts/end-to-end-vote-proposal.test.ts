@@ -1,9 +1,17 @@
+import {
+  GovernanceWrapper,
+  Proposal,
+  ProposalTransaction,
+} from "@celo/contractkit/lib/wrappers/Governance";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { BigNumber } from "ethers";
+import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { Account } from "../typechain-types/Account";
-import { expect } from "chai";
-import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import { Manager } from "../typechain-types/Manager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
+import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
   activateValidators,
@@ -13,20 +21,10 @@ import {
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
-  registerValidatorAndOnlyAffiliateToGroup,
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
 } from "./utils";
-import { Manager } from "../typechain-types/Manager";
-import { StakedCelo } from "../typechain-types/StakedCelo";
-import {
-  GovernanceWrapper,
-  Proposal,
-  ProposalTransaction,
-} from "@celo/contractkit/lib/wrappers/Governance";
-import { Vote } from "../typechain-types/Vote";
-import { BigNumber } from "ethers";
 
 after(() => {
   hre.kit.stop();

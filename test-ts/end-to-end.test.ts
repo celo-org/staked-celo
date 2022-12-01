@@ -1,9 +1,11 @@
-import hre from "hardhat";
-import { Account } from "../typechain-types/Account";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import hre from "hardhat";
+import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
+import { Manager } from "../typechain-types/Manager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
   activateValidators,
@@ -17,9 +19,6 @@ import {
   resetNetwork,
   timeTravel,
 } from "./utils";
-import { Manager } from "../typechain-types/Manager";
-import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
-import { StakedCelo } from "../typechain-types/StakedCelo";
 
 after(() => {
   hre.kit.stop();
