@@ -15,4 +15,6 @@ interface IStakedCelo {
         address,
         uint256
     ) external returns (bool);
+
+    function balanceOf(address account) external view returns (uint256);
 }
