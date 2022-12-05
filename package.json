@@ -41,6 +41,7 @@
     "typechain": "^7.0.0",
     "typescript": "^4.5.5",
     "@celo/staked-celo-hardhat-deploy": "git+https://github.com/celo-org/staked-celo-hardhat-deploy.git",
+    "@celo/contract-compatibility-check": "git+https://github.com/celo-org/contract-compatibility-check.git",
     "web3": "1.3.6",
     "web3-utils": "^1.3.0"
   },
@@ -62,7 +63,9 @@
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy": "hardhat stakedCelo:deploy --show-stack-traces --tags core",
     "verify:deploy": "hardhat sourcify",
-    "tarchain": "ts-node scripts/tarchain.ts"
+    "tarchain": "ts-node scripts/tarchain.ts",
+    "generate:standard:artifacts": "ts-node scripts/standardize-artifacts.ts run",
+    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",
