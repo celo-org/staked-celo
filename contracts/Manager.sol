@@ -27,22 +27,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 votes;
     }
 
-    struct StrategyVotes {
-        uint256 totalStCelo;
-        // either empty = default group or specific group
-        address votedFor;
-    }
-
     struct SpecificGroupWithVotes {
         address group;
         uint256 votesToWithdraw;
         uint256 votesRemaining;
-    }
-
-    struct Transfer {
-        // either specific group or empty for default strategy
-        address toGroups;
-        uint256 toStCeloAmount;
     }
 
     /**
@@ -68,25 +56,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     EnumerableSet.AddressSet private deprecatedGroups;
 
-    // user -> what strategy was voted on
     /**
-     * @notice The set of deprecated groups. These are groups that should no
-     * longer receive new votes from deposits, but still need to be kept track
-     * of because the Account contract is still voting for them.
+     * @notice address -> strategy
+     * address(0) = default strategy
+     * !address(0) = voting for specific validator groups
      */
-    mapping(address => StrategyVotes) private strategyVotes;
+    mapping(address => address) private strategies;
 
     /**
      * @notice Groups that were voted on by specific strategy (activeGroups not included)
      */
     EnumerableSet.AddressSet private specificStrategyVotedGroups;
-
-    mapping(address => Transfer) private pendingTransfers;
-
-    //  /** validator group -> total voted for from all strategies and users
-    // necessary when withdrawing from specific strategy to know how much is the conversion
-    // */
-    // mapping(address=>uint256) private votedFor;
 
     /**
      * @notice Emitted when a new group is activated for voting.
@@ -196,6 +176,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function initialize(address _registry, address _owner) external initializer {
         _transferOwnership(_owner);
         __UsingRegistry_init(_registry);
+    }
+
+    error CallerNotStakedCello(address caller);
+
+    modifier onlyStakedCelo() {
+        if (address(stakedCelo) != msg.sender) {
+            revert CallerNotStakedCello(msg.sender);
+        }
+        _;
     }
 
     /**
@@ -351,38 +340,23 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * will be scheduled to be voted for with the Account contract.
      */
     function deposit(address validatorGroup) external payable {
-        StrategyVotes storage strategyVote = strategyVotes[msg.sender];
+        address strategy = strategies[msg.sender];
         uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
         if (validatorGroup == address(0)) {
-            require(
-                stCeloBalance == 0 || strategyVote.votedFor == address(0),
-                "Voted specific strategy"
-            );
+            require(stCeloBalance == 0 || strategy == address(0), "Voted specific strategy");
             if (activeGroups.length() == 0) {
                 revert NoActiveGroups();
             }
-
-            stakedCelo.mint(msg.sender, toStakedCelo(msg.value));
-
-            distributeVotes(msg.value);
         } else {
-            require(
-                stCeloBalance == 0 || strategyVote.votedFor != address(0),
-                "Voted default strategy"
-            );
-            require(strategyVote.votedFor == validatorGroup, "Voted on different group");
+            require(stCeloBalance == 0 || strategy != address(0), "Voted default strategy");
+            require(strategy == validatorGroup, "Voted on different group");
             require(isValidGroup(validatorGroup), "Invalid validatorGroup");
-            uint256 stakedCeloAmount = toStakedCelo(msg.value);
-            strategyVote.totalStCelo += stakedCeloAmount;
-            strategyVote.votedFor = validatorGroup;
-            stakedCelo.mint(msg.sender, stakedCeloAmount);
+            strategies[msg.sender] = validatorGroup;
             specificStrategyVotedGroups.add(validatorGroup);
-            address[] memory finalGroups = new address[](1);
-            finalGroups[0] = validatorGroup;
-            uint256[] memory finalVotes = new uint256[](1);
-            finalVotes[0] = msg.value;
-            account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
         }
+
+        stakedCelo.mint(msg.sender, toStakedCelo(msg.value));
+        distributeVotes(msg.value, validatorGroup);
     }
 
     /**
@@ -400,15 +374,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert NoGroups();
         }
 
-        StrategyVotes storage strategyVote = strategyVotes[msg.sender];
-
-        if (strategyVote.votedFor != address(0)) {
-            require(strategyVote.totalStCelo >= stakedCeloAmount, "not enough stCelo");
-            strategyVote.totalStCelo -= stakedCeloAmount;
-        }
-
-        distributeWithdrawals(toCelo(stakedCeloAmount), msg.sender, strategyVote.votedFor);
-
+        distributeWithdrawals(toCelo(stakedCeloAmount), msg.sender, strategies[msg.sender]);
         stakedCelo.burn(msg.sender, stakedCeloAmount);
     }
 
@@ -446,6 +412,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return (stCeloAmount * celoBalance) / stCeloSupply;
     }
 
+    function distributeVotes(uint256 votes, address specificGroup) internal {
+        address[] memory finalGroups;
+        uint256[] memory finalVotes;
+        (finalGroups, finalVotes) = generateGroupsVotesToDistributeTo(votes, specificGroup);
+        account.scheduleVotes{value: votes}(finalGroups, finalVotes);
+    }
+
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should receive, then calling out to `Account.scheduleVotes`.
@@ -469,7 +442,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function distributeVotes(uint256 votes) internal {
+    function generateGroupsVotesToDistributeTo(uint256 votes, address specificGroup)
+        internal
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        if (specificGroup != address(0)) {
+            finalGroups = new address[](1);
+            finalGroups[0] = specificGroup;
+            finalVotes = new uint256[](1);
+            finalVotes[0] = msg.value;
+        }
+
         /*
          * "Votable" groups are those that will currently fit under the voting
          * limit in Election.sol even if voted for with the entire `votes`
@@ -516,15 +499,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             }
         }
 
-        address[] memory finalGroups = new address[](groupsVoted);
-        uint256[] memory finalVotes = new uint256[](groupsVoted);
+        finalGroups = new address[](groupsVoted);
+        finalVotes = new uint256[](groupsVoted);
 
         for (uint256 i = 0; i < groupsVoted; i++) {
             finalGroups[i] = sortedGroups[i].group;
             finalVotes[i] = votesPerGroup[i];
         }
 
-        account.scheduleVotes{value: votes}(finalGroups, finalVotes);
+        return (finalGroups, finalVotes);
     }
 
     /**
@@ -652,37 +635,24 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address from,
         address to,
         uint256 amount
-    ) public {
-        StrategyVotes storage fromStrategyVotes = strategyVotes[from];
-        require(fromStrategyVotes.totalStCelo >= amount, "Not enough stCelo");
-        StrategyVotes storage toStrategyVotes = strategyVotes[to];
+    ) public onlyStakedCelo {
+        address fromStrategy = strategies[from];
+        address toStrategy = strategies[to];
 
-        if (fromStrategyVotes.votedFor == toStrategyVotes.votedFor) {
+        if (fromStrategy == toStrategy) {
             // either both addresses use default strategy
             // or both addresses use same specific strategy
             return;
         }
 
-        Transfer storage fromTransfer = pendingTransfers[from];
-        uint256 amountUsedFromTransfer;
-        if (fromTransfer.toStCeloAmount > 0) {
-            // if any pending transfers that are supposed to move to from address
-            // use those first
+        address[] memory fromGroups;
+        uint256[] memory fromVotes;
+        (fromGroups, fromVotes) = generateGroupsVotesToDistributeTo(amount, fromStrategy);
 
-            amountUsedFromTransfer = Math.min(fromTransfer.toStCeloAmount, amount);
-            fromTransfer.toStCeloAmount = fromTransfer.toStCeloAmount - amountUsedFromTransfer;
-            if (fromTransfer.toStCeloAmount == 0) {
-                delete pendingTransfers[from];
-            }
-        }
-
-        Transfer storage toTransfer = pendingTransfers[to];
-        toTransfer.toGroups = toStrategyVotes.votedFor;
-        toTransfer.toStCeloAmount += amount;
-
-        amount -= amountUsedFromTransfer;
-
-        distributeWithdrawals(toCelo(amount), from, address(account));
+        address[] memory toGroups;
+        uint256[] memory toVotes;
+        (toGroups, toVotes) = generateGroupsVotesToDistributeTo(amount, toStrategy);
+        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }
 
     /**

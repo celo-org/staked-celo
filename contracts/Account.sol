@@ -40,6 +40,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     struct ScheduledVotes {
         uint256 toVote;
         uint256 toWithdraw;
+        uint256 toRevoke;
         mapping(address => uint256) toWithdrawFor;
     }
 
@@ -74,6 +75,13 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param amount The amount of CELO scheduled.
      */
     event VotesScheduled(address indexed group, uint256 amount);
+
+    /**
+     * @notice Emitted when CELO is scheduled for revoke for a given group.
+     * @param group The validator group the CELO is intended to vote for.
+     * @param amount The amount of CELO scheduled.
+     */
+    event VotesToRevokeScheduled(address indexed group, uint256 amount);
 
     /**
      * @notice Emitted when CELO withdrawal is scheduled for a group.
@@ -232,13 +240,58 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         uint256 totalVotes;
         for (uint256 i = 0; i < groups.length; i++) {
-            scheduledVotes[groups[i]].toVote += votes[i];
+            uint256 remainingVotes = votes[i];
+            if (scheduledVotes[groups[i]].toRevoke > 0) {
+                uint256 toSubtract = Math.min(scheduledVotes[groups[i]].toRevoke, votes[i]);
+                scheduledVotes[groups[i]].toRevoke -= toSubtract;
+                remainingVotes -= toSubtract;
+            }
+            scheduledVotes[groups[i]].toVote += remainingVotes;
             totalVotes += votes[i];
             emit VotesScheduled(groups[i], votes[i]);
         }
 
         if (totalVotes != uint256(msg.value)) {
             revert TotalVotesMismatch(msg.value, totalVotes);
+        }
+    }
+
+    /**
+     * @notice Schedules votes which will be revoked from groups.
+     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
+     * @param fromGroups The groups the deposited CELO is intended to vote for.
+     * @param fromVotes The amount of CELO to schedule for each respective group
+     * @param toGroups The groups the deposited CELO is intended to vote for.
+     * @param toVotes The amount of CELO to schedule for each respective group
+     * from `groups`.
+     */
+    function scheduleTransfer(
+        address[] calldata fromGroups,
+        uint256[] calldata fromVotes,
+        address[] calldata toGroups,
+        uint256[] calldata toVotes
+    ) external onlyManager {
+        if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
+            revert GroupsAndVotesArrayLengthsMismatch();
+        }
+
+        for (uint256 i = 0; i < fromGroups.length; i++) {
+            uint256 remainingToRevoke = fromVotes[i];
+            if (scheduledVotes[fromGroups[i]].toVote > 0) {
+                uint256 toSubtract = Math.min(
+                    remainingToRevoke,
+                    scheduledVotes[fromGroups[i]].toVote
+                );
+                scheduledVotes[fromGroups[i]].toVote -= toSubtract;
+                remainingToRevoke -= toSubtract;
+            }
+            scheduledVotes[fromGroups[i]].toRevoke += remainingToRevoke;
+            emit VotesToRevokeScheduled(fromGroups[i], fromVotes[i]);
+        }
+
+        for (uint256 i = 0; i < toGroups.length; i++) {
+            scheduledVotes[toGroups[i]].toVote += toVotes[i];
+            emit VotesScheduled(toGroups[i], toVotes[i]);
         }
     }
 
@@ -552,6 +605,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Returns the total amount of CELO that's scheduled to be revoked for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO that will be removed from `group`.
+     */
+    function scheduledRevokeForGroup(address group) external view returns (uint256) {
+        return scheduledVotes[group].toRevoke;
+    }
+
+    /**
      * @notice Returns the total amount of CELO that's scheduled to be withdrawn for a group.
      * @param group The address of the validator group.
      * @return The total amount of CELO to be withdrawn for `group`.
@@ -573,6 +635,50 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         returns (uint256)
     {
         return scheduledVotes[group].toWithdrawFor[beneficiary];
+    }
+
+    /**
+     * @notice Revokes votes from a validator group. It first attempts to revoke pending votes,
+     * and then active votes if necessary.
+     * @dev Reverts if `revokeAmount` exceeds the total number of pending and active votes for
+     * the group from this contract.
+     * @param group The group to withdraw CELO from.
+     * @param lesserAfterPendingRevoke Used by Election's `revokePending`. This is the group that
+     * is before `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of pending votes has occurred.
+     * @param greaterAfterPendingRevoke Used by Election's `revokePending`. This is the group that
+     * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of pending votes has occurred.
+     * @param lesserAfterActiveRevoke Used by Election's `revokeActive`. This is the group that
+     * is before `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of active votes has occurred.
+     * @param greaterAfterActiveRevoke Used by Election's `revokeActive`. This is the group that
+     * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of active votes has occurred.
+     * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
+     * `group` in the this contract's array of groups it is voting for.
+     */
+    function revokeTransferVotes(
+        address group,
+        address lesserAfterPendingRevoke,
+        address greaterAfterPendingRevoke,
+        address lesserAfterActiveRevoke,
+        address greaterAfterActiveRevoke,
+        uint256 index
+    ) public {
+        // The amount of locked CELO for group that we want to revoke.
+        uint256 revokeAmount = scheduledVotes[group].toRevoke;
+        require(revokeAmount > 0, "No votes to revoke");
+
+        revokeVotes(
+            group,
+            revokeAmount,
+            lesserAfterPendingRevoke,
+            greaterAfterPendingRevoke,
+            lesserAfterActiveRevoke,
+            greaterAfterActiveRevoke,
+            index
+        );
     }
 
     /**
