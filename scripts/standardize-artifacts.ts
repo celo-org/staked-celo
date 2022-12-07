@@ -21,7 +21,7 @@ const getContracts = async (artifactsDirectory: string, dirName: string) => {
   const items = await readdir(dirName, { withFileTypes: true });
 
   for (const item of items) {
-    if (item.isDirectory() && item.name.indexOf(".sol") > 0) {
+    if (item.isDirectory() && item.name.indexOf(".sol") > 0 && item.name.indexOf("Mock") == -1) {
       const contractName = path.parse(item.name);
       const contract: Contract = {
         name: contractName.base,
