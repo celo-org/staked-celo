@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+// Only change is in that _balances have internal modifier instead of private modifier
+
 /**
  * @dev Implementation of the {IERC20} interface.
  *

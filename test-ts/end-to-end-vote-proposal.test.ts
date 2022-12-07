@@ -116,10 +116,10 @@ describe("e2e governance vote", () => {
   it("vote proposal", async () => {
     const stageDurations = await governanceWrapper.stageDurations();
 
-    const amountOfCeloToDeposit = hre.ethers.BigNumber.from("10000000000000000");
-    const rewardsGroup0 = hre.ethers.BigNumber.from("1000000000000000000");
-    const rewardsGroup1 = hre.ethers.BigNumber.from("2000000000000000000");
-    const rewardsGroup2 = hre.ethers.BigNumber.from("3500000000000000000");
+    const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("6"));
+    const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("100"));
+    const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("150"));
+    const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("200"));
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
