@@ -1,5 +1,4 @@
 import { CeloTxReceipt } from "@celo/connect";
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
 import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
@@ -324,7 +323,9 @@ export function getFirstBlockNumberForEpoch(
 
 // `useGanache` allows for mining block directly on the ganache network
 export async function mineBlocks(blocks: number, useGanache?: boolean) {
-  let localProvider: JsonRpcProvider;
+  // TODO: add type back once we update to latest hardhat
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let localProvider: any;
   if (useGanache) {
     localProvider = new ethers.providers.JsonRpcProvider("http://localhost:7545");
   } else {
