@@ -21,7 +21,7 @@ const getContracts = async (artifactsDirectory: string, dirName: string) => {
   const items = await readdir(dirName, { withFileTypes: true });
 
   for (const item of items) {
-    if (item.isDirectory() && item.name.indexOf(".sol") > 0 && item.name.indexOf("Mock") == -1) {
+    if (item.isDirectory() && item.name.indexOf(".sol") > 0) {
       const contractName = path.parse(item.name);
       const contract: Contract = {
         name: contractName.base,
@@ -105,7 +105,7 @@ async function runCmd(outputDir: string, inputDir: string) {
     allBuildSources = new Set(Object.keys(buildInfo.output.sources));
   }
 
-  for (const contract of contracts) {
+  for (const contract of contracts.filter((contract) => filter(contract.relativePath))) {
     console.log("Processing", contract.relativePath);
 
     const source = buildInfo!.output.sources[contract.relativePath];
@@ -117,14 +117,19 @@ async function runCmd(outputDir: string, inputDir: string) {
     artifact.ast = source.ast;
     allBuildSources.delete(contract.relativePath);
 
-    writeFileSync(
-      path.join(artifactsPostProcessedPath, `${path.parse(contract.name).name}.json`),
-      JSON.stringify(artifact)
+    const filePath = path.join(
+      artifactsPostProcessedPath,
+      `${path.parse(contract.name).name}.json`
     );
+    writeFileSync(filePath, JSON.stringify(artifact));
   }
 
   for (const source of allBuildSources.values()) {
     const contractName = path.parse(source).name;
+    if (!filter(source)) {
+      continue;
+    }
+
     const art: ArtifactInterface = {
       contractName: contractName,
       ast: buildInfo!.output.sources[source].ast,
@@ -151,9 +156,16 @@ async function runCmd(outputDir: string, inputDir: string) {
 
   // This file is a hack because of Solidity compilation
   // check contracts/common/ERC1967Proxy.sol for more info
-  unlinkSync(path.join(artifactsPostProcessedPath, "ERC1967Proxy1.json"));
+  const pathERC1967Proxy = path.join(artifactsPostProcessedPath, "ERC1967Proxy1.json");
+  if (existsSync(pathERC1967Proxy)) {
+    unlinkSync(pathERC1967Proxy);
+  }
 
   return null;
+}
+
+function filter(path: string) {
+  return path.indexOf("Mock") == -1 && path.indexOf("interfaces/I") == -1;
 }
 
 function exitOnError(p: Promise<unknown>) {
