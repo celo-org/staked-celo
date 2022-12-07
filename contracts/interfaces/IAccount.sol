@@ -16,7 +16,7 @@ interface IAccount {
         uint256[] calldata withdrawals
     ) external;
 
-    function voteProposal(
+    function votePartially(
         uint256 proposalId,
         uint256 index,
         uint256 yesVotes,

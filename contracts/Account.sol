@@ -178,6 +178,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /// @notice There's no amount of scheduled withdrawal for the given beneficiary and group.
     error NoScheduledWithdrawal(address beneficiary, address group);
 
+    /// @notice Voting for proposal was not successfull.
+    error VotingNotSuccessful(uint256 proposalId);
+
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
@@ -704,7 +707,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param noVotes The no votes weight.
      * @param abstainVotes The abstain votes weight.
      */
-    function voteProposal(
+    function votePartially(
         uint256 proposalId,
         uint256 index,
         uint256 yesVotes,
@@ -718,7 +721,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             noVotes,
             abstainVotes
         );
-        require(voteResult == true, "Voting was not successful");
+        if (!voteResult) {
+            revert VotingNotSuccessful(proposalId);
+        }
     }
 
     /**

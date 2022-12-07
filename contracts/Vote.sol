@@ -74,6 +74,18 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     event LockedStCeloInVoting(address account, uint256 lockedCelo);
 
     /**
+     * @notice Used when attempting to vote when there is no stCelo.
+     * @param account The account's address.
+     */
+    error NoStakedCelo(address account);
+
+    /**
+     * @notice Used when attempting to vote when there is not enough of stCelo.
+     * @param account The account's address.
+     */
+    error NotEnoughStakedCelo(address account);
+
+    /**
      * @notice An instance of the StakedCelo contract this Manager manages.
      */
     IStakedCelo internal stakedCelo;
@@ -166,9 +178,13 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     {
         uint256 stakedCeloBalance = stakedCelo.balanceOf(accountVoter) +
             stakedCelo.lockedVoteBalanceOf(accountVoter);
-        require(stakedCeloBalance > 0, "No staked celo");
+        if (stakedCeloBalance == 0) {
+            revert NoStakedCelo(accountVoter);
+        }
         uint256 totalWeights = yesVotes + noVotes + abstainVotes;
-        require(totalWeights <= toCelo(stakedCeloBalance), "Not enough celo to vote");
+        if (totalWeights > toCelo(stakedCeloBalance)) {
+            revert NotEnoughStakedCelo(accountVoter);
+        }
 
         Voter storage voter = voters[accountVoter];
 

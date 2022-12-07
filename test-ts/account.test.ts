@@ -1067,7 +1067,7 @@ describe("Account", () => {
       const abstain = 7;
 
       await expect(
-        account.connect(nonManager).voteProposal(proposalId, index, yes, no, abstain)
+        account.connect(nonManager).votePartially(proposalId, index, yes, no, abstain)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
 
@@ -1086,7 +1086,7 @@ describe("Account", () => {
       const no = 6;
       const abstain = 7;
 
-      await account.connect(manager).voteProposal(proposalId, index, yes, no, abstain);
+      await account.connect(manager).votePartially(proposalId, index, yes, no, abstain);
 
       expect(await governance.proposalId()).to.eq(proposalId);
       expect(await governance.index()).to.eq(index);

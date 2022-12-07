@@ -32,6 +32,24 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     event UnlockedStCelo(address account, uint256 amount);
 
     /**
+     * @notice Used when attempting to unlock stCelo when there is no locked stCelo.
+     * @param account The account's address.
+     */
+    error NoLockedStakedCelo(address account);
+
+    /**
+     * @notice Used when attempting to lock stCelo when there is not enough stCelo.
+     * @param account The account's address.
+     */
+    error NotEnoughStCeloToLock(address account);
+
+    /**
+     * @notice Used when attempting to unlock stCelo when there is no stCelo to unlock.
+     * @param account The account's address.
+     */
+    error NothingToUnlock(address account);
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -78,7 +96,9 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             _lockedBalances[account] = amount;
             uint256 amountToSubtract = amount - lockedBalance;
             uint256 accountBalance = balanceOf(account);
-            require(accountBalance >= amountToSubtract, "Not enough locked stCelo");
+            if (accountBalance < amountToSubtract) {
+                revert NotEnoughStCeloToLock(account);
+            }
             unchecked {
                 _balances[account] = accountBalance - amountToSubtract;
             }
@@ -101,30 +121,20 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      */
     function unlockVoteBalance(address beneficiary) public {
         uint256 previouslyLocked = _lockedBalances[beneficiary];
-        require(previouslyLocked > 0, "No locked stCelo");
+        if (previouslyLocked == 0) {
+            revert NoLockedStakedCelo(beneficiary);
+        }
         uint256 currentlyLocked = IManager(manager).updateHistoryAndReturnLockedStCeloInVoting(
             beneficiary
         );
-        require(previouslyLocked > currentlyLocked, "Nothing to unlock");
+        if (previouslyLocked <= currentlyLocked) {
+            revert NothingToUnlock(beneficiary);
+        }
 
         _lockedBalances[beneficiary] = currentlyLocked;
         uint256 amountToAdd = previouslyLocked - currentlyLocked;
         _balances[beneficiary] += amountToAdd;
         emit UnlockedStCelo(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
-    }
-
-    /**
-     * @notice Overides vote stCelo locked balance.
-     * @param account The address that will have its stCELO lock balance overriden.
-     * @param newLockBalance The desired lock balance.
-     */
-    function overrideVoteLockBalance(address account, uint256 newLockBalance) public onlyManager {
-        uint256 previouslyLocked = _lockedBalances[account];
-        require(previouslyLocked >= newLockBalance, "Not enough locked stCelo");
-        _lockedBalances[account] = newLockBalance;
-        uint256 amountToAdd = previouslyLocked - newLockBalance;
-        _balances[account] += amountToAdd;
-        emit UnlockedStCelo(account, previouslyLocked - _lockedBalances[account]);
     }
 
     /**

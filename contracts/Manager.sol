@@ -717,7 +717,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
 
         stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
-        account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
     /**
@@ -733,7 +733,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             proposalId
         );
 
-        account.voteProposal(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
     /**
@@ -754,15 +754,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function unlockBalance(address accountAddress) public {
         stakedCelo.unlockVoteBalance(accountAddress);
-    }
-
-    /**
-     * @notice Overrides locked vote stCelo balance.
-     * @param accountAddress The account to be overriden.
-     * @param newLockBalance The new locked balance.
-     */
-    function overrideLockBalance(address accountAddress, uint256 newLockBalance) public onlyOwner {
-        stakedCelo.overrideVoteLockBalance(accountAddress, newLockBalance);
     }
 
     /**

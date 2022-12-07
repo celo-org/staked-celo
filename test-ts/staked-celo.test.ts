@@ -133,7 +133,7 @@ describe("StakedCelo", () => {
     it("should revert if account doesn't have enough stCelo", async () => {
       await expect(
         stakedCelo.connect(manager).lockVoteBalance(anAccount.address, balanceToLock)
-      ).to.revertedWith("Not enough locked stCelo");
+      ).to.revertedWith(`NotEnoughStCeloToLock("${anAccount.address}")`);
     });
 
     describe("When Account has stCelo", () => {
@@ -196,7 +196,7 @@ describe("StakedCelo", () => {
   describe("#unlockVoteBalance", () => {
     it("should revert when no locked stCelo", async () => {
       await expect(stakedCelo.unlockVoteBalance(anAccount.address)).revertedWith(
-        "No locked stCelo"
+        `NoLockedStakedCelo("${anAccount.address}")`
       );
     });
 
@@ -214,7 +214,7 @@ describe("StakedCelo", () => {
         await managerContract.setLockedStCelo(stCeloOwned);
 
         await expect(stakedCelo.connect(manager).unlockVoteBalance(anAccount.address)).revertedWith(
-          `Nothing to unlock`
+          `NothingToUnlock("${anAccount.address}")`
         );
       });
 
@@ -233,48 +233,6 @@ describe("StakedCelo", () => {
 
         expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(0);
         expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(stCeloOwned);
-        expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
-      });
-    });
-  });
-
-  describe("#overrideVoteLockBalance", () => {
-    const stCeloOwned = 100;
-
-    beforeEach(async () => {
-      await stakedCelo.connect(manager).mint(anAccount.address, stCeloOwned);
-    });
-
-    it("should revert when not an manager", async () => {
-      await expect(
-        stakedCelo.connect(nonManager).overrideVoteLockBalance(anAccount.address, 100)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-
-    it("should revert if there was no previous locked balance", async () => {
-      const balanceToOverrideTo = 99;
-      await expect(
-        stakedCelo.connect(manager).overrideVoteLockBalance(anAccount.address, balanceToOverrideTo)
-      ).revertedWith("Not enough locked stCelo");
-    });
-
-    describe("When stCelo locked", () => {
-      beforeEach(async () => {
-        await stakedCelo.connect(manager).lockVoteBalance(anAccount.address, stCeloOwned);
-      });
-
-      it("should change locked balance correctly", async () => {
-        const balanceToOverrideTo = 99;
-        await stakedCelo
-          .connect(manager)
-          .overrideVoteLockBalance(anAccount.address, balanceToOverrideTo);
-
-        expect(await stakedCelo.lockedVoteBalanceOf(anAccount.address)).to.be.eq(
-          balanceToOverrideTo
-        );
-        expect(await stakedCelo.balanceOf(anAccount.address)).to.be.eq(
-          stCeloOwned - balanceToOverrideTo
-        );
         expect(await stakedCelo.totalSupply()).to.eq(stCeloOwned);
       });
     });

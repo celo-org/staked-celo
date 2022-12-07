@@ -26,6 +26,14 @@ Run prettier to lint and write - this is also done automatically in a pre-commit
 yarn lint
 ```
 
+## Test debugging
+For visualizing and debugging tests in VS code install following two extensions:
+
+[Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
+
+[Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter)
+
+
 ## Deploying to remote networks
 Requirement: `gcloud` must be set up and user account must have access staked-celo-alfajores and staked-celo-staging on GCP. 
 Next, ensure the environment variables have been decrypted, using `yarn keys:decrypt`.

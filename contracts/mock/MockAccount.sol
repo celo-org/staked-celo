@@ -69,7 +69,7 @@ contract MockAccount {
         scheduledVotesForGroup[group] = amount;
     }
 
-    function voteProposal(
+    function votePartially(
         uint256 proposalId,
         uint256 index,
         uint256 yesVotes,

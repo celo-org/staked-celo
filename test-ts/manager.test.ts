@@ -1351,18 +1351,6 @@ describe("Manager", () => {
     });
   });
 
-  describe("#overrideLockBalance()", () => {
-    it("should call all subsequent contracts correctly", async () => {
-      const newLockBalance = 12456;
-      await manager.overrideLockBalance(nonVote.address, newLockBalance);
-
-      const overrideBalance = await stakedCelo.overrideBalance();
-      const overrideFor = await stakedCelo.overrideFor();
-      expect(overrideBalance).to.eq(newLockBalance);
-      expect(overrideFor).to.eq(nonVote.address);
-    });
-  });
-
   describe("#updateHistoryAndReturnLockedStCeloInVoting()", () => {
     it("should call all subsequent contracts correctly", async () => {
       await manager.updateHistoryAndReturnLockedStCeloInVoting(nonVote.address);

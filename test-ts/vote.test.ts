@@ -196,9 +196,9 @@ describe("Vote", async function (this: any) {
     });
 
     it("should revert when account has no stCelo", async () => {
-      expect(managerContract.voteProposal(proposal1Id, proposal1Index, 1, 0, 0)).revertedWith(
-        "No staked celo"
-      );
+      await expect(
+        managerContract.connect(depositor0).voteProposal(proposal1Id, proposal1Index, 1, 0, 0)
+      ).revertedWith(`NoStakedCelo("${depositor0.address}")`);
     });
 
     describe("when stCelo deposited", () => {
@@ -217,7 +217,7 @@ describe("Vote", async function (this: any) {
           managerContract
             .connect(depositor0)
             .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes)
-        ).revertedWith("Not enough celo to vote");
+        ).revertedWith(`NotEnoughStakedCelo("${depositor0.address}")`);
       });
 
       it("should revert when voting for non existing proposal", async () => {
@@ -715,9 +715,9 @@ describe("Vote", async function (this: any) {
     const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
 
     it("should revert when account has no stCelo", async () => {
-      expect(managerContract.revokeVotes(proposal1Id, proposal1Index)).revertedWith(
-        "No staked celo"
-      );
+      await expect(
+        managerContract.connect(depositor0).revokeVotes(proposal1Id, proposal1Index)
+      ).revertedWith(`NoStakedCelo("${depositor0.address}")`);
     });
 
     describe("When deposited", async () => {
