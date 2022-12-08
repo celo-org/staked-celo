@@ -105,7 +105,7 @@ async function runCmd(outputDir: string, inputDir: string) {
     allBuildSources = new Set(Object.keys(buildInfo.output.sources));
   }
 
-  for (const contract of contracts.filter((contract) => filter(contract.relativePath))) {
+  for (const contract of contracts) {
     console.log("Processing", contract.relativePath);
 
     const source = buildInfo!.output.sources[contract.relativePath];
@@ -117,29 +117,21 @@ async function runCmd(outputDir: string, inputDir: string) {
     artifact.ast = source.ast;
     allBuildSources.delete(contract.relativePath);
 
-    const filePath = path.join(
-      artifactsPostProcessedPath,
-      `${path.parse(contract.name).name}.json`
+    writeFileSync(
+      path.join(artifactsPostProcessedPath, `${path.parse(contract.name).name}.json`),
+      JSON.stringify(artifact)
     );
-    writeFileSync(filePath, JSON.stringify(artifact));
   }
 
   for (const source of allBuildSources.values()) {
     const contractName = path.parse(source).name;
-    if (!filter(source)) {
-      continue;
-    }
-
     const art: ArtifactInterface = {
       contractName: contractName,
       ast: buildInfo!.output.sources[source].ast,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       abi: (buildInfo!.output.contracts[source]?.[contractName].abi as any) ?? [],
       bytecode: "0x",
       deployedBytecode: "0x",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       metadata: (buildInfo!.output.contracts[source]?.[contractName].metadata as any) ?? "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       source: (buildInfo!.input.sources[source]?.content as any) ?? "",
       compiler: {
         name: "solc",
@@ -156,16 +148,9 @@ async function runCmd(outputDir: string, inputDir: string) {
 
   // This file is a hack because of Solidity compilation
   // check contracts/common/ERC1967Proxy.sol for more info
-  const pathERC1967Proxy = path.join(artifactsPostProcessedPath, "ERC1967Proxy1.json");
-  if (existsSync(pathERC1967Proxy)) {
-    unlinkSync(pathERC1967Proxy);
-  }
+  unlinkSync(path.join(artifactsPostProcessedPath, "ERC1967Proxy1.json"));
 
   return null;
-}
-
-function filter(path: string) {
-  return path.indexOf("Mock") == -1 && path.indexOf("interfaces/I") == -1;
 }
 
 function exitOnError(p: Promise<unknown>) {
