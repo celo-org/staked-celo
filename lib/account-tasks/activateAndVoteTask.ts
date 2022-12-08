@@ -2,7 +2,7 @@ import { task, types } from "hardhat/config";
 import chalk from "chalk";
 
 import { ACCOUNT_ACTIVATE_AND_VOTE } from "../tasksNames";
-import { activateAndvote } from "./helpers/activateAndVoteHelper";
+import { activateAndVote } from "./helpers/activateAndVoteHelper";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION,
   ACCOUNT_DESCRIPTION,
@@ -24,8 +24,9 @@ task(ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION)
 
       const signer = await getSignerAndSetDeploymentPath(hre, args);
 
-      await activateAndvote(hre, signer);
+      await activateAndVote(hre, signer);
     } catch (error) {
-      console.log(chalk.red("Error activating and voting"), error);
+      console.log(chalk.red("Error activating and voting:"), error);
+      return error;
     }
   });

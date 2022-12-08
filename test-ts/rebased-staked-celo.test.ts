@@ -1,11 +1,11 @@
-import hre from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
 import { BigNumber, BigNumberish } from "ethers";
-import { RebasedStakedCelo } from "../typechain-types/RebasedStakedCelo";
+import { parseUnits } from "ethers/lib/utils";
+import hre from "hardhat";
 import { MockAccount } from "../typechain-types/MockAccount";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
-import { expect } from "chai";
-import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { RebasedStakedCelo } from "../typechain-types/RebasedStakedCelo";
 import { ADDRESS_ZERO, randomSigner, resetNetwork } from "./utils";
 
 describe("RebasedStakedCelo", () => {

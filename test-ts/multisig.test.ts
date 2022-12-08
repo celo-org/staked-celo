@@ -1,10 +1,10 @@
-import hre, { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MultiSig } from "../typechain-types/MultiSig";
 import { expect } from "chai";
-import { ADDRESS_ZERO, randomSigner, timeTravel, DAY } from "./utils";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
+import hre, { ethers } from "hardhat";
+import { MultiSig } from "../typechain-types/MultiSig";
+import { ADDRESS_ZERO, DAY, randomSigner, timeTravel } from "./utils";
 
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event

@@ -1,20 +1,23 @@
-import hre, { ethers } from "hardhat";
-import { Account } from "../typechain-types/Account";
-import { Account__factory } from "../typechain-types/factories/Account__factory";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import hre from "hardhat";
+import { Account } from "../typechain-types/Account";
+import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+import { MockGovernance } from "../typechain-types/MockGovernance";
+import { MockRegistry } from "../typechain-types/MockRegistry";
 import {
   ADDRESS_ZERO,
+  getImpersonatedSigner,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
+  REGISTRY_ADDRESS,
   resetNetwork,
   timeTravel,
 } from "./utils";
@@ -27,6 +30,8 @@ describe("Account", () => {
   let accountsInstance: AccountsWrapper;
   let lockedGold: LockedGoldWrapper;
   let election: ElectionWrapper;
+  let governance: MockGovernance;
+  let registryContract: MockRegistry;
 
   let account: Account;
 
@@ -48,6 +53,11 @@ describe("Account", () => {
     [beneficiary] = await randomSigner(parseUnits("100"));
     [otherBeneficiary] = await randomSigner(parseUnits("100"));
     [nonBeneficiary] = await randomSigner(parseUnits("100"));
+
+    const registryFactory: MockRegistry__factory = (
+      await hre.ethers.getContractFactory("MockRegistry")
+    ).connect(manager) as MockRegistry__factory;
+    registryContract = registryFactory.attach(REGISTRY_ADDRESS);
 
     groups = [];
     groupAddresses = [];
@@ -75,6 +85,7 @@ describe("Account", () => {
     const owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
+    governance = await hre.ethers.getContract("MockGovernance");
   });
 
   it("should create an account on the core Accounts contract", async () => {
@@ -1044,6 +1055,44 @@ describe("Account", () => {
           expect(votes).to.eq(40);
         });
       });
+    });
+  });
+
+  describe("#voteProposal", () => {
+    it("should should revert when not called by manager", async () => {
+      const proposalId = 3;
+      const index = 4;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      await expect(
+        account.connect(nonManager).votePartially(proposalId, index, yes, no, abstain)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+
+    it("should pass correct values to governance contract", async () => {
+      const registryOwner = await registryContract.owner();
+      const registryOwnerSigner = await getImpersonatedSigner(registryOwner);
+
+      const setAddressTx = await registryContract
+        .connect(registryOwnerSigner)
+        .setAddressFor("Governance", governance.address);
+      await setAddressTx.wait();
+
+      const proposalId = 1;
+      const index = 0;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      await account.connect(manager).votePartially(proposalId, index, yes, no, abstain);
+
+      expect(await governance.proposalId()).to.eq(proposalId);
+      expect(await governance.index()).to.eq(index);
+      expect(await governance.yesVotes()).to.eq(yes);
+      expect(await governance.noVotes()).to.eq(no);
+      expect(await governance.abstainVotes()).to.eq(abstain);
     });
   });
 });

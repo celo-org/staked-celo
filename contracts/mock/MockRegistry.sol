@@ -23,7 +23,8 @@ contract MockRegistry is IRegistry, Ownable, Initializable {
      * @param addr Address of contract.
      */
     function setAddressFor(string calldata identifier, address addr) external onlyOwner {
-        // solhint-disable-previous-line no-empty-blocks
+        bytes32 identifierHash = keccak256(abi.encodePacked(identifier));
+        registry[identifierHash] = addr;
     }
 
     /**
