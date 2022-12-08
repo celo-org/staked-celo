@@ -1,38 +1,38 @@
-import hre from "hardhat";
-import { BigNumber } from "ethers";
-import BigNumberJs from "bignumber.js";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
-
-import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import BigNumberJs from "bignumber.js";
+import { expect } from "chai";
+import { BigNumber } from "ethers";
+import { parseUnits } from "ethers/lib/utils";
+import hre from "hardhat";
+import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
-import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
-import { MockValidators } from "../typechain-types/MockValidators";
+import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
 import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
-
+import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
-import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
-import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
-
-import { expect } from "chai";
-import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import { MockValidators } from "../typechain-types/MockValidators";
+import { MockVote } from "../typechain-types/MockVote";
 import {
-  removeMembersFromGroup,
+  ADDRESS_ZERO,
   deregisterValidatorGroup,
+  electGroup,
+  electMinimumNumberOfValidators,
+  getImpersonatedSigner,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
+  registerValidatorAndOnlyAffiliateToGroup,
   registerValidatorGroup,
   REGISTRY_ADDRESS,
+  removeMembersFromGroup,
   resetNetwork,
-  electMinimumNumberOfValidators,
-  electGroup,
-  registerValidatorAndOnlyAffiliateToGroup,
   updateGroupSlashingMultiplier,
 } from "./utils";
 
@@ -45,11 +45,15 @@ after(() => {
 describe("Manager", () => {
   let account: MockAccount;
   let stakedCelo: MockStakedCelo;
+  let voteContract: MockVote;
   let lockedGoldContract: MockLockedGold;
   let validatorsContract: MockValidators;
   let registryContract: MockRegistry;
 
   let manager: Manager;
+  let nonVote: SignerWithAddress;
+  let nonStakedCelo: SignerWithAddress;
+  let nonAccount: SignerWithAddress;
 
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
@@ -64,6 +68,7 @@ describe("Manager", () => {
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let snapshotId: any;
 
   before(async function () {
@@ -82,6 +87,9 @@ describe("Manager", () => {
     [mockSlasher] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
+    [nonVote] = await randomSigner(parseUnits("100"));
+    [nonStakedCelo] = await randomSigner(parseUnits("100"));
+    [nonAccount] = await randomSigner(parseUnits("100"));
 
     const accountFactory: MockAccount__factory = (
       await hre.ethers.getContractFactory("MockAccount")
@@ -108,7 +116,13 @@ describe("Manager", () => {
     ).connect(owner) as MockStakedCelo__factory;
     stakedCelo = await stakedCeloFactory.deploy();
 
-    await manager.setDependencies(stakedCelo.address, account.address);
+    const mockVoteFactory: MockVote__factory = (
+      await hre.ethers.getContractFactory("MockVote")
+    ).connect(owner) as MockVote__factory;
+    voteContract = await mockVoteFactory.deploy();
+
+    await manager.setDependencies(stakedCelo.address, account.address, voteContract.address);
+
     const accounts = await hre.kit.contracts.getAccounts();
     await accounts.createAccount().sendAndWaitForReceipt({
       from: voter.address,
@@ -169,8 +183,7 @@ describe("Manager", () => {
 
     describe("when group is not registered", () => {
       it("reverts when trying to add an unregistered group", async () => {
-        let unregisteredGroup: SignerWithAddress;
-        [unregisteredGroup] = await randomSigner(parseUnits("100"));
+        const [unregisteredGroup] = await randomSigner(parseUnits("100"));
 
         await expect(manager.activateGroup(unregisteredGroup.address)).revertedWith(
           `GroupNotEligible("${unregisteredGroup.address}")`
@@ -1109,7 +1122,7 @@ describe("Manager", () => {
 
         it("calculates CELO 1:1 with stCELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(100);
         });
@@ -1122,7 +1135,7 @@ describe("Manager", () => {
 
         it("calculates CELO 1:1 with stCELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(10);
         });
@@ -1141,7 +1154,7 @@ describe("Manager", () => {
 
         it("calculates more stCELO than the input CELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(200);
         });
@@ -1154,7 +1167,7 @@ describe("Manager", () => {
 
         it("calculates more stCELO than the input CELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(20);
         });
@@ -1174,7 +1187,7 @@ describe("Manager", () => {
 
         it("calculates less stCELO than the input CELO", async () => {
           await manager.connect(depositor).withdraw(100);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(50);
         });
@@ -1187,7 +1200,7 @@ describe("Manager", () => {
 
         it("calculates less stCELO than the input CELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
-          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          const [, withdrawals] = await account.getLastScheduledWithdrawals();
           const celo = sum(withdrawals);
           expect(celo).to.eq(5);
         });
@@ -1198,6 +1211,152 @@ describe("Manager", () => {
           expect(stCelo).to.eq(90);
         });
       });
+    });
+  });
+
+  describe("#setDependencies()", () => {
+    let ownerSigner: SignerWithAddress;
+
+    before(async () => {
+      const managerOwner = await manager.owner();
+      ownerSigner = await getImpersonatedSigner(managerOwner);
+    });
+
+    it("reverts with zero stCelo address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(ADDRESS_ZERO, nonAccount.address, nonVote.address)
+      ).revertedWith("stakedCelo null address");
+    });
+
+    it("reverts with zero account address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(nonStakedCelo.address, ADDRESS_ZERO, nonVote.address)
+      ).revertedWith("account null address");
+    });
+
+    it("reverts with zero vote address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(nonStakedCelo.address, nonAccount.address, ADDRESS_ZERO)
+      ).revertedWith("vote null address");
+    });
+
+    it("sets the vote contract", async () => {
+      await manager
+        .connect(ownerSigner)
+        .setDependencies(nonStakedCelo.address, nonAccount.address, nonVote.address);
+      const newVoteContract = await manager.voteContract();
+      expect(newVoteContract).to.eq(nonVote.address);
+    });
+
+    it("emits a VoteContractSet event", async () => {
+      const managerOwner = await manager.owner();
+      const ownerSigner = await getImpersonatedSigner(managerOwner);
+
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(nonStakedCelo.address, nonAccount.address, nonVote.address)
+      )
+        .to.emit(manager, "VoteContractSet")
+        .withArgs(nonVote.address);
+    });
+
+    it("cannot be called by a non-Owner account", async () => {
+      await expect(
+        manager
+          .connect(nonOwner)
+          .setDependencies(nonStakedCelo.address, nonAccount.address, nonVote.address)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#voteProposal()", () => {
+    const proposalId = 1;
+    const index = 0;
+    const yes = 10;
+    const no = 20;
+    const abstain = 30;
+
+    it("should call all subsequent contracts correctly", async () => {
+      await manager.voteProposal(proposalId, index, yes, no, abstain);
+
+      const stCeloLockedBalance = await stakedCelo.lockedBalance();
+      expect(stCeloLockedBalance).to.eq(BigNumber.from(yes + no + abstain));
+
+      const voteProposalIdVoted = await voteContract.proposalId();
+      const voteYesVotesVoted = await voteContract.totalYesVotes();
+      const voteNoVotesVoted = await voteContract.totalNoVotes();
+      const voteAbstainVoteVoted = await voteContract.totalAbstainVotes();
+
+      const accountProposalIdVoted = await account.proposalIdVoted();
+      const accountIndexVoted = await account.indexVoted();
+      const accountYesVotesVoted = await account.yesVotesVoted();
+      const accountNoVotesVoted = await account.noVotesVoted();
+      const accountAbstainVoteVoted = await account.abstainVoteVoted();
+
+      expect(voteProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(voteYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(voteNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(voteAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+
+      expect(accountProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(accountIndexVoted).to.eq(BigNumber.from(index));
+      expect(accountYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(accountNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(accountAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+    });
+  });
+
+  describe("#revokeVotes()", () => {
+    const proposalId = 1;
+    const index = 0;
+    const yes = 10;
+    const no = 20;
+    const abstain = 30;
+
+    it("should call all subsequent contracts correctly", async () => {
+      await voteContract.setVotes(yes, no, abstain);
+      await manager.revokeVotes(proposalId, index);
+
+      const voteProposalIdVoted = await voteContract.revokeProposalId();
+
+      const accountProposalIdVoted = await account.proposalIdVoted();
+      const accountIndexVoted = await account.indexVoted();
+      const accountYesVotesVoted = await account.yesVotesVoted();
+      const accountNoVotesVoted = await account.noVotesVoted();
+      const accountAbstainVoteVoted = await account.abstainVoteVoted();
+
+      expect(voteProposalIdVoted).to.eq(BigNumber.from(proposalId));
+
+      expect(accountProposalIdVoted).to.eq(BigNumber.from(proposalId));
+      expect(accountIndexVoted).to.eq(BigNumber.from(index));
+      expect(accountYesVotesVoted).to.eq(BigNumber.from(yes));
+      expect(accountNoVotesVoted).to.eq(BigNumber.from(no));
+      expect(accountAbstainVoteVoted).to.eq(BigNumber.from(abstain));
+    });
+  });
+
+  describe("#unlockBalance()", () => {
+    it("should call all subsequent contracts correctly", async () => {
+      await manager.unlockBalance(nonVote.address);
+
+      const stCeloUnlockedFor = await stakedCelo.unlockedBalanceFor();
+      expect(stCeloUnlockedFor).to.eq(nonVote.address);
+    });
+  });
+
+  describe("#updateHistoryAndReturnLockedStCeloInVoting()", () => {
+    it("should call all subsequent contracts correctly", async () => {
+      await manager.updateHistoryAndReturnLockedStCeloInVoting(nonVote.address);
+
+      const updatedHistoryFor = await voteContract.updatedHistoryFor();
+      expect(updatedHistoryFor).to.eq(nonVote.address);
     });
   });
 });

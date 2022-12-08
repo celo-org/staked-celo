@@ -228,6 +228,13 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
         emit Transfer(from, to, amount);
     }
 
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
     function getVersionNumber()
         external
         pure

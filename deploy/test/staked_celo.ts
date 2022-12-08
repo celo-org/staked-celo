@@ -1,14 +1,12 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
-
-const DESIRED_MIN_VOTES_PER_GROUP = 10;
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const manager = await hre.deployments.get("Manager");
   const { deploy } = hre.deployments;
 
   const { deployer, owner } = await hre.getNamedAccounts();
-  const deployment = await deploy("StakedCelo", {
+  await deploy("StakedCelo", {
     from: deployer,
     log: true,
     proxy: {

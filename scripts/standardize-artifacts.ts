@@ -1,19 +1,19 @@
-import yargs from "yargs";
-import path from "node:path";
-import { readdir } from "node:fs/promises";
 import {
-  readFileSync,
   existsSync,
   mkdirSync,
-  writeFileSync,
   readdirSync,
+  readFileSync,
   unlinkSync,
+  writeFileSync,
 } from "node:fs";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+import yargs from "yargs";
 import {
-  BuildInfoInterface,
   ArtifactInterface,
-  Dbg,
+  BuildInfoInterface,
   Contract,
+  Dbg,
 } from "./standardize-artifacts-interface";
 
 const getContracts = async (artifactsDirectory: string, dirName: string) => {

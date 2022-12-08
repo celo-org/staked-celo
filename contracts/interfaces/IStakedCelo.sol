@@ -15,4 +15,12 @@ interface IStakedCelo {
         address,
         uint256
     ) external returns (bool);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function lockVoteBalance(address account, uint256 amount) external;
+
+    function unlockVoteBalance(address account) external;
+
+    function lockedVoteBalanceOf(address account) external view returns (uint256);
 }

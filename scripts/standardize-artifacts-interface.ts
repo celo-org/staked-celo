@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface BuildInfoInterface {
   id: string;
   _format: string;
@@ -92,6 +93,7 @@ export interface Output {
   type: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface ImmutableReferences {}
 
 export interface Ast {
@@ -460,6 +462,7 @@ export interface TypeName3 {
   typeDescriptions: TypeDescriptions13;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface TypeDescriptions13 {}
 
 export interface TypeDescriptions14 {
@@ -520,6 +523,7 @@ export interface TypeName4 {
   typeDescriptions: TypeDescriptions17;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface TypeDescriptions17 {}
 
 export interface Expression5 {
@@ -717,6 +721,7 @@ export interface Compiler {
   version: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Networks {}
 
 export interface Devdoc {
@@ -755,6 +760,7 @@ export interface Userdoc {
   version: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Methods2 {}
 
 export interface Contract {
