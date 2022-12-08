@@ -154,6 +154,6 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 1, 0);
+        return (1, 1, 2, 0);
     }
 }
