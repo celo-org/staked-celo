@@ -10,6 +10,13 @@ import "../interfaces/IManager.sol";
  */
 contract MockManager is IManager {
     uint256 private lockedStCelo = 0;
+    struct MockTransfer {
+        address from;
+        address to;
+        uint256 amount;
+    }
+
+    MockTransfer[] public transfers;
 
     function setLockedStCelo(uint256 _lockedStCelo) public {
         lockedStCelo = _lockedStCelo;
@@ -22,6 +29,30 @@ contract MockManager is IManager {
         returns (uint256)
     {
         return lockedStCelo;
+    }
+
+    function transfer(
+        address from,
+        address to,
+        uint256 amount
+    ) external {
+        transfers.push(MockTransfer(from, to, amount));
+    }
+
+    function transferLength() public view returns (uint256) {
+        return transfers.length;
+    }
+
+    function getTransfer(uint256 index)
+        public
+        view
+        returns (
+            address,
+            address,
+            uint256
+        )
+    {
+        return (transfers[index].from, transfers[index].to, transfers[index].amount);
     }
 
     receive() external payable {

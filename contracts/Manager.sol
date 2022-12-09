@@ -28,12 +28,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 votes;
     }
 
-    struct SpecificGroupWithVotes {
-        address group;
-        uint256 votesToWithdraw;
-        uint256 votesRemaining;
-    }
-
     /**
      * @notice An instance of the StakedCelo contract this Manager manages.
      */
@@ -75,6 +69,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     EnumerableSet.AddressSet private specificStrategyVotedGroups;
 
     /**
+     * @notice Votes that were cast for specific strategy
+     */
+    mapping(address => uint256) private specificStrategyTotalStCeloVotes;
+
+    /**
      * @notice Emitted when the vote contract is initially set or later modified.
      * @param voteContract The new vote contract address.
      */
@@ -104,10 +103,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupAlreadyAdded(address group);
 
     /**
-     * @notice Used when attempting to deprecate a group that is not active.
+     * @notice Used when attempting to deprecate a group that is not active nor specific.
      * @param group The group's address.
      */
-    error GroupNotActive(address group);
+    error GroupNotActiveNorSpecific(address group);
 
     /**
      * @notice Used when an attempt to add an active group to the EnumerableSet
@@ -172,6 +171,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error HealthyGroup(address group);
+
+    /**
+     * @notice Used when attempting to vote different strategy then before (default <-> specific).
+     * Please not that it is possible for each account to choose only one strategy.
+     * @param group The group's address.
+     */
+    error VotedWrongStrategy(address group);
+
+    /**
+     * @notice Used when attempting to withdraw from specific group higher amount than group has.
+     * @param group The group's address.
+     */
+    error NotEnoughStCeloForSpecificGroup(address group);
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -256,6 +268,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (!activeGroups.add(group)) {
             revert FailedToAddActiveGroup(group);
         }
+
         emit GroupActivated(group);
     }
 
@@ -357,25 +370,39 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Used to deposit CELO into the StakedCelo system. The user will
-     * @param validatorGroup If empty default strategy is chosen otherwise votes
-     * are cast only for particular validator group.
      * receive an amount of stCELO proportional to their contribution. The CELO
      * will be scheduled to be voted for with the Account contract.
      */
-    function deposit(address validatorGroup) external payable {
+    function deposit() external payable {
+        depositSpecific(address(0));
+    }
+
+    /**
+     * @notice Used to deposit CELO into the StakedCelo system. The user will
+     * receive an amount of stCELO proportional to their contribution. The CELO
+     * will be scheduled to be voted for with the Account contract.
+     * @param validatorGroup If empty default strategy is chosen otherwise votes
+     * are cast only for particular validator group.
+     */
+    function depositSpecific(address validatorGroup) public payable {
         address strategy = strategies[msg.sender];
         uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
+        if (stCeloBalance != 0 && strategy != validatorGroup) {
+            revert VotedWrongStrategy(validatorGroup);
+        }
         if (validatorGroup == address(0)) {
-            require(stCeloBalance == 0 || strategy == address(0), "Voted specific strategy");
             if (activeGroups.length() == 0) {
                 revert NoActiveGroups();
             }
         } else {
-            require(stCeloBalance == 0 || strategy != address(0), "Voted default strategy");
-            require(strategy == validatorGroup, "Voted on different group");
-            require(isValidGroup(validatorGroup), "Invalid validatorGroup");
+            if (!isValidGroup(validatorGroup)) {
+                revert GroupNotEligible(validatorGroup);
+            }
             strategies[msg.sender] = validatorGroup;
-            specificStrategyVotedGroups.add(validatorGroup);
+            if (!activeGroups.contains(validatorGroup)) {
+                specificStrategyVotedGroups.add(validatorGroup);
+            }
+            specificStrategyTotalStCeloVotes[validatorGroup] += msg.value;
         }
 
         stakedCelo.mint(msg.sender, toStakedCelo(msg.value));
@@ -393,11 +420,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * `Account.finishPendingWithdrawal`.
      */
     function withdraw(uint256 stakedCeloAmount) external {
-        if (activeGroups.length() + deprecatedGroups.length() == 0) {
+        if (
+            activeGroups.length() +
+                deprecatedGroups.length() +
+                specificStrategyVotedGroups.length() ==
+            0
+        ) {
             revert NoGroups();
         }
 
-        distributeWithdrawals(toCelo(stakedCeloAmount), msg.sender, strategies[msg.sender]);
+        distributeWithdrawals(stakedCeloAmount, msg.sender, strategies[msg.sender]);
         stakedCelo.burn(msg.sender, stakedCeloAmount);
     }
 
@@ -474,6 +506,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalGroups[0] = specificGroup;
             finalVotes = new uint256[](1);
             finalVotes[0] = msg.value;
+
+            return (finalGroups, finalVotes);
         }
 
         /*
@@ -489,11 +523,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         GroupWithVotes[] memory sortedGroups;
         uint256 availableVotes;
-        SpecificGroupWithVotes memory emtpySpecificGroupWithVotes;
-        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(
-            votableGroups,
-            emtpySpecificGroupWithVotes
-        );
+        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(votableGroups);
         availableVotes += votes;
 
         uint256[] memory votesPerGroup = new uint256[](votableGroups.length);
@@ -537,7 +567,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Distributes withdrawals by computing the number of votes that
      * should be withdrawn from each group, then calling out to
      * `Account.scheduleWithdrawals`.
-     * @param withdrawal The amount of votes to withdraw.
+     * @param stCeloAmount The amount of votes to withdraw.
      * @param beneficiary The address that should end up receiving the withdrawn
      * CELO.
      * @dev The withdrawal distribution strategy is to:
@@ -549,24 +579,33 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * distribute between the remaining groups.
      */
     function distributeWithdrawals(
-        uint256 withdrawal,
+        uint256 stCeloAmount,
         address beneficiary,
         address specificGroup
     ) internal {
+        uint256 withdrawal = toCelo(stCeloAmount);
         if (withdrawal == 0) {
             revert ZeroWithdrawal();
         }
 
-        SpecificGroupWithVotes memory specificGroupWithVotes;
-        (specificGroupWithVotes, withdrawal) = withdrawFromSpecificGroup(
-            specificGroup,
-            beneficiary,
-            withdrawal
-        );
+        address[] memory specificGroupsWithdrawn;
+        uint256[] memory specificWithdrawalsPerGroup;
 
-        if (withdrawal == 0) {
-            // everything was withdrawn from specific group
-            return;
+        if (specificGroup != address(0)) {
+            (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
+                specificGroup,
+                withdrawal
+            );
+            withdrawal -= specificWithdrawalsPerGroup[0];
+            if (withdrawal == 0) {
+                // everything was withdrawn from specific group already
+                account.scheduleWithdrawals(
+                    beneficiary,
+                    specificGroupsWithdrawn,
+                    specificWithdrawalsPerGroup
+                );
+                return;
+            }
         }
 
         address[] memory deprecatedGroupsWithdrawn;
@@ -583,10 +622,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address[] memory groupsWithdrawn;
         uint256[] memory withdrawalsPerGroup;
 
-        (groupsWithdrawn, withdrawalsPerGroup) = getActiveGroupWithdrawalDistribution(
-            withdrawal,
-            specificGroupWithVotes
-        );
+        (groupsWithdrawn, withdrawalsPerGroup) = getActiveGroupWithdrawalDistribution(withdrawal);
 
         address[] memory finalGroups;
         uint256[] memory finalVotes;
@@ -601,8 +637,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalVotes = new uint256[](
                 groupsWithdrawn.length + numberDeprecatedGroupsWithdrawn + 1
             );
-            finalGroups[finalGroups.length - 1] = specificGroup;
-            finalVotes[finalVotes.length - 1] = specificGroupWithVotes.votesToWithdraw;
+            finalGroups[finalGroups.length - 1] = specificGroupsWithdrawn[0];
+            finalVotes[finalVotes.length - 1] = specificWithdrawalsPerGroup[0];
         }
 
         for (uint256 i = 0; i < numberDeprecatedGroupsWithdrawn; i++) {
@@ -618,40 +654,34 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         account.scheduleWithdrawals(beneficiary, finalGroups, finalVotes);
     }
 
-    function withdrawFromSpecificGroup(
-        address specificGroup,
-        address beneficiary,
-        uint256 withdrawal
-    ) private returns (SpecificGroupWithVotes memory, uint256) {
-        SpecificGroupWithVotes memory specificGroupWithVotes;
-        if (specificGroup != address(0)) {
-            specificGroupWithVotes.group = specificGroup;
-            specificGroupWithVotes.votesRemaining = account.getCeloForGroup(specificGroup);
-            specificGroupWithVotes.votesToWithdraw = Math.min(
-                specificGroupWithVotes.votesRemaining,
-                withdrawal
-            );
-            specificGroupWithVotes.votesRemaining -= specificGroupWithVotes.votesToWithdraw;
-            withdrawal -= specificGroupWithVotes.votesToWithdraw;
-            if (specificGroupWithVotes.votesRemaining == 0) {
-                if (
-                    specificStrategyVotedGroups.remove(specificGroup) ||
-                    deprecatedGroups.remove(specificGroup)
-                ) {
-                    emit GroupRemoved(specificGroup);
-                }
-            }
+    function withdrawFromSpecificGroup(address specificGroup, uint256 withdrawal)
+        private
+        returns (address[] memory groups, uint256[] memory votes)
+    {
+        uint256 votesRemaining = account.getCeloForGroup(specificGroup);
+        uint256 votesToWithdraw = Math.min(votesRemaining, withdrawal);
 
-            if (withdrawal == 0) {
-                address[] memory finalGroups = new address[](1);
-                uint256[] memory finalVotes = new uint256[](1);
-                finalGroups[0] = specificGroup;
-                finalVotes[0] = specificGroupWithVotes.votesToWithdraw;
-                account.scheduleWithdrawals(beneficiary, finalGroups, finalVotes);
-            }
+        groups = new address[](1);
+        votes = new uint256[](1);
+        groups[0] = specificGroup;
+        votes[0] = votesToWithdraw;
+
+        uint256 stCeloToWithdraw = toStakedCelo(votesToWithdraw);
+        if (stCeloToWithdraw > specificStrategyTotalStCeloVotes[specificGroup]) {
+            revert NotEnoughStCeloForSpecificGroup(specificGroup);
         }
 
-        return (specificGroupWithVotes, withdrawal);
+        specificStrategyTotalStCeloVotes[specificGroup] -= stCeloToWithdraw;
+
+        if (specificStrategyTotalStCeloVotes[specificGroup] == 0) {
+            if (
+                specificStrategyVotedGroups.remove(specificGroup) ||
+                deprecatedGroups.remove(specificGroup)
+            ) {
+                delete specificStrategyTotalStCeloVotes[specificGroup];
+                emit GroupRemoved(specificGroup);
+            }
+        }
     }
 
     function transfer(
@@ -742,23 +772,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return The amount of votes to withdraw from the respective group in the
      * array of groups withdrawn from.
      */
-    function getActiveGroupWithdrawalDistribution(
-        uint256 withdrawal,
-        SpecificGroupWithVotes memory specificGroupWithVotes
-    ) internal view returns (address[] memory, uint256[] memory) {
-        if (withdrawal == 0) {
+    function getActiveGroupWithdrawalDistribution(uint256 withdrawal)
+        internal
+        view
+        returns (address[] memory, uint256[] memory)
+    {
+        uint256 numberGroups = activeGroups.length();
+
+        if (withdrawal == 0 || numberGroups == 0) {
             address[] memory noGroups = new address[](0);
             uint256[] memory noWithdrawals = new uint256[](0);
             return (noGroups, noWithdrawals);
         }
 
-        uint256 numberGroups = activeGroups.length();
         GroupWithVotes[] memory sortedGroups;
         uint256 availableVotes;
-        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(
-            activeGroups.values(),
-            specificGroupWithVotes
-        );
+        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(activeGroups.values());
         availableVotes -= withdrawal;
 
         uint256 numberGroupsWithdrawn = numberGroups;
@@ -797,15 +826,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return The array of GroupWithVotes structs, sorted by number of votes.
      * @return The total number of votes assigned to active groups.
      */
-    function getSortedGroupsWithVotes(
-        address[] memory groups,
-        SpecificGroupWithVotes memory specificGroupWithVotes
-    ) internal view returns (GroupWithVotes[] memory, uint256) {
+    function getSortedGroupsWithVotes(address[] memory groups)
+        internal
+        view
+        returns (GroupWithVotes[] memory, uint256)
+    {
         GroupWithVotes[] memory groupsWithVotes = new GroupWithVotes[](groups.length);
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < groups.length; i++) {
-            uint256 votes = groups[i] == specificGroupWithVotes.group
-                ? specificGroupWithVotes.votesRemaining
+            uint256 votes = specificStrategyVotedGroups.contains(groups[i])
+                ? account.getCeloForGroup(groups[i]) -
+                    toCelo(specificStrategyTotalStCeloVotes[groups[i]])
                 : account.getCeloForGroup(groups[i]);
             totalVotes += votes;
             groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
@@ -934,8 +965,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group to deprecate.
      */
     function _deprecateGroup(address group) private {
-        if (!activeGroups.remove(group)) {
-            revert GroupNotActive(group);
+        bool activeGroupsRemoval = activeGroups.remove(group);
+        bool specificGroupsRemoval = specificStrategyVotedGroups.remove(group);
+        if (!activeGroupsRemoval && !specificGroupsRemoval) {
+            revert GroupNotActiveNorSpecific(group);
         }
 
         emit GroupDeprecated(group);

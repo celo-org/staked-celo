@@ -10,8 +10,6 @@ interface IAccount {
 
     function scheduledVotesForGroup(address group) external returns (uint256);
 
-    function scheduledRevokeForGroup(address group) external returns (uint256);
-
     function scheduleTransfer(
         address[] calldata fromGroups,
         uint256[] calldata fromVotes,

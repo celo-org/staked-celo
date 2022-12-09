@@ -541,6 +541,119 @@ describe("Manager", () => {
     });
   });
 
+  describe("#depositSpecific()", () => {
+    it("should revert when voting for not valid validator group", async () => {
+      await expect(
+        manager.connect(depositor).depositSpecific(nonAccount.address, { value: 100 })
+      ).revertedWith(`GroupNotEligible("${nonAccount.address}")`);
+    });
+
+    describe("When voted for specific validator group", () => {
+      beforeEach(async () => {
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(groupAddresses[0], { value: 100 });
+        await depositTx.wait();
+      });
+
+      it("should add group to specific groups", async () => {
+        const allGroups = await manager.connect(depositor).getAllGroups();
+        const activeGroups = allGroups[0];
+        const depreciatedGroups = allGroups[1];
+        const specificGroups = allGroups[2];
+        expect(activeGroups.length).to.eq(0);
+        expect(depreciatedGroups.length).to.eq(0);
+        expect(specificGroups.length).to.eq(1);
+        expect(specificGroups[0]).to.eq(groupAddresses[0]);
+      });
+
+      it("should schedule votes for specific group", async () => {
+        const [votedGroups, votes] = await account.getLastScheduledVotes();
+        expect(votedGroups).to.deep.equal(groupAddresses.slice(0, 1));
+        expect(votes).to.deep.equal([BigNumber.from("100")]);
+      });
+
+      it("should mint 1:1 stCelo", async () => {
+        const stCelo = await stakedCelo.balanceOf(depositor.address);
+        expect(stCelo).to.eq(100);
+      });
+    });
+
+    describe("When we have 2 active validator groups", () => {
+      beforeEach(async () => {
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], 100);
+        }
+      });
+
+      describe("When voted for specific validator group which is not in active groups", () => {
+        beforeEach(async () => {
+          const depositTx = await manager
+            .connect(depositor)
+            .depositSpecific(groupAddresses[2], { value: 100 });
+          await depositTx.wait();
+        });
+
+        it("should add group to specific groups", async () => {
+          const allGroups = await manager.connect(depositor).getAllGroups();
+          const activeGroups = allGroups[0];
+          const depreciatedGroups = allGroups[1];
+          const specificGroups = allGroups[2];
+          expect(activeGroups.length).to.eq(2);
+          expect(activeGroups[0]).to.eq(groupAddresses[0]);
+          expect(activeGroups[1]).to.eq(groupAddresses[1]);
+          expect(depreciatedGroups.length).to.eq(0);
+          expect(specificGroups.length).to.eq(1);
+          expect(specificGroups[0]).to.eq(groupAddresses[2]);
+        });
+
+        it("should schedule votes for specific group", async () => {
+          const [votedGroups, votes] = await account.getLastScheduledVotes();
+          expect(votedGroups).to.deep.equal([groupAddresses[2]]);
+          expect(votes).to.deep.equal([BigNumber.from("100")]);
+        });
+
+        it("should mint 1:1 stCelo", async () => {
+          const stCelo = await stakedCelo.balanceOf(depositor.address);
+          expect(stCelo).to.eq(100);
+        });
+      });
+
+      describe("When voted for specific validator group which is in active groups", () => {
+        beforeEach(async () => {
+          const depositTx = await manager
+            .connect(depositor)
+            .depositSpecific(groupAddresses[0], { value: 100 });
+          await depositTx.wait();
+        });
+
+        it("should add group to specific groups", async () => {
+          const allGroups = await manager.connect(depositor).getAllGroups();
+          const activeGroups = allGroups[0];
+          const depreciatedGroups = allGroups[1];
+          const specificGroups = allGroups[2];
+          expect(activeGroups.length).to.eq(2);
+          expect(activeGroups[0]).to.eq(groupAddresses[0]);
+          expect(activeGroups[1]).to.eq(groupAddresses[1]);
+          expect(depreciatedGroups.length).to.eq(0);
+          expect(specificGroups.length).to.eq(0);
+        });
+
+        it("should schedule votes for specific group", async () => {
+          const [votedGroups, votes] = await account.getLastScheduledVotes();
+          expect(votedGroups).to.deep.equal([groupAddresses[0]]);
+          expect(votes).to.deep.equal([BigNumber.from("100")]);
+        });
+
+        it("should mint 1:1 stCelo", async () => {
+          const stCelo = await stakedCelo.balanceOf(depositor.address);
+          expect(stCelo).to.eq(100);
+        });
+      });
+    });
+  });
+
   describe("#deposit()", () => {
     it("reverts when there are no active groups", async () => {
       await expect(manager.connect(depositor).deposit({ value: 100 })).revertedWith(
@@ -1211,6 +1324,112 @@ describe("Manager", () => {
           expect(stCelo).to.eq(90);
         });
       });
+    });
+
+    describe("When voted for specific validator group - no active groups", () => {
+      beforeEach(async () => {
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(groupAddresses[0], { value: 100 });
+        await depositTx.wait();
+        await account.setCeloForGroup(groupAddresses[0], 100);
+      });
+
+      it("should withdraw less than originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(60);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([groupAddresses[0]]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
+      });
+
+      it("should withdraw same amount as originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(100);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([groupAddresses[0]]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
+      });
+
+      it("should revert when withdraw more amount than originally deposited from specific group", async () => {
+        await expect(manager.connect(depositor).withdraw(110)).revertedWith(
+          "ERC20: burn amount exceeds balance"
+        );
+      });
+    });
+
+    describe("When there are other active groups besides specific validator group - specific is different from active", () => {
+      const withdrawals = [40, 50];
+      const specificGroupWithdrawal = 100;
+
+      beforeEach(async () => {
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
+        }
+        await account.setCeloForGroup(groupAddresses[2], specificGroupWithdrawal);
+
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(groupAddresses[2], { value: specificGroupWithdrawal });
+        await depositTx.wait();
+      });
+
+      it("should withdraw less than originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(60);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([groupAddresses[2]]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
+      });
+
+      it("should withdraw same amount as originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(100);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([groupAddresses[2]]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
+      });
+
+      it("should revert when withdraw more amount than originally deposited from specific group", async () => {
+        await expect(manager.connect(depositor).withdraw(110)).revertedWith(
+          "ERC20: burn amount exceeds balance"
+        );
+      });
+    });
+  });
+
+  describe("When there are other active groups besides specific validator group - specific is one of the active groups", () => {
+    const withdrawals = [40, 50];
+    const specificGroupWithdrawal = 100;
+
+    beforeEach(async () => {
+      for (let i = 0; i < 2; i++) {
+        await manager.activateGroup(groupAddresses[i]);
+        await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
+      }
+      await account.setCeloForGroup(groupAddresses[1], withdrawals[1] + specificGroupWithdrawal);
+
+      const depositTx = await manager
+        .connect(depositor)
+        .depositSpecific(groupAddresses[1], { value: specificGroupWithdrawal });
+      await depositTx.wait();
+    });
+
+    it("should withdraw less than originally deposited from specific group", async () => {
+      await manager.connect(depositor).withdraw(60);
+      const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+      expect(withdrawnGroups).to.deep.equal([groupAddresses[1]]);
+      expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
+    });
+
+    it("should withdraw same amount as originally deposited from specific group", async () => {
+      await manager.connect(depositor).withdraw(100);
+      const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+      expect(withdrawnGroups).to.deep.equal([groupAddresses[1]]);
+      expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
+    });
+
+    it("should revert when withdraw more amount than originally deposited from specific group", async () => {
+      await expect(manager.connect(depositor).withdraw(110)).revertedWith(
+        `NotEnoughStCeloForSpecificGroup("${groupAddresses[1]}")`
+      );
     });
   });
 

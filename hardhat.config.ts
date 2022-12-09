@@ -106,6 +106,7 @@ module.exports = {
         settings: {
           evmVersion: "istanbul",
           metadata: { useLiteralContent: true },
+          optimizer: { enabled: true, runs: 200 }
         },
       },
     ],
