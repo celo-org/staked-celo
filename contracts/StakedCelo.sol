@@ -137,7 +137,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         emit UnlockedStCelo(beneficiary, previouslyLocked - _lockedBalances[beneficiary]);
     }
 
-    function _beforeTokenTransfer(
+    function _afterTokenTransfer(
         address from,
         address to,
         uint256 amount

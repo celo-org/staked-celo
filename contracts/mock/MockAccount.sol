@@ -7,9 +7,15 @@ pragma solidity 0.8.11;
  * 1. Record their arguments for functions called by Manager.
  * 2. Can have their output mocked for functions read by Manager.
  */
+// solhint-disable max-states-count
 contract MockAccount {
     address[] public lastVotedGroups;
     uint256[] public lastVotes;
+
+    address[] public lastTransferFromGroups;
+    uint256[] public lastTransferFromVotes;
+    address[] public lastTransferToGroups;
+    uint256[] public lastTransferToVotes;
 
     address[] public lastWithdrawnGroups;
     uint256[] public lastWithdrawals;
@@ -81,5 +87,35 @@ contract MockAccount {
         yesVotesVoted = yesVotes;
         noVotesVoted = noVotes;
         abstainVoteVoted = abstainVotes;
+    }
+
+    function scheduleTransfer(
+        address[] calldata fromGroups,
+        uint256[] calldata fromVotes,
+        address[] calldata toGroups,
+        uint256[] calldata toVotes
+    ) external {
+        lastTransferFromGroups = fromGroups;
+        lastTransferFromVotes = fromVotes;
+        lastTransferToGroups = toGroups;
+        lastTransferToVotes = toVotes;
+    }
+
+    function getLastTransferValues()
+        external
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            address[] memory,
+            uint256[] memory
+        )
+    {
+        return (
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes
+        );
     }
 }

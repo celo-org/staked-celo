@@ -399,9 +399,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 revert GroupNotEligible(validatorGroup);
             }
             strategies[msg.sender] = validatorGroup;
-            if (!activeGroups.contains(validatorGroup)) {
-                specificStrategyVotedGroups.add(validatorGroup);
-            }
+            specificStrategyVotedGroups.add(validatorGroup);
             specificStrategyTotalStCeloVotes[validatorGroup] += msg.value;
         }
 
@@ -505,7 +503,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalGroups = new address[](1);
             finalGroups[0] = specificGroup;
             finalVotes = new uint256[](1);
-            finalVotes[0] = msg.value;
+            finalVotes[0] = votes;
 
             return (finalGroups, finalVotes);
         }
@@ -674,10 +672,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         specificStrategyTotalStCeloVotes[specificGroup] -= stCeloToWithdraw;
 
         if (specificStrategyTotalStCeloVotes[specificGroup] == 0) {
-            if (
-                specificStrategyVotedGroups.remove(specificGroup) ||
-                deprecatedGroups.remove(specificGroup)
-            ) {
+            if (specificStrategyVotedGroups.remove(specificGroup)) {
                 delete specificStrategyTotalStCeloVotes[specificGroup];
                 emit GroupRemoved(specificGroup);
             }
@@ -971,6 +966,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert GroupNotActiveNorSpecific(group);
         }
 
+        delete specificStrategyTotalStCeloVotes[group];
+
         emit GroupDeprecated(group);
 
         if (account.getCeloForGroup(group) > 0) {
@@ -999,6 +996,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         return false;
+    }
+
+    function getAccountStrategy(address accountAddress) external view returns (address) {
+        return strategies[accountAddress];
     }
 
     /**

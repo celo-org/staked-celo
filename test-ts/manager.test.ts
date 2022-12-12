@@ -64,6 +64,7 @@ describe("Manager", () => {
   let someone: SignerWithAddress;
   let mockSlasher: SignerWithAddress;
   let depositor: SignerWithAddress;
+  let depositor2: SignerWithAddress;
   let voter: SignerWithAddress;
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
@@ -86,8 +87,9 @@ describe("Manager", () => {
     [someone] = await randomSigner(parseUnits("100"));
     [mockSlasher] = await randomSigner(parseUnits("100"));
     [depositor] = await randomSigner(parseUnits("300"));
+    [depositor2] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
-    [nonVote] = await randomSigner(parseUnits("100"));
+    [nonVote] = await randomSigner(parseUnits("100000"));
     [nonStakedCelo] = await randomSigner(parseUnits("100"));
     [nonAccount] = await randomSigner(parseUnits("100"));
 
@@ -348,84 +350,146 @@ describe("Manager", () => {
   describe("#deprecateGroup()", () => {
     let deprecatedGroup: SignerWithAddress;
 
-    beforeEach(async () => {
-      deprecatedGroup = groups[1];
-      for (let i = 0; i < 3; i++) {
-        await manager.activateGroup(groups[i].address);
-      }
-    });
-
-    describe("when the group is voted for", () => {
+    describe("When 3 active groups", () => {
       beforeEach(async () => {
-        await account.setCeloForGroup(deprecatedGroup.address, 100);
+        deprecatedGroup = groups[1];
+        for (let i = 0; i < 3; i++) {
+          await manager.activateGroup(groups[i].address);
+        }
       });
 
-      it("removes the group from the groups array", async () => {
-        await manager.deprecateGroup(deprecatedGroup.address);
-        const activeGroups = await manager.getGroups();
-        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
+      describe("when the group is voted for", () => {
+        beforeEach(async () => {
+          await account.setCeloForGroup(deprecatedGroup.address, 100);
+        });
+
+        it("removes the group from the groups array", async () => {
+          await manager.deprecateGroup(deprecatedGroup.address);
+          const activeGroups = await manager.getGroups();
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
+        });
+
+        it("adds the group to the deprecated array", async () => {
+          await manager.deprecateGroup(deprecatedGroup.address);
+          const deprecatedGroups = await manager.getDeprecatedGroups();
+          expect(deprecatedGroups).to.deep.eq([groupAddresses[1]]);
+        });
+
+        it("emits a GroupDeprecated event", async () => {
+          await expect(manager.deprecateGroup(deprecatedGroup.address))
+            .to.emit(manager, "GroupDeprecated")
+            .withArgs(deprecatedGroup.address);
+        });
+
+        it("reverts when deprecating a non active group", async () => {
+          await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
+            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+          );
+        });
+
+        it("cannot be called by a non owner", async () => {
+          await expect(
+            manager.connect(nonOwner).deprecateGroup(deprecatedGroup.address)
+          ).revertedWith("Ownable: caller is not the owner");
+        });
       });
 
-      it("adds the group to the deprecatedd array", async () => {
-        await manager.deprecateGroup(deprecatedGroup.address);
-        const deprecatedGroups = await manager.getDeprecatedGroups();
-        expect(deprecatedGroups).to.deep.eq([groupAddresses[1]]);
-      });
+      describe("when the group is not voted for", () => {
+        it("removes the group from the groups array", async () => {
+          await manager.deprecateGroup(deprecatedGroup.address);
+          const activeGroups = await manager.getGroups();
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
+        });
 
-      it("emits a GroupDeprecated event", async () => {
-        await expect(manager.deprecateGroup(deprecatedGroup.address))
-          .to.emit(manager, "GroupDeprecated")
-          .withArgs(deprecatedGroup.address);
-      });
+        it("does not add the group to the deprecated array", async () => {
+          await manager.deprecateGroup(deprecatedGroup.address);
+          const deprecatedGroups = await manager.getDeprecatedGroups();
+          expect(deprecatedGroups).to.deep.eq([]);
+        });
 
-      it("reverts when deprecating a non active group", async () => {
-        await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
-          `GroupNotActive("${groupAddresses[3]}")`
-        );
-      });
+        it("emits a GroupDeprecated event", async () => {
+          await expect(manager.deprecateGroup(deprecatedGroup.address))
+            .to.emit(manager, "GroupDeprecated")
+            .withArgs(deprecatedGroup.address);
+        });
 
-      it("cannot be called by a non owner", async () => {
-        await expect(
-          manager.connect(nonOwner).deprecateGroup(deprecatedGroup.address)
-        ).revertedWith("Ownable: caller is not the owner");
+        it("emits a GroupRemoved event", async () => {
+          await expect(manager.deprecateGroup(deprecatedGroup.address))
+            .to.emit(manager, "GroupRemoved")
+            .withArgs(deprecatedGroup.address);
+        });
+
+        it("reverts when deprecating a non active group", async () => {
+          await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
+            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+          );
+        });
+
+        it("cannot be called by a non owner", async () => {
+          await expect(
+            manager.connect(nonOwner).deprecateGroup(deprecatedGroup.address)
+          ).revertedWith("Ownable: caller is not the owner");
+        });
       });
     });
 
-    describe("when the group is not voted for", () => {
-      it("removes the group from the groups array", async () => {
-        await manager.deprecateGroup(deprecatedGroup.address);
-        const activeGroups = await manager.getGroups();
-        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
+    describe("When 2 active groups", () => {
+      let specificGroup: SignerWithAddress;
+      beforeEach(async () => {
+        specificGroup = groups[2];
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groups[i].address);
+        }
       });
 
-      it("does not add the group to the deprecated array", async () => {
-        await manager.deprecateGroup(deprecatedGroup.address);
-        const deprecatedGroups = await manager.getDeprecatedGroups();
-        expect(deprecatedGroups).to.deep.eq([]);
-      });
+      describe("when the group is specific", () => {
+        beforeEach(async () => {
+          await account.setCeloForGroup(specificGroup.address, 100);
+          const specificGroupDeposit = parseUnits("1");
+          const depositTx = await manager
+            .connect(depositor)
+            .depositSpecific(specificGroup.address, { value: specificGroupDeposit });
+          await depositTx.wait();
+        });
 
-      it("emits a GroupDeprecated event", async () => {
-        await expect(manager.deprecateGroup(deprecatedGroup.address))
-          .to.emit(manager, "GroupDeprecated")
-          .withArgs(deprecatedGroup.address);
-      });
+        it("added group to specific groups", async () => {
+          const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+          expect(deprecatedGroups).to.deep.eq([]);
+          expect(specificGroups).to.deep.eq([specificGroup.address]);
+        });
 
-      it("emits a GroupRemoved event", async () => {
-        await expect(manager.deprecateGroup(deprecatedGroup.address))
-          .to.emit(manager, "GroupRemoved")
-          .withArgs(deprecatedGroup.address);
-      });
+        it("removes the group from the groups array", async () => {
+          await manager.deprecateGroup(specificGroup.address);
+          const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+          expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
+          expect(specificGroups).to.deep.eq([]);
+        });
 
-      it("reverts when deprecating a non active group", async () => {
-        await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
-          `GroupNotActive("${groupAddresses[3]}")`
-        );
-      });
+        it("adds the group to the deprecated array", async () => {
+          await manager.deprecateGroup(specificGroup.address);
+          const deprecatedGroups = await manager.getDeprecatedGroups();
+          expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
+        });
 
-      it("cannot be called by a non owner", async () => {
-        await expect(
-          manager.connect(nonOwner).deprecateGroup(deprecatedGroup.address)
-        ).revertedWith("Ownable: caller is not the owner");
+        it("emits a GroupDeprecated event", async () => {
+          await expect(manager.deprecateGroup(specificGroup.address))
+            .to.emit(manager, "GroupDeprecated")
+            .withArgs(specificGroup.address);
+        });
+
+        it("reverts when deprecating a non active group nor specific", async () => {
+          await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
+            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+          );
+        });
+
+        it("cannot be called by a non owner", async () => {
+          await expect(
+            manager.connect(nonOwner).deprecateGroup(specificGroup.address)
+          ).revertedWith("Ownable: caller is not the owner");
+        });
       });
     });
   });
@@ -548,6 +612,45 @@ describe("Manager", () => {
       ).revertedWith(`GroupNotEligible("${nonAccount.address}")`);
     });
 
+    describe("When voted for default validator group", () => {
+      beforeEach(async () => {
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], 100);
+        }
+
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(ADDRESS_ZERO, { value: 100 });
+        await depositTx.wait();
+      });
+
+      it("should add group to active groups", async () => {
+        const allGroups = await manager.connect(depositor).getAllGroups();
+        const activeGroups = allGroups[0];
+        const depreciatedGroups = allGroups[1];
+        const specificGroups = allGroups[2];
+        expect(activeGroups.length).to.eq(2);
+        expect(activeGroups[0]).to.eq(groupAddresses[0]);
+        expect(activeGroups[1]).to.eq(groupAddresses[1]);
+
+        expect(depreciatedGroups.length).to.eq(0);
+        expect(specificGroups.length).to.eq(0);
+      });
+
+      it("distributes votes evenly", async () => {
+        const [votedGroups, votes] = await account.getLastScheduledVotes();
+        expect(votedGroups).to.deep.equal(groupAddresses.slice(0, 2));
+        expect(votes).to.deep.equal([BigNumber.from("50"), BigNumber.from("50")]);
+      });
+
+      it("should revert when trying to vote for specific group", async () => {
+        await expect(
+          manager.connect(depositor).depositSpecific(groupAddresses[0], { value: 100 })
+        ).revertedWith(`VotedWrongStrategy("${groupAddresses[0]}")`);
+      });
+    });
+
     describe("When voted for specific validator group", () => {
       beforeEach(async () => {
         const depositTx = await manager
@@ -577,6 +680,12 @@ describe("Manager", () => {
         const stCelo = await stakedCelo.balanceOf(depositor.address);
         expect(stCelo).to.eq(100);
       });
+
+      it("should revert when trying to vote for default group", async () => {
+        await expect(
+          manager.connect(depositor).depositSpecific(ADDRESS_ZERO, { value: 100 })
+        ).revertedWith(`VotedWrongStrategy("${ADDRESS_ZERO}")`);
+      });
     });
 
     describe("When we have 2 active validator groups", () => {
@@ -600,12 +709,9 @@ describe("Manager", () => {
           const activeGroups = allGroups[0];
           const depreciatedGroups = allGroups[1];
           const specificGroups = allGroups[2];
-          expect(activeGroups.length).to.eq(2);
-          expect(activeGroups[0]).to.eq(groupAddresses[0]);
-          expect(activeGroups[1]).to.eq(groupAddresses[1]);
-          expect(depreciatedGroups.length).to.eq(0);
-          expect(specificGroups.length).to.eq(1);
-          expect(specificGroups[0]).to.eq(groupAddresses[2]);
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+          expect(depreciatedGroups).to.deep.eq([]);
+          expect(specificGroups).to.deep.eq([groupAddresses[2]]);
         });
 
         it("should schedule votes for specific group", async () => {
@@ -621,10 +727,12 @@ describe("Manager", () => {
       });
 
       describe("When voted for specific validator group which is in active groups", () => {
+        let specificGroupAddress: string;
         beforeEach(async () => {
+          specificGroupAddress = groupAddresses[0];
           const depositTx = await manager
             .connect(depositor)
-            .depositSpecific(groupAddresses[0], { value: 100 });
+            .depositSpecific(specificGroupAddress, { value: 100 });
           await depositTx.wait();
         });
 
@@ -633,11 +741,9 @@ describe("Manager", () => {
           const activeGroups = allGroups[0];
           const depreciatedGroups = allGroups[1];
           const specificGroups = allGroups[2];
-          expect(activeGroups.length).to.eq(2);
-          expect(activeGroups[0]).to.eq(groupAddresses[0]);
-          expect(activeGroups[1]).to.eq(groupAddresses[1]);
-          expect(depreciatedGroups.length).to.eq(0);
-          expect(specificGroups.length).to.eq(0);
+          expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+          expect(depreciatedGroups).to.deep.eq([]);
+          expect(specificGroups).to.deep.eq([specificGroupAddress]);
         });
 
         it("should schedule votes for specific group", async () => {
@@ -1359,32 +1465,98 @@ describe("Manager", () => {
     describe("When there are other active groups besides specific validator group - specific is different from active", () => {
       const withdrawals = [40, 50];
       const specificGroupWithdrawal = 100;
+      let specificGroup: SignerWithAddress;
 
       beforeEach(async () => {
+        specificGroup = groups[2];
         for (let i = 0; i < 2; i++) {
           await manager.activateGroup(groupAddresses[i]);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
-        await account.setCeloForGroup(groupAddresses[2], specificGroupWithdrawal);
+        await account.setCeloForGroup(specificGroup.address, specificGroupWithdrawal);
 
         const depositTx = await manager
           .connect(depositor)
-          .depositSpecific(groupAddresses[2], { value: specificGroupWithdrawal });
+          .depositSpecific(specificGroup.address, { value: specificGroupWithdrawal });
         await depositTx.wait();
+      });
+
+      it("added group to specific groups", async () => {
+        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+        expect(deprecatedGroups).to.deep.eq([]);
+        expect(specificGroups).to.deep.eq([specificGroup.address]);
       });
 
       it("should withdraw less than originally deposited from specific group", async () => {
         await manager.connect(depositor).withdraw(60);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
-        expect(withdrawnGroups).to.deep.equal([groupAddresses[2]]);
+        expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
+        const [, , specificGroups] = await manager.getAllGroups();
+        expect(specificGroups).to.deep.eq([specificGroup.address]);
       });
 
       it("should withdraw same amount as originally deposited from specific group", async () => {
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
-        expect(withdrawnGroups).to.deep.equal([groupAddresses[2]]);
+        expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
+        const [, , specificGroups] = await manager.getAllGroups();
+        expect(specificGroups).to.deep.eq([]);
+      });
+
+      it("should revert when withdraw more amount than originally deposited from specific group", async () => {
+        await expect(manager.connect(depositor).withdraw(110)).revertedWith(
+          "ERC20: burn amount exceeds balance"
+        );
+      });
+    });
+
+    describe("When there are other active groups besides specific validator group - specific is same from active", () => {
+      const withdrawals = [40, 50];
+      const specificGroupWithdrawal = 100;
+      let specificGroup: SignerWithAddress;
+
+      beforeEach(async () => {
+        specificGroup = groups[1];
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
+        }
+        await account.setCeloForGroup(specificGroup.address, specificGroupWithdrawal);
+
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(specificGroup.address, { value: specificGroupWithdrawal });
+        await depositTx.wait();
+      });
+
+      it("added group to specific groups", async () => {
+        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+        expect(deprecatedGroups).to.deep.eq([]);
+        expect(specificGroups).to.deep.eq([specificGroup.address]);
+      });
+
+      it("should withdraw less than originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(60);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
+        const [activeGroups, , specificGroups] = await manager.getAllGroups();
+        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+        expect(specificGroups).to.deep.eq([specificGroup.address]);
+      });
+
+      it("should withdraw same amount as originally deposited from specific group", async () => {
+        await manager.connect(depositor).withdraw(100);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
+        expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
+        const [activeGroups, , specificGroups] = await manager.getAllGroups();
+        expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
+        expect(specificGroups).to.deep.eq([]);
       });
 
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
@@ -1576,6 +1748,145 @@ describe("Manager", () => {
 
       const updatedHistoryFor = await voteContract.updatedHistoryFor();
       expect(updatedHistoryFor).to.eq(nonVote.address);
+    });
+  });
+
+  describe("#transfer()", () => {
+    let stakedCeloSigner: SignerWithAddress;
+
+    beforeEach(async () => {
+      stakedCeloSigner = await getImpersonatedSigner(stakedCelo.address);
+      await nonVote.sendTransaction({ value: parseUnits("1"), to: stakedCeloSigner.address });
+    });
+
+    it("should not schedule any transfers if both account use default strategy", async () => {
+      await manager.connect(stakedCeloSigner).transfer(depositor.address, depositor2.address, 10);
+      const [
+        lastTransferFromGroups,
+        lastTransferFromVotes,
+        lastTransferToGroups,
+        lastTransferToVotes,
+      ] = await account.getLastTransferValues();
+
+      expect(lastTransferFromGroups.length).to.eq(0);
+      expect(lastTransferFromVotes.length).to.eq(0);
+      expect(lastTransferToGroups.length).to.eq(0);
+      expect(lastTransferToVotes.length).to.eq(0);
+    });
+
+    describe("When depositor voted for specific strategy", () => {
+      const withdrawals = [40, 50];
+      let specificGroupAddress: string;
+
+      beforeEach(async () => {
+        specificGroupAddress = groupAddresses[2];
+        for (let i = 0; i < 2; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
+        }
+      });
+
+      it("should schedule transfers if specific strategy => default strategy", async () => {
+        const specificGroupWithdrawal = parseUnits("1");
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(specificGroupAddress, { value: specificGroupWithdrawal });
+        await depositTx.wait();
+
+        const transferAmount = specificGroupWithdrawal;
+        await manager
+          .connect(stakedCeloSigner)
+          .transfer(depositor.address, depositor2.address, transferAmount);
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups.length).to.eq(1);
+        expect(lastTransferFromGroups[0]).to.eq(specificGroupAddress);
+
+        expect(lastTransferFromVotes.length).to.eq(1);
+        expect(lastTransferFromVotes[0]).to.eq(transferAmount);
+
+        expect(lastTransferToGroups.length).to.eq(2);
+        expect(lastTransferToGroups[0]).to.eq(groupAddresses[0]);
+        expect(lastTransferToGroups[1]).to.eq(groupAddresses[1]);
+        expect(lastTransferToVotes.length).to.eq(2);
+        expect(lastTransferToVotes[0].add(lastTransferToVotes[1])).to.eq(transferAmount);
+      });
+
+      it("should schedule transfers if default strategy => specific strategy", async () => {
+        const defaultGroupDeposit = parseUnits("1");
+        const specificGroupDeposit = 10;
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(ADDRESS_ZERO, { value: defaultGroupDeposit });
+        await depositTx.wait();
+
+        const deposit2Tx = await manager
+          .connect(depositor2)
+          .depositSpecific(specificGroupAddress, { value: specificGroupDeposit });
+        await deposit2Tx.wait();
+
+        const transferAmount = defaultGroupDeposit;
+        await manager
+          .connect(stakedCeloSigner)
+          .transfer(depositor.address, depositor2.address, transferAmount);
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups.length).to.eq(2);
+        expect(lastTransferFromGroups[0]).to.eq(groupAddresses[0]);
+        expect(lastTransferFromGroups[1]).to.eq(groupAddresses[1]);
+        expect(lastTransferFromVotes.length).to.eq(2);
+        expect(lastTransferFromVotes[0].add(lastTransferFromVotes[1])).to.eq(transferAmount);
+
+        expect(lastTransferToGroups.length).to.eq(1);
+        expect(lastTransferToGroups[0]).to.eq(specificGroupAddress);
+        expect(lastTransferToVotes.length).to.eq(1);
+        expect(lastTransferToVotes[0]).to.eq(transferAmount);
+      });
+
+      it("should schedule transfers if specific strategy => specific strategy", async () => {
+        const defaultGroupDeposit = parseUnits("1");
+        const specificGroupDeposit = 10;
+        const depositTx = await manager
+          .connect(depositor)
+          .depositSpecific(groupAddresses[0], { value: defaultGroupDeposit });
+        await depositTx.wait();
+
+        const deposit2Tx = await manager
+          .connect(depositor2)
+          .depositSpecific(specificGroupAddress, { value: specificGroupDeposit });
+        await deposit2Tx.wait();
+
+        const transferAmount = defaultGroupDeposit;
+        await manager
+          .connect(stakedCeloSigner)
+          .transfer(depositor.address, depositor2.address, transferAmount);
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups.length).to.eq(1);
+        expect(lastTransferFromGroups[0]).to.eq(groupAddresses[0]);
+        expect(lastTransferFromVotes.length).to.eq(1);
+        expect(lastTransferFromVotes[0]).to.eq(transferAmount);
+
+        expect(lastTransferToGroups.length).to.eq(1);
+        expect(lastTransferToGroups[0]).to.eq(specificGroupAddress);
+        expect(lastTransferToVotes.length).to.eq(1);
+        expect(lastTransferToVotes[0]).to.eq(transferAmount);
+      });
     });
   });
 });

@@ -42,4 +42,8 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
     function unlockVoteBalance(address beneficiary) public {
         unlockedBalanceFor = beneficiary;
     }
+
+    receive() external payable {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
