@@ -99,6 +99,9 @@ jobs:
       - name: Install dependencies
         run: yarn
 
+      - name: Clean
+        run: yarn clean
+
       - name: Compile contracts and generate typechain bindings
         run: yarn compile
 
@@ -113,6 +116,10 @@ jobs:
       
       - name: Install master dependencies
         run: yarn
+        working-directory: ./master
+
+      - name: Clean master
+        run: yarn clean
         working-directory: ./master
 
       - name: Compile master
