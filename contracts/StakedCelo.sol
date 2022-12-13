@@ -9,6 +9,7 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
+import "hardhat/console.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation
@@ -142,6 +143,10 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         address to,
         uint256 amount
     ) internal override {
+        if (from == address(0) || to == address(0)) {
+            // mint or burn
+            return;
+        }
         IManager(manager).transfer(from, to, amount);
     }
 

@@ -44,4 +44,6 @@ interface ILockedGold {
     function isSlasher(address) external view returns (bool);
 
     function owner() external view returns (address);
+
+    function getAccountNonvotingLockedGold(address account) external view returns (uint256);
 }

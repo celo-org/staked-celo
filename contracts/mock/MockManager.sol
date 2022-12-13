@@ -9,13 +9,13 @@ import "../interfaces/IManager.sol";
  * 1. Return currently locked stCelo.
  */
 contract MockManager is IManager {
-    uint256 private lockedStCelo = 0;
     struct MockTransfer {
         address from;
         address to;
         uint256 amount;
     }
 
+    uint256 private lockedStCelo = 0;
     MockTransfer[] public transfers;
 
     function setLockedStCelo(uint256 _lockedStCelo) public {

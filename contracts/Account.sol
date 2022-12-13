@@ -7,6 +7,7 @@ import "./Managed.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./interfaces/IAccount.sol";
+import "hardhat/console.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
@@ -194,6 +195,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /// @notice Voting for proposal was not successfull.
     error VotingNotSuccessful(uint256 proposalId);
 
+    /// @notice Scheduling transfer was not successfull since
+    /// total amount of from and to are not the same.
+    error TransferAmountMisalignment();
+
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
@@ -243,13 +248,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         uint256 totalVotes;
         for (uint256 i = 0; i < groups.length; i++) {
-            uint256 remainingVotes = votes[i];
-            if (scheduledVotes[groups[i]].toRevoke > 0) {
-                uint256 toSubtract = Math.min(scheduledVotes[groups[i]].toRevoke, votes[i]);
-                scheduledVotes[groups[i]].toRevoke -= toSubtract;
-                remainingVotes -= toSubtract;
-            }
-            scheduledVotes[groups[i]].toVote += remainingVotes;
+            addToVote(groups[i], votes[i]);
             totalVotes += votes[i];
             emit VotesScheduled(groups[i], votes[i]);
         }
@@ -277,25 +276,73 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
+        uint256 checkSumOfTotalVotes;
 
         for (uint256 i = 0; i < fromGroups.length; i++) {
-            uint256 remainingToRevoke = fromVotes[i];
-            if (scheduledVotes[fromGroups[i]].toVote > 0) {
-                uint256 toSubtract = Math.min(
-                    remainingToRevoke,
-                    scheduledVotes[fromGroups[i]].toVote
-                );
-                scheduledVotes[fromGroups[i]].toVote -= toSubtract;
-                remainingToRevoke -= toSubtract;
-            }
-            scheduledVotes[fromGroups[i]].toRevoke += remainingToRevoke;
+            addToRevoke(fromGroups[i], fromVotes[i]);
             emit VotesToRevokeScheduled(fromGroups[i], fromVotes[i]);
+            checkSumOfTotalVotes += fromVotes[i];
         }
 
         for (uint256 i = 0; i < toGroups.length; i++) {
-            scheduledVotes[toGroups[i]].toVote += toVotes[i];
+            addToVote(toGroups[i], toVotes[i]);
             emit VotesScheduled(toGroups[i], toVotes[i]);
+            checkSumOfTotalVotes -= toVotes[i];
         }
+
+        if (checkSumOfTotalVotes != 0) {
+            revert TransferAmountMisalignment();
+        }
+    }
+
+    function getToVote(address group) private returns (uint256) {
+        uint256 finalToVote = scheduledVotes[group].toVote;
+
+        if (scheduledVotes[group].toRevoke > 0) {
+            uint256 toSubtract = Math.min(finalToVote, scheduledVotes[group].toRevoke);
+            scheduledVotes[group].toRevoke -= toSubtract;
+            finalToVote -= toSubtract;
+            scheduledVotes[group].toVote = finalToVote;
+        }
+
+        return finalToVote;
+    }
+
+    function getToRevoke(address group) private returns (uint256) {
+        uint256 finalToRevoke = scheduledVotes[group].toRevoke;
+
+        if (scheduledVotes[group].toVote > 0) {
+            uint256 toSubtract = Math.min(finalToRevoke, scheduledVotes[group].toVote);
+            scheduledVotes[group].toVote -= toSubtract;
+            finalToRevoke -= toSubtract;
+            scheduledVotes[group].toRevoke = finalToRevoke;
+        }
+
+        return finalToRevoke;
+    }
+
+    function addToVote(address group, uint256 toAdd) private returns (uint256) {
+        uint256 finalToVote = scheduledVotes[group].toVote + toAdd;
+
+        if (scheduledVotes[group].toRevoke > 0) {
+            uint256 toSubtract = Math.min(finalToVote, scheduledVotes[group].toRevoke);
+            scheduledVotes[group].toRevoke -= toSubtract;
+            finalToVote -= toSubtract;
+        }
+        scheduledVotes[group].toVote = finalToVote;
+        return finalToVote;
+    }
+
+    function addToRevoke(address group, uint256 toAdd) private returns (uint256) {
+        uint256 finalToRevoke = scheduledVotes[group].toRevoke + toAdd;
+
+        if (scheduledVotes[group].toVote > 0) {
+            uint256 toSubtract = Math.min(finalToRevoke, scheduledVotes[group].toVote);
+            scheduledVotes[group].toVote -= toSubtract;
+            finalToRevoke -= toSubtract;
+        }
+        scheduledVotes[group].toRevoke = finalToRevoke;
+        return finalToRevoke;
     }
 
     /**
@@ -376,13 +423,12 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         scheduledVotes[group].toWithdraw -= withdrawalAmount;
         totalScheduledWithdrawals -= withdrawalAmount;
 
-        uint256 immediateWithdrawalAmount = scheduledVotes[group].toVote;
+        uint256 immediateWithdrawalAmount = getToVote(group);
 
         if (immediateWithdrawalAmount > 0) {
             if (immediateWithdrawalAmount > withdrawalAmount) {
                 immediateWithdrawalAmount = withdrawalAmount;
             }
-
             scheduledVotes[group].toVote -= immediateWithdrawalAmount;
 
             // The benefit of using getGoldToken().transfer() rather than transferring
@@ -442,7 +488,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         IElection election = getElection();
 
         // The amount of unlocked CELO for group that we want to lock and vote with.
-        uint256 unlockedCeloForGroup = scheduledVotes[group].toVote;
+        uint256 celoToVoteForGroup = getToVote(group);
 
         // Reset the unlocked CELO amount for group.
         scheduledVotes[group].toVote = 0;
@@ -456,17 +502,28 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         // If there is no CELO to lock up and vote with, return.
-        if (unlockedCeloForGroup == 0) {
+        if (celoToVoteForGroup == 0) {
             return;
         }
 
+        uint256 accountLockedUnvotingGold = getLockedGold().getAccountNonvotingLockedGold(
+            address(this)
+        );
+
+        // There might be some locked unvoting (revoked) gold from previous transfers
+        uint256 toLock = accountLockedUnvotingGold >= celoToVoteForGroup
+            ? 0
+            : celoToVoteForGroup - accountLockedUnvotingGold;
+
         // Lock up the unlockedCeloForGroup in LockedGold, which increments the
         // non-voting LockedGold balance for this contract.
-        getLockedGold().lock{value: unlockedCeloForGroup}();
+        if (toLock > 0) {
+            getLockedGold().lock{value: toLock}();
+        }
 
         // Vote for group using the newly locked CELO, reverting if it fails.
-        if (!election.vote(group, unlockedCeloForGroup, voteLesser, voteGreater)) {
-            revert VoteFailed(group, unlockedCeloForGroup);
+        if (!election.vote(group, celoToVoteForGroup, voteLesser, voteGreater)) {
+            revert VoteFailed(group, celoToVoteForGroup);
         }
     }
 
@@ -595,6 +652,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         return
             getElection().getTotalVotesForGroupByAccount(group, address(this)) +
             scheduledVotes[group].toVote -
+            scheduledVotes[group].toRevoke -
             scheduledVotes[group].toWithdraw;
     }
 
@@ -605,6 +663,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     function scheduledVotesForGroup(address group) external view returns (uint256) {
         return scheduledVotes[group].toVote;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO that's scheduled to revoke for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO directed towards `group`.
+     */
+    function scheduledRevokeForGroup(address group) external view returns (uint256) {
+        return scheduledVotes[group].toRevoke;
     }
 
     /**
@@ -661,8 +728,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 index
     ) public {
         // The amount of locked CELO for group that we want to revoke.
-        uint256 revokeAmount = scheduledVotes[group].toRevoke;
-        require(revokeAmount > 0, "No votes to revoke");
+        uint256 revokeAmount = getToRevoke(group);
+
+        if (revokeAmount == 0) {
+            return;
+        }
 
         revokeVotes(
             group,
@@ -673,6 +743,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             greaterAfterActiveRevoke,
             index
         );
+
+        scheduledVotes[group].toRevoke -= revokeAmount;
     }
 
     /**

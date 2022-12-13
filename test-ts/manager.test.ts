@@ -1190,6 +1190,141 @@ describe("Manager", () => {
       });
     });
 
+    describe("when all groups have equal votes and one of the groups was voted for as for specific group", () => {
+      let specificGroup: SignerWithAddress;
+      beforeEach(async () => {
+        specificGroup = groups[0];
+        const specificGroupWithdrawal = 100;
+        for (let i = 0; i < 3; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], 100);
+        }
+
+        await account.setCeloForGroup(specificGroup.address, 100 + specificGroupWithdrawal);
+
+        const depositTx = await manager
+          .connect(depositor2)
+          .depositSpecific(specificGroup.address, { value: specificGroupWithdrawal });
+        await depositTx.wait();
+
+        await stakedCelo.mint(depositor.address, 300);
+        await account.setTotalCelo(300 + specificGroupWithdrawal);
+      });
+
+      it("distributes withdrawals evenly", async () => {
+        await manager.connect(depositor).withdraw(99);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal(groupAddresses.slice(0, 3));
+        expect(withdrawals).to.deep.equal([
+          BigNumber.from("33"),
+          BigNumber.from("33"),
+          BigNumber.from("33"),
+        ]);
+      });
+
+      it("distributes a slight overflow correctly", async () => {
+        await manager.connect(depositor).withdraw(100);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal(groupAddresses.slice(0, 3));
+        expect(withdrawals).to.deep.equal([
+          BigNumber.from("33"),
+          BigNumber.from("33"),
+          BigNumber.from("34"),
+        ]);
+      });
+
+      it("distributes a different slight overflow correctly", async () => {
+        await manager.connect(depositor).withdraw(101);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal(groupAddresses.slice(0, 3));
+        expect(withdrawals).to.deep.equal([
+          BigNumber.from("33"),
+          BigNumber.from("34"),
+          BigNumber.from("34"),
+        ]);
+      });
+
+      describe("when one of the non specific groups is deprecated", () => {
+        beforeEach(async () => {
+          await manager.deprecateGroup(groupAddresses[1]);
+        });
+
+        it("withdraws a small withdrawal from the deprecated group only", async () => {
+          await manager.connect(depositor).withdraw(30);
+          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          expect(withdrawnGroups).to.deep.equal([groupAddresses[1]]);
+          expect(withdrawals).to.deep.equal([BigNumber.from("30")]);
+        });
+
+        it("withdraws a larger withdrawal from the deprecated group first, then the remaining groups", async () => {
+          await manager.connect(depositor).withdraw(120);
+          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          expect(withdrawnGroups).to.deep.equal([
+            groupAddresses[1],
+            groupAddresses[0],
+            groupAddresses[2],
+          ]);
+          expect(withdrawals).to.deep.equal([
+            BigNumber.from("100"),
+            BigNumber.from("10"),
+            BigNumber.from("10"),
+          ]);
+        });
+
+        it("removes the deprecated group if it is no longer voted for", async () => {
+          await manager.connect(depositor).withdraw(120);
+          const deprecatedGroups = await manager.getDeprecatedGroups();
+          expect(deprecatedGroups).to.deep.eq([]);
+        });
+
+        it("emits a GroupRemoved event", async () => {
+          await expect(manager.connect(depositor).withdraw(120))
+            .to.emit(manager, "GroupRemoved")
+            .withArgs(groupAddresses[1]);
+        });
+      });
+
+      describe("when specific group is deprecated", () => {
+        beforeEach(async () => {
+          await manager.deprecateGroup(specificGroup.address);
+        });
+
+        it("withdraws a small withdrawal from the deprecated group only", async () => {
+          await manager.connect(depositor).withdraw(30);
+          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
+          expect(withdrawals).to.deep.equal([BigNumber.from("30")]);
+        });
+
+        it("withdraws a larger withdrawal from the deprecated group first, then the remaining groups", async () => {
+          await manager.connect(depositor).withdraw(220);
+          const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+          expect(withdrawnGroups).to.deep.equal([
+            specificGroup.address,
+            groupAddresses[2],
+            groupAddresses[1],
+          ]);
+          expect(withdrawals).to.deep.equal([
+            BigNumber.from("200"),
+            BigNumber.from("10"),
+            BigNumber.from("10"),
+          ]);
+        });
+
+        it("removes the deprecated group if it is no longer voted for", async () => {
+          await manager.connect(depositor).withdraw(220);
+          const deprecatedGroups = await manager.getDeprecatedGroups();
+          expect(deprecatedGroups).to.deep.eq([]);
+        });
+
+        it("emits a GroupRemoved event", async () => {
+          await expect(manager.connect(depositor).withdraw(220))
+            .to.emit(manager, "GroupRemoved")
+            .withArgs(specificGroup.address);
+        });
+      });
+    });
+
     describe("when groups have unequal votes", () => {
       const withdrawals = [40, 100, 30];
       beforeEach(async () => {
