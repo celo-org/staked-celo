@@ -186,6 +186,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error NotEnoughStCeloForSpecificGroup(address group);
 
     /**
+     *  @notice Used when an `onlyStCelo` function is called by a non-stCelo contract.
+     *  @param caller `msg.sender` that called the function.
+     */
+    error CallerNotStakedCello(address caller);
+
+    /**
+     * @dev Throws if called by any account other than the stCelo.
+     */
+    modifier onlyStakedCelo() {
+        if (address(stakedCelo) != msg.sender) {
+            revert CallerNotStakedCello(msg.sender);
+        }
+        _;
+    }
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -200,15 +216,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function initialize(address _registry, address _owner) external initializer {
         _transferOwnership(_owner);
         __UsingRegistry_init(_registry);
-    }
-
-    error CallerNotStakedCello(address caller);
-
-    modifier onlyStakedCelo() {
-        if (address(stakedCelo) != msg.sender) {
-            revert CallerNotStakedCello(msg.sender);
-        }
-        _;
     }
 
     /**
@@ -652,6 +659,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         account.scheduleWithdrawals(beneficiary, finalGroups, finalVotes);
     }
 
+    /**
+     * @notice Used to withdraw CELO from the system from specific validator group
+     * that account voted for previously.
+     * @param specificGroup The specific validator group that we want to withdraw from.
+     * @param withdrawal The amount of stCELO to withdraw.
+     */
     function withdrawFromSpecificGroup(address specificGroup, uint256 withdrawal)
         private
         returns (address[] memory groups, uint256[] memory votes)
@@ -679,6 +692,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
     }
 
+    /**
+     * @notice Whenever stCELO is being transferd we will check whether origin and target
+     * account use same strategy. If strategy differs we will schedule votes for tranfer.
+     * @param from The from account.
+     * @param to The to account.
+     * @param amount The amount.
+     */
     function transfer(
         address from,
         address to,
@@ -998,6 +1018,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return false;
     }
 
+    /**
+     * @notice Returns which strategy is account using
+     * address(0) = default strategy
+     * specific address - validator group address which is being voted for by an account
+     * @param accountAddress The account.
+     * @return The strategy.
+     */
     function getAccountStrategy(address accountAddress) external view returns (address) {
         return strategies[accountAddress];
     }
