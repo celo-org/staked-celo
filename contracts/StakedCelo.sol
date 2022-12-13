@@ -9,7 +9,6 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
-import "hardhat/console.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation

@@ -7,7 +7,6 @@ import "./Managed.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./interfaces/IAccount.sol";
-import "hardhat/console.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
