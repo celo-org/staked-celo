@@ -1592,7 +1592,7 @@ describe("Manager", () => {
 
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          "ERC20: burn amount exceeds balance"
+          `NotEnoughStCeloForSpecificGroup("${groupAddresses[0]}")`
         );
       });
     });
@@ -1637,8 +1637,9 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
-        const [, , specificGroups] = await manager.getAllGroups();
+        const [, deprecatedGroups, specificGroups] = await manager.getAllGroups();
         expect(specificGroups).to.deep.eq([]);
+        expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
       });
 
       it("should withdraw as much as possible from specific group and rest from default", async () => {
@@ -1656,13 +1657,14 @@ describe("Manager", () => {
           BigNumber.from("30"),
           BigNumber.from("50"),
         ]);
-        const [, , specificGroups] = await manager.getAllGroups();
+        const [, deprecatedGroups, specificGroups] = await manager.getAllGroups();
         expect(specificGroups).to.deep.eq([]);
+        expect(deprecatedGroups).to.deep.eq([]);
       });
 
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          "ERC20: burn amount exceeds balance"
+          `NotEnoughStCeloForSpecificGroup("${specificGroup.address}")`
         );
       });
     });
@@ -1698,9 +1700,10 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
-        const [activeGroups, , specificGroups] = await manager.getAllGroups();
+        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
+        expect(deprecatedGroups).to.deep.eq([]);
       });
 
       it("should withdraw same amount as originally deposited from specific group", async () => {
@@ -1715,7 +1718,7 @@ describe("Manager", () => {
 
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          "ERC20: burn amount exceeds balance"
+          `NotEnoughStCeloForSpecificGroup("${specificGroup.address}")`
         );
       });
     });

@@ -600,7 +600,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (specificGroup != address(0)) {
             (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
                 specificGroup,
-                withdrawal
+                withdrawal,
+                stCeloAmount
             );
             withdrawal -= specificWithdrawalsPerGroup[0];
             if (withdrawal == 0) {
@@ -668,10 +669,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
-    function withdrawFromSpecificGroup(address specificGroup, uint256 withdrawal)
-        private
-        returns (address[] memory groups, uint256[] memory votes)
-    {
+    function withdrawFromSpecificGroup(
+        address specificGroup,
+        uint256 withdrawal,
+        uint256 stCeloAmount
+    ) private returns (address[] memory groups, uint256[] memory votes) {
         uint256 votesRemaining = account.getCeloForGroup(specificGroup);
         uint256 votesToWithdraw = Math.min(votesRemaining, withdrawal);
 
@@ -680,17 +682,23 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         groups[0] = specificGroup;
         votes[0] = votesToWithdraw;
 
-        uint256 stCeloToWithdraw = toStakedCelo(votesToWithdraw);
-        if (stCeloToWithdraw > specificStrategyTotalStCeloVotes[specificGroup]) {
+        if (stCeloAmount > specificStrategyTotalStCeloVotes[specificGroup]) {
             revert NotEnoughStCeloForSpecificGroup(specificGroup);
         }
 
-        specificStrategyTotalStCeloVotes[specificGroup] -= toStakedCelo(withdrawal);
+        specificStrategyTotalStCeloVotes[specificGroup] -= stCeloAmount;
 
         if (specificStrategyTotalStCeloVotes[specificGroup] == 0) {
-            if (specificStrategyVotedGroups.remove(specificGroup)) {
-                delete specificStrategyTotalStCeloVotes[specificGroup];
-                emit GroupRemoved(specificGroup);
+            if (activeGroups.contains(specificGroup)) {
+                if (specificStrategyVotedGroups.remove(specificGroup)) {
+                    delete specificStrategyTotalStCeloVotes[specificGroup];
+                    emit GroupRemoved(specificGroup);
+                }
+            } else {
+                // if group is being removed from specific strategy
+                // groups and is not active make sure to withdraw all
+                // possibly remaining funds from there (there might be some dust)
+                _deprecateGroup(specificGroup);
             }
         }
     }
