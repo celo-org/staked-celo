@@ -1641,6 +1641,25 @@ describe("Manager", () => {
         expect(specificGroups).to.deep.eq([]);
       });
 
+      it("should withdraw as much as possible from specific group and rest from default", async () => {
+        await account.setCeloForGroup(specificGroup.address, specificGroupWithdrawal - 50);
+        await manager.connect(depositor).withdraw(100);
+        const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
+        expect(withdrawnGroups).to.deep.equal([
+          groupAddresses[0],
+          groupAddresses[1],
+          specificGroup.address,
+        ]);
+        console.log("withdrawals", JSON.stringify(withdrawals.map((k) => k.toString())));
+        expect(withdrawals).to.deep.equal([
+          BigNumber.from("20"),
+          BigNumber.from("30"),
+          BigNumber.from("50"),
+        ]);
+        const [, , specificGroups] = await manager.getAllGroups();
+        expect(specificGroups).to.deep.eq([]);
+      });
+
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
           "ERC20: burn amount exceeds balance"

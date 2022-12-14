@@ -685,7 +685,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert NotEnoughStCeloForSpecificGroup(specificGroup);
         }
 
-        specificStrategyTotalStCeloVotes[specificGroup] -= stCeloToWithdraw;
+        specificStrategyTotalStCeloVotes[specificGroup] -= toStakedCelo(withdrawal);
 
         if (specificStrategyTotalStCeloVotes[specificGroup] == 0) {
             if (specificStrategyVotedGroups.remove(specificGroup)) {
