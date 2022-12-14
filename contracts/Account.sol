@@ -40,8 +40,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     struct ScheduledVotes {
         uint256 toVote;
         uint256 toWithdraw;
-        uint256 toRevoke;
         mapping(address => uint256) toWithdrawFor;
+        uint256 toRevoke;
     }
 
     struct ScheduledTransfers {
@@ -868,7 +868,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             uint256
         )
     {
-        return (1, 1, 2, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
