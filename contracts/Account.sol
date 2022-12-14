@@ -43,12 +43,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         mapping(address => uint256) toWithdrawFor;
         uint256 toRevoke;
     }
-
-    struct ScheduledTransfers {
-        uint256 timestamp;
-        uint256 toSchedule;
-    }
-
     /**
      * @notice Keyed by beneficiary address, the related array of pending withdrawals.
      * See `PendingWithdrawal` for more info.
