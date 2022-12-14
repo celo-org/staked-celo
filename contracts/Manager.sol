@@ -59,7 +59,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice address -> strategy
      * address(0) = default strategy
-     * !address(0) = voting for specific validator groups
+     * !address(0) = voting for specific validator group
      */
     mapping(address => address) private strategies;
 
@@ -173,8 +173,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error HealthyGroup(address group);
 
     /**
-     * @notice Used when attempting to vote different strategy then before (default <-> specific).
-     * Please not that it is possible for each account to choose only one strategy.
+     * @notice Used when attempting to vote different strategy than before (default <-> specific).
+     * Please note that it is possible for every account to choose only one strategy
+     * (either default or vote for specific validator group).
      * @param group The group's address.
      */
     error VotedWrongStrategy(address group);
@@ -664,6 +665,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * that account voted for previously.
      * @param specificGroup The specific validator group that we want to withdraw from.
      * @param withdrawal The amount of stCELO to withdraw.
+     * @return groups The groups to withdraw from.
+     * @return votes The amount to withdraw from each group.
      */
     function withdrawFromSpecificGroup(address specificGroup, uint256 withdrawal)
         private
@@ -1021,7 +1024,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Returns which strategy is account using
      * address(0) = default strategy
-     * specific address - validator group address which is being voted for by an account
+     * !address(0) = voting for specific validator group
      * @param accountAddress The account.
      * @return The strategy.
      */

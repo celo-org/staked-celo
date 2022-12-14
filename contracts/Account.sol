@@ -71,7 +71,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
-     * @param group The validator group the CELO is intended to vote for.
+     * @param group The validator group the CELO is intended to revoke for.
      * @param amount The amount of CELO scheduled.
      */
     event VotesScheduled(address indexed group, uint256 amount);
@@ -195,7 +195,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     error VotingNotSuccessful(uint256 proposalId);
 
     /// @notice Scheduling transfer was not successfull since
-    /// total amount of from and to are not the same.
+    /// total amount of "from" and "to" are not the same.
     error TransferAmountMisalignment();
 
     /**
@@ -260,7 +260,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /**
      * @notice Schedules votes which will be revoked from groups.
      * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
-     * @param fromGroups The groups the deposited CELO is intended to vote for.
+     * @param fromGroups The groups the deposited CELO is intended to revoke from.
      * @param fromVotes The amount of CELO to schedule for each respective group
      * @param toGroups The groups the deposited CELO is intended to vote for.
      * @param toVotes The amount of CELO to schedule for each respective group
@@ -372,7 +372,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         scheduledVotes[group].toWithdraw -= withdrawalAmount;
         totalScheduledWithdrawals -= withdrawalAmount;
 
-        uint256 immediateWithdrawalAmount = getToVote(group);
+        // It might happen that toVotes are from transfers
+        // and the contract doesn't have enough CELO.
+        uint256 immediateWithdrawalAmount = Math.min(address(this).balance, getToVote(group));
 
         if (immediateWithdrawalAmount > 0) {
             if (immediateWithdrawalAmount > withdrawalAmount) {
