@@ -1,0 +1,161 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { parseUnits } from "ethers/lib/utils";
+import hre from "hardhat";
+import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
+import { Manager } from "../typechain-types/Manager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
+import {
+  activateAndVoteTest,
+  activateValidators,
+  distributeEpochRewards,
+  electMinimumNumberOfValidators,
+  LOCKED_GOLD_UNLOCKING_PERIOD,
+  mineToNextEpoch,
+  randomSigner,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+  resetNetwork,
+  timeTravel,
+} from "./utils";
+
+after(() => {
+  hre.kit.stop();
+});
+
+describe("e2e specific group voting", () => {
+  let accountContract: Account;
+  let managerContract: Manager;
+
+  const deployerAccountName = "deployer";
+  // deposits CELO, receives stCELO, but never withdraws it
+  let depositor0: SignerWithAddress;
+  // deposits CELO, receives stCELO, withdraws stCELO including rewards
+  let depositor1: SignerWithAddress;
+  // deposits CELO after rewards are distributed -> depositor will receive less stCELO than deposited CELO
+  let depositor2: SignerWithAddress;
+  let voter: SignerWithAddress;
+
+  let groups: SignerWithAddress[];
+  let activatedGroupAddresses: string[];
+  let validators: SignerWithAddress[];
+  let validatorAddresses: string[];
+
+  let stakedCeloContract: StakedCelo;
+
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
+  before(async function (this: any) {
+    this.timeout(0); // Disable test timeout
+    await resetNetwork();
+
+    process.env = {
+      ...process.env,
+      TIME_LOCK_MIN_DELAY: "1",
+      TIME_LOCK_DELAY: "1",
+      MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+      VALIDATOR_GROUPS: "",
+    };
+
+    [depositor0] = await randomSigner(parseUnits("300"));
+    [depositor1] = await randomSigner(parseUnits("300"));
+    [depositor2] = await randomSigner(parseUnits("300"));
+    [voter] = await randomSigner(parseUnits("300"));
+    const accounts = await hre.kit.contracts.getAccounts();
+    await accounts.createAccount().sendAndWaitForReceipt({
+      from: voter.address,
+    });
+    groups = [];
+    activatedGroupAddresses = [];
+    validators = [];
+    validatorAddresses = [];
+    for (let i = 0; i < 10; i++) {
+      const [group] = await randomSigner(parseUnits("11000"));
+      groups.push(group);
+      if (i < 3) {
+        activatedGroupAddresses.push(groups[i].address);
+      }
+      const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+      validators.push(validator);
+      validatorAddresses.push(validators[i].address);
+
+      await registerValidatorGroup(groups[i]);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
+    }
+    await electMinimumNumberOfValidators(groups, voter);
+  });
+
+  beforeEach(async () => {
+    await hre.deployments.fixture("core");
+    accountContract = await hre.ethers.getContract("Account");
+    managerContract = await hre.ethers.getContract("Manager");
+    stakedCeloContract = await hre.ethers.getContract("StakedCelo");
+
+    const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+  });
+
+  it("deposit and withdraw", async () => {
+    const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("1"));
+    const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("10"));
+    const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("20"));
+    const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("35"));
+    const rewardsGroup5 = hre.ethers.BigNumber.from(parseUnits("10"));
+
+    await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
+    await managerContract
+      .connect(depositor1)
+      .depositSpecific(groups[5].address, { value: amountOfCeloToDeposit });
+    let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+
+    await activateAndVoteTest();
+    await mineToNextEpoch(hre.web3);
+    await activateAndVoteTest();
+
+    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
+    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
+    await distributeEpochRewards(groups[5].address, rewardsGroup5.toString());
+
+    const withdrawStakedCelo = await managerContract
+      .connect(depositor1)
+      .withdraw(amountOfCeloToDeposit);
+    await withdrawStakedCelo.wait();
+
+    depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    expect(depositor1StakedCeloBalance).to.eq(0);
+
+    await hre.run(ACCOUNT_WITHDRAW, {
+      beneficiary: depositor1.address,
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+
+    const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
+
+    await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
+
+    const { timestamps } = await accountContract.getPendingWithdrawals(depositor1.address);
+
+    for (let i = 0; i < timestamps.length; i++) {
+      const finishPendingWithdrawal = await accountContract.finishPendingWithdrawal(
+        depositor1.address,
+        0,
+        0
+      );
+      await finishPendingWithdrawal.wait();
+    }
+
+    await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
+    const depositor2StakedCeloBalance = await stakedCeloContract.balanceOf(depositor2.address);
+    expect(
+      depositor2StakedCeloBalance.gt(0) && depositor2StakedCeloBalance.lt(amountOfCeloToDeposit)
+    ).to.be.true;
+
+    const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
+    expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+    const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
+    expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
+  });
+});
