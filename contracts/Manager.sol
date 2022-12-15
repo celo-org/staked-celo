@@ -403,7 +403,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 revert NoActiveGroups();
             }
         } else {
-            if (!isValidGroup(validatorGroup)) {
+            if (!isValidGroup(validatorGroup) && !deprecatedGroups.contains(validatorGroup)) {
                 revert GroupNotEligible(validatorGroup);
             }
             strategies[msg.sender] = validatorGroup;
@@ -597,7 +597,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address[] memory specificGroupsWithdrawn;
         uint256[] memory specificWithdrawalsPerGroup;
 
-        if (specificGroup != address(0)) {
+        if (specificGroup != address(0) && specificStrategyVotedGroups.contains(specificGroup)) {
             (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
                 specificGroup,
                 withdrawal,
