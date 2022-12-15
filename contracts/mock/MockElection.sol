@@ -15,6 +15,7 @@ contract MockElection is IElection {
     bool private hasActivatablePendingVotesReturnValue;
 
     uint256 public maxNumGroupsVotedFor;
+    mapping(address => bool) public allowedToVoteOverMaxNumberOfGroupsMapping;
 
     constructor() {
         // Set the return values to a benign default value
@@ -335,5 +336,13 @@ contract MockElection is IElection {
     ) external {
         // silence complier error that this function can be view / pure
         activateReturnValue = activateReturnValue;
+    }
+
+    function allowedToVoteOverMaxNumberOfGroups(address) external view returns (bool) {
+        return allowedToVoteOverMaxNumberOfGroupsMapping[msg.sender];
+    }
+
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external {
+        allowedToVoteOverMaxNumberOfGroupsMapping[msg.sender] = flag;
     }
 }
