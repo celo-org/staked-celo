@@ -71,3 +71,5 @@ export const MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION =
   "Submit a proposal to the multiSig contract.";
 export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION =
   "Encodes function payload on contract for proposal.";
+export const MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES_DESCRIPTION =
+  "Encodes manager set dependencies";

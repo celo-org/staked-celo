@@ -1,5 +1,5 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DAY } from "../../test-ts/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, multisigOwner0, multisigOwner1 } = await hre.getNamedAccounts();
   const owners = [multisigOwner0, multisigOwner1];
 
-  const deployment = await deploy("MultiSig", {
+  await deploy("MultiSig", {
     from: deployer,
     log: true,
     args: [3 * DAY],

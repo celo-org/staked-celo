@@ -1,16 +1,18 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
-import BigNumber from "bignumber.js";
-import { Wallet, BigNumber as EthersBigNumber, Contract } from "ethers";
-import Web3 from "web3";
-import hre, { ethers, kit } from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MULTISIG_EXECUTE_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL } from "../lib/tasksNames";
-import { Manager } from "../typechain-types/Manager";
 import { CeloTxReceipt } from "@celo/connect";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
+import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
-import BigNumberJs from "bignumber.js";
-import { MockRegistry } from "../typechain-types/MockRegistry";
+import hre, { ethers, kit } from "hardhat";
+import Web3 from "web3";
+import {
+  ACCOUNT_ACTIVATE_AND_VOTE,
+  MULTISIG_EXECUTE_PROPOSAL,
+  MULTISIG_SUBMIT_PROPOSAL,
+} from "../lib/tasksNames";
+import { Manager } from "../typechain-types/Manager";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -27,7 +29,7 @@ export const LOCKED_GOLD_UNLOCKING_PERIOD = 3 * DAY;
 // ---- Validator utils ----
 
 // Locks the required CELO and registers as a validator group.
-export async function registerValidatorGroup(account: SignerWithAddress, members: number = 1) {
+export async function registerValidatorGroup(account: SignerWithAddress, members = 1) {
   const accounts = await kit.contracts.getAccounts();
   const tx = accounts.createAccount();
   await tx.sendAndWaitForReceipt({
@@ -121,8 +123,8 @@ export async function removeMembersFromGroup(group: SignerWithAddress) {
   const validatorGroup = await validators.getValidatorGroup(group.address);
 
   // deaffiliate then deregister
-  let txs: Promise<CeloTxReceipt>[] = [];
-  for (let validator of validatorGroup.members) {
+  const txs: Promise<CeloTxReceipt>[] = [];
+  for (const validator of validatorGroup.members) {
     const tx = validators.removeMember(validator).sendAndWaitForReceipt({ from: group.address });
     txs.push(tx);
   }
@@ -152,19 +154,23 @@ export async function activateValidators(
   const values: string[] = [];
 
   for (let i = 0; i < 3; i++) {
+    const isValidGroup = await managerContract.isValidGroup(groupAddresses[i]);
+    if (!isValidGroup) {
+      throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
+    }
     destinations.push(managerContract.address);
     values.push("0");
     payloads.push(
       managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
     );
   }
+
   await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
   const lockedGold = await kit.contracts.getLockedGold();
   const election = await kit.contracts.getElection();
-
   await lockedGold.lock().sendAndWaitForReceipt({
     from: voter.address,
     value: parseUnits("1").toString(),
@@ -249,6 +255,12 @@ export async function randomSigner(
   return [signerWithAddress, wallet];
 }
 
+export async function getImpersonatedSigner(address: string) {
+  await impersonateAccount(address);
+  const signerWithAddress = await ethers.getSigner(address);
+  return signerWithAddress;
+}
+
 // Some function are finicky about whether they allow the input hex string to
 // start with 0x0... This function strips that first zero after 0x so the first
 // hex digit is non-0.
@@ -311,7 +323,9 @@ export function getFirstBlockNumberForEpoch(
 
 // `useGanache` allows for mining block directly on the ganache network
 export async function mineBlocks(blocks: number, useGanache?: boolean) {
-  let localProvider: JsonRpcProvider;
+  // TODO: add type back once we update to latest hardhat
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let localProvider: any;
   if (useGanache) {
     localProvider = new ethers.providers.JsonRpcProvider("http://localhost:7545");
   } else {
@@ -373,7 +387,7 @@ export async function submitAndExecuteProposal(
   values: string[],
   payloads: string[]
 ) {
-  await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
+  const proposalId = await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
     destinations: destinations.join(","),
     values: values.join(","),
     payloads: payloads.join(","),
@@ -381,18 +395,22 @@ export async function submitAndExecuteProposal(
     useNodeAccount: true,
   });
 
-  await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
-    proposalId: 0,
-    account: account,
-    useNodeAccount: true,
-  });
+  try {
+    await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
+      proposalId: proposalId,
+      account: account,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw new Error(`execute proposal failed ${JSON.stringify(error)}`);
+  }
 }
 
 export async function waitForEvent(
   contract: Contract,
   eventName: string,
   expectedValue: string,
-  timeout: number = 10000
+  timeout = 10000
 ) {
   await new Promise<void>((resolve, reject) => {
     setTimeout(() => {
@@ -408,8 +426,25 @@ export async function waitForEvent(
   });
 }
 
-export async function getImpersonatedSigner(address: string) {
-  await impersonateAccount(address);
-  const signerWithAddress = await ethers.getSigner(address);
-  return signerWithAddress;
+export async function activateAndVoteTest(deployerAccountName = "deployer") {
+  try {
+    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Activate and vote failed! ${JSON.stringify(error)}`);
+  }
+}
+
+export async function setGovernanceConcurrentProposals(count: number) {
+  const governanceWrapper = await hre.kit.contracts.getGovernance();
+  const governanceContract = governanceWrapper["contract"];
+
+  const governanceOwner = await (await governanceContract.methods.owner()).call();
+  const setConcurrentProposalsTx = await governanceContract.methods.setConcurrentProposals(count);
+  await impersonateAccount(governanceOwner);
+  await setConcurrentProposalsTx.send({
+    from: governanceOwner,
+  });
 }

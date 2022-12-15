@@ -1,5 +1,5 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { catchNotOwnerForProxy, executeAndWait } from "../lib/deploy-utils";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
 
-  const deployment = await catchNotOwnerForProxy(
+  await catchNotOwnerForProxy(
     deploy("Manager", {
       from: deployer,
       log: true,

@@ -1,6 +1,6 @@
 import fs from "fs";
-import path from "path";
 import hre from "hardhat";
+import path from "path";
 
 /*
  * TODO: See why this doesn't do the job.

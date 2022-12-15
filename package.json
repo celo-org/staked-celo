@@ -19,8 +19,8 @@
     "@typechain/hardhat": "^4.0.0",
     "@typechain/truffle-v5": "^3.0.0",
     "@types/chai": "^4.3.0",
-    "@types/minimist": "^1.2.2",
     "@types/fs-extra": "^9.0.13",
+    "@types/minimist": "^1.2.2",
     "@types/mocha": "^9.1.0",
     "@types/node": "^17.0.17",
     "@types/yargs": "^17.0.10",
@@ -41,8 +41,13 @@
     "typechain": "^7.0.0",
     "typescript": "^4.5.5",
     "@celo/staked-celo-hardhat-deploy": "git+https://github.com/celo-org/staked-celo-hardhat-deploy.git",
+    "@celo/contract-compatibility-check": "git+https://github.com/celo-org/contract-compatibility-check.git",
     "web3": "1.3.6",
-    "web3-utils": "^1.3.0"
+    "web3-utils": "^1.3.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "prettier-plugin-organize-imports": "^3.2.1"
   },
   "scripts": {
     "compile": "yarn run hardhat compile",
@@ -52,8 +57,9 @@
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
     "devchain": "yarn run celo-devchain --port 7545 --file ./devChain/devchain.tar.gz",
     "lint": "yarn run lint:sol && yarn run lint:ts",
+    "eslint:ts": "yarn run eslint ./",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
-    "lint:ts": "prettier --write ./**/*.ts",
+    "lint:ts": "prettier --write ./**/*.ts && yarn eslint:ts",
     "lint:ci": "yarn run lint:sol:ci && yarn run lint:ts:ci",
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
     "lint:ts:ci": "prettier --check ./**/*.ts",
@@ -62,7 +68,9 @@
     "keys:encrypt": "bash scripts/key_placer.sh encrypt",
     "deploy": "hardhat stakedCelo:deploy --show-stack-traces --tags core",
     "verify:deploy": "hardhat sourcify",
-    "tarchain": "ts-node scripts/tarchain.ts"
+    "tarchain": "ts-node scripts/tarchain.ts",
+    "generate:standard:artifacts": "ts-node scripts/standardize-artifacts.ts run",
+    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -e \".*Test|Mock.*|I[A-Z].*|.*Proxy|MultiSig.*|ReleaseGold|SlasherUtil|UsingPrecompiles|^UsingRegistry|ERC20.*\""
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

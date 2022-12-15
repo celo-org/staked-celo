@@ -20,6 +20,12 @@ contract MockAccount {
 
     mapping(address => uint256) public scheduledVotesForGroup;
 
+    uint256 public proposalIdVoted;
+    uint256 public indexVoted;
+    uint256 public yesVotesVoted;
+    uint256 public noVotesVoted;
+    uint256 public abstainVoteVoted;
+
     function scheduleVotes(address[] calldata groups, uint256[] calldata votes) external payable {
         lastVotedGroups = groups;
         lastVotes = votes;
@@ -65,4 +71,18 @@ contract MockAccount {
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
+
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        proposalIdVoted = proposalId;
+        indexVoted = index;
+        yesVotesVoted = yesVotes;
+        noVotesVoted = noVotes;
+        abstainVoteVoted = abstainVotes;
+    }
 }

@@ -1,10 +1,13 @@
-import hre from "hardhat";
-import { Account } from "../typechain-types/Account";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import hre from "hardhat";
+import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
+import { Manager } from "../typechain-types/Manager";
+import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
+  activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
   electMinimumNumberOfValidators,
@@ -16,9 +19,6 @@ import {
   resetNetwork,
   timeTravel,
 } from "./utils";
-import { Manager } from "../typechain-types/Manager";
-import { ACCOUNT_ACTIVATE_AND_VOTE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
-import { StakedCelo } from "../typechain-types/StakedCelo";
 
 after(() => {
   hre.kit.stop();
@@ -28,7 +28,7 @@ describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
 
-  const deployerAccountName: String = "deployer";
+  const deployerAccountName = "deployer";
   // deposits CELO, receives stCELO, but never withdraws it
   let depositor0: SignerWithAddress;
   // deposits CELO, receives stCELO, withdraws stCELO including rewards
@@ -44,6 +44,7 @@ describe("e2e", () => {
 
   let stakedCeloContract: StakedCelo;
 
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
     this.timeout(0); // Disable test timeout
     await resetNetwork();
@@ -105,15 +106,9 @@ describe("e2e", () => {
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
-      account: deployerAccountName,
-      useNodeAccount: true,
-    });
+    await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
-    await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
-      account: deployerAccountName,
-      useNodeAccount: true,
-    });
+    await activateAndVoteTest();
 
     await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());

@@ -178,6 +178,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /// @notice There's no amount of scheduled withdrawal for the given beneficiary and group.
     error NoScheduledWithdrawal(address beneficiary, address group);
 
+    /// @notice Voting for proposal was not successfull.
+    error VotingNotSuccessful(uint256 proposalId);
+
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
@@ -696,7 +699,58 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         return (pendingWithdrawal.value, pendingWithdrawal.timestamp);
     }
 
+    /**
+     * @notice Turns on/off voting for more then max number of groups.
+     * @param flag The on/off flag.
+     */
     function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
         getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public onlyManager {
+        bool voteResult = getGovernance().votePartially(
+            proposalId,
+            index,
+            yesVotes,
+            noVotes,
+            abstainVotes
+        );
+        if (!voteResult) {
+            revert VotingNotSuccessful(proposalId);
+        }
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 2, 0);
     }
 }

@@ -8,6 +8,7 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "./interfaces/IVote.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
@@ -49,6 +50,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * of because the Account contract is still voting for them.
      */
     EnumerableSet.AddressSet private deprecatedGroups;
+
+    /**
+     * @notice Contract used during Governance voting.
+     */
+    address public voteContract;
+
+    /**
+     * @notice Emitted when the vote contract is initially set or later modified.
+     * @param voteContract The new vote contract address.
+     */
+    event VoteContractSet(address indexed voteContract);
 
     /**
      * @notice Emitted when a new group is activated for voting.
@@ -167,10 +179,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
+     * @param _vote The address of the Vote contract.
      */
-    function setDependencies(address _stakedCelo, address _account) external onlyOwner {
+    function setDependencies(
+        address _stakedCelo,
+        address _account,
+        address _vote
+    ) external onlyOwner {
+        require(_stakedCelo != address(0), "stakedCelo null address");
+        require(_account != address(0), "account null address");
+        require(_vote != address(0), "vote null address");
+
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
+        voteContract = _vote;
+        emit VoteContractSet(_vote);
     }
 
     /**
@@ -671,6 +694,70 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        IVote vote = IVote(voteContract);
+
+        (
+            uint256 stCeloUsedForVoting,
+            uint256 totalYesVotes,
+            uint256 totalNoVotes,
+            uint256 totalAbstainVotes
+        ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
+
+        stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    /**
+     * @notice Revokes votes on already voted proposal.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     */
+    function revokeVotes(uint256 proposalId, uint256 index) external {
+        IVote vote = IVote(voteContract);
+
+        (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
+            msg.sender,
+            proposalId
+        );
+
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    /**
+     * @notice Unlock balance of vote stCelo and update beneficiary vote history.
+     * @param beneficiary The account to be unlocked.
+     */
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
+        external
+        returns (uint256)
+    {
+        IVote vote = IVote(voteContract);
+        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
+    }
+
+    /**
+     * @notice Unlock vote balance of stCelo.
+     * @param accountAddress The account to be unlocked.
+     */
+    function unlockBalance(address accountAddress) public {
+        stakedCelo.unlockVoteBalance(accountAddress);
+    }
+
+    /**
      * @notice Marks a group as deprecated.
      * @param group The group to deprecate.
      */
@@ -707,5 +794,25 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         return false;
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 2, 0, 0);
     }
 }
