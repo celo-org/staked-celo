@@ -65,17 +65,17 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
-     * @param group The validator group the CELO is intended to revoke for.
+     * @param group The validator group the CELO is intended to vote for.
      * @param amount The amount of CELO scheduled.
      */
     event VotesScheduled(address indexed group, uint256 amount);
 
     /**
-     * @notice Emitted when CELO is scheduled for revoke for a given group.
-     * @param group The validator group the CELO is intended to vote for.
+     * @notice Emitted when CELO is scheduled to be revoked from a given group.
+     * @param group The validator group the CELO is being revoked from.
      * @param amount The amount of CELO scheduled.
      */
-    event VotesToRevokeScheduled(address indexed group, uint256 amount);
+    event RevocationScheduled(address indexed group, uint256 amount);
 
     /**
      * @notice Emitted when CELO withdrawal is scheduled for a group.
@@ -188,8 +188,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /// @notice Voting for proposal was not successfull.
     error VotingNotSuccessful(uint256 proposalId);
 
-    /// @notice Scheduling transfer was not successfull since
-    /// total amount of "from" and "to" are not the same.
+    /**
+     * @notice Scheduling transfer was not successfull since
+     * total amount of "from" and "to" are not the same.
+     */
     error TransferAmountMisalignment();
 
     /**
@@ -243,7 +245,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         for (uint256 i = 0; i < groups.length; i++) {
             addToVote(groups[i], votes[i]);
             totalVotes += votes[i];
-            emit VotesScheduled(groups[i], votes[i]);
         }
 
         if (totalVotes != uint256(msg.value)) {
@@ -253,10 +254,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
     /**
      * @notice Schedules votes which will be revoked from groups.
-     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
-     * @param fromGroups The groups the deposited CELO is intended to revoke from.
-     * @param fromVotes The amount of CELO to schedule for each respective group
-     * @param toGroups The groups the deposited CELO is intended to vote for.
+     * @dev Only callable by the Manager contract, which must restrict which groups are valid.
+     * @param fromGroups The groups the deposited CELO is intended to be revoked from.
+     * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
+     * @param toGroups The groups the transferred CELO is intended to vote for.
      * @param toVotes The amount of CELO to schedule for each respective group
      * from `groups`.
      */
@@ -269,21 +270,20 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
-        uint256 checkSumOfTotalVotes;
+        uint256 totalFromVotes;
+        uint256 totalToVotes;
 
         for (uint256 i = 0; i < fromGroups.length; i++) {
             addToRevoke(fromGroups[i], fromVotes[i]);
-            emit VotesToRevokeScheduled(fromGroups[i], fromVotes[i]);
-            checkSumOfTotalVotes += fromVotes[i];
+            totalFromVotes += fromVotes[i];
         }
 
         for (uint256 i = 0; i < toGroups.length; i++) {
             addToVote(toGroups[i], toVotes[i]);
-            emit VotesScheduled(toGroups[i], toVotes[i]);
-            checkSumOfTotalVotes -= toVotes[i];
+            totalToVotes += toVotes[i];
         }
 
-        if (checkSumOfTotalVotes != 0) {
+        if (totalFromVotes != totalToVotes) {
             revert TransferAmountMisalignment();
         }
     }
@@ -451,14 +451,14 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             return;
         }
 
-        uint256 accountLockedUnvotingGold = getLockedGold().getAccountNonvotingLockedGold(
+        uint256 accountLockedNonvotingCelo = getLockedGold().getAccountNonvotingLockedGold(
             address(this)
         );
 
         // There might be some locked unvoting (revoked) gold from previous transfers
-        uint256 toLock = accountLockedUnvotingGold >= celoToVoteForGroup
+        uint256 toLock = accountLockedNonvotingCelo >= celoToVoteForGroup
             ? 0
-            : celoToVoteForGroup - accountLockedUnvotingGold;
+            : celoToVoteForGroup - accountLockedNonvotingCelo;
 
         // Lock up the unlockedCeloForGroup in LockedGold, which increments the
         // non-voting LockedGold balance for this contract.
@@ -866,10 +866,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the toVote amount of CELO directed towards `group`. This is
-     * the toVote CELO balance for `group` minus the toRevoke amount. ToRevoke is updated.
+     * @notice Returns the `toVote` amount of CELO directed towards `group`.
+     * This is the `toVote` CELO balance for `group` minus the `toRevoke` amount.
+     * Both `ToRevoke` and `toVote` are updated.
      * @param group The address of the validator group.
-     * @return The toVote amount of CELO directed towards `group`.
+     * @return The `toVote` amount of CELO directed towards `group`.
      */
     function getToVote(address group) private returns (uint256) {
         uint256 finalToVote = scheduledVotes[group].toVote;
@@ -885,8 +886,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the toRevoke amount of CELO directed towards `group`. This is
-     * the toRevoke CELO balance for `group` minus the toVote amount. ToVote is updated.
+     * @notice Returns the `toRevoke` amount of CELO directed towards `group`. This is
+     * the `toRevoke` CELO balance for `group` minus the `toVote` amount.
+     * Both `ToRevoke` and `toVote` are updated.
      * @param group The address of the validator group.
      * @return The toRevote amount of CELO directed towards `group`.
      */
@@ -904,11 +906,12 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Adds amount to toVote and returns the toVote amount of CELO directed towards `group`.
-     * This is the toVote CELO balance for `group` minus the toRevoke amount. ToRevoke is updated.
-     * @param toAdd The amount to add to toVote.
+     * @notice Adds amount to `toVote` and returns the `toVote` amount of CELO directed
+     * towards `group`. This is the `toVote` CELO balance for `group` minus the `toRevoke`
+     * amount. Both `ToRevoke` and `toVote` are updated.
+     * @param toAdd The amount to add to `toVote`.
      * @param group The address of the validator group.
-     * @return The toVote amount of CELO directed towards `group`.
+     * @return The `toVote` amount of CELO directed towards `group`.
      */
     function addToVote(address group, uint256 toAdd) private returns (uint256) {
         uint256 finalToVote = scheduledVotes[group].toVote + toAdd;
@@ -919,16 +922,17 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             finalToVote -= toSubtract;
         }
         scheduledVotes[group].toVote = finalToVote;
+        emit VotesScheduled(group, toAdd);
         return finalToVote;
     }
 
     /**
-     * @notice Adds amount to toRevoke and returns the toRevoke amount of CELO directed towards
-     * `group`. This is the toRevoke CELO balance for `group` minus the toVote amount. ToVote
-     * is updated.
+     * @notice Adds amount to `toRevoke` and returns the `toRevoke` amount of CELO directed towards
+     * `group`. This is the `toRevoke` CELO balance for `group` minus the `toVote` amount.
+     * Both `ToRevoke` and `toVote` are updated.
      * @param toAdd The amount to add to toRevoke.
      * @param group The address of the validator group.
-     * @return The toVote amount of CELO directed towards `group`.
+     * @return The `toVote` amount of CELO directed towards `group`.
      */
     function addToRevoke(address group, uint256 toAdd) private returns (uint256) {
         uint256 finalToRevoke = scheduledVotes[group].toRevoke + toAdd;
@@ -939,6 +943,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             finalToRevoke -= toSubtract;
         }
         scheduledVotes[group].toRevoke = finalToRevoke;
+        emit RevocationScheduled(group, toAdd);
         return finalToRevoke;
     }
 }

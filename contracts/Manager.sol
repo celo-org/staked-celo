@@ -190,14 +190,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      *  @notice Used when an `onlyStCelo` function is called by a non-stCelo contract.
      *  @param caller `msg.sender` that called the function.
      */
-    error CallerNotStakedCello(address caller);
+    error CallerNotStakedCelo(address caller);
 
     /**
      * @dev Throws if called by any account other than the stCelo.
      */
     modifier onlyStakedCelo() {
         if (address(stakedCelo) != msg.sender) {
-            revert CallerNotStakedCello(msg.sender);
+            revert CallerNotStakedCelo(msg.sender);
         }
         _;
     }
