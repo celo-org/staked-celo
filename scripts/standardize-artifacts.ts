@@ -128,10 +128,13 @@ async function runCmd(outputDir: string, inputDir: string) {
     const art: ArtifactInterface = {
       contractName: contractName,
       ast: buildInfo!.output.sources[source].ast,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       abi: (buildInfo!.output.contracts[source]?.[contractName].abi as any) ?? [],
       bytecode: "0x",
       deployedBytecode: "0x",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       metadata: (buildInfo!.output.contracts[source]?.[contractName].metadata as any) ?? "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       source: (buildInfo!.input.sources[source]?.content as any) ?? "",
       compiler: {
         name: "solc",

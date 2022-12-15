@@ -1075,6 +1075,7 @@ describe("Account", () => {
     it("sets allowedToVoteOverMaxNumberOfGroups correctly", async () => {
       // TODO: once contractkit updated - use just election contract from contractkit
       const electionContract = new hre.kit.web3.eth.Contract(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         electionContractData.abi as any,
         election.address
       );
