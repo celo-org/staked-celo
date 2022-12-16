@@ -2347,4 +2347,138 @@ describe("Manager", () => {
       });
     });
   });
+
+  describe("#rebalance()", () => {
+    const fromGroupDepositedValue = 100;
+    const toGroupDepositedValue = 77;
+
+    it("should revert when trying to balance 0x0 and some group", async () => {
+      await manager.changeStrategy(groupAddresses[0]);
+      await manager.deposit({ value: fromGroupDepositedValue });
+      await expect(manager.rebalance(ADDRESS_ZERO, groupAddresses[0])).revertedWith(
+        `GroupNotEligible("${ADDRESS_ZERO}")`
+      );
+    });
+
+    it("should revert when trying to balance some and 0x0 group", async () => {
+      await manager.changeStrategy(groupAddresses[0]);
+      await manager.deposit({ value: fromGroupDepositedValue });
+
+      await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue + 1);
+
+      await expect(manager.rebalance(groupAddresses[0], ADDRESS_ZERO)).revertedWith(
+        `GroupNotEligible("${ADDRESS_ZERO}")`
+      );
+    });
+
+    it("should revert when trying to balance 0x0 and 0x0 group", async () => {
+      await expect(manager.rebalance(ADDRESS_ZERO, ADDRESS_ZERO)).revertedWith(
+        `GroupNotEligible("${ADDRESS_ZERO}")`
+      );
+    });
+
+    it("should revert when fromGroup has less Celo than it should", async () => {
+      await manager.changeStrategy(groupAddresses[0]);
+      await manager.deposit({ value: fromGroupDepositedValue });
+
+      await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
+      await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
+
+      await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue - 1);
+      await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
+        `GroupNotEligible("${groupAddresses[0]}")`
+      );
+    });
+
+    it("should revert when fromGroup has same Celo as it should", async () => {
+      await manager.changeStrategy(groupAddresses[0]);
+      await manager.deposit({ value: fromGroupDepositedValue });
+
+      await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
+      await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
+
+      await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue);
+      await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
+        `GroupNotEligible("${groupAddresses[0]}")`
+      );
+    });
+
+    describe("When fromGroup has valid properties", () => {
+      const toGroupDepositedValue = 77;
+
+      beforeEach(async () => {
+        await manager.changeStrategy(groupAddresses[0]);
+        await manager.deposit({ value: fromGroupDepositedValue });
+        await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue + 1);
+      });
+
+      it("should revert when toGroup has more Celo than it should", async () => {
+        await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
+        await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
+        await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue + 1);
+
+        await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
+          `GroupNotEligible("${groupAddresses[1]}")`
+        );
+      });
+
+      it("should revert when toGroup has same Celo as it should", async () => {
+        await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
+        await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
+        await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
+
+        await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
+          `GroupNotEligible("${groupAddresses[1]}")`
+        );
+      });
+
+      describe("When toGroup has valid properties", () => {
+        beforeEach(async () => {
+          await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
+          await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
+          await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue - 1);
+        });
+
+        it("should schedule transfer", async () => {
+          await manager.rebalance(groupAddresses[0], groupAddresses[1]);
+
+          const [
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes,
+          ] = await account.getLastTransferValues();
+
+          expect(lastTransferFromGroups).to.deep.eq([groupAddresses[0]]);
+          expect(lastTransferFromVotes).to.deep.eq([BigNumber.from(1)]);
+          expect(lastTransferToGroups).to.deep.eq([groupAddresses[1]]);
+          expect(lastTransferToVotes).to.deep.eq([BigNumber.from(1)]);
+        });
+
+        it("should schedule transfer from deprecated group", async () => {
+          await manager.deprecateGroup(groupAddresses[0]);
+          await manager.rebalance(groupAddresses[0], groupAddresses[1]);
+
+          const [
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes,
+          ] = await account.getLastTransferValues();
+
+          expect(lastTransferFromGroups).to.deep.eq([groupAddresses[0]]);
+          expect(lastTransferFromVotes).to.deep.eq([BigNumber.from(1)]);
+          expect(lastTransferToGroups).to.deep.eq([groupAddresses[1]]);
+          expect(lastTransferToVotes).to.deep.eq([BigNumber.from(1)]);
+        });
+
+        it("should revert when rebalance to deprecated group", async () => {
+          await manager.deprecateGroup(groupAddresses[1]);
+          await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
+            `GroupNotEligible("${groupAddresses[1]}")`
+          );
+        });
+      });
+    });
+  });
 });

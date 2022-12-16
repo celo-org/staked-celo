@@ -744,11 +744,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 expectedFromCelo;
         uint256 realFromCelo;
 
+        if (toGroup != _checkStrategy(toGroup)) {
+            // rebalancinch to deprecated/non-existant group is not allowed
+            revert GroupNotEligible(toGroup);
+        }
+
         (expectedFromCelo, realFromCelo) = getExpectedAndRealCeloForGroup(fromGroup);
 
         if (realFromCelo <= expectedFromCelo) {
             // fromGroup needs to have more Celo than it should
-            revert GroupNotEligible(toGroup);
+            revert GroupNotEligible(fromGroup);
         }
 
         uint256 expectedToCelo;
@@ -767,7 +772,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory toVotes = new uint256[](1);
 
         fromGroups[0] = fromGroup;
-        fromVotes[0] = Math.min(realFromCelo - expectedFromCelo, expectedFromCelo - realFromCelo);
+        fromVotes[0] = Math.min(realFromCelo - expectedFromCelo, expectedToCelo - realToCelo);
 
         toGroups[0] = toGroup;
         toVotes[0] = fromVotes[0];
