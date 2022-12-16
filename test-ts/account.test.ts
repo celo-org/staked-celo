@@ -461,9 +461,7 @@ describe("Account", () => {
         account
           .connect(manager)
           .scheduleTransfer(groupAddresses, [100, 30, 60], groupAddresses, [30, 70, 100])
-      ).revertedWith(
-        `reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block`
-      );
+      ).revertedWith(`TransferAmountMisalignment()`);
     });
 
     describe("When group has activated votes", () => {
