@@ -6,16 +6,17 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 export async function finishPendingWithdrawals(
   hre: HardhatRuntimeEnvironment,
   signer: Signer,
-  beneficiaryAddress: string
+  beneficiaryAddress: string,
+  verboseLog: boolean
 ) {
   const accountContract = await hre.ethers.getContract("Account");
   const numberOfPendingWithdrawals = await accountContract.getNumberPendingWithdrawals(
     beneficiaryAddress
   );
   const lockedGoldWrapper = await hre.kit.contracts.getLockedGold();
-
-  console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
-
+  if (verboseLog) {
+    console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
+  }
   while (true) {
     const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexesAndValidate(
       accountContract,
@@ -26,17 +27,18 @@ export async function finishPendingWithdrawals(
     if (localIndex < 0) {
       break;
     }
-
-    console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
-    console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
-    console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
-
+    if (verboseLog) {
+      console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
+      console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
+      console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
+    }
     const tx = await accountContract
       .connect(signer)
       .finishPendingWithdrawal(beneficiaryAddress, localIndex, lockedGoldIndex);
     const receipt = await tx.wait();
-
-    console.log(chalk.yellow("receipt status"), receipt.status);
+    if (verboseLog) {
+      console.log(chalk.yellow("receipt status"), receipt.status);
+    }
   }
 }
 

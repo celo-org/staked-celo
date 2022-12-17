@@ -1,13 +1,12 @@
 import chalk from "chalk";
 import { task } from "hardhat/config";
 import { setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
-
-import { MANAGER_GET_GROUPS } from "../tasksNames";
 import { MANAGER_GET_GROUPS_TASK_DESCRIPTION } from "../helpers/staticVariables";
+import { MANAGER_GET_GROUPS } from "../tasksNames";
 
 task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION).setAction(async (_, hre) => {
   try {
-    console.log("Starting stakedCelo:manager:getGroups task...");
+    console.log(chalk.blue("Starting stakedCelo:manager:getGroups task..."));
     await setLocalNodeDeploymentPath(hre);
 
     const managerContract = await hre.ethers.getContract("Manager");

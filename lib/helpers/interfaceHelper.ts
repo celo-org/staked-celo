@@ -15,6 +15,7 @@ export interface TransactionArguments {
   account?: string;
   useLedger: boolean;
   useNodeAccount: boolean;
+  verboseLog: boolean;
 }
 
 async function getSigner(
@@ -59,9 +60,11 @@ export async function getSignerAndSetDeploymentPath(
   return signer;
 }
 
-export function parseEvents(receipt: ContractReceipt, eventName: string) {
-  const event = receipt.events?.find((event) => event.event === eventName);
-  console.log(chalk.green("new event emitted:"), event?.event, `(${event?.args})`);
+export function parseEvents(verboseLog: boolean, receipt: ContractReceipt, eventName: string) {
+  if (verboseLog) {
+    const event = receipt.events?.find((event) => event.event === eventName);
+    console.log(chalk.green("new event emitted:"), event?.event, `(${event?.args})`);
+  }
 }
 
 export async function setLocalNodeDeploymentPath(hre: HardhatRuntimeEnvironment) {

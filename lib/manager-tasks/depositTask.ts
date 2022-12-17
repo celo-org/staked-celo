@@ -1,19 +1,18 @@
 import chalk from "chalk";
 import { task, types } from "hardhat/config";
 import { getSignerAndSetDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
-
-import { MANAGER_DEPOSIT } from "../tasksNames";
 import {
-  ACCOUNT_DESCRIPTION,
   ACCOUNT,
-  AMOUNT_DESCRIPTION,
+  ACCOUNT_DESCRIPTION,
   AMOUNT,
+  AMOUNT_DESCRIPTION,
+  MANAGER_DEPOSIT_TASK_DESCRIPTION,
   USE_LEDGER,
   USE_LEDGER_DESCRIPTION,
-  MANAGER_DEPOSIT_TASK_DESCRIPTION,
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { MANAGER_DEPOSIT } from "../tasksNames";
 
 task(MANAGER_DEPOSIT, MANAGER_DEPOSIT_TASK_DESCRIPTION)
   .addParam(AMOUNT, AMOUNT_DESCRIPTION, undefined, types.string)
@@ -22,7 +21,7 @@ task(MANAGER_DEPOSIT, MANAGER_DEPOSIT_TASK_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
-      console.log("Starting stakedCelo:manager:deposit task...");
+      console.log(chalk.blue("Starting stakedCelo:manager:deposit task..."));
 
       const signer = await getSignerAndSetDeploymentPath(hre, args);
 
