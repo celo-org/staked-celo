@@ -22,7 +22,6 @@ import {
   registerValidatorGroup,
   resetNetwork,
   setGovernanceConcurrentProposals,
-  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
 
@@ -145,7 +144,6 @@ describe("Vote", async function (this: any) {
     managerContract = await hre.ethers.getContract("Manager");
     voteContract = await hre.ethers.getContract("Vote");
 
-    const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
@@ -163,26 +161,11 @@ describe("Vote", async function (this: any) {
     });
   });
 
-  describe("#setReferendumDuration()", () => {
+  describe("#getReferendumDuration()", () => {
     it("should return same as governance referendum", async () => {
       const governanceStageDurations = await governanceWrapper.stageDurations();
-      const referendumDuration = await voteContract.referendumDuration();
+      const referendumDuration = await voteContract.getReferendumDuration();
       expect(referendumDuration.toString()).to.eq(governanceStageDurations.Referendum.toString());
-    });
-
-    it("should set new referendum duration and return same as governance", async () => {
-      const governanceStageDurations = await governanceWrapper.stageDurations();
-      const newReferendumDuration = governanceStageDurations.Referendum;
-
-      await submitAndExecuteProposal(
-        multisigOwner0.address,
-        [voteContract.address],
-        ["0"],
-        [voteContract.interface.encodeFunctionData("setReferendumDuration")]
-      );
-
-      const referendumDuration = await voteContract.referendumDuration();
-      expect(referendumDuration).to.eq(newReferendumDuration);
     });
   });
 
@@ -632,7 +615,7 @@ describe("Vote", async function (this: any) {
       const abstainVotesProposal3 = hre.web3.utils.toWei("4");
 
       beforeEach(async () => {
-        referendumDuration = await voteContract.referendumDuration();
+        referendumDuration = await voteContract.getReferendumDuration();
         await proposeNewProposal(false);
         await proposeNewProposal();
         await managerContract

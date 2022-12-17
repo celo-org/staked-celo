@@ -51,6 +51,31 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * @notice An instance of the StakedCelo contract this Manager manages.
+     */
+    IStakedCelo internal stakedCelo;
+
+    /**
+     * @notice An instance of the Account contract this Manager manages.
+     */
+    IAccount internal account;
+
+    /**
+     * @notice Votes of Account's contract per proposal.
+     */
+    mapping(uint256 => ProposalVoteRecord) private voteRecords;
+
+    /**
+     * @notice History of all voters.
+     */
+    mapping(address => Voter) private voters;
+
+    /**
+     * @notice Timestamps of every voted proposal.
+     */
+    mapping(uint256 => uint256) public proposalTimestamps;
+
+    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
@@ -86,37 +111,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error NotEnoughStakedCelo(address account);
 
     /**
-     * @notice An instance of the StakedCelo contract this Manager manages.
-     */
-    IStakedCelo internal stakedCelo;
-
-    /**
-     * @notice An instance of the Account contract this Manager manages.
-     */
-    IAccount internal account;
-
-    /**
-     * @notice Votes of Account's contract per proposal.
-     */
-    mapping(uint256 => ProposalVoteRecord) private voteRecords;
-
-    /**
-     * @notice History of all voters.
-     */
-    mapping(address => Voter) private voters;
-
-    /**
-     * @notice Timestamps of every voted proposal.
-     */
-    mapping(uint256 => uint256) public proposalTimestamps;
-
-    /**
-     * @notice Duration of proposal in referendum stage
-     * (It has to be same as in Governance contrtact).
-     */
-    uint256 public referendumDuration;
-
-    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -130,7 +124,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         __UsingRegistry_init(_registry);
         __Managed_init(_manager);
         _transferOwnership(_owner);
-        setReferendumDuration();
     }
 
     /**
@@ -290,7 +283,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
                 continue;
             }
 
-            if (block.timestamp < proposalTimestamp + referendumDuration) {
+            if (
+                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+            ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(
                     lockedAmount,
@@ -340,7 +335,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
                 continue;
             }
 
-            if (block.timestamp < proposalTimestamp + referendumDuration) {
+            if (
+                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+            ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(
                     lockedAmount,
@@ -353,11 +350,10 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Sets referendum duration. It should always be the same as in Governance.
+     * @return Governance referendum duration.
      */
-    function setReferendumDuration() public onlyOwner {
-        uint256 newReferendumDuration = getGovernance().getReferendumStageDuration();
-        referendumDuration = newReferendumDuration;
+    function getReferendumDuration() public view returns (uint256) {
+        return getGovernance().getReferendumStageDuration();
     }
 
     /**
