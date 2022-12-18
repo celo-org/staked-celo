@@ -255,9 +255,12 @@ export async function randomSigner(
   return [signerWithAddress, wallet];
 }
 
-export async function getImpersonatedSigner(address: string) {
+export async function getImpersonatedSigner(address: string, initialBalance?: EthersBigNumber) {
   await impersonateAccount(address);
   const signerWithAddress = await ethers.getSigner(address);
+  if (initialBalance) {
+    await setBalance(address, initialBalance);
+  }
   return signerWithAddress;
 }
 
