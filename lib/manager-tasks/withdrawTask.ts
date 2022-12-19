@@ -11,6 +11,8 @@ import {
   USE_LEDGER_DESCRIPTION,
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
+  VERBOSE_LOG,
+  VERBOSE_LOG_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { MANAGER_WITHDRAW } from "../tasksNames";
 
@@ -19,6 +21,7 @@ task(MANAGER_WITHDRAW, MANAGER_WITHDRAW_TASK_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
+  .addFlag(VERBOSE_LOG, VERBOSE_LOG_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log(chalk.blue("Starting stakedCelo:manager:withdraw task..."));
@@ -27,7 +30,9 @@ task(MANAGER_WITHDRAW, MANAGER_WITHDRAW_TASK_DESCRIPTION)
       const managerContract = await hre.ethers.getContract("Manager");
       const tx = await managerContract.connect(signer).withdraw(args.amount!, { type: 0 });
       const receipt = await tx.wait();
-      console.log(chalk.yellow("receipt status"), receipt.status);
+      if (args.verboseLog) {
+        console.log(chalk.yellow("receipt status"), receipt.status);
+      }
     } catch (error) {
       console.log(chalk.red("Error withdrawing stCELO:"), error);
     }
