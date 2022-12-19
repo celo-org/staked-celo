@@ -218,7 +218,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupNotBalancedOrNotEnoughStCelo(address group);
 
     /**
-     * @dev Throws if called by any account other than the stCelo.
+     * @dev Throws if called by any account other than StakedCelo.
      */
     modifier onlyStakedCelo() {
         if (address(stakedCelo) != msg.sender) {

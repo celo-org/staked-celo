@@ -613,7 +613,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /**
      * @notice Returns the total amount of CELO that's scheduled to revoke for a group.
      * @param group The address of the validator group.
-     * @return The total amount of CELO directed towards `group`.
+     * @return The total amount of CELO scheduled to be revoked from `group`.
      */
     function scheduledRevokeForGroup(address group) external view returns (uint256) {
         return scheduledVotes[group].toRevoke;
