@@ -1738,7 +1738,7 @@ describe("Manager", () => {
 
       it("should revert when withdraw more amount than originally deposited from specific group", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          `NotEnoughStCeloInSpecificGroup("${groupAddresses[1]}")`
+          `CantWithdrawAccordingToStrategy("${groupAddresses[1]}")`
         );
       });
     });

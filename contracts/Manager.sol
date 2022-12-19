@@ -187,11 +187,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error VotedWrongStrategy(address group);
 
     /**
-     * @notice Used when attempting to withdraw from specific
-     * group higher amount of stCelo than group has.
+     * @notice Used when there isn't enough CELO voting for a specific
+     * group to fulfill a withdrawal.
      * @param group The group's address.
      */
-    error NotEnoughStCeloInSpecificGroup(address group);
+    error CantWithdrawAccordingToStrategy(address group);
 
     /**
      * @notice Used when attempting to change strategy when sender has no stCelo.
@@ -314,9 +314,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns the array of active, depreciated and specific groups.
+     * @notice Returns the array of active, deprecated and specific groups.
      * @return The array of active groups.
-     * @return The array of depreciated groups.
+     * @return The array of deprecated groups.
      * @return The array of specific groups.
      */
     function getAllGroups()
@@ -406,6 +406,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function deposit() external payable {
         address strategy = _checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
 
+        uint256 stCeloValue = toStakedCelo(msg.value);
+
         if (strategy == address(0)) {
             if (activeGroups.length() == 0) {
                 revert NoActiveGroups();
@@ -414,12 +416,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             if (!isValidGroup(strategy)) {
                 revert GroupNotEligible(strategy);
             }
-            specificGroupTotalStCelo[strategy] += msg.value;
-            totalStCeloInSpecificGroups += msg.value;
+            specificGroupTotalStCelo[strategy] += stCeloValue;
+            totalStCeloInSpecificGroups += stCeloValue;
         }
 
-        stakedCelo.mint(msg.sender, toStakedCelo(msg.value));
-        distributeVotes(msg.value, strategy);
+        stakedCelo.mint(msg.sender, stCeloValue);
+        distributeAndScheduleVotes(msg.value, strategy);
     }
 
     /**
@@ -475,10 +477,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         return (stCeloAmount * celoBalance) / stCeloSupply;
     }
 
-    function distributeVotes(uint256 votes, address specificGroup) internal {
+    /**
+     * @notice Distributes votes to corresponding groups and schedules them for vote.
+     * @param votes The amount of votes to distribute.
+     * @param strategy The specific validator group to distribute votes.
+     */
+    function distributeAndScheduleVotes(uint256 votes, address strategy) internal {
         address[] memory finalGroups;
         uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = generateGroupsVotesToDistributeTo(votes, specificGroup);
+        (finalGroups, finalVotes) = generateGroupsVotesToDistributeTo(votes, strategy);
         account.scheduleVotes{value: votes}(finalGroups, finalVotes);
     }
 
@@ -486,6 +493,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Distributes votes by computing the number of votes each active
      * group should receive, then calling out to `Account.scheduleVotes`.
      * @param votes The amount of votes to distribute.
+     * @param strategy The specific validator group to distribute votes.
      * @dev The vote distribution strategy is to try and have each validator
      * group to be receiving the same amount of votes from the system. If a
      * group already has more votes than the average of the total available
@@ -505,14 +513,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function generateGroupsVotesToDistributeTo(uint256 votes, address specificGroup)
+    function generateGroupsVotesToDistributeTo(uint256 votes, address strategy)
         internal
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        if (specificGroup != address(0)) {
+        if (strategy != address(0)) {
             finalGroups = new address[](1);
             finalVotes = new uint256[](1);
-            finalGroups[0] = specificGroup;
+            finalGroups[0] = strategy;
             finalVotes[0] = votes;
 
             return (finalGroups, finalVotes);
@@ -589,21 +597,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function distributeWithdrawals(
         uint256 stCeloAmount,
         address beneficiary,
-        address specificGroup
+        address strategy
     ) internal {
         uint256 withdrawal = toCelo(stCeloAmount);
         if (withdrawal == 0) {
             revert ZeroWithdrawal();
         }
 
-        specificGroup = _checkAndUpdateStrategy(beneficiary, specificGroup);
+        strategy = _checkAndUpdateStrategy(beneficiary, strategy);
 
-        if (specificGroup != address(0)) {
+        if (strategy != address(0)) {
             address[] memory specificGroupsWithdrawn;
             uint256[] memory specificWithdrawalsPerGroup;
 
             (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
-                specificGroup,
+                strategy,
                 withdrawal,
                 stCeloAmount
             );
@@ -656,45 +664,45 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Used to withdraw CELO from the system from specific validator group
      * that account voted for previously. It is expected that validator group will be balanced.
      * For balancing use `rebalance` function
-     * @param specificGroup The specific validator group that we want to withdraw from.
+     * @param strategy The specific validator group that we want to withdraw from.
      * @param withdrawal The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
     function withdrawFromSpecificGroup(
-        address specificGroup,
+        address strategy,
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount
     ) private returns (address[] memory groups, uint256[] memory votes) {
-        uint256 votesRemaining = account.getCeloForGroup(specificGroup);
+        uint256 votesRemaining = account.getCeloForGroup(strategy);
 
         if (votesRemaining < withdrawal) {
-            revert GroupNotBalancedOrNotEnoughStCelo(specificGroup);
+            revert GroupNotBalancedOrNotEnoughStCelo(strategy);
         }
 
         groups = new address[](1);
         votes = new uint256[](1);
-        groups[0] = specificGroup;
+        groups[0] = strategy;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > specificGroupTotalStCelo[specificGroup]) {
-            revert NotEnoughStCeloInSpecificGroup(specificGroup);
+        if (stCeloWithdrawalAmount > specificGroupTotalStCelo[strategy]) {
+            revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        specificGroupTotalStCelo[specificGroup] -= stCeloWithdrawalAmount;
+        specificGroupTotalStCelo[strategy] -= stCeloWithdrawalAmount;
         totalStCeloInSpecificGroups -= stCeloWithdrawalAmount;
 
-        if (specificGroupTotalStCelo[specificGroup] == 0) {
-            if (specificGroups.remove(specificGroup)) {
-                delete specificGroupTotalStCelo[specificGroup];
-                emit GroupRemoved(specificGroup);
+        if (specificGroupTotalStCelo[strategy] == 0) {
+            if (specificGroups.remove(strategy)) {
+                delete specificGroupTotalStCelo[strategy];
+                emit GroupRemoved(strategy);
             }
         }
     }
 
     /**
      * @notice Whenever stCELO is being transferd we will check whether origin and target
-     * account use same strategy. If strategy differs we will schedule votes for tranfer.
+     * account use same strategy. If strategy differs we will schedule votes for transfer.
      * @param from The from account.
      * @param to The to account.
      * @param stCeloAmount The stCelo amount.
