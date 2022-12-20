@@ -263,9 +263,10 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * And it will remove voted proposals from account history if appropriate.
      * @param beneficiary The beneficiary.
      */
+    // XXX: Not sure that much is acheived by using `onlyManager` modifier,
+    // since anyone can call the function direcly from manager, without any checks in between
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         public
-        onlyManager
         returns (uint256 lockedAmount)
     {
         Voter storage voter = voters[beneficiary];
