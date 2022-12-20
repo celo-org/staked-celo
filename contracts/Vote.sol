@@ -259,17 +259,18 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * @notice Updates the beneficiaries voting history and returns locked stCELO in voting.
+     * (This stCELO cannot be unlocked.)
      * And it will remove voted proposals from account history if appropriate.
      * @param beneficiary The beneficiary.
+     * @return Currently locked stCELO in voting.
      */
-    // XXX: Not sure that much is acheived by using `onlyManager` modifier,
-    // since anyone can call the function direcly from manager, without any checks in between
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         public
-        returns (uint256 lockedAmount)
+        returns (uint256)
     {
         Voter storage voter = voters[beneficiary];
+        uint256 lockedAmount;
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
@@ -307,25 +308,22 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Retuns proposals still in referendum stage that voter voted on.
+     * @notice Returns proposals still in referendum stage that voter voted on.
      * @param voter The voter.
      * @return Proposals in referendum stage.
-     * (For up to date result call updateHistoryAndReturnLockedStCeloInVoting first)
+     * @dev For up to date result call updateHistoryAndReturnLockedStCeloInVoting first.
      */
     function getVotedStillRelevantProposals(address voter) public view returns (uint256[] memory) {
         return voters[voter].votedProposalIds;
     }
 
     /**
-     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * @notice Returns currently locked stCELO in voting. (This stCELO cannot be unlocked.)
      * @param beneficiary The account.
      */
-    function getLockedStCeloInVoting(address beneficiary)
-        public
-        view
-        returns (uint256 lockedAmount)
-    {
+    function getLockedStCeloInVoting(address beneficiary) public view returns (uint256) {
         Voter storage voter = voters[beneficiary];
+        uint256 lockedAmount;
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
