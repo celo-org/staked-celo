@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { task, types } from "hardhat/config";
 import {
   getSignerAndSetDeploymentPath,
@@ -8,6 +7,8 @@ import {
 import {
   ACCOUNT,
   ACCOUNT_DESCRIPTION,
+  LOG_LEVEL,
+  LOG_LEVEL_DESCRIPTION,
   MULTISIG_SCHEDULE_PROPOSAL_TASK_DESCRIPTION,
   PROPOSAL_ID,
   PROPOSAL_ID_DESCRIPTION,
@@ -15,27 +16,27 @@ import {
   USE_LEDGER_DESCRIPTION,
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
-  VERBOSE_LOG,
-  VERBOSE_LOG_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { taskLogger } from "../logger";
 import { MULTISIG_SCHEDULE_PROPOSAL } from "../tasksNames";
 
 task(MULTISIG_SCHEDULE_PROPOSAL, MULTISIG_SCHEDULE_PROPOSAL_TASK_DESCRIPTION)
   .addParam(PROPOSAL_ID, PROPOSAL_ID_DESCRIPTION, undefined, types.int)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+  .addOptionalParam(LOG_LEVEL, LOG_LEVEL_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
-  .addFlag(VERBOSE_LOG, VERBOSE_LOG_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
+      taskLogger.setLogLevel(args.logLevel);
       const signer = await getSignerAndSetDeploymentPath(hre, args);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
         .scheduleProposal(args.proposalId!, { type: 0 });
       const receipt = await tx.wait();
-      parseEvents(args.verboseLog, receipt, "ProposalScheduled");
+      parseEvents(receipt, "ProposalScheduled");
     } catch (error) {
-      console.log(chalk.red("Error scheduling proposal:"), error);
+      taskLogger.error("Error scheduling proposal:", error);
     }
   });

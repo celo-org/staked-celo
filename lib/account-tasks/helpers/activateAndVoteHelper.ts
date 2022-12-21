@@ -1,12 +1,8 @@
-import chalk from "chalk";
 import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../../logger";
 
-export async function activateAndVote(
-  hre: HardhatRuntimeEnvironment,
-  signer: Signer,
-  verboseLog: boolean
-) {
+export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
   const managerContract = await hre.ethers.getContract("Manager");
 
@@ -14,9 +10,8 @@ export async function activateAndVote(
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
   const groupList = await managerContract.getGroups();
-  if (verboseLog) {
-    console.log("groups:", groupList);
-  }
+
+  taskLogger.debug("groups:", groupList);
   for (const group of groupList) {
     // Using election contract to make this `hasActivatablePendingVotes` call.
     // This allows to check activatable pending votes for a specified group,
@@ -27,27 +22,26 @@ export async function activateAndVote(
       group
     );
     const amountScheduled = await accountContract.scheduledVotesForGroup(group);
-    if (verboseLog) {
-      console.log(chalk.yellow("current group:"), group);
-      console.log(chalk.yellow(`can activate for group:`), canActivateForGroup);
-      console.log(chalk.yellow(`amount scheduled for group:`), amountScheduled.toString());
-    }
+
+    taskLogger.debug("current group:", group);
+    taskLogger.debug("can activate for group:", canActivateForGroup);
+    taskLogger.debug("amount scheduled for group:", amountScheduled.toString());
+
     if (amountScheduled > hre.ethers.BigNumber.from(0) || canActivateForGroup) {
       const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
         group,
         amountScheduled.toString()
       );
-      if (verboseLog) {
-        console.log(chalk.red("lesser:"), lesser);
 
-        console.log(chalk.green("greater:"), greater);
-      }
+      taskLogger.debug("lesser:", lesser);
+
+      taskLogger.debug("greater:", greater);
+
       const tx = await accountContract.connect(signer).activateAndVote(group, lesser, greater);
 
       const receipt = await tx.wait();
-      if (verboseLog) {
-        console.log(chalk.yellow("receipt status"), receipt.status);
-      }
+
+      taskLogger.debug("receipt status", receipt.status);
     }
   }
 }
