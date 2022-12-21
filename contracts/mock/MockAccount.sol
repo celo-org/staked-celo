@@ -69,6 +69,9 @@ contract MockAccount {
         scheduledVotesForGroup[group] = amount;
     }
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function votePartially(
         uint256 proposalId,
         uint256 index,
