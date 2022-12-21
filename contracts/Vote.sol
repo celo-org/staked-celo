@@ -51,36 +51,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice An instance of the StakedCelo contract this Manager manages.
-     */
-    IStakedCelo internal stakedCelo;
-
-    /**
-     * @notice An instance of the Account contract this Manager manages.
-     */
-    IAccount internal account;
-
-    /**
-     * @notice Votes of Account's contract per proposal.
-     */
-    mapping(uint256 => ProposalVoteRecord) private voteRecords;
-
-    /**
-     * @notice History of all voters.
-     */
-    mapping(address => Voter) private voters;
-
-    /**
-     * @notice Timestamps of every voted proposal.
-     */
-    mapping(uint256 => uint256) public proposalTimestamps;
-
-    /**
-     * @notice Duration of proposal in referendum stage
-     * (It has to be same as in Governance contrtact).
-     */
-    uint256 public referendumDuration;
-    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
@@ -114,6 +84,37 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param account The account's address.
      */
     error NotEnoughStakedCelo(address account);
+
+    /**
+     * @notice An instance of the StakedCelo contract this Manager manages.
+     */
+    IStakedCelo internal stakedCelo;
+
+    /**
+     * @notice An instance of the Account contract this Manager manages.
+     */
+    IAccount internal account;
+
+    /**
+     * @notice Votes of Account's contract per proposal.
+     */
+    mapping(uint256 => ProposalVoteRecord) private voteRecords;
+
+    /**
+     * @notice History of all voters.
+     */
+    mapping(address => Voter) private voters;
+
+    /**
+     * @notice Timestamps of every voted proposal.
+     */
+    mapping(uint256 => uint256) public proposalTimestamps;
+
+    /**
+     * @notice Duration of proposal in referendum stage
+     * (It has to be same as in Governance contrtact).
+     */
+    uint256 public referendumDuration;
 
     /**
      * @notice Initialize the contract with registry and owner.
