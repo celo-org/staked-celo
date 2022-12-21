@@ -158,7 +158,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256
         )
     {
-        return (2, 0, 0, 0);
+        return (1, 1, 1, 0);
     }
 
     /**
