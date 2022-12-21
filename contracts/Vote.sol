@@ -76,6 +76,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     mapping(uint256 => uint256) public proposalTimestamps;
 
     /**
+     * @notice Duration of proposal in referendum stage
+     * (It has to be same as in Governance contrtact).
+     */
+    uint256 public referendumDuration;
+    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
