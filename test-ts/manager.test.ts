@@ -383,7 +383,7 @@ describe("Manager", () => {
 
         it("reverts when deprecating a non active group", async () => {
           await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
-            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+            `GroupNotActiveNorAllowed("${groupAddresses[3]}")`
           );
         });
 
@@ -421,7 +421,7 @@ describe("Manager", () => {
 
         it("reverts when deprecating a non active group", async () => {
           await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
-            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+            `GroupNotActiveNorAllowed("${groupAddresses[3]}")`
           );
         });
 
@@ -454,7 +454,7 @@ describe("Manager", () => {
         it("added group to specific groups", async () => {
           const activeGroups = await manager.connect(depositor).getGroups();
           const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-          const specificGroups = await manager.connect(depositor).getSpecificGroups();
+          const specificGroups = await manager.connect(depositor).getAllowedGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -464,7 +464,7 @@ describe("Manager", () => {
           await manager.deprecateGroup(specificGroup.address);
           const activeGroups = await manager.connect(depositor).getGroups();
           const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-          const specificGroups = await manager.connect(depositor).getSpecificGroups();
+          const specificGroups = await manager.connect(depositor).getAllowedGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
           expect(specificGroups).to.deep.eq([]);
@@ -484,7 +484,7 @@ describe("Manager", () => {
 
         it("reverts when deprecating a non active group nor specific", async () => {
           await expect(manager.deprecateGroup(groupAddresses[3])).revertedWith(
-            `GroupNotActiveNorSpecific("${groupAddresses[3]}")`
+            `GroupNotActiveNorAllowed("${groupAddresses[3]}")`
           );
         });
 
@@ -957,7 +957,7 @@ describe("Manager", () => {
       it("should add group to specific groups", async () => {
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups.length).to.eq(0);
         expect(deprecatedGroups.length).to.eq(0);
         expect(specificGroups.length).to.eq(1);
@@ -999,7 +999,7 @@ describe("Manager", () => {
       it("should not add group to specific groups", async () => {
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
         expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([groupAddresses[4]]);
@@ -1019,7 +1019,7 @@ describe("Manager", () => {
         await manager.deprecateUnhealthyGroup(groupAddresses[4]);
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
         expect(deprecatedGroups).to.deep.eq([groupAddresses[4]]);
         expect(specificGroups).to.deep.eq([]);
@@ -1104,7 +1104,7 @@ describe("Manager", () => {
         it("should add group to specific groups", async () => {
           const activeGroups = await manager.connect(depositor).getGroups();
           const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-          const specificGroups = await manager.connect(depositor).getSpecificGroups();
+          const specificGroups = await manager.connect(depositor).getAllowedGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([groupAddresses[2]]);
@@ -1134,7 +1134,7 @@ describe("Manager", () => {
         it("should add group to specific groups", async () => {
           const activeGroups = await manager.connect(depositor).getGroups();
           const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-          const specificGroups = await manager.connect(depositor).getSpecificGroups();
+          const specificGroups = await manager.connect(depositor).getAllowedGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([specificGroupAddress]);
@@ -1678,7 +1678,7 @@ describe("Manager", () => {
       it("added group to specific groups", async () => {
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -1689,7 +1689,7 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(specificGroups).to.deep.eq([specificGroup.address]);
       });
 
@@ -1699,7 +1699,7 @@ describe("Manager", () => {
         expect([specificGroup.address]).to.deep.equal(withdrawnGroups);
         expect([BigNumber.from("100")]).to.deep.equal(withdrawals);
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect([]).to.deep.eq(specificGroups);
         expect([]).to.deep.eq(deprecatedGroups);
       });
@@ -1712,7 +1712,7 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(specificGroups).to.deep.eq([]);
       });
 
@@ -1744,7 +1744,7 @@ describe("Manager", () => {
       it("added group to specific groups", async () => {
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -1757,7 +1757,7 @@ describe("Manager", () => {
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
         const activeGroups = await manager.connect(depositor).getGroups();
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
         expect(deprecatedGroups).to.deep.eq([]);
@@ -1769,7 +1769,7 @@ describe("Manager", () => {
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
         const activeGroups = await manager.connect(depositor).getGroups();
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(specificGroups).to.deep.eq([]);
       });
@@ -2223,7 +2223,7 @@ describe("Manager", () => {
       });
 
       it("should add group to specific groups", async () => {
-        const specificGroups = await manager.connect(depositor).getSpecificGroups();
+        const specificGroups = await manager.connect(depositor).getAllowedGroups();
         expect([groupAddresses[0]]).to.deep.eq(specificGroups);
       });
 
