@@ -414,10 +414,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             }
         } else {
             if (!isValidGroup(strategy)) {
-                revert GroupNotEligible(strategy);
+                // if invalid group vote for default strategy
+                strategies[msg.sender] = address(0);
+                strategy = address(0);
+                uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
+                if (stCeloBalance != 0) {
+                    _transfer(strategy, address(0), toCelo(stCeloBalance), msg.sender, msg.sender);
+                }
+            } else {
+                specificGroupTotalStCelo[strategy] += stCeloValue;
+                totalStCeloInSpecificGroups += stCeloValue;
             }
-            specificGroupTotalStCelo[strategy] += stCeloValue;
-            totalStCeloInSpecificGroups += stCeloValue;
         }
 
         stakedCelo.mint(msg.sender, stCeloValue);
@@ -439,7 +446,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert NoGroups();
         }
 
-        distributeWithdrawals(stakedCeloAmount, msg.sender, strategies[msg.sender]);
+        distributeWithdrawals(stakedCeloAmount, msg.sender);
         stakedCelo.burn(msg.sender, stakedCeloAmount);
     }
 
@@ -478,22 +485,42 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Distributes votes to corresponding groups and schedules them for vote.
+     * @notice Distributes votes corresponding groups and schedules them for vote.
      * @param votes The amount of votes to distribute.
-     * @param strategy The specific validator group to distribute votes.
+     * @param strategy The chosen strategy.
      */
     function distributeAndScheduleVotes(uint256 votes, address strategy) internal {
         address[] memory finalGroups;
         uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = generateGroupsVotesToDistributeTo(votes, strategy);
+        (finalGroups, finalVotes) = distributeVotes(votes, strategy);
         account.scheduleVotes{value: votes}(finalGroups, finalVotes);
+    }
+
+    /**
+     * @notice Distributes votes according to chosen strategy.
+     * @param votes The amount of votes to distribute.
+     * @param strategy The chosen strategy.
+     */
+    function distributeVotes(uint256 votes, address strategy)
+        private
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        if (strategy != address(0)) {
+            finalGroups = new address[](1);
+            finalVotes = new uint256[](1);
+            finalGroups[0] = strategy;
+            finalVotes[0] = votes;
+        } else {
+            (finalGroups, finalVotes) = generateDefaultStrategyGroupsVotesToDistributeTo(votes);
+        }
+
+        return (finalGroups, finalVotes);
     }
 
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should receive, then calling out to `Account.scheduleVotes`.
      * @param votes The amount of votes to distribute.
-     * @param strategy The specific validator group to distribute votes.
      * @dev The vote distribution strategy is to try and have each validator
      * group to be receiving the same amount of votes from the system. If a
      * group already has more votes than the average of the total available
@@ -513,19 +540,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function generateGroupsVotesToDistributeTo(uint256 votes, address strategy)
+    function generateDefaultStrategyGroupsVotesToDistributeTo(uint256 votes)
         internal
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        if (strategy != address(0)) {
-            finalGroups = new address[](1);
-            finalVotes = new uint256[](1);
-            finalGroups[0] = strategy;
-            finalVotes[0] = votes;
-
-            return (finalGroups, finalVotes);
-        }
-
         /*
          * "Votable" groups are those that will currently fit under the voting
          * limit in Election.sol even if voted for with the entire `votes`
@@ -580,10 +598,61 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Distributes withdrawals by computing the number of votes that
+     * @notice Distributes withdrawals according to chosend strategy.
+     * @param stCeloAmount The amount of stCelo to be withdrawn.
+     * @param beneficiary The address that should end up receiving the withdrawn
+     * CELO.
+     **/
+    function distributeWithdrawals(uint256 stCeloAmount, address beneficiary) private {
+        uint256 withdrawal = toCelo(stCeloAmount);
+        if (withdrawal == 0) {
+            revert ZeroWithdrawal();
+        }
+
+        address strategy = _checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
+
+        if (strategy != address(0)) {
+            distributeWithdrawalsSpecificStrategy(withdrawal, stCeloAmount, beneficiary, strategy);
+        } else {
+            distributeWithdrawalsDefaultStrategy(withdrawal, beneficiary);
+        }
+    }
+
+    /**
+     * @notice Distributes withdrawals from specific strategy.
+     * @param withdrawal The amount of votes to withdraw.
+     * @param stCeloWithdrawalAmount The amount of stCelo to be withdrawn.
+     * @param beneficiary The address that should end up receiving the withdrawn
+     * CELO.
+     * @param strategy The validator group that we want to withdraw from.
+     **/
+    function distributeWithdrawalsSpecificStrategy(
+        uint256 withdrawal,
+        uint256 stCeloWithdrawalAmount,
+        address beneficiary,
+        address strategy
+    ) private {
+        address[] memory specificGroupsWithdrawn;
+        uint256[] memory specificWithdrawalsPerGroup;
+
+        (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
+            strategy,
+            withdrawal,
+            stCeloWithdrawalAmount
+        );
+
+        account.scheduleWithdrawals(
+            beneficiary,
+            specificGroupsWithdrawn,
+            specificWithdrawalsPerGroup
+        );
+    }
+
+    /**
+     * @notice Distributes withdrawals from default strategy by computing the number of votes that
      * should be withdrawn from each group, then calling out to
      * `Account.scheduleWithdrawals`.
-     * @param stCeloAmount The amount of votes to withdraw.
+     * @param withdrawal The amount of votes to withdraw.
      * @param beneficiary The address that should end up receiving the withdrawn
      * CELO.
      * @dev The withdrawal distribution strategy is to:
@@ -594,36 +663,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * votes, it will not be withdrawn from, and instead we'll try to evenly
      * distribute between the remaining groups.
      */
-    function distributeWithdrawals(
-        uint256 stCeloAmount,
-        address beneficiary,
-        address strategy
-    ) internal {
-        uint256 withdrawal = toCelo(stCeloAmount);
-        if (withdrawal == 0) {
-            revert ZeroWithdrawal();
-        }
-
-        strategy = _checkAndUpdateStrategy(beneficiary, strategy);
-
-        if (strategy != address(0)) {
-            address[] memory specificGroupsWithdrawn;
-            uint256[] memory specificWithdrawalsPerGroup;
-
-            (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
-                strategy,
-                withdrawal,
-                stCeloAmount
-            );
-
-            account.scheduleWithdrawals(
-                beneficiary,
-                specificGroupsWithdrawn,
-                specificWithdrawalsPerGroup
-            );
-            return;
-        }
-
+    function distributeWithdrawalsDefaultStrategy(uint256 withdrawal, address beneficiary)
+        internal
+    {
         address[] memory deprecatedGroupsWithdrawn;
         uint256[] memory deprecatedWithdrawalsPerGroup;
         uint256 numberDeprecatedGroupsWithdrawn;
@@ -664,7 +706,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Used to withdraw CELO from the system from specific validator group
      * that account voted for previously. It is expected that validator group will be balanced.
      * For balancing use `rebalance` function
-     * @param strategy The specific validator group that we want to withdraw from.
+     * @param strategy The validator group that we want to withdraw from.
      * @param withdrawal The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
@@ -1090,7 +1132,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert GroupNotActiveNorSpecific(group);
         }
 
-        delete specificGroupTotalStCelo[group];
+        specificGroupTotalStCelo[group] = 0;
 
         emit GroupDeprecated(group);
 
@@ -1180,11 +1222,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = generateGroupsVotesToDistributeTo(stCeloAmount, fromStrategy);
+        (fromGroups, fromVotes) = distributeVotes(stCeloAmount, fromStrategy);
 
         address[] memory toGroups;
         uint256[] memory toVotes;
-        (toGroups, toVotes) = generateGroupsVotesToDistributeTo(stCeloAmount, toStrategy);
+        (toGroups, toVotes) = distributeVotes(stCeloAmount, toStrategy);
 
         if (fromStrategy == address(0)) {
             totalStCeloInSpecificGroups += stCeloAmount;

@@ -971,6 +971,62 @@ describe("Manager", () => {
       });
     });
 
+    describe("When voted for originally valid validator group that is no longer valid", () => {
+      beforeEach(async () => {
+        for (let i = 0; i < 3; i++) {
+          await manager.activateGroup(groupAddresses[i]);
+          await account.setCeloForGroup(groupAddresses[i], 100);
+        }
+
+        await manager.connect(depositor).changeStrategy(groupAddresses[4]);
+        await account.setCeloForGroup(groupAddresses[4], 100);
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          groups[4],
+          mockSlasher
+        );
+        await manager.connect(depositor).deposit({ value: 100 });
+      });
+
+      it("should not add group to specific groups", async () => {
+        const allGroups = await manager.connect(depositor).getAllGroups();
+        const activeGroups = allGroups[0];
+        const depreciatedGroups = allGroups[1];
+        const specificGroups = allGroups[2];
+        expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
+        expect(depreciatedGroups).to.deep.eq([]);
+        expect(specificGroups).to.deep.eq([groupAddresses[4]]);
+      });
+
+      it("should schedule votes for default groups", async () => {
+        const [votedGroups, votes] = await account.getLastScheduledVotes();
+        expect(votedGroups).to.deep.equal(groupAddresses.slice(0, 3));
+        expect(votes).to.deep.equal([
+          BigNumber.from("34"),
+          BigNumber.from("33"),
+          BigNumber.from("33"),
+        ]);
+      });
+
+      it("should deprecate invalid group from specific groups", async () => {
+        await manager.deprecateUnhealthyGroup(groupAddresses[4]);
+        const allGroups = await manager.connect(depositor).getAllGroups();
+        const activeGroups = allGroups[0];
+        const depreciatedGroups = allGroups[1];
+        const specificGroups = allGroups[2];
+        expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
+        expect(depreciatedGroups).to.deep.eq([groupAddresses[4]]);
+        expect(specificGroups).to.deep.eq([]);
+      });
+
+      it("should mint 1:1 stCelo", async () => {
+        const stCelo = await stakedCelo.balanceOf(depositor.address);
+        expect(stCelo).to.eq(100);
+      });
+    });
+
     describe("When voted for deprecated group", () => {
       const depositedValue = 1000;
       let specificGroupAddress: string;
