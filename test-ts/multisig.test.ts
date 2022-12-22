@@ -405,25 +405,6 @@ describe("MultiSig", () => {
       expect(await multiSig.delay()).to.be.equal(9 * DAY);
       expect(await multiSig.isOwner(nonOwner.address)).to.be.true;
     });
-
-    it("should be successfully execute a proposal by account", async () => {
-      const secondPayload = multiSig.interface.encodeFunctionData("changeDelay", [9 * DAY]);
-      const values = [0, 0];
-      const destinations = [multiSig.address, multiSig.address];
-
-      await executeMultisigProposal(
-        multiSig,
-        destinations,
-        values,
-        [txData, secondPayload],
-        delay,
-        owner1,
-        owner2
-      );
-
-      expect(await multiSig.delay()).to.be.equal(9 * DAY);
-      expect(await multiSig.isOwner(nonOwner.address)).to.be.true;
-    });
   });
 
   describe("#revokeConfirmation()", () => {
