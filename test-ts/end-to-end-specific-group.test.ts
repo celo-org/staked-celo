@@ -103,9 +103,9 @@ describe("e2e specific group voting", () => {
     const rewardsGroup5 = hre.ethers.BigNumber.from(parseUnits("10"));
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
-    await managerContract
-      .connect(depositor1)
-      .depositSpecific(groups[5].address, { value: amountOfCeloToDeposit });
+    // await managerContract
+    //   .connect(depositor1)
+    //   .depositSpecific(groups[5].address, { value: amountOfCeloToDeposit });
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
 

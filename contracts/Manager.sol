@@ -69,10 +69,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     EnumerableSet.AddressSet private allowedStrategies;
 
     /**
-     * @notice StCelo that was cast for allowed validator group
-     * validator group => stCelo amount
+     * @notice StCelo that was cast for allowed strategies
+     * strategy => stCelo amount
      */
-    mapping(address => uint256) private specificStrategyTotalStCeloVotes;
+    mapping(address => uint256) private allowedStrategyTotalStCeloVotes;
 
     /**
      * @notice Total StCelo that was voted with on allowed strategy
@@ -108,16 +108,34 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     event GroupRemoved(address indexed group);
 
     /**
+     * @notice Used when strategy is disallow.
+     * @param group The group's address.
+     */
+    event StrategyDisallowed(address group);
+
+    /**
      * @notice Used when attempting to activate a group that is already active.
      * @param group The group's address.
      */
     error GroupAlreadyAdded(address group);
 
     /**
-     * @notice Used when attempting to deprecate a group that is not active nor allowed.
+     * @notice Used when attempting to deprecate a group that is not active.
      * @param group The group's address.
      */
-    error GroupNotActiveNorAllowed(address group);
+    error GroupNotActive(address group);
+
+    /**
+     * @notice Used when attempting to disallow a strategy that is not allowed.
+     * @param group The group's address.
+     */
+    error StrategyNotAllowed(address group);
+
+    /**
+     * @notice Used when attempting to disallow a strategy failed.
+     * @param group The group's address.
+     */
+    error FailedToDisallowStrategy(address group);
 
     /**
      * @notice Used when an attempt to add an active group to the EnumerableSet
@@ -127,11 +145,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error FailedToAddActiveGroup(address group);
 
     /**
-     * @notice Used when an attempt to add an allowed group to the EnumerableSet
+     * @notice Used when an attempt to add an allowed strategy to the EnumerableSet
      * fails.
      * @param group The group's address.
      */
-    error FailedToAddAllowedGroup(address group);
+    error FailedToAddAllowedStrategy(address group);
 
     /**
      * @notice Used when an attempt to add a deprecated group to the
@@ -214,7 +232,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error SameStrategy();
 
     /**
-     * @notice Used when attempting to withdraw from allowed group
+     * @notice Used when attempting to withdraw from allowed strategy
      * but group does not have enough Celo. Group either doesn't have enough stCelo
      * or it is necessary to rebalance the group.
      * @param group The group's address.
@@ -312,9 +330,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Marks a group as allowed strategy for voting.
      * @param group The address of the group to add to the set of allowed
-     * groups.
+     * strategies.
      */
-    function allowGroup(address group) external onlyOwner {
+    function allowStrategy(address group) external onlyOwner {
         if (!isValidGroup(group)) {
             revert GroupNotEligible(group);
         }
@@ -330,10 +348,38 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         if (!allowedStrategies.add(group)) {
-            revert FailedToAddAllowedGroup(group);
+            revert FailedToAddAllowedStrategy(group);
         }
 
         emit GroupAllowed(group);
+    }
+
+    /**
+     * @notice Marks a group as not allowed strategy for voting
+     * and redistributes votes to default strategy.
+     * @param group The address of the group to remove from the set of allowed
+     * strategies.
+     */
+    function disallowStrategy(address group) external onlyOwner {
+        if (!allowedStrategies.contains(group)) {
+            revert StrategyNotAllowed(group);
+        }
+
+        if (activeGroups.length() == 0) {
+            revert NoActiveGroups();
+        }
+
+        if (!allowedStrategies.remove(group)) {
+            revert FailedToDisallowStrategy(group);
+        }
+
+        uint256 strategyTotalStCeloVotes = allowedStrategyTotalStCeloVotes[group];
+
+        if (strategyTotalStCeloVotes != 0) {
+            _transferWithoutChecks(group, address(0), strategyTotalStCeloVotes);
+        }
+
+        emit StrategyDisallowed(group);
     }
 
     /**
@@ -345,10 +391,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns the array of allowed groups.
-     * @return The array of allowed groups.
+     * @notice Returns the array of allowed strategies.
+     * @return The array of allowed strategys.
      */
-    function getAllowedGroups() external view returns (address[] memory) {
+    function getAllowedStrategies() external view returns (address[] memory) {
         return allowedStrategies.values();
     }
 
@@ -440,10 +486,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 strategy = address(0);
                 uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
                 if (stCeloBalance != 0) {
-                    _transfer(strategy, address(0), toCelo(stCeloBalance), msg.sender, msg.sender);
+                    _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
                 }
             } else {
-                specificStrategyTotalStCeloVotes[strategy] += stCeloValue;
+                allowedStrategyTotalStCeloVotes[strategy] += stCeloValue;
                 totalStCeloInAllowedStrategies += stCeloValue;
             }
         }
@@ -724,8 +770,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Used to withdraw CELO from the system from allowed validator group
-     * that account voted for previously. It is expected that validator group will be balanced.
+     * @notice Used to withdraw CELO from the system from allowed strategy
+     * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function
      * @param strategy The validator group that we want to withdraw from.
      * @param withdrawal The amount of stCELO to withdraw.
@@ -748,16 +794,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         groups[0] = strategy;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > specificStrategyTotalStCeloVotes[strategy]) {
+        if (stCeloWithdrawalAmount > allowedStrategyTotalStCeloVotes[strategy]) {
             revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        specificStrategyTotalStCeloVotes[strategy] -= stCeloWithdrawalAmount;
+        allowedStrategyTotalStCeloVotes[strategy] -= stCeloWithdrawalAmount;
         totalStCeloInAllowedStrategies -= stCeloWithdrawalAmount;
 
-        if (specificStrategyTotalStCeloVotes[strategy] == 0) {
+        if (allowedStrategyTotalStCeloVotes[strategy] == 0) {
             if (allowedStrategies.remove(strategy)) {
-                delete specificStrategyTotalStCeloVotes[strategy];
+                allowedStrategyTotalStCeloVotes[strategy] = 0;
                 emit GroupRemoved(strategy);
             }
         }
@@ -794,10 +840,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert GroupNotEligible(newStrategy);
         }
 
-        uint256 amount = stakedCelo.balanceOf(msg.sender);
-        if (amount != 0) {
+        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
+        if (stCeloAmount != 0) {
             address currentStrategy = strategies[msg.sender];
-            _transfer(currentStrategy, newStrategy, toCelo(amount), msg.sender, msg.sender);
+            _transfer(currentStrategy, newStrategy, stCeloAmount, msg.sender, msg.sender);
         }
 
         strategies[msg.sender] = _checkStrategy(newStrategy);
@@ -856,21 +902,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group.
      */
     function getExpectedAndRealCeloForGroup(address group) public view returns (uint256, uint256) {
-        bool isDeprecated = deprecatedGroups.contains(group);
+        bool isAllowedStrategy = allowedStrategies.contains(group);
+        bool isActiveGroup = activeGroups.contains(group);
         uint256 realCelo = account.getCeloForGroup(group);
 
-        if (isDeprecated) {
+        if (!isAllowedStrategy && !isActiveGroup) {
             return (0, realCelo);
         }
 
-        bool isSpecificGroup = allowedStrategies.contains(group);
-        bool isActiveGroup = activeGroups.contains(group);
-
-        if (isSpecificGroup && !isActiveGroup) {
-            return (toCelo(specificStrategyTotalStCeloVotes[group]), realCelo);
+        if (isAllowedStrategy && !isActiveGroup) {
+            return (toCelo(allowedStrategyTotalStCeloVotes[group]), realCelo);
         }
 
-        if (!isSpecificGroup && isActiveGroup) {
+        if (!isAllowedStrategy && isActiveGroup) {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply - totalStCeloInAllowedStrategies;
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy / activeGroups.length();
@@ -878,11 +922,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             return (toCelo(supposedStCeloInActiveGroup), realCelo);
         }
 
-        if (isSpecificGroup && isActiveGroup) {
+        if (isAllowedStrategy && isActiveGroup) {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply - totalStCeloInAllowedStrategies;
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy / activeGroups.length();
-            uint256 supposedCeloInSpecificGroup = toCelo(specificStrategyTotalStCeloVotes[group]);
+            uint256 supposedCeloInSpecificGroup = toCelo(allowedStrategyTotalStCeloVotes[group]);
 
             return (toCelo(supposedStCeloInActiveGroup + supposedCeloInSpecificGroup), realCelo);
         }
@@ -1018,7 +1062,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         for (uint256 i = 0; i < groups.length; i++) {
             uint256 votes = allowedStrategies.contains(groups[i])
                 ? account.getCeloForGroup(groups[i]) -
-                    toCelo(specificStrategyTotalStCeloVotes[groups[i]])
+                    toCelo(allowedStrategyTotalStCeloVotes[groups[i]])
                 : account.getCeloForGroup(groups[i]);
             totalVotes += votes;
             groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
@@ -1148,16 +1192,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function _deprecateGroup(address group) private {
         bool activeGroupsRemoval = activeGroups.remove(group);
-        bool specificGroupsRemoval = allowedStrategies.remove(group);
-        if (!activeGroupsRemoval && !specificGroupsRemoval) {
-            revert GroupNotActiveNorAllowed(group);
+        if (!activeGroupsRemoval) {
+            revert GroupNotActive(group);
         }
-
-        specificStrategyTotalStCeloVotes[group] = 0;
 
         emit GroupDeprecated(group);
 
-        if (account.getCeloForGroup(group) > 0) {
+        if (account.getCeloForGroup(group) - toCelo(allowedStrategyTotalStCeloVotes[group]) > 0) {
             if (!deprecatedGroups.add(group)) {
                 revert FailedToAddDeprecatedGroup(group);
             }
@@ -1241,13 +1282,27 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             return;
         }
 
+        _transferWithoutChecks(fromStrategy, toStrategy, stCeloAmount);
+    }
+
+    /**
+     * @notice Schedules transfer of Celo between strategies.
+     * @param fromStrategy The from validator group.
+     * @param toStrategy The to validator group.
+     * @param stCeloAmount The stCelo amount.
+     */
+    function _transferWithoutChecks(
+        address fromStrategy,
+        address toStrategy,
+        uint256 stCeloAmount
+    ) private {
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeVotes(stCeloAmount, fromStrategy);
+        (fromGroups, fromVotes) = distributeVotes(toCelo(stCeloAmount), fromStrategy);
 
         address[] memory toGroups;
         uint256[] memory toVotes;
-        (toGroups, toVotes) = distributeVotes(stCeloAmount, toStrategy);
+        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), toStrategy);
 
         if (fromStrategy == address(0)) {
             totalStCeloInAllowedStrategies += stCeloAmount;
@@ -1256,10 +1311,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         if (fromStrategy != address(0)) {
-            specificStrategyTotalStCeloVotes[fromStrategy] -= stCeloAmount;
+            allowedStrategyTotalStCeloVotes[fromStrategy] -= stCeloAmount;
         }
         if (toStrategy != address(0)) {
-            specificStrategyTotalStCeloVotes[toStrategy] += stCeloAmount;
+            allowedStrategyTotalStCeloVotes[toStrategy] += stCeloAmount;
         }
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
