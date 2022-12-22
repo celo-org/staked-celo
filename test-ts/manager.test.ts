@@ -446,12 +446,15 @@ describe("Manager", () => {
         beforeEach(async () => {
           await account.setCeloForGroup(specificGroup.address, 100);
           const specificGroupDeposit = parseUnits("1");
+          await manager.allowGroup(specificGroup.address);
           await manager.connect(depositor).changeStrategy(specificGroup.address);
           await manager.connect(depositor).deposit({ value: specificGroupDeposit });
         });
 
         it("added group to specific groups", async () => {
-          const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+          const activeGroups = await manager.connect(depositor).getGroups();
+          const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+          const specificGroups = await manager.connect(depositor).getSpecificGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -459,7 +462,9 @@ describe("Manager", () => {
 
         it("removes the group from the groups array", async () => {
           await manager.deprecateGroup(specificGroup.address);
-          const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+          const activeGroups = await manager.connect(depositor).getGroups();
+          const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+          const specificGroups = await manager.connect(depositor).getSpecificGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
           expect(specificGroups).to.deep.eq([]);
@@ -944,17 +949,17 @@ describe("Manager", () => {
 
     describe("When voted for specific validator group", () => {
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: 100 });
       });
 
       it("should add group to specific groups", async () => {
-        const allGroups = await manager.connect(depositor).getAllGroups();
-        const activeGroups = allGroups[0];
-        const depreciatedGroups = allGroups[1];
-        const specificGroups = allGroups[2];
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups.length).to.eq(0);
-        expect(depreciatedGroups.length).to.eq(0);
+        expect(deprecatedGroups.length).to.eq(0);
         expect(specificGroups.length).to.eq(1);
         expect(specificGroups[0]).to.eq(groupAddresses[0]);
       });
@@ -978,6 +983,7 @@ describe("Manager", () => {
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
 
+        await manager.allowGroup(groupAddresses[4]);
         await manager.connect(depositor).changeStrategy(groupAddresses[4]);
         await account.setCeloForGroup(groupAddresses[4], 100);
         await updateGroupSlashingMultiplier(
@@ -991,12 +997,11 @@ describe("Manager", () => {
       });
 
       it("should not add group to specific groups", async () => {
-        const allGroups = await manager.connect(depositor).getAllGroups();
-        const activeGroups = allGroups[0];
-        const depreciatedGroups = allGroups[1];
-        const specificGroups = allGroups[2];
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
-        expect(depreciatedGroups).to.deep.eq([]);
+        expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([groupAddresses[4]]);
       });
 
@@ -1012,12 +1017,11 @@ describe("Manager", () => {
 
       it("should deprecate invalid group from specific groups", async () => {
         await manager.deprecateUnhealthyGroup(groupAddresses[4]);
-        const allGroups = await manager.connect(depositor).getAllGroups();
-        const activeGroups = allGroups[0];
-        const depreciatedGroups = allGroups[1];
-        const specificGroups = allGroups[2];
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
-        expect(depreciatedGroups).to.deep.eq([groupAddresses[4]]);
+        expect(deprecatedGroups).to.deep.eq([groupAddresses[4]]);
         expect(specificGroups).to.deep.eq([]);
       });
 
@@ -1039,6 +1043,7 @@ describe("Manager", () => {
           }
           specificGroupAddress = groupAddresses[2];
 
+          await manager.allowGroup(specificGroupAddress);
           await manager.changeStrategy(specificGroupAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupAddress, depositedValue);
@@ -1063,6 +1068,7 @@ describe("Manager", () => {
           }
           specificGroupAddress = groupAddresses[0];
 
+          await manager.allowGroup(specificGroupAddress);
           await manager.changeStrategy(specificGroupAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupAddress, depositedValue);
@@ -1090,17 +1096,17 @@ describe("Manager", () => {
 
       describe("When voted for specific validator group which is not in active groups", () => {
         beforeEach(async () => {
+          await manager.allowGroup(groupAddresses[2]);
           await manager.connect(depositor).changeStrategy(groupAddresses[2]);
           await manager.connect(depositor).deposit({ value: 100 });
         });
 
         it("should add group to specific groups", async () => {
-          const allGroups = await manager.connect(depositor).getAllGroups();
-          const activeGroups = allGroups[0];
-          const depreciatedGroups = allGroups[1];
-          const specificGroups = allGroups[2];
+          const activeGroups = await manager.connect(depositor).getGroups();
+          const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+          const specificGroups = await manager.connect(depositor).getSpecificGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
-          expect(depreciatedGroups).to.deep.eq([]);
+          expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([groupAddresses[2]]);
         });
 
@@ -1120,17 +1126,17 @@ describe("Manager", () => {
         let specificGroupAddress: string;
         beforeEach(async () => {
           specificGroupAddress = groupAddresses[0];
+          await manager.allowGroup(specificGroupAddress);
           await manager.connect(depositor).changeStrategy(specificGroupAddress);
           await manager.connect(depositor).deposit({ value: 100 });
         });
 
         it("should add group to specific groups", async () => {
-          const allGroups = await manager.connect(depositor).getAllGroups();
-          const activeGroups = allGroups[0];
-          const depreciatedGroups = allGroups[1];
-          const specificGroups = allGroups[2];
+          const activeGroups = await manager.connect(depositor).getGroups();
+          const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+          const specificGroups = await manager.connect(depositor).getSpecificGroups();
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
-          expect(depreciatedGroups).to.deep.eq([]);
+          expect(deprecatedGroups).to.deep.eq([]);
           expect(specificGroups).to.deep.eq([specificGroupAddress]);
         });
 
@@ -1250,6 +1256,7 @@ describe("Manager", () => {
 
         await account.setCeloForGroup(specificGroup.address, 100 + specificGroupWithdrawal);
 
+        await manager.allowGroup(specificGroup.address);
         await manager.connect(depositor2).changeStrategy(specificGroup.address);
         await manager.connect(depositor2).deposit({ value: specificGroupWithdrawal });
 
@@ -1615,6 +1622,7 @@ describe("Manager", () => {
 
     describe("When voted for specific validator group - no active groups", () => {
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: 100 });
         await account.setCeloForGroup(groupAddresses[0], 100);
@@ -1662,12 +1670,15 @@ describe("Manager", () => {
         }
         await account.setCeloForGroup(specificGroup.address, specificGroupWithdrawal);
 
+        await manager.allowGroup(specificGroup.address);
         await manager.connect(depositor).changeStrategy(specificGroup.address);
         await manager.connect(depositor).deposit({ value: specificGroupWithdrawal });
       });
 
       it("added group to specific groups", async () => {
-        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -1678,7 +1689,7 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
-        const [, , specificGroups] = await manager.getAllGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(specificGroups).to.deep.eq([specificGroup.address]);
       });
 
@@ -1687,20 +1698,21 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect([specificGroup.address]).to.deep.equal(withdrawnGroups);
         expect([BigNumber.from("100")]).to.deep.equal(withdrawals);
-        const [, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect([]).to.deep.eq(specificGroups);
         expect([]).to.deep.eq(deprecatedGroups);
       });
 
       it("should withdraw same amount as originally deposited from specific group after group is deprecated", async () => {
         await manager.deprecateGroup(specificGroup.address);
-        const [, deprecatedGroups] = await manager.getAllGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
         expect(deprecatedGroups).to.deep.eq([specificGroup.address]);
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
-        const [, specificGroups] = await manager.getAllGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(specificGroups).to.deep.eq([]);
       });
 
@@ -1724,12 +1736,15 @@ describe("Manager", () => {
         }
         await account.setCeloForGroup(specificGroup.address, specificGroupWithdrawal);
 
+        await manager.allowGroup(specificGroup.address);
         await manager.connect(depositor).changeStrategy(specificGroup.address);
         await manager.connect(depositor).deposit({ value: specificGroupWithdrawal });
       });
 
       it("added group to specific groups", async () => {
-        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(deprecatedGroups).to.deep.eq([]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
@@ -1740,7 +1755,9 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
-        const [activeGroups, deprecatedGroups, specificGroups] = await manager.getAllGroups();
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(specificGroups).to.deep.eq([specificGroup.address]);
         expect(deprecatedGroups).to.deep.eq([]);
@@ -1751,7 +1768,8 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroup.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
-        const [activeGroups, , specificGroups] = await manager.getAllGroups();
+        const activeGroups = await manager.connect(depositor).getGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
         expect(specificGroups).to.deep.eq([]);
       });
@@ -1774,6 +1792,7 @@ describe("Manager", () => {
         }
         await account.setCeloForGroup(groupAddresses[1], withdrawals[1] + specificGroupWithdrawal);
 
+        await manager.allowGroup(groupAddresses[1]);
         await manager.connect(depositor).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor).deposit({ value: specificGroupWithdrawal });
       });
@@ -2004,6 +2023,7 @@ describe("Manager", () => {
         const specificGroupDeposit = 10;
         const specificGroupAddress = groupAddresses[2];
 
+        await manager.allowGroup(specificGroupAddress);
         await manager.connect(depositor2).changeStrategy(specificGroupAddress);
         await manager.connect(depositor2).deposit({ value: specificGroupDeposit });
 
@@ -2038,6 +2058,7 @@ describe("Manager", () => {
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         specificGroupDeposit = BigNumber.from(100);
+        await manager.allowGroup(specificGroupAddress);
         await manager.connect(depositor).changeStrategy(specificGroupAddress);
         await manager.connect(depositor).deposit({ value: specificGroupDeposit });
       });
@@ -2082,6 +2103,7 @@ describe("Manager", () => {
 
       it("should schedule transfers if specific strategy => different specific strategy", async () => {
         const differentSpecificGroupDeposit = parseUnits("1");
+        await manager.allowGroup(groupAddresses[0]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupDeposit });
 
@@ -2107,6 +2129,7 @@ describe("Manager", () => {
         const differentSpecificGroupDeposit = BigNumber.from(100);
         const differentSpecificGroupAddress = groupAddresses[0];
         await manager.deprecateGroup(specificGroupAddress);
+        await manager.allowGroup(differentSpecificGroupAddress);
         await manager.connect(depositor2).changeStrategy(differentSpecificGroupAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupDeposit });
         await account.setCeloForGroup(differentSpecificGroupAddress, differentSpecificGroupDeposit);
@@ -2133,9 +2156,10 @@ describe("Manager", () => {
       it("should schedule transfers from default if specific strategy was deprecated", async () => {
         const differentSpecificGroupDeposit = BigNumber.from(1000);
         const differentSpecificGroupAddress = groupAddresses[0];
-        await manager.deprecateGroup(differentSpecificGroupAddress);
+        await manager.allowGroup(differentSpecificGroupAddress);
         await manager.connect(depositor2).changeStrategy(differentSpecificGroupAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupDeposit });
+        await manager.deprecateGroup(differentSpecificGroupAddress);
         await account.setCeloForGroup(differentSpecificGroupAddress, differentSpecificGroupDeposit);
 
         await manager
@@ -2172,18 +2196,34 @@ describe("Manager", () => {
     });
 
     it("should revert when not valid group", async () => {
-      await expect(manager.changeStrategy(nonAccount.address)).revertedWith(
-        `GroupNotEligible("${nonAccount.address}")`
+      const slashedGroup = groups[0];
+      await manager.allowGroup(slashedGroup.address);
+      await updateGroupSlashingMultiplier(
+        registryContract,
+        lockedGoldContract,
+        validatorsContract,
+        slashedGroup,
+        mockSlasher
+      );
+      await expect(manager.changeStrategy(slashedGroup.address)).revertedWith(
+        `GroupNotEligible("${slashedGroup.address}")`
+      );
+    });
+
+    it("should revert when not allowed group", async () => {
+      await expect(manager.changeStrategy(groupAddresses[0])).revertedWith(
+        `GroupNotEligible("${groupAddresses[0]}")`
       );
     });
 
     describe("When changing with no previous stCelo", () => {
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
       });
 
       it("should add group to specific groups", async () => {
-        const [, , specificGroups] = await manager.connect(depositor).getAllGroups();
+        const specificGroups = await manager.connect(depositor).getSpecificGroups();
         expect([groupAddresses[0]]).to.deep.eq(specificGroups);
       });
 
@@ -2198,6 +2238,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         specificGroupDeposit = parseUnits("2");
+        await manager.allowGroup(specificGroupAddress);
         await manager.changeStrategy(specificGroupAddress);
         await manager.deposit({ value: specificGroupDeposit });
       });
@@ -2220,6 +2261,7 @@ describe("Manager", () => {
       it("should schedule transfers when changing to different specific strategy", async () => {
         const differentSpecificGroup = groupAddresses[0];
 
+        await manager.allowGroup(differentSpecificGroup);
         await manager.changeStrategy(differentSpecificGroup);
         const [
           lastTransferFromGroups,
@@ -2277,6 +2319,7 @@ describe("Manager", () => {
       });
 
       it("should schedule transfers when changing to specific strategy", async () => {
+        await manager.allowGroup(specificGroupAddress);
         await manager.changeStrategy(specificGroupAddress);
         const [
           lastTransferFromGroups,
@@ -2305,6 +2348,7 @@ describe("Manager", () => {
     describe("When group is deprecated", () => {
       const depositedValue = 100;
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.changeStrategy(groupAddresses[0]);
         await manager.deposit({ value: depositedValue });
         await account.setCeloForGroup(groupAddresses[0], depositedValue);
@@ -2321,6 +2365,7 @@ describe("Manager", () => {
     describe("When group is only in specific", () => {
       const depositedValue = 100;
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.changeStrategy(groupAddresses[0]);
         await manager.deposit({ value: depositedValue });
       });
@@ -2378,6 +2423,7 @@ describe("Manager", () => {
         const specificDepositedValue = 100;
 
         beforeEach(async () => {
+          await manager.allowGroup(groupAddresses[0]);
           await manager.connect(depositor).deposit({ value: defaultDepositedValue });
           await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
           await manager.connect(depositor2).deposit({ value: specificDepositedValue });
@@ -2409,6 +2455,7 @@ describe("Manager", () => {
     const toGroupDepositedValue = 77;
 
     it("should revert when trying to balance 0x0 and some group", async () => {
+      await manager.allowGroup(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
       await expect(manager.rebalance(ADDRESS_ZERO, groupAddresses[0])).revertedWith(
@@ -2417,6 +2464,7 @@ describe("Manager", () => {
     });
 
     it("should revert when trying to balance some and 0x0 group", async () => {
+      await manager.allowGroup(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
@@ -2434,9 +2482,11 @@ describe("Manager", () => {
     });
 
     it("should revert when fromGroup has less Celo than it should", async () => {
+      await manager.allowGroup(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
+      await manager.allowGroup(groupAddresses[1]);
       await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
       await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
 
@@ -2447,9 +2497,11 @@ describe("Manager", () => {
     });
 
     it("should revert when fromGroup has same Celo as it should", async () => {
+      await manager.allowGroup(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
+      await manager.allowGroup(groupAddresses[1]);
       await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
       await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
 
@@ -2463,12 +2515,14 @@ describe("Manager", () => {
       const toGroupDepositedValue = 77;
 
       beforeEach(async () => {
+        await manager.allowGroup(groupAddresses[0]);
         await manager.changeStrategy(groupAddresses[0]);
         await manager.deposit({ value: fromGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue + 1);
       });
 
       it("should revert when toGroup has more Celo than it should", async () => {
+        await manager.allowGroup(groupAddresses[1]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue + 1);
@@ -2479,6 +2533,7 @@ describe("Manager", () => {
       });
 
       it("should revert when toGroup has same Celo as it should", async () => {
+        await manager.allowGroup(groupAddresses[1]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
@@ -2490,6 +2545,7 @@ describe("Manager", () => {
 
       describe("When toGroup has valid properties", () => {
         beforeEach(async () => {
+          await manager.allowGroup(groupAddresses[1]);
           await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
           await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
           await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue - 1);

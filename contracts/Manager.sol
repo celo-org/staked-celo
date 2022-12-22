@@ -72,7 +72,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice StCelo that was cast for specific validator group
      * validator group => stCelo amount
      */
-    mapping(address => uint256) private specificGroupTotalStCelo;
+    mapping(address => uint256) private specificStrategyTotalStCeloVotes;
 
     /**
      * @notice Total StCelo that was voted with on specific groups
@@ -90,6 +90,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     event GroupActivated(address indexed group);
+    /**
+     * @notice Emitted when a new group is allowed for voting.
+     * @param group The group's address.
+     */
+    event GroupAllowed(address indexed group);
     /**
      * @notice Emitted when a group is deprecated.
      * @param group The group's address.
@@ -120,6 +125,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error FailedToAddActiveGroup(address group);
+
+    /**
+     * @notice Used when an attempt to add an allowed group to the EnumerableSet
+     * fails.
+     * @param group The group's address.
+     */
+    error FailedToAddAllowedGroup(address group);
 
     /**
      * @notice Used when an attempt to add a deprecated group to the
@@ -269,7 +281,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Marks a group as votable.
+     * @notice Marks a group as votable for default strategy.
      * @param group The address of the group to add to the set of votable
      * groups.
      * @dev Fails if the maximum number of groups are already being voted for by
@@ -306,6 +318,33 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Marks a group as votable for specific strategy.
+     * @param group The address of the group to add to the set of allowed
+     * groups.
+     */
+    function allowGroup(address group) external onlyOwner {
+        if (!isValidGroup(group)) {
+            revert GroupNotEligible(group);
+        }
+
+        if (specificGroups.contains(group)) {
+            revert GroupAlreadyAdded(group);
+        }
+
+        if (deprecatedGroups.contains(group)) {
+            if (!deprecatedGroups.remove(group)) {
+                revert FailedToRemoveDeprecatedGroup(group);
+            }
+        }
+
+        if (!specificGroups.add(group)) {
+            revert FailedToAddAllowedGroup(group);
+        }
+
+        emit GroupAllowed(group);
+    }
+
+    /**
      * @notice Returns the array of active groups.
      * @return The array of active groups.
      */
@@ -314,21 +353,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns the array of active, deprecated and specific groups.
-     * @return The array of active groups.
-     * @return The array of deprecated groups.
+     * @notice Returns the array of specific groups.
      * @return The array of specific groups.
      */
-    function getAllGroups()
-        external
-        view
-        returns (
-            address[] memory,
-            address[] memory,
-            address[] memory
-        )
-    {
-        return (activeGroups.values(), deprecatedGroups.values(), specificGroups.values());
+    function getSpecificGroups() external view returns (address[] memory) {
+        return specificGroups.values();
     }
 
     /**
@@ -422,7 +451,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                     _transfer(strategy, address(0), toCelo(stCeloBalance), msg.sender, msg.sender);
                 }
             } else {
-                specificGroupTotalStCelo[strategy] += stCeloValue;
+                specificStrategyTotalStCeloVotes[strategy] += stCeloValue;
                 totalStCeloInSpecificGroups += stCeloValue;
             }
         }
@@ -727,16 +756,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         groups[0] = strategy;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > specificGroupTotalStCelo[strategy]) {
+        if (stCeloWithdrawalAmount > specificStrategyTotalStCeloVotes[strategy]) {
             revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        specificGroupTotalStCelo[strategy] -= stCeloWithdrawalAmount;
+        specificStrategyTotalStCeloVotes[strategy] -= stCeloWithdrawalAmount;
         totalStCeloInSpecificGroups -= stCeloWithdrawalAmount;
 
-        if (specificGroupTotalStCelo[strategy] == 0) {
+        if (specificStrategyTotalStCeloVotes[strategy] == 0) {
             if (specificGroups.remove(strategy)) {
-                delete specificGroupTotalStCelo[strategy];
+                delete specificStrategyTotalStCeloVotes[strategy];
                 emit GroupRemoved(strategy);
             }
         }
@@ -762,19 +791,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Allows account to change strategy.
      * address(0) = default strategy
-     * !address(0) = voting for specific validator group
+     * !address(0) = voting for specific validator group. Group needs to be in allowed
      * @param newStrategy The from account.
      */
     function changeStrategy(address newStrategy) public {
-        if (newStrategy != address(0) && !isValidGroup(newStrategy)) {
+        if (
+            newStrategy != address(0) &&
+            (!specificGroups.contains(newStrategy) || !isValidGroup(newStrategy))
+        ) {
             revert GroupNotEligible(newStrategy);
         }
 
         uint256 amount = stakedCelo.balanceOf(msg.sender);
-        if (newStrategy != address(0) && !deprecatedGroups.contains(newStrategy)) {
-            specificGroups.add(newStrategy);
-        }
-
         if (amount != 0) {
             address currentStrategy = strategies[msg.sender];
             _transfer(currentStrategy, newStrategy, toCelo(amount), msg.sender, msg.sender);
@@ -847,7 +875,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         bool isActiveGroup = activeGroups.contains(group);
 
         if (isSpecificGroup && !isActiveGroup) {
-            return (toCelo(specificGroupTotalStCelo[group]), realCelo);
+            return (toCelo(specificStrategyTotalStCeloVotes[group]), realCelo);
         }
 
         if (!isSpecificGroup && isActiveGroup) {
@@ -862,7 +890,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply - totalStCeloInSpecificGroups;
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy / activeGroups.length();
-            uint256 supposedCeloInSpecificGroup = toCelo(specificGroupTotalStCelo[group]);
+            uint256 supposedCeloInSpecificGroup = toCelo(specificStrategyTotalStCeloVotes[group]);
 
             return (toCelo(supposedStCeloInActiveGroup + supposedCeloInSpecificGroup), realCelo);
         }
@@ -997,7 +1025,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < groups.length; i++) {
             uint256 votes = specificGroups.contains(groups[i])
-                ? account.getCeloForGroup(groups[i]) - toCelo(specificGroupTotalStCelo[groups[i]])
+                ? account.getCeloForGroup(groups[i]) -
+                    toCelo(specificStrategyTotalStCeloVotes[groups[i]])
                 : account.getCeloForGroup(groups[i]);
             totalVotes += votes;
             groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
@@ -1132,7 +1161,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert GroupNotActiveNorSpecific(group);
         }
 
-        specificGroupTotalStCelo[group] = 0;
+        specificStrategyTotalStCeloVotes[group] = 0;
 
         emit GroupDeprecated(group);
 
@@ -1235,10 +1264,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         if (fromStrategy != address(0)) {
-            specificGroupTotalStCelo[fromStrategy] -= stCeloAmount;
+            specificStrategyTotalStCeloVotes[fromStrategy] -= stCeloAmount;
         }
         if (toStrategy != address(0)) {
-            specificGroupTotalStCelo[toStrategy] += stCeloAmount;
+            specificStrategyTotalStCeloVotes[toStrategy] += stCeloAmount;
         }
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
