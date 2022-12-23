@@ -664,7 +664,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
      * `group` in the this contract's array of groups it is voting for.
      */
-    function revokeTransferVotes(
+    function revokeAndScheduleVotes(
         address group,
         address lesserAfterPendingRevoke,
         address greaterAfterPendingRevoke,
@@ -672,7 +672,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address greaterAfterActiveRevoke,
         uint256 index
     ) public {
-        // The amount of locked CELO for group that we want to revoke.
         uint256 revokeAmount = getToRevoke(group);
 
         if (revokeAmount == 0) {

@@ -144,6 +144,30 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
   ).sendAndWaitForReceipt({ from: group.address });
 }
 
+export async function allowStrategies(
+  managerContract: Manager,
+  multisigOwner: string,
+  strategyAddresses: string[]
+) {
+  const payloads: string[] = [];
+  const destinations: string[] = [];
+  const values: string[] = [];
+
+  for (let i = 0; i < strategyAddresses.length; i++) {
+    const isValidGroup = await managerContract.isValidGroup(strategyAddresses[i]);
+    if (!isValidGroup) {
+      throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
+    }
+    destinations.push(managerContract.address);
+    values.push("0");
+    payloads.push(
+      managerContract.interface.encodeFunctionData("allowStrategy", [strategyAddresses[i]])
+    );
+  }
+
+  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
+}
+
 export async function activateValidators(
   managerContract: Manager,
   multisigOwner: string,
@@ -447,4 +471,74 @@ export async function setGovernanceConcurrentProposals(count: number) {
   await setConcurrentProposalsTx.send({
     from: governanceOwner,
   });
+}
+
+export async function rebalanceGroups(managerContract: Manager) {
+  const activeGroupsLengthPromise = managerContract.getGroupsLength();
+  const allowedStrategiesLengthPromise = managerContract.getAllowedStrategiesLength();
+
+  const activeGroupsPromises = [];
+  const allowedGroupsPromises = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroupsPromises.push(managerContract.getGroup(i));
+  }
+
+  for (let i = 0; i < (await allowedStrategiesLengthPromise).toNumber(); i++) {
+    allowedGroupsPromises.push(managerContract.getAllowedStrategy(i));
+  }
+
+  const allGroups = await Promise.all([...activeGroupsPromises, ...allowedGroupsPromises]);
+  const allGroupsSet = new Set(allGroups);
+
+  const expectedVsRealPromises = [...allGroupsSet].map(async (group) => {
+    const expectedVsReal = await managerContract.getExpectedAndRealCeloForGroup(group);
+    return {
+      group,
+      expected: expectedVsReal[0],
+      real: expectedVsReal[1],
+      diff: expectedVsReal[1].sub(expectedVsReal[0]),
+    };
+  });
+
+  const expectedVsReal = await Promise.all(expectedVsRealPromises);
+
+  const unbalanced = expectedVsReal.filter((k) => !k.diff.eq(EthersBigNumber.from(0)));
+  if (unbalanced.length == 0) {
+    return;
+  }
+
+  const sortedUnbalancedDesc = unbalanced.sort((a, b) => (a.diff.lt(b.diff) ? 1 : -1));
+
+  let firstIndex = 0;
+  let lastIndex = sortedUnbalancedDesc.length - 1;
+
+  while (firstIndex < lastIndex) {
+    console.log(
+      "Rebalancing",
+      sortedUnbalancedDesc[firstIndex].group,
+      sortedUnbalancedDesc[lastIndex].group
+    );
+    await managerContract.rebalance(
+      sortedUnbalancedDesc[firstIndex].group,
+      sortedUnbalancedDesc[lastIndex].group
+    );
+
+    const sumDiff = sortedUnbalancedDesc[firstIndex].diff.add(sortedUnbalancedDesc[lastIndex].diff);
+
+    if (sumDiff.lt(0)) {
+      sortedUnbalancedDesc[lastIndex].diff = sumDiff;
+      firstIndex++;
+    } else if (sumDiff.gt(0)) {
+      sortedUnbalancedDesc[firstIndex].diff = sumDiff;
+      lastIndex--;
+    } else {
+      sortedUnbalancedDesc[firstIndex].diff = sortedUnbalancedDesc[lastIndex].diff =
+        EthersBigNumber.from(0);
+      firstIndex++;
+      lastIndex--;
+    }
+  }
+
+  console.log("Rebalance finished!");
 }

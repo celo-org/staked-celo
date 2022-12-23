@@ -94,7 +94,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Emitted when a new group is allowed for voting.
      * @param group The group's address.
      */
-    event GroupAllowed(address indexed group);
+    event StrategyAllowed(address indexed group);
     /**
      * @notice Emitted when a group is deprecated.
      * @param group The group's address.
@@ -108,10 +108,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     event GroupRemoved(address indexed group);
 
     /**
-     * @notice Used when strategy is disallow.
+     * @notice Used when strategy is blocked.
      * @param group The group's address.
      */
-    event StrategyDisallowed(address group);
+    event StrategyBlocked(address group);
 
     /**
      * @notice Used when attempting to activate a group that is already active.
@@ -129,13 +129,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Used when attempting to disallow a strategy that is not allowed.
      * @param group The group's address.
      */
-    error StrategyNotAllowed(address group);
+    error StrategyAlreadyBlocked(address group);
 
     /**
      * @notice Used when attempting to disallow a strategy failed.
      * @param group The group's address.
      */
-    error FailedToDisallowStrategy(address group);
+    error FailedToBlockStrategy(address group);
 
     /**
      * @notice Used when an attempt to add an active group to the EnumerableSet
@@ -375,7 +375,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert FailedToAddAllowedStrategy(group);
         }
 
-        emit GroupAllowed(group);
+        emit StrategyAllowed(group);
     }
 
     /**
@@ -384,17 +384,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The address of the group to remove from the set of allowed
      * strategies.
      */
-    function disallowStrategy(address group) external onlyOwner {
+    function blockStrategy(address group) external onlyOwner {
         if (!allowedStrategies.contains(group)) {
-            revert StrategyNotAllowed(group);
+            revert StrategyAlreadyBlocked(group);
         }
 
         if (activeGroups.length() == 0) {
             revert NoActiveGroups();
-        }
-
-        if (!allowedStrategies.remove(group)) {
-            revert FailedToDisallowStrategy(group);
         }
 
         uint256 strategyTotalStCeloVotes = allowedStrategyTotalStCeloVotes[group];
@@ -403,7 +399,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             _transferWithoutChecks(group, address(0), strategyTotalStCeloVotes);
         }
 
-        emit StrategyDisallowed(group);
+        if (!allowedStrategies.remove(group)) {
+            revert FailedToBlockStrategy(group);
+        }
+
+        emit StrategyBlocked(group);
     }
 
     /**
@@ -415,11 +415,43 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Returns the length of active groups.
+     * @return The length of active groups.
+     */
+    function getGroupsLength() external view returns (uint256) {
+        return activeGroups.length();
+    }
+
+    /**
+     * @notice Returns the active group on index.
+     * @return The active group.
+     */
+    function getGroup(uint256 index) external view returns (address) {
+        return activeGroups.at(index);
+    }
+
+    /**
      * @notice Returns the array of allowed strategies.
      * @return The array of allowed strategys.
      */
     function getAllowedStrategies() external view returns (address[] memory) {
         return allowedStrategies.values();
+    }
+
+    /**
+     * @notice Returns the length of allowed strategies.
+     * @return The length of active groups.
+     */
+    function getAllowedStrategiesLength() external view returns (uint256) {
+        return allowedStrategies.length();
+    }
+
+    /**
+     * @notice Returns the allowed strategy on index.
+     * @return The active group.
+     */
+    function getAllowedStrategy(uint256 index) external view returns (address) {
+        return allowedStrategies.at(index);
     }
 
     /**
@@ -703,7 +735,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address strategy = _checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
 
         if (strategy != address(0)) {
-            distributeWithdrawalsSpecificStrategy(withdrawal, stCeloAmount, beneficiary, strategy);
+            distributeWithdrawalsAllowedStrategy(withdrawal, stCeloAmount, beneficiary, strategy);
         } else {
             distributeWithdrawalsDefaultStrategy(withdrawal, beneficiary);
         }
@@ -717,26 +749,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * CELO.
      * @param strategy The validator group that we want to withdraw from.
      **/
-    function distributeWithdrawalsSpecificStrategy(
+    function distributeWithdrawalsAllowedStrategy(
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount,
         address beneficiary,
         address strategy
     ) private {
-        address[] memory specificGroupsWithdrawn;
-        uint256[] memory specificWithdrawalsPerGroup;
+        address[] memory groupsWithdrawn;
+        uint256[] memory withdrawalsPerGroup;
 
-        (specificGroupsWithdrawn, specificWithdrawalsPerGroup) = withdrawFromSpecificGroup(
+        (groupsWithdrawn, withdrawalsPerGroup) = withdrawFromAllowedStrategy(
             strategy,
             withdrawal,
             stCeloWithdrawalAmount
         );
 
-        account.scheduleWithdrawals(
-            beneficiary,
-            specificGroupsWithdrawn,
-            specificWithdrawalsPerGroup
-        );
+        account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
     }
 
     /**
@@ -802,13 +830,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
-    function withdrawFromSpecificGroup(
+    function withdrawFromAllowedStrategy(
         address strategy,
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount
     ) private returns (address[] memory groups, uint256[] memory votes) {
         uint256 votesRemaining = account.getCeloForGroup(strategy);
-
         if (votesRemaining < withdrawal) {
             revert GroupNotBalancedOrNotEnoughStCelo(strategy);
         }
@@ -954,9 +981,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply - totalStCeloInAllowedStrategies;
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy / activeGroups.length();
-            uint256 supposedCeloInSpecificGroup = toCelo(allowedStrategyTotalStCeloVotes[group]);
+            uint256 supposedCeloInAllowedStrategy = toCelo(allowedStrategyTotalStCeloVotes[group]);
 
-            return (toCelo(supposedStCeloInActiveGroup + supposedCeloInSpecificGroup), realCelo);
+            return (toCelo(supposedStCeloInActiveGroup + supposedCeloInAllowedStrategy), realCelo);
         }
 
         revert GroupNotEligible(group);
@@ -1042,6 +1069,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         GroupWithVotes[] memory sortedGroups;
         uint256 availableVotes;
         (sortedGroups, availableVotes) = getSortedGroupsWithVotes(activeGroups.values());
+        if (availableVotes < withdrawal) {
+            revert CantWithdrawAccordingToStrategy(address(0));
+        }
         availableVotes -= withdrawal;
 
         uint256 numberGroupsWithdrawn = numberGroups;

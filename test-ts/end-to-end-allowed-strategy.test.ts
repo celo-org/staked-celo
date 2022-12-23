@@ -9,11 +9,13 @@ import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
   activateValidators,
+  allowStrategies,
   distributeEpochRewards,
   electMinimumNumberOfValidators,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
+  rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
@@ -24,7 +26,7 @@ after(() => {
   hre.kit.stop();
 });
 
-describe("e2e specific group voting", () => {
+describe("e2e allowed strategy voting", () => {
   let accountContract: Account;
   let managerContract: Manager;
 
@@ -43,6 +45,7 @@ describe("e2e specific group voting", () => {
   let validatorAddresses: string[];
 
   let stakedCeloContract: StakedCelo;
+  let multisigOwner0: SignerWithAddress;
 
   // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
@@ -91,7 +94,7 @@ describe("e2e specific group voting", () => {
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
-    const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
@@ -101,13 +104,29 @@ describe("e2e specific group voting", () => {
     const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("20"));
     const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("35"));
     const rewardsGroup5 = hre.ethers.BigNumber.from(parseUnits("10"));
+    const allowedStrategy = groups[5];
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
-    // await managerContract
-    //   .connect(depositor1)
-    //   .depositSpecific(groups[5].address, { value: amountOfCeloToDeposit });
+    const depositor0InitialStakedCeloBalance = await stakedCeloContract.balanceOf(
+      depositor0.address
+    );
+    expect(depositor0InitialStakedCeloBalance).to.eq(amountOfCeloToDeposit);
+
+    // strategy is not allowed
+    await expect(
+      managerContract.connect(depositor1).changeStrategy(allowedStrategy.address)
+    ).revertedWith(`GroupNotEligible("${allowedStrategy.address}")`);
+    await allowStrategies(managerContract, multisigOwner0.address, [allowedStrategy.address]);
+    await managerContract.connect(depositor1).changeStrategy(allowedStrategy.address);
+    await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+    console.log("depositor1StakedCeloBalance", depositor1StakedCeloBalance.toString());
+    console.log(
+      "depositor1 theoretical celo balance",
+      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
+    );
+    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
 
     await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
@@ -118,10 +137,19 @@ describe("e2e specific group voting", () => {
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
     await distributeEpochRewards(groups[5].address, rewardsGroup5.toString());
 
-    const withdrawStakedCelo = await managerContract
-      .connect(depositor1)
-      .withdraw(amountOfCeloToDeposit);
-    await withdrawStakedCelo.wait();
+    console.log(
+      "depositor1 theoretical celo balance",
+      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
+    );
+    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
+    await rebalanceGroups(managerContract);
+    console.log(
+      "depositor1 theoretical celo balance",
+      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
+    );
+    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
+
+    await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
 
     depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(0);
@@ -131,12 +159,13 @@ describe("e2e specific group voting", () => {
       account: deployerAccountName,
       useNodeAccount: true,
     });
-
     const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
     const { timestamps } = await accountContract.getPendingWithdrawals(depositor1.address);
+
+    console.log("timestamps", JSON.stringify(timestamps));
 
     for (let i = 0; i < timestamps.length; i++) {
       const finishPendingWithdrawal = await accountContract.finishPendingWithdrawal(
@@ -146,7 +175,8 @@ describe("e2e specific group voting", () => {
       );
       await finishPendingWithdrawal.wait();
     }
-
+    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
+    console.log("HERE4");
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
     const depositor2StakedCeloBalance = await stakedCeloContract.balanceOf(depositor2.address);
     expect(
@@ -156,6 +186,8 @@ describe("e2e specific group voting", () => {
     const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
     expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
     const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
+    console.log("depositor1AfterWithdrawalBalance", depositor1AfterWithdrawalBalance.toString());
+    console.log("depositor1BeforeWithdrawalBalance", depositor1BeforeWithdrawalBalance.toString());
     expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
   });
 });
