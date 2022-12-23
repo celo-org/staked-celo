@@ -203,6 +203,30 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupNotEligible(address group);
 
     /**
+     * @notice Used when rebalancing to not active nor allowed group.
+     * @param group The group's address.
+     */
+    error InvalidToGroup(address group);
+
+    /**
+     * @notice Used when rebalancing from address(0) group.
+     * @param group The group's address.
+     */
+    error InvalidFromGroup(address group);
+
+    /**
+     * @notice Used when rebalancing and fromGroup doesn't have any extra Celo.
+     * @param group The group's address.
+     */
+    error RebalanceNoExtraCelo(address group);
+
+    /**
+     * @notice Used when rebalancing and toGroup has enough Celo.
+     * @param group The group's address.
+     */
+    error RebalanceEnoughCelo(address group);
+
+    /**
      * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
      * @param group The group's address.
      */
@@ -860,16 +884,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 expectedFromCelo;
         uint256 realFromCelo;
 
-        if (toGroup != _checkStrategy(toGroup)) {
+        if (!activeGroups.contains(toGroup) && !allowedStrategies.contains(toGroup)) {
             // rebalancinch to deprecated/non-existant group is not allowed
-            revert GroupNotEligible(toGroup);
+            revert InvalidToGroup(toGroup);
+        }
+
+        if (fromGroup == address(0)) {
+            revert InvalidFromGroup(fromGroup);
         }
 
         (expectedFromCelo, realFromCelo) = getExpectedAndRealCeloForGroup(fromGroup);
 
         if (realFromCelo <= expectedFromCelo) {
             // fromGroup needs to have more Celo than it should
-            revert GroupNotEligible(fromGroup);
+            revert RebalanceNoExtraCelo(fromGroup);
         }
 
         uint256 expectedToCelo;
@@ -879,7 +907,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (realToCelo >= expectedToCelo) {
             // toGroup needs to have less Celo than it should
-            revert GroupNotEligible(toGroup);
+            revert RebalanceEnoughCelo(toGroup);
         }
 
         address[] memory fromGroups = new address[](1);
@@ -1060,10 +1088,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         GroupWithVotes[] memory groupsWithVotes = new GroupWithVotes[](groups.length);
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < groups.length; i++) {
-            uint256 votes = allowedStrategies.contains(groups[i])
-                ? account.getCeloForGroup(groups[i]) -
-                    toCelo(allowedStrategyTotalStCeloVotes[groups[i]])
-                : account.getCeloForGroup(groups[i]);
+            uint256 votes;
+            if (allowedStrategies.contains(groups[i])) {
+                uint256 realCeloInGroup = account.getCeloForGroup(groups[i]);
+                uint256 minExpectedCeloInGroup = toCelo(allowedStrategyTotalStCeloVotes[groups[i]]);
+                if (realCeloInGroup < minExpectedCeloInGroup) {
+                    revert GroupNotBalancedOrNotEnoughStCelo(groups[i]);
+                }
+                votes = realCeloInGroup - minExpectedCeloInGroup;
+            } else {
+                votes = account.getCeloForGroup(groups[i]);
+            }
             totalVotes += votes;
             groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
         }

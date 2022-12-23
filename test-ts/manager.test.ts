@@ -2519,7 +2519,7 @@ describe("Manager", () => {
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
       await expect(manager.rebalance(ADDRESS_ZERO, groupAddresses[0])).revertedWith(
-        `GroupNotEligible("${ADDRESS_ZERO}")`
+        `InvalidFromGroup("${ADDRESS_ZERO}")`
       );
     });
 
@@ -2531,13 +2531,13 @@ describe("Manager", () => {
       await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue + 1);
 
       await expect(manager.rebalance(groupAddresses[0], ADDRESS_ZERO)).revertedWith(
-        `GroupNotEligible("${ADDRESS_ZERO}")`
+        `InvalidToGroup("${ADDRESS_ZERO}")`
       );
     });
 
     it("should revert when trying to balance 0x0 and 0x0 group", async () => {
       await expect(manager.rebalance(ADDRESS_ZERO, ADDRESS_ZERO)).revertedWith(
-        `GroupNotEligible("${ADDRESS_ZERO}")`
+        `InvalidToGroup("${ADDRESS_ZERO}")`
       );
     });
 
@@ -2552,7 +2552,7 @@ describe("Manager", () => {
 
       await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue - 1);
       await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-        `GroupNotEligible("${groupAddresses[0]}")`
+        `RebalanceNoExtraCelo("${groupAddresses[0]}")`
       );
     });
 
@@ -2567,7 +2567,7 @@ describe("Manager", () => {
 
       await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue);
       await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-        `GroupNotEligible("${groupAddresses[0]}")`
+        `RebalanceNoExtraCelo("${groupAddresses[0]}")`
       );
     });
 
@@ -2588,7 +2588,7 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue + 1);
 
         await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-          `GroupNotEligible("${groupAddresses[1]}")`
+          `RebalanceEnoughCelo("${groupAddresses[1]}")`
         );
       });
 
@@ -2599,7 +2599,7 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
 
         await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-          `GroupNotEligible("${groupAddresses[1]}")`
+          `RebalanceEnoughCelo("${groupAddresses[1]}")`
         );
       });
 
@@ -2632,29 +2632,10 @@ describe("Manager", () => {
             for (let i = 0; i < 2; i++) {
               await manager.activateGroup(groupAddresses[i]);
             }
-            console.log("aaa");
+            await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
+
             await manager.disallowStrategy(groupAddresses[0]);
-            const [
-              lastTransferFromGroups,
-              lastTransferFromVotes,
-              lastTransferToGroups,
-              lastTransferToVotes,
-            ] = await account.getLastTransferValues();
-            console.log("lastTransferFromGroups", JSON.stringify(lastTransferFromGroups));
-            console.log("lastTransferFromVotes", JSON.stringify(lastTransferFromVotes));
-            console.log("lastTransferToGroups", JSON.stringify(lastTransferToGroups));
-            console.log("lastTransferToVotes", JSON.stringify(lastTransferToVotes));
             await manager.disallowStrategy(groupAddresses[1]);
-            const [
-              lastTransferFromGroups2,
-              lastTransferFromVotes2,
-              lastTransferToGroups2,
-              lastTransferToVotes2,
-            ] = await account.getLastTransferValues();
-            console.log("lastTransferFromGroups", JSON.stringify(lastTransferFromGroups2));
-            console.log("lastTransferFromVotes", JSON.stringify(lastTransferFromVotes2));
-            console.log("lastTransferToGroups", JSON.stringify(lastTransferToGroups2));
-            console.log("lastTransferToVotes", JSON.stringify(lastTransferToVotes2));
           });
 
           it("should schedule transfer from deprecated group", async () => {
@@ -2669,15 +2650,15 @@ describe("Manager", () => {
             ] = await account.getLastTransferValues();
 
             expect(lastTransferFromGroups).to.deep.eq([groupAddresses[0]]);
-            expect(lastTransferFromVotes).to.deep.eq([BigNumber.from(1)]);
+            expect(lastTransferFromVotes).to.deep.eq([BigNumber.from(fromGroupDepositedValue)]);
             expect(lastTransferToGroups).to.deep.eq([groupAddresses[1]]);
-            expect(lastTransferToVotes).to.deep.eq([BigNumber.from(1)]);
+            expect(lastTransferToVotes).to.deep.eq([BigNumber.from(fromGroupDepositedValue)]);
           });
 
           it("should revert when rebalance to deprecated group", async () => {
             await manager.deprecateGroup(groupAddresses[1]);
             await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-              `GroupNotEligible("${groupAddresses[1]}")`
+              `InvalidToGroup("${groupAddresses[1]}")`
             );
           });
         });
@@ -2709,7 +2690,7 @@ describe("Manager", () => {
           it("should revert when rebalance to disallowed strategy", async () => {
             await manager.disallowStrategy(groupAddresses[1]);
             await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-              `GroupNotEligible("${groupAddresses[1]}")`
+              `InvalidToGroup("${groupAddresses[1]}")`
             );
           });
         });
