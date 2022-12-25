@@ -9,7 +9,9 @@ export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Si
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
-  const groupList = await managerContract.getGroups();
+  const activeGroups = await managerContract.getGroups();
+  const allowedStrategies: [] = await managerContract.getAllowedStrategies();
+  const groupList = new Set<string>(activeGroups.concat(allowedStrategies)).values();
   console.log("groups:", groupList);
 
   for (const group of groupList) {

@@ -105,6 +105,7 @@ describe("e2e allowed strategy voting", () => {
     const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("35"));
     const rewardsGroup5 = hre.ethers.BigNumber.from(parseUnits("10"));
     const allowedStrategy = groups[5];
+    console.log("allowedStrategy", allowedStrategy.address);
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     const depositor0InitialStakedCeloBalance = await stakedCeloContract.balanceOf(
@@ -144,6 +145,10 @@ describe("e2e allowed strategy voting", () => {
     console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
     await rebalanceGroups(managerContract);
     console.log(
+      "no length all strats",
+      JSON.stringify(await managerContract.getAllowedStrategies())
+    );
+    console.log(
       "depositor1 theoretical celo balance",
       (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
     );
@@ -153,7 +158,7 @@ describe("e2e allowed strategy voting", () => {
 
     depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(0);
-
+    console.log("MY ALLOWED strats:", JSON.stringify(await managerContract.getAllowedStrategies()));
     await hre.run(ACCOUNT_WITHDRAW, {
       beneficiary: depositor1.address,
       account: deployerAccountName,

@@ -399,7 +399,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             PendingWithdrawal(revokeAmount, block.timestamp + lockedGold.unlockingPeriod())
         );
 
-        revokeVotes(
+        _revokeVotes(
             group,
             revokeAmount,
             lesserAfterPendingRevoke,
@@ -664,7 +664,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
      * `group` in the this contract's array of groups it is voting for.
      */
-    function revokeAndScheduleVotes(
+    function revokeVotes(
         address group,
         address lesserAfterPendingRevoke,
         address greaterAfterPendingRevoke,
@@ -678,7 +678,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             return;
         }
 
-        revokeVotes(
+        _revokeVotes(
             group,
             revokeAmount,
             lesserAfterPendingRevoke,
@@ -713,7 +713,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
      * `group` in the this contract's array of groups it is voting for.
      */
-    function revokeVotes(
+    function _revokeVotes(
         address group,
         uint256 revokeAmount,
         address lesserAfterPendingRevoke,

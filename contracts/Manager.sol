@@ -851,13 +851,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         allowedStrategyTotalStCeloVotes[strategy] -= stCeloWithdrawalAmount;
         totalStCeloInAllowedStrategies -= stCeloWithdrawalAmount;
-
-        if (allowedStrategyTotalStCeloVotes[strategy] == 0) {
-            if (allowedStrategies.remove(strategy)) {
-                allowedStrategyTotalStCeloVotes[strategy] = 0;
-                emit GroupRemoved(strategy);
-            }
-        }
     }
 
     /**

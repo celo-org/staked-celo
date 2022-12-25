@@ -991,9 +991,9 @@ describe("Account", () => {
     });
   });
 
-  describe("#revokeAndScheduleVotes()", () => {
+  describe("#revokeVotes()", () => {
     it("should succeed when there is nothing to revoke", async () => {
-      await account.revokeAndScheduleVotes(
+      await account.revokeVotes(
         groupAddresses[0],
         ADDRESS_ZERO,
         ADDRESS_ZERO,
@@ -1029,7 +1029,7 @@ describe("Account", () => {
               [transferAmount]
             );
 
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[0],
             groupAddresses[1],
             ADDRESS_ZERO,
@@ -1037,7 +1037,7 @@ describe("Account", () => {
             ADDRESS_ZERO,
             0
           );
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[1],
             ADDRESS_ZERO,
             groupAddresses[0],
@@ -1076,7 +1076,7 @@ describe("Account", () => {
                 [transferAmount2]
               );
 
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[0],
               groupAddresses[1],
               ADDRESS_ZERO,
@@ -1084,7 +1084,7 @@ describe("Account", () => {
               ADDRESS_ZERO,
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[1],
               ADDRESS_ZERO,
               groupAddresses[0],
@@ -1148,7 +1148,7 @@ describe("Account", () => {
               [transferAmount]
             );
 
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[0],
             groupAddresses[1],
             ADDRESS_ZERO,
@@ -1156,7 +1156,7 @@ describe("Account", () => {
             ADDRESS_ZERO,
             0
           );
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[1],
             ADDRESS_ZERO,
             groupAddresses[0],
@@ -1168,7 +1168,7 @@ describe("Account", () => {
 
         describe("When revoke and activate is called immediately after schedule transfer", () => {
           beforeEach(async () => {
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[0],
               groupAddresses[1],
               ADDRESS_ZERO,
@@ -1176,7 +1176,7 @@ describe("Account", () => {
               ADDRESS_ZERO,
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[1],
               ADDRESS_ZERO,
               groupAddresses[0],
@@ -1233,7 +1233,7 @@ describe("Account", () => {
                 [transferAmount2]
               );
 
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[0],
               groupAddresses[1],
               ADDRESS_ZERO,
@@ -1241,7 +1241,7 @@ describe("Account", () => {
               ADDRESS_ZERO,
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[1],
               groupAddresses[2],
               groupAddresses[0],
@@ -1249,7 +1249,7 @@ describe("Account", () => {
               groupAddresses[0],
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[2],
               ADDRESS_ZERO,
               groupAddresses[1],
@@ -1345,7 +1345,7 @@ describe("Account", () => {
               [transferAmount]
             );
 
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[0],
             groupAddresses[1],
             ADDRESS_ZERO,
@@ -1353,7 +1353,7 @@ describe("Account", () => {
             ADDRESS_ZERO,
             0
           );
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[1],
             ADDRESS_ZERO,
             groupAddresses[0],
@@ -1365,7 +1365,7 @@ describe("Account", () => {
 
         describe("When revoke and activate is called immediately after schedule transfer", () => {
           beforeEach(async () => {
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[0],
               groupAddresses[1],
               ADDRESS_ZERO,
@@ -1373,7 +1373,7 @@ describe("Account", () => {
               ADDRESS_ZERO,
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[1],
               ADDRESS_ZERO,
               groupAddresses[0],
@@ -1430,7 +1430,7 @@ describe("Account", () => {
                 [transferAmount2]
               );
 
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[0],
               groupAddresses[1],
               ADDRESS_ZERO,
@@ -1438,7 +1438,7 @@ describe("Account", () => {
               ADDRESS_ZERO,
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[1],
               groupAddresses[2],
               groupAddresses[0],
@@ -1446,7 +1446,7 @@ describe("Account", () => {
               groupAddresses[0],
               0
             );
-            await account.revokeAndScheduleVotes(
+            await account.revokeVotes(
               groupAddresses[2],
               ADDRESS_ZERO,
               groupAddresses[1],
@@ -1637,7 +1637,7 @@ describe("Account", () => {
             .connect(manager)
             .scheduleTransfer([groupAddresses[0]], [30], [groupAddresses[1]], [30]);
 
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[0],
             groupAddresses[1],
             ADDRESS_ZERO,
@@ -1645,7 +1645,7 @@ describe("Account", () => {
             ADDRESS_ZERO,
             0
           );
-          await account.revokeAndScheduleVotes(
+          await account.revokeVotes(
             groupAddresses[1],
             ADDRESS_ZERO,
             groupAddresses[0],

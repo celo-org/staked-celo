@@ -17,7 +17,8 @@ export async function withdraw(
   // Use deprecated and active groups to get the full list of groups with potential withdrawals.
   const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
   const activeGroups: [] = await managerContract.getGroups();
-  const groupList = deprecatedGroups.concat(activeGroups);
+  const allowedStrategies: [] = await managerContract.getAllowedStrategies();
+  const groupList = new Set(deprecatedGroups.concat(activeGroups).concat(allowedStrategies)).values();
   console.log("DEBUG: groupList:", groupList);
 
   for (const group of groupList) {

@@ -1845,7 +1845,7 @@ describe("Manager", () => {
         expect([BigNumber.from("100")]).to.deep.equal(withdrawals);
         const deprecatedGroups = await manager.connect(depositor).getDeprecatedGroups();
         const allowedStrategies = await manager.connect(depositor).getAllowedStrategies();
-        expect([]).to.deep.eq(allowedStrategies);
+        expect([allowedStrategy.address]).to.deep.eq(allowedStrategies);
         expect([]).to.deep.eq(deprecatedGroups);
       });
 

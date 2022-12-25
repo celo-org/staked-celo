@@ -473,7 +473,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function rebalanceGroups(managerContract: Manager) {
+export async function getGroupsSafe(managerContract: Manager) {
   const activeGroupsLengthPromise = managerContract.getGroupsLength();
   const allowedStrategiesLengthPromise = managerContract.getAllowedStrategiesLength();
 
@@ -491,7 +491,13 @@ export async function rebalanceGroups(managerContract: Manager) {
   const allGroups = await Promise.all([...activeGroupsPromises, ...allowedGroupsPromises]);
   const allGroupsSet = new Set(allGroups);
 
-  const expectedVsRealPromises = [...allGroupsSet].map(async (group) => {
+  return [...allGroupsSet];
+}
+
+export async function rebalanceGroups(managerContract: Manager) {
+  const allGroups = await getGroupsSafe(managerContract);
+
+  const expectedVsRealPromises = allGroups.map(async (group) => {
     const expectedVsReal = await managerContract.getExpectedAndRealCeloForGroup(group);
     return {
       group,
