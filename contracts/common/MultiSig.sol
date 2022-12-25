@@ -684,7 +684,6 @@ contract MultiSig is Initializable, UUPSUpgradeable {
      */
     function executeProposal(uint256 proposalId)
         public
-        ownerExists(msg.sender)
         scheduled(proposalId)
         notExecuted(proposalId)
         timeLockReached(proposalId)

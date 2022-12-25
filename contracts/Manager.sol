@@ -339,7 +339,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (
             activeGroups.length() + deprecatedGroups.length() >=
-            getElection().maxNumGroupsVotedFor()
+            getElection().maxNumGroupsVotedFor() &&
+            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
         ) {
             revert MaxGroupsVotedForReached();
         }

@@ -356,6 +356,8 @@ encoded payload:
 > yarn hardhat stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
 ```
 
+Note: `--destinations` is the target proxy contract whose implementation is being upgraded.
+
 6. Execute proposal once it is approved
 
 ``` bash

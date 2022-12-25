@@ -20,12 +20,14 @@ import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
+import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
   electGroup,
   electMinimumNumberOfValidators,
   getImpersonatedSigner,
+  impersonateAccount,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorAndOnlyAffiliateToGroup,
@@ -314,6 +316,37 @@ describe("Manager", () => {
         await expect(manager.activateGroup(additionalGroup.address)).revertedWith(
           "MaxGroupsVotedForReached()"
         );
+      });
+
+      it("can add another group when enabled in Election contract", async () => {
+        const accountAddress = account.address;
+        const sendFundsTx = await nonOwner.sendTransaction({
+          value: parseUnits("1"),
+          to: accountAddress,
+        });
+        await sendFundsTx.wait();
+        await impersonateAccount(accountAddress);
+
+        const accountsContract = await hre.kit.contracts.getAccounts();
+        const createAccountTxObject = accountsContract.createAccount();
+        await createAccountTxObject.send({
+          from: accountAddress,
+        });
+        // TODO: once contractkit updated - use just election contract from contractkit
+        const electionContract = new hre.kit.web3.eth.Contract(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          electionContractData.abi as any,
+          election.address
+        );
+        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+          from: accountAddress,
+        });
+
+        await expect(manager.activateGroup(additionalGroup.address))
+          .to.emit(manager, "GroupActivated")
+          .withArgs(additionalGroup.address);
       });
 
       describe("when some of the groups are currently deprecated", () => {

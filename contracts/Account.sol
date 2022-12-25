@@ -818,6 +818,14 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Turns on/off voting for more then max number of groups.
+     * @param flag The on/off flag.
+     */
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
+        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
+
+    /**
      * @notice Votes on a proposal in the referendum stage.
      * @param proposalId The ID of the proposal to vote on.
      * @param index The index of the proposal ID in `dequeued`.
@@ -861,7 +869,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             uint256
         )
     {
-        return (1, 2, 0, 0);
+        return (1, 1, 3, 0);
     }
 
     /**
