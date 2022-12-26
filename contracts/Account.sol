@@ -749,7 +749,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         uint256 activeVotesAmount = election.getActiveVotesForGroupByAccount(group, address(this));
-
         if (activeVotesAmount < toRevokeFromActive) {
             revert InsufficientRevokableVotes(group, revokeAmount);
         }

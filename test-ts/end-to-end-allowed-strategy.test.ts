@@ -2,6 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
 import { Manager } from "../typechain-types/Manager";
@@ -98,14 +99,13 @@ describe("e2e allowed strategy voting", () => {
     await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
-  it("deposit and withdraw", async () => {
+  it("deposit, rebalance and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("1"));
     const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("10"));
     const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("20"));
     const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("35"));
     const rewardsGroup5 = hre.ethers.BigNumber.from(parseUnits("10"));
     const allowedStrategy = groups[5];
-    console.log("allowedStrategy", allowedStrategy.address);
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     const depositor0InitialStakedCeloBalance = await stakedCeloContract.balanceOf(
@@ -122,12 +122,6 @@ describe("e2e allowed strategy voting", () => {
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
     let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
-    console.log("depositor1StakedCeloBalance", depositor1StakedCeloBalance.toString());
-    console.log(
-      "depositor1 theoretical celo balance",
-      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
-    );
-    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
 
     await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
@@ -138,27 +132,14 @@ describe("e2e allowed strategy voting", () => {
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
     await distributeEpochRewards(groups[5].address, rewardsGroup5.toString());
 
-    console.log(
-      "depositor1 theoretical celo balance",
-      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
-    );
-    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
     await rebalanceGroups(managerContract);
-    console.log(
-      "no length all strats",
-      JSON.stringify(await managerContract.getAllowedStrategies())
-    );
-    console.log(
-      "depositor1 theoretical celo balance",
-      (await managerContract.toCelo(depositor1StakedCeloBalance)).toString()
-    );
-    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
+    await revoke(hre, depositor0);
+    await activateAndVoteTest();
 
     await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
 
     depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
     expect(depositor1StakedCeloBalance).to.eq(0);
-    console.log("MY ALLOWED strats:", JSON.stringify(await managerContract.getAllowedStrategies()));
     await hre.run(ACCOUNT_WITHDRAW, {
       beneficiary: depositor1.address,
       account: deployerAccountName,
@@ -170,8 +151,6 @@ describe("e2e allowed strategy voting", () => {
 
     const { timestamps } = await accountContract.getPendingWithdrawals(depositor1.address);
 
-    console.log("timestamps", JSON.stringify(timestamps));
-
     for (let i = 0; i < timestamps.length; i++) {
       const finishPendingWithdrawal = await accountContract.finishPendingWithdrawal(
         depositor1.address,
@@ -180,8 +159,6 @@ describe("e2e allowed strategy voting", () => {
       );
       await finishPendingWithdrawal.wait();
     }
-    console.log("depositor 1 real balance", (await depositor1.getBalance()).toString());
-    console.log("HERE4");
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
     const depositor2StakedCeloBalance = await stakedCeloContract.balanceOf(depositor2.address);
     expect(
@@ -191,8 +168,6 @@ describe("e2e allowed strategy voting", () => {
     const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
     expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
     const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
-    console.log("depositor1AfterWithdrawalBalance", depositor1AfterWithdrawalBalance.toString());
-    console.log("depositor1BeforeWithdrawalBalance", depositor1BeforeWithdrawalBalance.toString());
     expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
   });
 });
