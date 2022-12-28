@@ -217,14 +217,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Used when rebalancing and fromGroup doesn't have any extra Celo.
      * @param group The group's address.
+     * @param realCelo The real Celo value.
+     * @param expectedCelo The expected Celo value.
      */
-    error RebalanceNoExtraCelo(address group);
+    error RebalanceNoExtraCelo(address group, uint256 realCelo, uint256 expectedCelo);
 
     /**
      * @notice Used when rebalancing and toGroup has enough Celo.
      * @param group The group's address.
+     * @param realCelo The real Celo value.
+     * @param expectedCelo The expected Celo value.
      */
-    error RebalanceEnoughCelo(address group);
+    error RebalanceEnoughCelo(address group, uint256 realCelo, uint256 expectedCelo);
 
     /**
      * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
@@ -918,7 +922,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (realFromCelo <= expectedFromCelo) {
             // fromGroup needs to have more Celo than it should
-            revert RebalanceNoExtraCelo(fromGroup);
+            revert RebalanceNoExtraCelo(fromGroup, realFromCelo, expectedFromCelo);
         }
 
         uint256 expectedToCelo;
@@ -928,7 +932,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (realToCelo >= expectedToCelo) {
             // toGroup needs to have less Celo than it should
-            revert RebalanceEnoughCelo(toGroup);
+            revert RebalanceEnoughCelo(toGroup, realToCelo, expectedToCelo);
         }
 
         address[] memory fromGroups = new address[](1);
@@ -975,9 +979,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply - totalStCeloInAllowedStrategies;
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy / activeGroups.length();
-            uint256 supposedCeloInAllowedStrategy = toCelo(allowedStrategyTotalStCeloVotes[group]);
+            uint256 supposedstCeloInAllowedStrategy = allowedStrategyTotalStCeloVotes[group];
 
-            return (toCelo(supposedStCeloInActiveGroup + supposedCeloInAllowedStrategy), realCelo);
+            return (
+                toCelo(supposedStCeloInActiveGroup + supposedstCeloInAllowedStrategy),
+                realCelo
+            );
         }
 
         revert GroupNotEligible(group);

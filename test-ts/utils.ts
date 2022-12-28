@@ -494,10 +494,8 @@ export async function getGroupsSafe(managerContract: Manager) {
   return [...allGroupsSet];
 }
 
-export async function rebalanceGroups(managerContract: Manager) {
-  const allGroups = await getGroupsSafe(managerContract);
-
-  const expectedVsRealPromises = allGroups.map(async (group) => {
+export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {
+  const expectedVsRealPromises = groups.map(async (group) => {
     const expectedVsReal = await managerContract.getExpectedAndRealCeloForGroup(group);
     return {
       group,
@@ -507,9 +505,15 @@ export async function rebalanceGroups(managerContract: Manager) {
     };
   });
 
-  const expectedVsReal = await Promise.all(expectedVsRealPromises);
+  return await Promise.all(expectedVsRealPromises);
+}
 
-  const unbalanced = expectedVsReal.filter((k) => !k.diff.eq(EthersBigNumber.from(0)));
+export async function rebalanceGroups(managerContract: Manager) {
+  const allGroups = await getGroupsSafe(managerContract);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+
+  // Diff needs to be > 1 so we don't run into rounding problems
+  const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(EthersBigNumber.from(1)));
   if (unbalanced.length == 0) {
     return;
   }

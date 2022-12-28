@@ -2688,7 +2688,9 @@ describe("Manager", () => {
 
       await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue - 1);
       await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-        `RebalanceNoExtraCelo("${groupAddresses[0]}")`
+        `RebalanceNoExtraCelo("${groupAddresses[0]}", ${
+          fromGroupDepositedValue - 1
+        }, ${fromGroupDepositedValue})`
       );
     });
 
@@ -2703,7 +2705,7 @@ describe("Manager", () => {
 
       await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue);
       await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-        `RebalanceNoExtraCelo("${groupAddresses[0]}")`
+        `RebalanceNoExtraCelo("${groupAddresses[0]}", ${fromGroupDepositedValue}, ${fromGroupDepositedValue})`
       );
     });
 
@@ -2724,7 +2726,9 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue + 1);
 
         await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-          `RebalanceEnoughCelo("${groupAddresses[1]}")`
+          `RebalanceEnoughCelo("${groupAddresses[1]}", ${
+            toGroupDepositedValue + 1
+          }, ${toGroupDepositedValue})`
         );
       });
 
@@ -2735,7 +2739,7 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
 
         await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
-          `RebalanceEnoughCelo("${groupAddresses[1]}")`
+          `RebalanceEnoughCelo("${groupAddresses[1]}", ${toGroupDepositedValue}, ${toGroupDepositedValue})`
         );
       });
 
