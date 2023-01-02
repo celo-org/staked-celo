@@ -35,15 +35,15 @@ describe("e2e allowed strategy voting", () => {
   let managerContract: Manager;
 
   const deployerAccountName = "deployer";
-  // deposits CELO to default strategy, receives stCELO, but never withdraws it
+  // default strategy
   let depositor0: SignerWithAddress;
-  // deposits CELO to allowed strategy that is different from active groups, receives stCELO, withdraws stCELO including rewards
+  // allowed strategy that is different from active groups
   let depositor1: SignerWithAddress;
-  // deposits CELO after rewards are distributed -> depositor will receive less stCELO than deposited CELO
+  // allowed strategy that is same as one of the active groups
   let depositor2: SignerWithAddress;
-  // only receives stCELO from default and allowed strategy (depositor0 and depositor1)
+  // default strategy
   let depositor3: SignerWithAddress;
-  // deposits CELO to allowed strategy that is same as one of the active groups
+  // allowed strategy that is same as one of the active groups
   let depositor4: SignerWithAddress;
   let voter: SignerWithAddress;
 
