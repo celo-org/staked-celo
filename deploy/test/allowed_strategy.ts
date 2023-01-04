@@ -4,8 +4,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer, owner } = await hre.getNamedAccounts();
+  const managerAddress = (await hre.deployments.get("Manager")).address;
 
-  await deploy("Manager", {
+  await deploy("AllowedStrategy", {
     from: deployer,
     log: true,
     proxy: {
@@ -15,13 +16,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [hre.ethers.constants.AddressZero, deployer],
+        args: [hre.ethers.constants.AddressZero, deployer, managerAddress],
       },
     },
   });
 };
 
-func.id = "deploy_test_manager";
-func.tags = ["FullTestManager", "TestManager"];
-func.dependencies = [];
+func.id = "deploy_allowed_strategy";
+func.tags = ["FullTestManager", "TestAllowedStrategy"];
+func.dependencies = ["TestManager"];
 export default func;

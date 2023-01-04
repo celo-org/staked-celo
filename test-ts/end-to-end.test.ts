@@ -4,6 +4,7 @@ import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
@@ -27,6 +28,7 @@ after(() => {
 describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
+  let groupHealthContract: GroupHealth;
 
   const deployerAccountName = "deployer";
   // deposits CELO, receives stCELO, but never withdraws it
@@ -90,9 +92,15 @@ describe("e2e", () => {
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    await activateValidators(
+      managerContract,
+      groupHealthContract,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   it("deposit and withdraw", async () => {

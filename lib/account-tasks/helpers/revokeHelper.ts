@@ -12,11 +12,12 @@ export async function revoke(
   const electionWrapper = await hre.kit.contracts.getElection();
   const accountContract = await hre.ethers.getContract("Account");
   const managerContract = await hre.ethers.getContract("Manager");
+  const allowedStrategy = await hre.ethers.getContract("AllowedStrategy");
 
   // Use deprecated and active groups to get the full list of groups with potential withdrawals.
   const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
   const activeGroups: [] = await managerContract.getGroups();
-  const allowedStrategies: [] = await managerContract.getAllowedStrategies();
+  const allowedStrategies: [] = await allowedStrategy.getAllowedStrategies();
   const groupList = new Set(deprecatedGroups.concat(activeGroups).concat(allowedStrategies)).values();
   console.log("DEBUG: groupList:", groupList);
 

@@ -6,6 +6,8 @@ import hre from "hardhat";
 import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
+import { AllowedStrategy } from "../typechain-types/AllowedStrategy";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
@@ -33,6 +35,8 @@ after(() => {
 describe("e2e allowed strategy voting", () => {
   let accountContract: Account;
   let managerContract: Manager;
+  let groupHealthContract: GroupHealth;
+  let allowedStrategyContract: AllowedStrategy;
 
   const deployerAccountName = "deployer";
   // default strategy
@@ -114,9 +118,16 @@ describe("e2e allowed strategy voting", () => {
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
+    allowedStrategyContract = await hre.ethers.getContract("AllowedStrategy");
 
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    await activateValidators(
+      managerContract,
+      groupHealthContract,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   it("deposit, rebalance, transfer and withdraw", async () => {
@@ -282,11 +293,11 @@ describe("e2e allowed strategy voting", () => {
     await expect(managerContract.connect(depositor1).changeStrategy(strategy)).revertedWith(
       `GroupNotEligible("${strategy}")`
     );
-    await allowStrategies(managerContract, multisigOwner0.address, [strategy]);
+    await allowStrategies(managerContract, groupHealthContract, multisigOwner0.address, [strategy]);
   }
 
   async function rebalanceAllAndActivate() {
-    await rebalanceGroups(managerContract);
+    await rebalanceGroups(managerContract, groupHealthContract, allowedStrategyContract);
     await revoke(hre, depositor0);
     await activateAndVoteTest();
   }
@@ -344,8 +355,8 @@ describe("e2e allowed strategy voting", () => {
   }
 
   async function expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract: Manager) {
-    const allGroups = await getGroupsSafe(managerContract);
-    const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+    const allGroups = await getGroupsSafe(managerContract, allowedStrategyContract);
+    const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
     const expectedSum = hre.ethers.BigNumber.from(0);
     const realSum = hre.ethers.BigNumber.from(0);
     for (const group of expectedVsReal) {

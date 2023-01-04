@@ -8,6 +8,7 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { Vote } from "../typechain-types/Vote";
 import {
@@ -30,6 +31,7 @@ import {
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
+  let groupHealthContract: GroupHealth;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
 
@@ -143,10 +145,16 @@ describe("Vote", async function (this: any) {
     await hre.deployments.fixture("core");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    await activateValidators(
+      managerContract,
+      groupHealthContract,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   describe("#getVoteWeight()", () => {
@@ -489,23 +497,9 @@ describe("Vote", async function (this: any) {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-        depositor0.address
-      );
-      const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-
-      const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-        .topics as string[];
-      const event = lockedCeloInVotingReceipt!.events?.find((event) =>
-        event.topics.some((topic) => topic == eventTopics[0])
-      );
-      const eventArgs = voteContract.interface.decodeEventLog(
-        voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-        event!.data,
-        eventTopics
-      );
-
-      expect(eventArgs.lockedCelo).to.eq(0);
+      await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
+        .to.emit(voteContract, "LockedStCeloInVoting")
+        .withArgs(depositor0.address, hre.ethers.BigNumber.from(0));
     });
 
     describe("when voted", async () => {
@@ -523,22 +517,9 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should return locked celo when voting on maximum number of proposals", async () => {
@@ -554,22 +535,9 @@ describe("Vote", async function (this: any) {
             .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should update locked celo when revoted", async () => {
@@ -591,22 +559,9 @@ describe("Vote", async function (this: any) {
             abstainVotesRevote
           );
 
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs?.lockedCelo).to.eq(totalRevotes);
+        await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalRevotes);
       });
     });
 

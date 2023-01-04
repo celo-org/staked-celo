@@ -1,7 +1,14 @@
 import { CeloTxReceipt } from "@celo/connect";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
-import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
+import { expect } from "chai";
+import {
+  BaseContract,
+  BigNumber as EthersBigNumber,
+  Contract,
+  ContractReceipt,
+  Wallet,
+} from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
@@ -10,6 +17,8 @@ import {
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
+import { AllowedStrategy } from "../typechain-types/AllowedStrategy";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
@@ -146,6 +155,7 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
 
 export async function allowStrategies(
   managerContract: Manager,
+  groupHealthContract: GroupHealth,
   multisigOwner: string,
   strategyAddresses: string[]
 ) {
@@ -154,7 +164,7 @@ export async function allowStrategies(
   const values: string[] = [];
 
   for (let i = 0; i < strategyAddresses.length; i++) {
-    const isValidGroup = await managerContract.isValidGroup(strategyAddresses[i]);
+    const isValidGroup = await groupHealthContract.isValidGroup(strategyAddresses[i]);
     if (!isValidGroup) {
       throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
     }
@@ -170,6 +180,7 @@ export async function allowStrategies(
 
 export async function activateValidators(
   managerContract: Manager,
+  groupHealthContract: GroupHealth,
   multisigOwner: string,
   groupAddresses: string[]
 ) {
@@ -178,7 +189,7 @@ export async function activateValidators(
   const values: string[] = [];
 
   for (let i = 0; i < 3; i++) {
-    const isValidGroup = await managerContract.isValidGroup(groupAddresses[i]);
+    const isValidGroup = await groupHealthContract.isValidGroup(groupAddresses[i]);
     if (!isValidGroup) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
@@ -473,9 +484,12 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getGroupsSafe(managerContract: Manager) {
+export async function getGroupsSafe(
+  managerContract: Manager,
+  allowedStrategyContract: AllowedStrategy
+) {
   const activeGroupsLengthPromise = managerContract.getGroupsLength();
-  const allowedStrategiesLengthPromise = managerContract.getAllowedStrategiesLength();
+  const allowedStrategiesLengthPromise = allowedStrategyContract.getAllowedStrategiesLength();
 
   const activeGroupsPromises = [];
   const allowedGroupsPromises = [];
@@ -485,7 +499,7 @@ export async function getGroupsSafe(managerContract: Manager) {
   }
 
   for (let i = 0; i < (await allowedStrategiesLengthPromise).toNumber(); i++) {
-    allowedGroupsPromises.push(managerContract.getAllowedStrategy(i));
+    allowedGroupsPromises.push(allowedStrategyContract.getAllowedStrategy(i));
   }
 
   const allGroups = await Promise.all([...activeGroupsPromises, ...allowedGroupsPromises]);
@@ -494,9 +508,12 @@ export async function getGroupsSafe(managerContract: Manager) {
   return [...allGroupsSet];
 }
 
-export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {
+export async function getRealVsExpectedCeloForGroups(
+  groupHealthContract: GroupHealth,
+  groups: string[]
+) {
   const expectedVsRealPromises = groups.map(async (group) => {
-    const expectedVsReal = await managerContract.getExpectedAndRealCeloForGroup(group);
+    const expectedVsReal = await groupHealthContract.getExpectedAndRealCeloForGroup(group);
     return {
       group,
       expected: expectedVsReal[0],
@@ -508,9 +525,13 @@ export async function getRealVsExpectedCeloForGroups(managerContract: Manager, g
   return await Promise.all(expectedVsRealPromises);
 }
 
-export async function rebalanceGroups(managerContract: Manager) {
-  const allGroups = await getGroupsSafe(managerContract);
-  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+export async function rebalanceGroups(
+  managerContract: Manager,
+  groupHealthContract: GroupHealth,
+  allowedStrategyContract: AllowedStrategy
+) {
+  const allGroups = await getGroupsSafe(managerContract, allowedStrategyContract);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
 
   // Diff needs to be > 1 so we don't run into rounding problems
   const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(EthersBigNumber.from(1)));
@@ -551,4 +572,30 @@ export async function rebalanceGroups(managerContract: Manager) {
   }
 
   console.log("Rebalance finished!");
+}
+
+/**
+ * Checks whether tx Receipt contains nested event
+ * @param eventOriginatorContract Contract where the event is defined
+ * @param txReceipt tx Receipt where the event is supposed to be found
+ * @param eventName Searched event name
+ * @param expectedArgValues Expected event values (partial is supported)
+ */
+export function expectNestedEvent(
+  eventOriginatorContract: BaseContract,
+  txReceipt: ContractReceipt,
+  eventName: string,
+  expectedArgValues: Record<string, any>
+) {
+  const events = txReceipt.events
+    ?.map((e) => eventOriginatorContract.interface.parseLog(e))
+    .filter((e) => e.name == eventName);
+  expect(events).not.be.null;
+  expect(events!.length).to.eq(1);
+  const event = events![0];
+  for (const key of Object.keys(expectedArgValues)) {
+    const names = event.eventFragment.inputs.map((k) => k.name);
+    const indexOfInput = names.indexOf(key);
+    expect(event.args[indexOfInput]).to.deep.eq(expectedArgValues[key]);
+  }
 }

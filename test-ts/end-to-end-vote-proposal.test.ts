@@ -9,6 +9,7 @@ import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { Account } from "../typechain-types/Account";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
@@ -35,6 +36,7 @@ describe("e2e governance vote", () => {
   let managerContract: Manager;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
+  let groupHealthContract: GroupHealth;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
@@ -97,6 +99,7 @@ describe("e2e governance vote", () => {
     governanceWrapper = await hre.kit.contracts.getGovernance();
     accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
 
@@ -110,7 +113,12 @@ describe("e2e governance vote", () => {
     });
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    await activateValidators(
+      managerContract,
+      groupHealthContract,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   it("vote proposal", async () => {

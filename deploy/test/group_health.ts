@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer, owner } = await hre.getNamedAccounts();
 
-  await deploy("Manager", {
+  await deploy("GroupHealth", {
     from: deployer,
     log: true,
     proxy: {
@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 };
 
-func.id = "deploy_test_manager";
+func.id = "deploy_test_group_health";
 func.tags = ["FullTestManager", "TestManager"];
 func.dependencies = [];
 export default func;

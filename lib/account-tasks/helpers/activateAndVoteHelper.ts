@@ -5,12 +5,13 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
   const managerContract = await hre.ethers.getContract("Manager");
+  const allowedStrategy = await hre.ethers.getContract("AllowedStrategy");
 
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
   const activeGroups = await managerContract.getGroups();
-  const allowedStrategies: [] = await managerContract.getAllowedStrategies();
+  const allowedStrategies: [] = await allowedStrategy.getAllowedStrategies();
   const groupList = new Set<string>(activeGroups.concat(allowedStrategies)).values();
   console.log("groups:", groupList);
 
