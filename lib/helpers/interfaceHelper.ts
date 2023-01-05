@@ -1,7 +1,7 @@
 import { LedgerSigner } from "@anders-t/ethers-ledger";
-import chalk from "chalk";
 import { ContractReceipt, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../logger";
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
 
@@ -11,10 +11,12 @@ export interface TransactionArguments {
   payloads?: string;
   amount?: string;
   proposalId?: string;
+  ownerAddress?: string;
   beneficiary?: string;
   account?: string;
   useLedger: boolean;
   useNodeAccount: boolean;
+  logLevel: string;
 }
 
 async function getSigner(
@@ -61,7 +63,7 @@ export async function getSignerAndSetDeploymentPath(
 
 export function parseEvents(receipt: ContractReceipt, eventName: string) {
   const event = receipt.events?.find((event) => event.event === eventName);
-  console.log(chalk.green("new event emitted:"), event?.event, `(${event?.args})`);
+  taskLogger.debug(`new event emitted: ${event?.event}`, `(${event?.args})`);
 }
 
 export async function setLocalNodeDeploymentPath(hre: HardhatRuntimeEnvironment) {

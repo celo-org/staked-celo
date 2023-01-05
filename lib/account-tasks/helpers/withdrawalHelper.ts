@@ -1,7 +1,7 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import chalk from "chalk";
 import { BigNumber, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../../logger";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -20,19 +20,17 @@ export async function withdraw(
   const activeGroups: [] = await managerContract.getGroups();
   const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
   const groupList = new Set(deprecatedGroups.concat(activeGroups).concat(allowedStrategies)).values();
-  console.log("DEBUG: groupList:", groupList);
+  taskLogger.debug("DEBUG: groupList:", groupList);
 
   for (const group of groupList) {
-    console.log(chalk.yellow("DEBUG: Current group", group));
+    taskLogger.debug("DEBUG: Current group", group);
 
     // check what the beneficiary withdrawal amount is for each group.
     const scheduledWithdrawalAmount: BigNumber =
       await accountContract.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiaryAddress);
 
-    console.log(
-      chalk.green(
-        `DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount.toString()}. Beneficiary: ${beneficiaryAddress}, group: ${group} `
-      )
+    taskLogger.debug(
+      `DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount.toString()}. Beneficiary: ${beneficiaryAddress}, group: ${group} `
     );
 
     if (scheduledWithdrawalAmount.gt(0)) {
@@ -48,12 +46,13 @@ export async function withdraw(
       const immediateWithdrawalAmount: BigNumber = await accountContract.scheduledVotesForGroup(
         group
       );
-      console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
+
+      taskLogger.debug("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
 
       if (immediateWithdrawalAmount.lt(scheduledWithdrawalAmount)) {
         remainingRevokeAmount = scheduledWithdrawalAmount.sub(immediateWithdrawalAmount);
 
-        console.log("remainingRevokeAmount:", remainingRevokeAmount.toString());
+        taskLogger.debug("remainingRevokeAmount:", remainingRevokeAmount.toString());
 
         // get AccountContract pending votes for group.
         const groupVote = await electionWrapper.getVotesForGroupByAccount(
@@ -62,7 +61,7 @@ export async function withdraw(
         );
         const pendingVotes = groupVote.pending;
 
-        console.log("pendingVotes:", pendingVotes.toString());
+        taskLogger.debug("pendingVotes:", pendingVotes.toString());
 
         // amount to revoke from pending
         toRevokeFromPending = BigNumber.from(
@@ -71,7 +70,7 @@ export async function withdraw(
             : pendingVotes.toString()
         );
 
-        console.log("toRevokeFromPending:", toRevokeFromPending.toString());
+        taskLogger.debug("toRevokeFromPending:", toRevokeFromPending.toString());
 
         // find lesser and greater for pending votes
         const lesserAndGreaterAfterPendingRevoke =
@@ -102,13 +101,13 @@ export async function withdraw(
       const index = await findAddressIndex(electionWrapper, group, accountContract.address);
 
       // use current index
-      console.log("beneficiaryAddress:", beneficiaryAddress);
-      console.log("group:", group);
-      console.log("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
-      console.log("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
-      console.log("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
-      console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
-      console.log("group index:", index);
+      taskLogger.debug("beneficiaryAddress:", beneficiaryAddress);
+      taskLogger.debug("group:", group);
+      taskLogger.debug("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
+      taskLogger.debug("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
+      taskLogger.debug("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
+      taskLogger.debug("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
+      taskLogger.debug("group index:", index);
 
       const tx = await accountContract
         .connect(signer)
@@ -124,7 +123,7 @@ export async function withdraw(
 
       const receipt = await tx.wait();
 
-      console.log(chalk.yellow("receipt status"), receipt.status);
+      taskLogger.debug("receipt status", receipt.status);
     }
   }
 }
