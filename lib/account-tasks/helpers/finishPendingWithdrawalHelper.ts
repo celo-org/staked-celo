@@ -1,7 +1,7 @@
 import { LockedGoldWrapper, PendingWithdrawal } from "@celo/contractkit/lib/wrappers/LockedGold";
-import chalk from "chalk";
 import { Contract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../../logger";
 
 export async function finishPendingWithdrawals(
   hre: HardhatRuntimeEnvironment,
@@ -14,7 +14,7 @@ export async function finishPendingWithdrawals(
   );
   const lockedGoldWrapper = await hre.kit.contracts.getLockedGold();
 
-  console.log(chalk.red("number of pending withdrawal:"), numberOfPendingWithdrawals.toString());
+  taskLogger.debug("number of pending withdrawal:", numberOfPendingWithdrawals.toString());
 
   while (true) {
     const { localIndex, lockedGoldIndex } = await getPendingWithdrawalIndexesAndValidate(
@@ -27,16 +27,16 @@ export async function finishPendingWithdrawals(
       break;
     }
 
-    console.log(chalk.green(`beneficiary: ${beneficiaryAddress}`));
-    console.log(chalk.green(`localPendingWithdrawalIndex: ${localIndex}`));
-    console.log(chalk.green(`lockedGoldPendingWithdrawalIndex: ${lockedGoldIndex}`));
+    taskLogger.debug("beneficiary:", beneficiaryAddress);
+    taskLogger.debug("localPendingWithdrawalIndex:", localIndex);
+    taskLogger.debug("lockedGoldPendingWithdrawalIndex:", lockedGoldIndex);
 
     const tx = await accountContract
       .connect(signer)
       .finishPendingWithdrawal(beneficiaryAddress, localIndex, lockedGoldIndex);
     const receipt = await tx.wait();
 
-    console.log(chalk.yellow("receipt status"), receipt.status);
+    taskLogger.debug("receipt status", receipt.status);
   }
 }
 

@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { task, types } from "hardhat/config";
 import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
@@ -30,7 +31,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
   )
   .setAction(async (taskArgs, hre) => {
     try {
-      console.log("Starting stakedCelo:deploy task...");
+      console.log(chalk.blue("Starting stakedCelo:deploy task..."));
       const networks = hre.config.networks;
       const targetNetwork = hre.network.name;
 
