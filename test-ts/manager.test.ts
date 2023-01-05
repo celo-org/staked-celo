@@ -2099,6 +2099,51 @@ describe("Manager", () => {
       ).revertedWith("Vote null");
     });
 
+    it("reverts with zero groupHealth address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(
+            nonStakedCelo.address,
+            nonAccount.address,
+            nonVote.address,
+            ADDRESS_ZERO,
+            nonVote.address,
+            nonVote.address
+          )
+      ).revertedWith("GroupHealth null");
+    });
+
+    it("reverts with zero specific group strategy address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(
+            nonStakedCelo.address,
+            nonAccount.address,
+            nonVote.address,
+            nonVote.address,
+            ADDRESS_ZERO,
+            nonVote.address
+          )
+      ).revertedWith("SpecificGroupStrategy null");
+    });
+
+    it("reverts with zero default strategy address", async () => {
+      await expect(
+        manager
+          .connect(ownerSigner)
+          .setDependencies(
+            nonStakedCelo.address,
+            nonAccount.address,
+            nonVote.address,
+            nonVote.address,
+            nonVote.address,
+            ADDRESS_ZERO
+          )
+      ).revertedWith("DefaultStrategy null");
+    });
+
     it("sets the vote contract", async () => {
       await manager
         .connect(ownerSigner)

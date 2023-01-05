@@ -137,25 +137,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if a group member is elected.
-     * @param groupMember The member of the group to check election status for.
-     * @return Whether or not the group member is elected.
-     */
-    function isGroupMemberElected(address groupMember) private view returns (bool) {
-        IElection election = getElection();
-
-        address[] memory electedValidatorSigners = election.electValidatorSigners();
-
-        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
-            if (electedValidatorSigners[i] == groupMember) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * @notice Returns expected Celo amount voted for by Account contract
      * vs actual amount voted for by Acccount contract
      * @param group The group.
@@ -263,5 +244,24 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         toGroups[0] = toGroup;
         toVotes[0] = fromVotes[0];
+    }
+
+    /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @return Whether or not the group member is elected.
+     */
+    function isGroupMemberElected(address groupMember) private view returns (bool) {
+        IElection election = getElection();
+
+        address[] memory electedValidatorSigners = election.electValidatorSigners();
+
+        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
+            if (electedValidatorSigners[i] == groupMember) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

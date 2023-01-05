@@ -33,7 +33,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice An instance of the Account contract for the StakedCelo protocol.
      */
-    IAccount internal account;
+    IAccount public account;
 
     /**
      * @notice An instance of the SpeicficGroupStrategy for the StakedCelo protocol.
@@ -129,6 +129,170 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         groupHealth = IGroupHealth(_groupHealth);
         specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
         account = IAccount(_account);
+    }
+
+    /**
+     * @notice Distributes votes by computing the number of votes each active
+     * group should receive, then calling out to `Account.scheduleVotes`.
+     * @param votes The amount of votes to distribute.
+     * @dev The vote distribution strategy is to try and have each validator
+     * group to be receiving the same amount of votes from the system. If a
+     * group already has more votes than the average of the total available
+     * votes it will not be voted for, and instead we'll try to evenly
+     * distribute between the remaining groups.
+     * @dev Election.sol sets a dynamic limit on the number of votes receivable
+     * by a group, based on the group's size, the total amount of Locked
+     * CELO, and the total number of electable validators. We don't want to
+     * schedule votes for a group when the amount would exceed this threshold.
+     * `getVotableGroups` below selects those groups that could receive the
+     * entire `votes` amount, and filters out the rest. This is a heuristic:
+     * when distributing votes evenly, the group might receive less than
+     * `votes`, and the total amount could end up being under the limit.
+     * However, doing an exact computation would be both complex and cost a lot
+     * of additional gas, hence the heuristic. If indeed all groups are close to
+     * their voting limit, causing a larger deposit to revert with
+     * NoVotableGroups, despite there still being some room for deposits, this
+     * can be worked around by sending a few smaller deposits.
+     */
+    function generateDefaultStrategyGroupsVotesToDistributeTo(uint256 votes)
+        external
+        onlyManager
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        /*
+         * "Votable" groups are those that will currently fit under the voting
+         * limit in Election.sol even if voted for with the entire `votes`
+         * amount. Note that some might still not end up getting voted for given
+         * the distribution logic below.
+         */
+        address[] memory votableGroups = getVotableGroups(votes);
+        if (votableGroups.length == 0) {
+            revert NoVotableGroups();
+        }
+
+        GroupWithVotes[] memory sortedGroups;
+        uint256 availableVotes;
+        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(votableGroups);
+        availableVotes += votes;
+
+        uint256[] memory votesPerGroup = new uint256[](votableGroups.length);
+        uint256 groupsVoted = votableGroups.length;
+        uint256 targetVotes = availableVotes / groupsVoted;
+
+        /*
+         * This would normally be (i = votableGroups.length - 1; i >=0; i--),
+         * but we can't i-- on the last iteration when i=0, since i is an
+         * unsigned integer. So we iterate with the loop variable 1 greater than
+         * expected, set index = i-1, and use index inside the loop.
+         */
+        for (uint256 i = votableGroups.length; i > 0; i--) {
+            uint256 index = i - 1;
+            if (sortedGroups[index].votes >= targetVotes) {
+                groupsVoted--;
+                availableVotes -= sortedGroups[index].votes;
+                targetVotes = availableVotes / groupsVoted;
+                votesPerGroup[index] = 0;
+            } else {
+                votesPerGroup[index] = targetVotes - sortedGroups[index].votes;
+
+                if (availableVotes % groupsVoted > index) {
+                    votesPerGroup[index]++;
+                }
+            }
+        }
+
+        finalGroups = new address[](groupsVoted);
+        finalVotes = new uint256[](groupsVoted);
+
+        for (uint256 i = 0; i < groupsVoted; i++) {
+            finalGroups[i] = sortedGroups[i].group;
+            finalVotes[i] = votesPerGroup[i];
+        }
+
+        return (finalGroups, finalVotes);
+    }
+
+    /**
+     * @notice Distributes withdrawals from default strategy by computing the number of votes that
+     * should be withdrawn from each group, then calling out to
+     * `Account.scheduleWithdrawals`.
+     * @param withdrawal The amount of votes to withdraw.
+     * CELO.
+     * @dev The withdrawal distribution strategy is to:
+     * 1. Withdraw as much as possible from any deprecated groups.
+     * 2. If more votes still need to be withdrawn, try and have each validator
+     * group end up receiving the same amount of votes from the system. If a
+     * group already has less votes than the average of the total remaining
+     * votes, it will not be withdrawn from, and instead we'll try to evenly
+     * distribute between the remaining groups.
+     */
+    function distributeWithdrawalsDefaultStrategy(uint256 withdrawal)
+        external
+        onlyManager
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        address[] memory deprecatedGroupsWithdrawn;
+        uint256[] memory deprecatedWithdrawalsPerGroup;
+        uint256 numberDeprecatedGroupsWithdrawn;
+
+        (
+            deprecatedGroupsWithdrawn,
+            deprecatedWithdrawalsPerGroup,
+            numberDeprecatedGroupsWithdrawn,
+            withdrawal
+        ) = getDeprecatedGroupsWithdrawalDistribution(withdrawal);
+
+        address[] memory groupsWithdrawn;
+        uint256[] memory withdrawalsPerGroup;
+
+        (groupsWithdrawn, withdrawalsPerGroup) = getActiveGroupWithdrawalDistribution(withdrawal);
+
+        finalGroups = new address[](groupsWithdrawn.length + numberDeprecatedGroupsWithdrawn);
+        finalVotes = new uint256[](groupsWithdrawn.length + numberDeprecatedGroupsWithdrawn);
+
+        for (uint256 i = 0; i < numberDeprecatedGroupsWithdrawn; i++) {
+            finalGroups[i] = deprecatedGroupsWithdrawn[i];
+            finalVotes[i] = deprecatedWithdrawalsPerGroup[i];
+        }
+
+        for (uint256 i = 0; i < groupsWithdrawn.length; i++) {
+            finalGroups[i + numberDeprecatedGroupsWithdrawn] = groupsWithdrawn[i];
+            finalVotes[i + numberDeprecatedGroupsWithdrawn] = withdrawalsPerGroup[i];
+        }
+
+        return (finalGroups, finalVotes);
+    }
+
+    /**
+     * @notice Marks a group as votable for default strategy.
+     * @param group The address of the group to add to the set of votable
+     * groups.
+     * @dev Fails if the maximum number of groups are already being voted for by
+     * the Account smart contract (as per the `maxNumGroupsVotedFor` in the
+     * Election contract).
+     */
+    function activateGroup(address group) external onlyManager {
+        if (!groupHealth.isValidGroup(group)) {
+            revert GroupNotEligible(group);
+        }
+
+        if (IManager(manager).groupsContain(group)) {
+            revert GroupAlreadyAdded(group);
+        }
+
+        if (IManager(manager).deprecatedGroupsContain(group)) {
+            if (!IManager(manager).removeDeprecatedGroup(group)) {
+                revert FailedToRemoveDeprecatedGroup(group);
+            }
+        }
+
+        if (
+            IManager(manager).getGroupsLength() + IManager(manager).getDeprecatedGroupsLength() >=
+            getElection().maxNumGroupsVotedFor() &&
+            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
+        ) {
+            revert MaxGroupsVotedForReached();
+        }
     }
 
     /**
@@ -275,87 +439,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Distributes votes by computing the number of votes each active
-     * group should receive, then calling out to `Account.scheduleVotes`.
-     * @param votes The amount of votes to distribute.
-     * @dev The vote distribution strategy is to try and have each validator
-     * group to be receiving the same amount of votes from the system. If a
-     * group already has more votes than the average of the total available
-     * votes it will not be voted for, and instead we'll try to evenly
-     * distribute between the remaining groups.
-     * @dev Election.sol sets a dynamic limit on the number of votes receivable
-     * by a group, based on the group's size, the total amount of Locked
-     * CELO, and the total number of electable validators. We don't want to
-     * schedule votes for a group when the amount would exceed this threshold.
-     * `getVotableGroups` below selects those groups that could receive the
-     * entire `votes` amount, and filters out the rest. This is a heuristic:
-     * when distributing votes evenly, the group might receive less than
-     * `votes`, and the total amount could end up being under the limit.
-     * However, doing an exact computation would be both complex and cost a lot
-     * of additional gas, hence the heuristic. If indeed all groups are close to
-     * their voting limit, causing a larger deposit to revert with
-     * NoVotableGroups, despite there still being some room for deposits, this
-     * can be worked around by sending a few smaller deposits.
-     */
-    function generateDefaultStrategyGroupsVotesToDistributeTo(uint256 votes)
-        external
-        onlyManager
-        returns (address[] memory finalGroups, uint256[] memory finalVotes)
-    {
-        /*
-         * "Votable" groups are those that will currently fit under the voting
-         * limit in Election.sol even if voted for with the entire `votes`
-         * amount. Note that some might still not end up getting voted for given
-         * the distribution logic below.
-         */
-        address[] memory votableGroups = getVotableGroups(votes);
-        if (votableGroups.length == 0) {
-            revert NoVotableGroups();
-        }
-
-        GroupWithVotes[] memory sortedGroups;
-        uint256 availableVotes;
-        (sortedGroups, availableVotes) = getSortedGroupsWithVotes(votableGroups);
-        availableVotes += votes;
-
-        uint256[] memory votesPerGroup = new uint256[](votableGroups.length);
-        uint256 groupsVoted = votableGroups.length;
-        uint256 targetVotes = availableVotes / groupsVoted;
-
-        /*
-         * This would normally be (i = votableGroups.length - 1; i >=0; i--),
-         * but we can't i-- on the last iteration when i=0, since i is an
-         * unsigned integer. So we iterate with the loop variable 1 greater than
-         * expected, set index = i-1, and use index inside the loop.
-         */
-        for (uint256 i = votableGroups.length; i > 0; i--) {
-            uint256 index = i - 1;
-            if (sortedGroups[index].votes >= targetVotes) {
-                groupsVoted--;
-                availableVotes -= sortedGroups[index].votes;
-                targetVotes = availableVotes / groupsVoted;
-                votesPerGroup[index] = 0;
-            } else {
-                votesPerGroup[index] = targetVotes - sortedGroups[index].votes;
-
-                if (availableVotes % groupsVoted > index) {
-                    votesPerGroup[index]++;
-                }
-            }
-        }
-
-        finalGroups = new address[](groupsVoted);
-        finalVotes = new uint256[](groupsVoted);
-
-        for (uint256 i = 0; i < groupsVoted; i++) {
-            finalGroups[i] = sortedGroups[i].group;
-            finalVotes[i] = votesPerGroup[i];
-        }
-
-        return (finalGroups, finalVotes);
-    }
-
-    /**
      * @notice Calculates how many votes should be withdrawn from each
      * deprecated group.
      * @param withdrawal The total amount of votes that needs to be withdrawn.
@@ -410,88 +493,5 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             numberDeprecatedGroupsWithdrawn,
             remainingWithdrawal
         );
-    }
-
-    /**
-     * @notice Distributes withdrawals from default strategy by computing the number of votes that
-     * should be withdrawn from each group, then calling out to
-     * `Account.scheduleWithdrawals`.
-     * @param withdrawal The amount of votes to withdraw.
-     * CELO.
-     * @dev The withdrawal distribution strategy is to:
-     * 1. Withdraw as much as possible from any deprecated groups.
-     * 2. If more votes still need to be withdrawn, try and have each validator
-     * group end up receiving the same amount of votes from the system. If a
-     * group already has less votes than the average of the total remaining
-     * votes, it will not be withdrawn from, and instead we'll try to evenly
-     * distribute between the remaining groups.
-     */
-    function distributeWithdrawalsDefaultStrategy(uint256 withdrawal)
-        external
-        onlyManager
-        returns (address[] memory finalGroups, uint256[] memory finalVotes)
-    {
-        address[] memory deprecatedGroupsWithdrawn;
-        uint256[] memory deprecatedWithdrawalsPerGroup;
-        uint256 numberDeprecatedGroupsWithdrawn;
-
-        (
-            deprecatedGroupsWithdrawn,
-            deprecatedWithdrawalsPerGroup,
-            numberDeprecatedGroupsWithdrawn,
-            withdrawal
-        ) = getDeprecatedGroupsWithdrawalDistribution(withdrawal);
-
-        address[] memory groupsWithdrawn;
-        uint256[] memory withdrawalsPerGroup;
-
-        (groupsWithdrawn, withdrawalsPerGroup) = getActiveGroupWithdrawalDistribution(withdrawal);
-
-        finalGroups = new address[](groupsWithdrawn.length + numberDeprecatedGroupsWithdrawn);
-        finalVotes = new uint256[](groupsWithdrawn.length + numberDeprecatedGroupsWithdrawn);
-
-        for (uint256 i = 0; i < numberDeprecatedGroupsWithdrawn; i++) {
-            finalGroups[i] = deprecatedGroupsWithdrawn[i];
-            finalVotes[i] = deprecatedWithdrawalsPerGroup[i];
-        }
-
-        for (uint256 i = 0; i < groupsWithdrawn.length; i++) {
-            finalGroups[i + numberDeprecatedGroupsWithdrawn] = groupsWithdrawn[i];
-            finalVotes[i + numberDeprecatedGroupsWithdrawn] = withdrawalsPerGroup[i];
-        }
-
-        return (finalGroups, finalVotes);
-    }
-
-    /**
-     * @notice Marks a group as votable for default strategy.
-     * @param group The address of the group to add to the set of votable
-     * groups.
-     * @dev Fails if the maximum number of groups are already being voted for by
-     * the Account smart contract (as per the `maxNumGroupsVotedFor` in the
-     * Election contract).
-     */
-    function activateGroup(address group) external onlyManager {
-        if (!groupHealth.isValidGroup(group)) {
-            revert GroupNotEligible(group);
-        }
-
-        if (IManager(manager).groupsContain(group)) {
-            revert GroupAlreadyAdded(group);
-        }
-
-        if (IManager(manager).deprecatedGroupsContain(group)) {
-            if (!IManager(manager).removeDeprecatedGroup(group)) {
-                revert FailedToRemoveDeprecatedGroup(group);
-            }
-        }
-
-        if (
-            IManager(manager).getGroupsLength() + IManager(manager).getDeprecatedGroupsLength() >=
-            getElection().maxNumGroupsVotedFor() &&
-            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
-        ) {
-            revert MaxGroupsVotedForReached();
-        }
     }
 }

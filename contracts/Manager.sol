@@ -234,7 +234,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         require(_account != address(0), "Account null");
         require(_vote != address(0), "Vote null address");
         require(_groupHealth != address(0), "GroupHealth null");
-        require(_specificGroupStrategy != address(0), "SpeicificGroupStrategy null");
+        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
+        require(_defaultStrategy != address(0), "DefaultStrategy null");
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);

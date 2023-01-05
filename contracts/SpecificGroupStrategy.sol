@@ -37,7 +37,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     /**
      * @notice An instance of the Account contract for the StakedCelo protocol.
      */
-    IAccount internal account;
+    IAccount public account;
 
     /**
      * @notice Emitted when a new group is specific group for voting.
