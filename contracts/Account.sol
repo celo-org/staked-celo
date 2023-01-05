@@ -253,7 +253,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Schedules votes which will be revoked from groups.
+     * @notice Schedules votes which will be revoked from some groups and voted to others.
      * @dev Only callable by the Manager contract, which must restrict which groups are valid.
      * @param fromGroups The groups the deposited CELO is intended to be revoked from.
      * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
