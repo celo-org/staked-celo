@@ -1,14 +1,7 @@
 import { CeloTxReceipt } from "@celo/connect";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
-import { expect } from "chai";
-import {
-  BaseContract,
-  BigNumber as EthersBigNumber,
-  Contract,
-  ContractReceipt,
-  Wallet,
-} from "ethers";
+import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
@@ -572,30 +565,4 @@ export async function rebalanceGroups(
   }
 
   console.log("Rebalance finished!");
-}
-
-/**
- * Checks whether tx Receipt contains nested event
- * @param eventOriginatorContract Contract where the event is defined
- * @param txReceipt tx Receipt where the event is supposed to be found
- * @param eventName Searched event name
- * @param expectedArgValues Expected event values (partial is supported)
- */
-export function expectNestedEvent(
-  eventOriginatorContract: BaseContract,
-  txReceipt: ContractReceipt,
-  eventName: string,
-  expectedArgValues: Record<string, any>
-) {
-  const events = txReceipt.events
-    ?.map((e) => eventOriginatorContract.interface.parseLog(e))
-    .filter((e) => e.name == eventName);
-  expect(events).not.be.null;
-  expect(events!.length).to.eq(1);
-  const event = events![0];
-  for (const key of Object.keys(expectedArgValues)) {
-    const names = event.eventFragment.inputs.map((k) => k.name);
-    const indexOfInput = names.indexOf(key);
-    expect(event.args[indexOfInput]).to.deep.eq(expectedArgValues[key]);
-  }
 }
