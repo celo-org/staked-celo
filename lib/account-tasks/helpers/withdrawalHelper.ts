@@ -1,7 +1,7 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import chalk from "chalk";
 import { BigNumber, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../../logger";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -9,7 +9,6 @@ export async function withdraw(
   hre: HardhatRuntimeEnvironment,
   signer: Signer,
   beneficiaryAddress: string,
-  verboseLog: boolean
 ) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const accountContract = await hre.ethers.getContract("Account");
@@ -19,23 +18,19 @@ export async function withdraw(
   const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
   const activeGroups: [] = await managerContract.getGroups();
   const groupList = deprecatedGroups.concat(activeGroups);
-  if (verboseLog) {
-    console.log("DEBUG: groupList:", groupList);
-  }
+
+  taskLogger.debug("DEBUG: groupList:", groupList);
+
   for (const group of groupList) {
-    if (verboseLog) {
-      console.log(chalk.yellow("DEBUG: Current group", group));
-    }
+    taskLogger.debug("DEBUG: Current group", group);
+
     // check what the beneficiary withdrawal amount is for each group.
     const scheduledWithdrawalAmount: BigNumber =
       await accountContract.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiaryAddress);
-    if (verboseLog) {
-      console.log(
-        chalk.green(
-          `DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount.toString()}. Beneficiary: ${beneficiaryAddress}, group: ${group} `
-        )
-      );
-    }
+
+    taskLogger.debug(
+      `DEBUG: Scheduled withdrawal amount from group: ${scheduledWithdrawalAmount.toString()}. Beneficiary: ${beneficiaryAddress}, group: ${group} `
+    );
 
     if (scheduledWithdrawalAmount.gt(0)) {
       let remainingRevokeAmount: BigNumber = BigNumber.from(0);
@@ -50,32 +45,32 @@ export async function withdraw(
       const immediateWithdrawalAmount: BigNumber = await accountContract.scheduledVotesForGroup(
         group
       );
-      if (verboseLog) {
-        console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
-      }
+
+      taskLogger.debug("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
+
       if (immediateWithdrawalAmount.lt(scheduledWithdrawalAmount)) {
         remainingRevokeAmount = scheduledWithdrawalAmount.sub(immediateWithdrawalAmount);
-        if (verboseLog) {
-          console.log("remainingRevokeAmount:", remainingRevokeAmount.toString());
-        }
+
+        taskLogger.debug("remainingRevokeAmount:", remainingRevokeAmount.toString());
+
         // get AccountContract pending votes for group.
         const groupVote = await electionWrapper.getVotesForGroupByAccount(
           accountContract.address,
           group
         );
         const pendingVotes = groupVote.pending;
-        if (verboseLog) {
-          console.log("pendingVotes:", pendingVotes.toString());
-        }
+
+        taskLogger.debug("pendingVotes:", pendingVotes.toString());
+
         // amount to revoke from pending
         toRevokeFromPending = BigNumber.from(
           remainingRevokeAmount.lt(BigNumber.from(pendingVotes.toString())) // Math.min
             ? remainingRevokeAmount.toString()
             : pendingVotes.toString()
         );
-        if (verboseLog) {
-          console.log("toRevokeFromPending:", toRevokeFromPending.toString());
-        }
+
+        taskLogger.debug("toRevokeFromPending:", toRevokeFromPending.toString());
+
         // find lesser and greater for pending votes
         const lesserAndGreaterAfterPendingRevoke =
           await electionWrapper.findLesserAndGreaterAfterVote(
@@ -103,16 +98,16 @@ export async function withdraw(
 
       // find index of group
       const index = await findAddressIndex(electionWrapper, group, accountContract.address);
-      if (verboseLog) {
-        // use current index
-        console.log("beneficiaryAddress:", beneficiaryAddress);
-        console.log("group:", group);
-        console.log("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
-        console.log("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
-        console.log("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
-        console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
-        console.log("group index:", index);
-      }
+
+      // use current index
+      taskLogger.debug("beneficiaryAddress:", beneficiaryAddress);
+      taskLogger.debug("group:", group);
+      taskLogger.debug("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
+      taskLogger.debug("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
+      taskLogger.debug("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
+      taskLogger.debug("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
+      taskLogger.debug("group index:", index);
+
       const tx = await accountContract
         .connect(signer)
         .withdraw(
@@ -126,9 +121,8 @@ export async function withdraw(
         );
 
       const receipt = await tx.wait();
-      if (verboseLog) {
-        console.log(chalk.yellow("receipt status"), receipt.status);
-      }
+
+      taskLogger.debug("receipt status", receipt.status);
     }
   }
 }

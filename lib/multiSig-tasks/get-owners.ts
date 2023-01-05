@@ -1,15 +1,22 @@
-import { task } from "hardhat/config";
-import chalk from "chalk";
-
+import { task, types } from "hardhat/config";
+import { TransactionArguments } from "../helpers/interfaceHelper";
+import {
+  LOG_LEVEL,
+  LOG_LEVEL_DESCRIPTION,
+  MULTISIG_GET_OWNERS_TASK_DESCRIPTION,
+} from "../helpers/staticVariables";
+import { taskLogger } from "../logger";
 import { MULTISIG_GET_OWNERS } from "../tasksNames";
-import { MULTISIG_GET_OWNERS_TASK_DESCRIPTION } from "../helpers/staticVariables";
 
-task(MULTISIG_GET_OWNERS, MULTISIG_GET_OWNERS_TASK_DESCRIPTION).setAction(async (_, hre) => {
-  try {
-    const multiSigContract = await hre.ethers.getContract("MultiSig");
-    const owners = await multiSigContract.getOwners();
-    console.log(chalk.yellow("Current multiSig owners:"), owners);
-  } catch (error) {
-    console.log(chalk.red("Error getting multiSig owners:"), error);
-  }
-});
+task(MULTISIG_GET_OWNERS, MULTISIG_GET_OWNERS_TASK_DESCRIPTION)
+  .addOptionalParam(LOG_LEVEL, LOG_LEVEL_DESCRIPTION, undefined, types.string)
+  .setAction(async (args: TransactionArguments, hre) => {
+    taskLogger.setLogLevel(args.logLevel);
+    try {
+      const multiSigContract = await hre.ethers.getContract("MultiSig");
+      const owners = await multiSigContract.getOwners();
+      taskLogger.log("Current multiSig owners:", owners);
+    } catch (error) {
+      taskLogger.error("Error getting multiSig owners:", error);
+    }
+  });

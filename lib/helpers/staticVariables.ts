@@ -12,7 +12,7 @@ export const VALUES = "values";
 export const CONTRACT = "contract";
 export const FUNCTION = "function";
 export const ARGS = "args";
-export const VERBOSE_LOG = "verboseLog";
+export const LOG_LEVEL = "logLevel";
 
 // PARAM DESCRIPTIONS
 export const AMOUNT_DESCRIPTION =
@@ -34,7 +34,7 @@ export const VALUES_DESCRIPTION =
 export const CONTRACT_DESCRIPTION = "Name of the contract.";
 export const FUNCTION_DESCRIPTION = "Name of the function.";
 export const ARGS_DESCRIPTION = "Arguments of function separated by ,";
-export const VERBOSE_LOG_DESCRIPTION = "Execute task with verbose logging.";
+export const LOG_LEVEL_DESCRIPTION = "Specify logging level (e.g.: debug, info, warn, error).";
 
 // ACCOUNT TASK DESCRIPTIONS
 export const ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION =
