@@ -243,7 +243,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         uint256 totalVotes;
         for (uint256 i = 0; i < groups.length; i++) {
-            addToVote(groups[i], votes[i]);
+            getAndUpdateToVoteAndToRevoke(groups[i], votes[i], 0);
             totalVotes += votes[i];
         }
 
@@ -259,7 +259,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
      * @param toGroups The groups the transferred CELO is intended to vote for.
      * @param toVotes The amount of CELO to schedule for each respective group
-     * from `groups`.
+     * from `toGroups`.
      */
     function scheduleTransfer(
         address[] calldata fromGroups,
@@ -274,12 +274,12 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 totalToVotes;
 
         for (uint256 i = 0; i < fromGroups.length; i++) {
-            addToRevoke(fromGroups[i], fromVotes[i]);
+            getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
             totalFromVotes += fromVotes[i];
         }
 
         for (uint256 i = 0; i < toGroups.length; i++) {
-            addToVote(toGroups[i], toVotes[i]);
+            getAndUpdateToVoteAndToRevoke(toGroups[i], toVotes[i], 0);
             totalToVotes += toVotes[i];
         }
 
@@ -368,7 +368,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         // It might happen that toVotes are from transfers
         // and the contract doesn't have enough CELO.
-        uint256 immediateWithdrawalAmount = Math.min(address(this).balance, getToVote(group));
+        (uint256 celoToVoteForGroup, ) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
+        uint256 immediateWithdrawalAmount = Math.min(address(this).balance, celoToVoteForGroup);
 
         if (immediateWithdrawalAmount > 0) {
             if (immediateWithdrawalAmount > withdrawalAmount) {
@@ -433,7 +434,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         IElection election = getElection();
 
         // The amount of unlocked CELO for group that we want to lock and vote with.
-        uint256 celoToVoteForGroup = getToVote(group);
+        (uint256 celoToVoteForGroup, ) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
         // Reset the unlocked CELO amount for group.
         scheduledVotes[group].toVote = 0;
@@ -455,7 +456,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             address(this)
         );
 
-        // There might be some locked unvoting (revoked) gold from previous transfers
+        // There might be some locked unvoting (revoked) CELO from previous transfers
         uint256 toLock = accountLockedNonvotingCelo >= celoToVoteForGroup
             ? 0
             : celoToVoteForGroup - accountLockedNonvotingCelo;
@@ -672,7 +673,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address greaterAfterActiveRevoke,
         uint256 index
     ) public {
-        uint256 revokeAmount = getToRevoke(group);
+        (, uint256 revokeAmount) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
         if (revokeAmount == 0) {
             return;
@@ -872,84 +873,38 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the `toVote` amount of CELO directed towards `group`.
-     * This is the `toVote` CELO balance for `group` minus the `toRevoke` amount.
-     * Both `ToRevoke` and `toVote` are updated.
+     * @notice Adds amount to `toVote` and `toRevoke` and returns the `toVote`
+     * and `toRevoke` amount of CELO directed towards `group`. This is the `toVote`
+     * CELO balance for `group` minus the `toRevoke` amount and vice versa.
+     * Both `toRevoke` and `toVote` are updated.
      * @param group The address of the validator group.
-     * @return The `toVote` amount of CELO directed towards `group`.
+     * @param addToVote The amount to add to `toVote`.
+     * @param addToRevoke The amount to add to `toRevoke`.
+     * @return toVote The `toVote` amount of CELO directed towards `group`.
+     * @return toRevoke The `toRevoke` amount of CELO directed towards `group`.
      */
-    function getToVote(address group) private returns (uint256) {
-        uint256 finalToVote = scheduledVotes[group].toVote;
+    function getAndUpdateToVoteAndToRevoke(
+        address group,
+        uint256 addToVote,
+        uint256 addToRevoke
+    ) private returns (uint256 toVote, uint256 toRevoke) {
+        toVote = scheduledVotes[group].toVote + addToVote;
+        toRevoke = scheduledVotes[group].toRevoke + addToRevoke;
 
-        if (scheduledVotes[group].toRevoke > 0) {
-            uint256 toSubtract = Math.min(finalToVote, scheduledVotes[group].toRevoke);
-            scheduledVotes[group].toRevoke -= toSubtract;
-            finalToVote -= toSubtract;
-            scheduledVotes[group].toVote = finalToVote;
+        if (toVote > toRevoke) {
+            scheduledVotes[group].toVote = toVote = toVote - toRevoke;
+            scheduledVotes[group].toRevoke = toRevoke = 0;
+        } else {
+            scheduledVotes[group].toRevoke = toRevoke = toRevoke - toVote;
+            scheduledVotes[group].toVote = toVote = 0;
         }
 
-        return finalToVote;
-    }
-
-    /**
-     * @notice Returns the `toRevoke` amount of CELO directed towards `group`. This is
-     * the `toRevoke` CELO balance for `group` minus the `toVote` amount.
-     * Both `ToRevoke` and `toVote` are updated.
-     * @param group The address of the validator group.
-     * @return The toRevote amount of CELO directed towards `group`.
-     */
-    function getToRevoke(address group) private returns (uint256) {
-        uint256 finalToRevoke = scheduledVotes[group].toRevoke;
-
-        if (scheduledVotes[group].toVote > 0) {
-            uint256 toSubtract = Math.min(finalToRevoke, scheduledVotes[group].toVote);
-            scheduledVotes[group].toVote -= toSubtract;
-            finalToRevoke -= toSubtract;
-            scheduledVotes[group].toRevoke = finalToRevoke;
+        if (addToVote > 0) {
+            emit VotesScheduled(group, addToVote);
         }
 
-        return finalToRevoke;
-    }
-
-    /**
-     * @notice Adds amount to `toVote` and returns the `toVote` amount of CELO directed
-     * towards `group`. This is the `toVote` CELO balance for `group` minus the `toRevoke`
-     * amount. Both `ToRevoke` and `toVote` are updated.
-     * @param toAdd The amount to add to `toVote`.
-     * @param group The address of the validator group.
-     * @return The `toVote` amount of CELO directed towards `group`.
-     */
-    function addToVote(address group, uint256 toAdd) private returns (uint256) {
-        uint256 finalToVote = scheduledVotes[group].toVote + toAdd;
-
-        if (scheduledVotes[group].toRevoke > 0) {
-            uint256 toSubtract = Math.min(finalToVote, scheduledVotes[group].toRevoke);
-            scheduledVotes[group].toRevoke -= toSubtract;
-            finalToVote -= toSubtract;
+        if (addToRevoke > 0) {
+            emit RevocationScheduled(group, addToRevoke);
         }
-        scheduledVotes[group].toVote = finalToVote;
-        emit VotesScheduled(group, toAdd);
-        return finalToVote;
-    }
-
-    /**
-     * @notice Adds amount to `toRevoke` and returns the `toRevoke` amount of CELO directed towards
-     * `group`. This is the `toRevoke` CELO balance for `group` minus the `toVote` amount.
-     * Both `ToRevoke` and `toVote` are updated.
-     * @param toAdd The amount to add to toRevoke.
-     * @param group The address of the validator group.
-     * @return The `toVote` amount of CELO directed towards `group`.
-     */
-    function addToRevoke(address group, uint256 toAdd) private returns (uint256) {
-        uint256 finalToRevoke = scheduledVotes[group].toRevoke + toAdd;
-
-        if (scheduledVotes[group].toVote > 0) {
-            uint256 toSubtract = Math.min(finalToRevoke, scheduledVotes[group].toVote);
-            scheduledVotes[group].toVote -= toSubtract;
-            finalToRevoke -= toSubtract;
-        }
-        scheduledVotes[group].toRevoke = finalToRevoke;
-        emit RevocationScheduled(group, toAdd);
-        return finalToRevoke;
     }
 }

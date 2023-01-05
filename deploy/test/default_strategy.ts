@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 };
 
-func.id = "deploy_default_strategy";
+func.id = "deploy_test_default_strategy";
 func.tags = ["FullTestManager", "TestDefaultStrategy"];
 func.dependencies = ["TestManager"];
 export default func;

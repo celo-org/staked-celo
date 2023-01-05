@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const managerAddress = (await hre.deployments.get("Manager")).address;
   await catchNotOwnerForProxy(
-    deploy("AllowedStrategy", {
+    deploy("SpecificGroupStrategy", {
       from: deployer,
       log: true,
       proxy: {
@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 };
 
-func.id = "deploy_allowed_strategy";
-func.tags = ["AllowedStrategy", "core", "proxy"];
+func.id = "deploy_specific_group_strategy";
+func.tags = ["SpecificGroupStrategy", "core", "proxy"];
 func.dependencies = ["MultiSig"];
 export default func;

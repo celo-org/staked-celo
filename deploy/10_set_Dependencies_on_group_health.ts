@@ -6,7 +6,7 @@ import { GroupHealth } from "../typechain-types/GroupHealth";
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const manager = await hre.deployments.get("Manager");
-  const allowedStrategy = await hre.deployments.get("AllowedStrategy");
+  const specificGroupStrategy = await hre.deployments.get("SpecificGroupStrategy");
   const stakedCelo = await hre.deployments.get("StakedCelo");
   const groupHealth: GroupHealth = await hre.ethers.getContract("GroupHealth");
   const multisig = await hre.deployments.get("MultiSig");
@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       groupHealth.setDependencies(
         stakedCelo.address,
         account.address,
-        allowedStrategy.address,
+        specificGroupStrategy.address,
         manager.address
       )
     );
@@ -29,7 +29,7 @@ func.dependencies = [
   "GroupHealth",
   "Account",
   "Manager",
-  "AllowedStrategy",
+  "SpecificGroupStrategy",
   "StakedCelo",
   "MultiSig",
 ];

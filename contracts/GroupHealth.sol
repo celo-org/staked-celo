@@ -9,13 +9,28 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./interfaces/IAccount.sol";
-import "./interfaces/IAllowedStrategy.sol";
+import "./interfaces/ISpecificGroupStrategy.sol";
 
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
+    /**
+     * @notice An instance of the StakedCelo contract for the StakedCelo protocol.
+     */
     IStakedCelo public stakedCelo;
+
+    /**
+     * @notice An instance of the Account contract for the StakedCelo protocol.
+     */
     IAccount public account;
-    IAllowedStrategy public allowedStrategyContract;
-    IManager public managerContract;
+
+    /**
+     * @notice An instance of the specificGroupStrategy contract for the StakedCelo protocol.
+     */
+    ISpecificGroupStrategy public specificGroupStrategy;
+
+    /**
+     * @notice An instance of the Manager contract for the StakedCelo protocol.
+     */
+    IManager public manager;
 
     /**
      * @notice Used when a group does not meet the validator group health requirements.
@@ -68,20 +83,24 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
+     * @param _specificGroupStrategy The address of the SpecificGroupStrategy contract.
+     * @param _manager The address of the Manager contract.
      */
     function setDependencies(
         address _stakedCelo,
         address _account,
-        address _allowedStrategy,
+        address _specificGroupStrategy,
         address _manager
     ) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo null address");
-        require(_account != address(0), "account null address");
+        require(_stakedCelo != address(0), "StakedCelo null");
+        require(_account != address(0), "Account null");
+        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
+        require(_manager != address(0), "Manager null");
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
-        allowedStrategyContract = IAllowedStrategy(_allowedStrategy);
-        managerContract = IManager(_manager);
+        specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
+        manager = IManager(_manager);
     }
 
     /**
@@ -142,46 +161,42 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group.
      */
     function getExpectedAndRealCeloForGroup(address group) public view returns (uint256, uint256) {
-        bool isAllowedStrategy = allowedStrategyContract.isAllowedStrategy(group);
-        bool isActiveGroup = managerContract.groupsContain(group);
+        bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
+        bool isActiveGroup = manager.groupsContain(group);
         uint256 realCelo = account.getCeloForGroup(group);
 
-        if (!isAllowedStrategy && !isActiveGroup) {
+        if (!isSpecificGroupStrategy && !isActiveGroup) {
             return (0, realCelo);
         }
 
-        if (isAllowedStrategy && !isActiveGroup) {
+        if (isSpecificGroupStrategy && !isActiveGroup) {
             return (
-                managerContract.toCelo(
-                    allowedStrategyContract.getTotalStCeloVotesForStrategy(group)
-                ),
+                manager.toCelo(specificGroupStrategy.getTotalStCeloVotesForStrategy(group)),
                 realCelo
             );
         }
 
-        if (!isAllowedStrategy && isActiveGroup) {
+        if (!isSpecificGroupStrategy && isActiveGroup) {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply -
-                allowedStrategyContract.getTotalStCeloInAllowedStrategies();
+                specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                managerContract.getGroupsLength();
+                manager.getGroupsLength();
 
-            return (managerContract.toCelo(supposedStCeloInActiveGroup), realCelo);
+            return (manager.toCelo(supposedStCeloInActiveGroup), realCelo);
         }
 
-        if (isAllowedStrategy && isActiveGroup) {
+        if (isSpecificGroupStrategy && isActiveGroup) {
             uint256 stCeloSupply = stakedCelo.totalSupply();
             uint256 stCeloInDefaultStrategy = stCeloSupply -
-                allowedStrategyContract.getTotalStCeloInAllowedStrategies();
+                specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                managerContract.getGroupsLength();
-            uint256 supposedstCeloInAllowedStrategy = allowedStrategyContract
+                manager.getGroupsLength();
+            uint256 supposedstCeloInSpecificGroupStrategy = specificGroupStrategy
                 .getTotalStCeloVotesForStrategy(group);
 
             return (
-                managerContract.toCelo(
-                    supposedStCeloInActiveGroup + supposedstCeloInAllowedStrategy
-                ),
+                manager.toCelo(supposedStCeloInActiveGroup + supposedstCeloInSpecificGroupStrategy),
                 realCelo
             );
         }
@@ -210,8 +225,8 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 realFromCelo;
 
         if (
-            !managerContract.groupsContain(toGroup) &&
-            !allowedStrategyContract.isAllowedStrategy(toGroup)
+            !manager.groupsContain(toGroup) &&
+            !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
         ) {
             // rebalancinch to deprecated/non-existant group is not allowed
             revert InvalidToGroup(toGroup);

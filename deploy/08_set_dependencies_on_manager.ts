@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const manager: Manager = await hre.ethers.getContract("Manager");
   const multisig = await hre.deployments.get("MultiSig");
   const groupHealth = await hre.deployments.get("GroupHealth");
-  const allowedStrategy = await hre.deployments.get("AllowedStrategy");
+  const specificGroupStrategy = await hre.deployments.get("SpecificGroupStrategy");
   const defaultStrategy = await hre.deployments.get("DefaultStrategy");
 
   if ((await manager.callStatic.owner()) !== multisig.address) {
@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         account.address,
         vote.address,
         groupHealth.address,
-        allowedStrategy.address,
+        specificGroupStrategy.address,
         defaultStrategy.address
       )
     );

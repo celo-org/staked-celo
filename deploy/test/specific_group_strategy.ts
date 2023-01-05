@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, owner } = await hre.getNamedAccounts();
   const managerAddress = (await hre.deployments.get("Manager")).address;
 
-  await deploy("AllowedStrategy", {
+  await deploy("SpecificGroupStrategy", {
     from: deployer,
     log: true,
     proxy: {
@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 };
 
-func.id = "deploy_allowed_strategy";
-func.tags = ["FullTestManager", "TestAllowedStrategy"];
+func.id = "deploy_test_specific_group_strategy";
+func.tags = ["FullTestManager", "TestSpecificGroupStrategy"];
 func.dependencies = ["TestManager"];
 export default func;

@@ -2,10 +2,10 @@ import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
 import { Account } from "../typechain-types/Account";
-import { AllowedStrategy } from "../typechain-types/AllowedStrategy";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
 
@@ -15,7 +15,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const manager: Manager = await hre.ethers.getContract("Manager");
   const vote: Vote = await hre.ethers.getContract("Vote");
   const groupHealth: GroupHealth = await hre.ethers.getContract("GroupHealth");
-  const allowedStrategy: AllowedStrategy = await hre.ethers.getContract("AllowedStrategy");
+  const specificGroupStrategy: SpecificGroupStrategy = await hre.ethers.getContract(
+    "SpecificGroupStrategy"
+  );
   const defaultStrategy: DefaultStrategy = await hre.ethers.getContract("DefaultStrategy");
   const multisig = await hre.deployments.get("MultiSig");
 
@@ -34,8 +36,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if ((await groupHealth.callStatic.owner()) !== multisig.address) {
     await executeAndWait(groupHealth.transferOwnership(multisig.address));
   }
-  if ((await allowedStrategy.callStatic.owner()) !== multisig.address) {
-    await executeAndWait(allowedStrategy.transferOwnership(multisig.address));
+  if ((await specificGroupStrategy.callStatic.owner()) !== multisig.address) {
+    await executeAndWait(specificGroupStrategy.transferOwnership(multisig.address));
   }
   if ((await defaultStrategy.callStatic.owner()) !== multisig.address) {
     await executeAndWait(defaultStrategy.transferOwnership(multisig.address));

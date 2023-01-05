@@ -17,12 +17,12 @@ import {
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
-import { AllowedStrategy } from "../typechain-types/AllowedStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
+import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -486,23 +486,23 @@ export async function setGovernanceConcurrentProposals(count: number) {
 
 export async function getGroupsSafe(
   managerContract: Manager,
-  allowedStrategyContract: AllowedStrategy
+  specificGroupStrategy: SpecificGroupStrategy
 ) {
   const activeGroupsLengthPromise = managerContract.getGroupsLength();
-  const allowedStrategiesLengthPromise = allowedStrategyContract.getAllowedStrategiesLength();
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
 
   const activeGroupsPromises = [];
-  const allowedGroupsPromises = [];
+  const specificGroupsPromises = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
     activeGroupsPromises.push(managerContract.getGroup(i));
   }
 
-  for (let i = 0; i < (await allowedStrategiesLengthPromise).toNumber(); i++) {
-    allowedGroupsPromises.push(allowedStrategyContract.getAllowedStrategy(i));
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
   }
 
-  const allGroups = await Promise.all([...activeGroupsPromises, ...allowedGroupsPromises]);
+  const allGroups = await Promise.all([...activeGroupsPromises, ...specificGroupsPromises]);
   const allGroupsSet = new Set(allGroups);
 
   return [...allGroupsSet];
@@ -528,9 +528,9 @@ export async function getRealVsExpectedCeloForGroups(
 export async function rebalanceGroups(
   managerContract: Manager,
   groupHealthContract: GroupHealth,
-  allowedStrategyContract: AllowedStrategy
+  specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const allGroups = await getGroupsSafe(managerContract, allowedStrategyContract);
+  const allGroups = await getGroupsSafe(managerContract, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
 
   // Diff needs to be > 1 so we don't run into rounding problems

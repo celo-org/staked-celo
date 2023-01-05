@@ -9,7 +9,7 @@ import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./interfaces/IVote.sol";
 import "./interfaces/IGroupHealth.sol";
-import "./interfaces/IAllowedStrategy.sol";
+import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "hardhat/console.sol";
 
@@ -50,19 +50,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     address public voteContract;
 
     /**
-     * @notice Contract used for checking group health and rebalancing.
+     * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
      */
-    IGroupHealth public groupHealthContract;
+    IGroupHealth public groupHealth;
 
     /**
-     * @notice Contract used for handling allowed strategy.
+     * @notice An instance of the SpecificGroupStrategy contract for the StakedCelo protocol.
      */
-    IAllowedStrategy public allowedStrategyContract;
+    ISpecificGroupStrategy public specificGroupStrategy;
 
     /**
-     * @notice Contract used for handling default strategy.
+     * @notice An instance of the DefaultGroupStrategy contract for the StakedCelo protocol.
      */
-    IDefaultStrategy public defaultStrategyContract;
+    IDefaultStrategy public defaultStrategy;
 
     /**
      * @notice address -> strategy
@@ -187,7 +187,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @dev Throws if called by any account other than DefaultStrategy.
      */
     modifier onlyDefaultStrategy() {
-        if (address(defaultStrategyContract) != msg.sender) {
+        if (address(defaultStrategy) != msg.sender) {
             revert CallerNotStakedCelo(msg.sender);
         }
         _;
@@ -218,8 +218,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
      * @param _vote The address of the Vote contract.
-     * @param _groupHealth The address of the Group health contract.
-     * @param _allowedStrategy The address of the Allowed strategy contract.
+     * @param _groupHealth The address of the GroupHealth contract.
+     * @param _specificGroupStrategy The address of the SpecificGroupStrategy contract.
      * @param _defaultStrategy The address of the Default strategy contract.
      */
     function setDependencies(
@@ -227,21 +227,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address _account,
         address _vote,
         address _groupHealth,
-        address _allowedStrategy,
+        address _specificGroupStrategy,
         address _defaultStrategy
     ) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo null address");
-        require(_account != address(0), "account null address");
-        require(_vote != address(0), "vote null address");
-        require(_groupHealth != address(0), "validate group null address");
-        require(_allowedStrategy != address(0), "allow strategy null address");
+        require(_stakedCelo != address(0), "StakedCelo null");
+        require(_account != address(0), "Account null");
+        require(_vote != address(0), "Vote null address");
+        require(_groupHealth != address(0), "GroupHealth null");
+        require(_specificGroupStrategy != address(0), "SpeicificGroupStrategy null");
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
         voteContract = _vote;
-        groupHealthContract = IGroupHealth(_groupHealth);
-        allowedStrategyContract = IAllowedStrategy(_allowedStrategy);
-        defaultStrategyContract = IDefaultStrategy(_defaultStrategy);
+        groupHealth = IGroupHealth(_groupHealth);
+        specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
+        defaultStrategy = IDefaultStrategy(_defaultStrategy);
         emit VoteContractSet(_vote);
     }
 
@@ -254,7 +254,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * Election contract).
      */
     function activateGroup(address group) external onlyOwner {
-        defaultStrategyContract.activateGroup(group);
+        defaultStrategy.activateGroup(group);
 
         if (!activeGroups.add(group)) {
             revert FailedToAddActiveGroup(group);
@@ -345,7 +345,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateUnhealthyGroup(address group) external {
-        if (groupHealthContract.isValidGroup(group)) {
+        if (groupHealth.isValidGroup(group)) {
             revert HealthyGroup(group);
         }
         _deprecateGroup((group));
@@ -374,7 +374,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 revert NoActiveGroups();
             }
         } else {
-            if (!groupHealthContract.isValidGroup(strategy)) {
+            if (!groupHealth.isValidGroup(strategy)) {
                 // if invalid group vote for default strategy
                 strategies[msg.sender] = address(0);
                 strategy = address(0);
@@ -383,8 +383,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                     _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
                 }
             } else {
-                allowedStrategyContract.addToAllowedStrategyTotalStCeloVotes(strategy, stCeloValue);
-                allowedStrategyContract.addToTotalStCeloInAllowedStrategies(stCeloValue);
+                specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
+                    strategy,
+                    stCeloValue
+                );
             }
         }
 
@@ -410,7 +412,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (
             activeGroups.length() +
                 deprecatedGroups.length() +
-                allowedStrategyContract.getAllowedStrategiesLength() ==
+                specificGroupStrategy.getSpecificGroupStrategiesLength() ==
             0
         ) {
             revert NoGroups();
@@ -469,7 +471,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalGroups[0] = strategy;
             finalVotes[0] = votes;
         } else {
-            (finalGroups, finalVotes) = defaultStrategyContract
+            (finalGroups, finalVotes) = defaultStrategy
                 .generateDefaultStrategyGroupsVotesToDistributeTo(votes);
         }
 
@@ -494,10 +496,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = allowedStrategyContract
-                .withdrawFromAllowedStrategy(strategy, withdrawal, stCeloAmount);
+            (groupsWithdrawn, withdrawalsPerGroup) = specificGroupStrategy
+                .calculateAndUpdateForWithdrawal(strategy, withdrawal, stCeloAmount);
         } else {
-            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategyContract
+            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
                 .distributeWithdrawalsDefaultStrategy(withdrawal);
         }
 
@@ -530,8 +532,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (!allowedStrategyContract.isAllowedStrategy(newStrategy) ||
-                !groupHealthContract.isValidGroup(newStrategy))
+            (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
+                !groupHealth.isValidGroup(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
         }
@@ -557,10 +559,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address[] memory toGroups;
         uint256[] memory fromVotes;
         uint256[] memory toVotes;
-        (fromGroups, toGroups, fromVotes, toVotes) = groupHealthContract.rebalance(
-            fromGroup,
-            toGroup
-        );
+        (fromGroups, toGroups, fromVotes, toVotes) = groupHealth.rebalance(fromGroup, toGroup);
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }
 
@@ -630,24 +629,24 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Marks a group as allowed strategy for voting.
-     * @param group The address of the group to add to the set of allowed
+     * @param strategy The address of the group to add to the set of allowed
      * strategies.
      */
-    function allowStrategy(address group) external onlyOwner {
-        allowedStrategyContract.allowStrategy(group);
+    function allowStrategy(address strategy) external onlyOwner {
+        specificGroupStrategy.allowStrategy(strategy);
     }
 
     /**
      * @notice Marks a group as not allowed strategy for voting
      * and redistributes votes to default strategy.
-     * @param group The address of the group to remove from the set of allowed
+     * @param strategy The address of the group to remove from the set of allowed
      * strategies.
      */
-    function blockStrategy(address group) external onlyOwner {
-        uint256 strategyTotalStCeloVotes = allowedStrategyContract.blockStrategy(group);
+    function blockStrategy(address strategy) external onlyOwner {
+        uint256 strategyTotalStCeloVotes = specificGroupStrategy.blockStrategy(strategy);
 
         if (strategyTotalStCeloVotes != 0) {
-            _transferWithoutChecks(group, address(0), strategyTotalStCeloVotes);
+            _transferWithoutChecks(strategy, address(0), strategyTotalStCeloVotes);
         }
     }
 
@@ -665,7 +664,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (
             account.getCeloForGroup(group) -
-                toCelo(allowedStrategyContract.getTotalStCeloVotesForStrategy(group)) >
+                toCelo(specificGroupStrategy.getTotalStCeloVotesForStrategy(group)) >
             0
         ) {
             if (!deprecatedGroups.add(group)) {
@@ -700,8 +699,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy
      */
     function _checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && !allowedStrategyContract.isAllowedStrategy(strategy)) {
-            // strategy deprecated revert to default strategy
+        if (strategy != address(0) && !specificGroupStrategy.isSpecificGroupStrategy(strategy)) {
+            // strategy not allowed revert to default strategy
             return address(0);
         }
 
@@ -754,20 +753,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory toVotes;
         (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), toStrategy);
 
-        if (fromStrategy == address(0)) {
-            allowedStrategyContract.addToTotalStCeloInAllowedStrategies(stCeloAmount);
-        } else if (toStrategy == address(0)) {
-            allowedStrategyContract.subtractFromTotalStCeloInAllowedStrategies(stCeloAmount);
-        }
-
         if (fromStrategy != address(0)) {
-            allowedStrategyContract.subtractFromAllowedStrategyTotalStCeloVotes(
+            specificGroupStrategy.subtractFromSpecificGroupStrategyTotalStCeloVotes(
                 fromStrategy,
                 stCeloAmount
             );
         }
         if (toStrategy != address(0)) {
-            allowedStrategyContract.addToAllowedStrategyTotalStCeloVotes(toStrategy, stCeloAmount);
+            specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
+                toStrategy,
+                stCeloAmount
+            );
         }
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);

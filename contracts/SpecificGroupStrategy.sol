@@ -10,43 +10,43 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./Managed.sol";
 
-contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Allowed strategies (validator groups) that can be chosen to voted on.
+     * @notice Specific groups strategies (validator groups) that can be chosen to voted on.
      */
-    EnumerableSet.AddressSet private allowedStrategies;
+    EnumerableSet.AddressSet private specificGroupStrategies;
 
     /**
-     * @notice StCelo that was cast for allowed strategies
+     * @notice stCelo that was cast for specific group strategies,
      * strategy => stCelo amount
      */
-    mapping(address => uint256) private allowedStrategyTotalStCeloVotes;
+    mapping(address => uint256) private specificGroupStrategyTotalStCeloVotes;
 
     /**
-     * @notice Total StCelo that was voted with on allowed strategy
+     * @notice Total stCelo that was voted with on specific group strategies
      */
-    uint256 private totalStCeloInAllowedStrategies;
+    uint256 private totalStCeloInSpecificGroupStrategies;
 
     /**
-     * @notice Contract used for checking group health and rebalancing.
+     * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
      */
-    IGroupHealth public groupHealthContract;
+    IGroupHealth public groupHealth;
 
     /**
-     * @notice An instance of the Account contract this Manager manages.
+     * @notice An instance of the Account contract for the StakedCelo protocol.
      */
     IAccount internal account;
 
     /**
-     * @notice Emitted when a new group is allowed for voting.
+     * @notice Emitted when a new group is specific group for voting.
      * @param group The group's address.
      */
     event StrategyAllowed(address indexed group);
 
     /**
-     * @notice Used when strategy is blocked.
+     * @notice Emmited when strategy is blocked.
      * @param group The group's address.
      */
     event StrategyBlocked(address group);
@@ -58,11 +58,11 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error StrategyAlreadyBlocked(address group);
 
     /**
-     * @notice Used when an attempt to add an allowed strategy to the EnumerableSet
+     * @notice Used when an attempt to add an specific group strategy to the EnumerableSet
      * fails.
      * @param group The group's address.
      */
-    error FailedToAddAllowedStrategy(address group);
+    error FailedToAddSpecificGroupStrategy(address group);
 
     /**
      * @notice Used when attempting to disallow a strategy failed.
@@ -83,7 +83,7 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error StrategyNotEligible(address group);
 
     /**
-     * @notice Used when attempting to withdraw from allowed strategy
+     * @notice Used when attempting to withdraw from specific group strategy
      * but group does not have enough Celo. Group either doesn't have enough stCelo
      * or it is necessary to rebalance the group.
      * @param group The group's address.
@@ -91,7 +91,7 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error GroupNotBalancedOrNotEnoughStCelo(address group);
 
     /**
-     * @notice Used when there isn't enough CELO voting for a account's strategy
+     * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
      * @param group The group's address.
      */
@@ -122,41 +122,40 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Set this contract's dependencies in the StakedCelo system.
      * @param _account The address of the Account contract.
-     * @param _groupHealth The address of the Group health contract.
+     * @param _groupHealth The address of the GroupHealth contract.
      */
     function setDependencies(address _account, address _groupHealth) external onlyOwner {
-        require(_account != address(0), "account null address");
-        require(_groupHealth != address(0), "validate group null address");
+        require(_account != address(0), "Account null");
+        require(_groupHealth != address(0), "GroupHealth null");
 
         account = IAccount(_account);
-        groupHealthContract = IGroupHealth(_groupHealth);
+        groupHealth = IGroupHealth(_groupHealth);
     }
 
     /**
-     * @notice Marks a group as allowed strategy for voting.
-     * @param group The address of the group to add to the set of allowed
+     * @notice Marks a group as specific group strategy for voting.
+     * @param group The address of the group to add to the set of specific group
      * strategies.
      */
     function allowStrategy(address group) external onlyManager {
-        if (!groupHealthContract.isValidGroup(group)) {
+        if (!groupHealth.isValidGroup(group)) {
             revert StrategyNotEligible(group);
         }
 
-        if (allowedStrategies.contains(group)) {
+        if (specificGroupStrategies.contains(group)) {
             revert StrategyAlreadyAdded(group);
         }
 
-        if (!allowedStrategies.add(group)) {
-            revert FailedToAddAllowedStrategy(group);
+        if (!specificGroupStrategies.add(group)) {
+            revert FailedToAddSpecificGroupStrategy(group);
         }
 
         emit StrategyAllowed(group);
     }
 
     /**
-     * @notice Marks a group as not allowed strategy for voting
-     * and redistributes votes to default strategy.
-     * @param group The address of the group to remove from the set of allowed
+     * @notice Marks a group as not specific group strategy for voting.
+     * @param group The address of the group to remove from the set of specific group
      * strategies.
      * @return total stCelo in blocked strategy
      */
@@ -165,11 +164,11 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             revert NoActiveGroups();
         }
 
-        if (!allowedStrategies.contains(group)) {
+        if (!specificGroupStrategies.contains(group)) {
             revert StrategyAlreadyBlocked(group);
         }
 
-        if (!allowedStrategies.remove(group)) {
+        if (!specificGroupStrategies.remove(group)) {
             revert FailedToBlockStrategy(group);
         }
 
@@ -179,7 +178,7 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Used to withdraw CELO from the system from allowed strategy
+     * @notice Used to withdraw CELO from the system from specific group strategy
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function
      * @param strategy The validator group that we want to withdraw from.
@@ -187,7 +186,7 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
-    function withdrawFromAllowedStrategy(
+    function calculateAndUpdateForWithdrawal(
         address strategy,
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount
@@ -202,69 +201,62 @@ contract AllowedStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         groups[0] = strategy;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > allowedStrategyTotalStCeloVotes[strategy]) {
+        if (stCeloWithdrawalAmount > specificGroupStrategyTotalStCeloVotes[strategy]) {
             revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        allowedStrategyTotalStCeloVotes[strategy] -= stCeloWithdrawalAmount;
-        totalStCeloInAllowedStrategies -= stCeloWithdrawalAmount;
+        subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
     }
 
-    function addToTotalStCeloInAllowedStrategies(uint256 value) external onlyManager {
-        totalStCeloInAllowedStrategies += value;
-    }
-
-    function subtractFromTotalStCeloInAllowedStrategies(uint256 value) external onlyManager {
-        totalStCeloInAllowedStrategies -= value;
-    }
-
-    function addToAllowedStrategyTotalStCeloVotes(address strategy, uint256 value)
+    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
         external
         onlyManager
     {
-        allowedStrategyTotalStCeloVotes[strategy] += value;
+        specificGroupStrategyTotalStCeloVotes[strategy] += value;
+        totalStCeloInSpecificGroupStrategies += value;
     }
 
-    function subtractFromAllowedStrategyTotalStCeloVotes(address strategy, uint256 value)
-        external
+    function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
+        public
         onlyManager
     {
-        allowedStrategyTotalStCeloVotes[strategy] -= value;
+        specificGroupStrategyTotalStCeloVotes[strategy] -= value;
+        totalStCeloInSpecificGroupStrategies -= value;
     }
 
-    function isAllowedStrategy(address strategy) external view returns (bool) {
-        return allowedStrategies.contains(strategy);
+    function isSpecificGroupStrategy(address strategy) external view returns (bool) {
+        return specificGroupStrategies.contains(strategy);
     }
 
     function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
-        return allowedStrategyTotalStCeloVotes[strategy];
+        return specificGroupStrategyTotalStCeloVotes[strategy];
     }
 
-    function getTotalStCeloInAllowedStrategies() external view returns (uint256) {
-        return totalStCeloInAllowedStrategies;
-    }
-
-    /**
-     * @notice Returns the array of allowed strategies.
-     * @return The array of allowed strategys.
-     */
-    function getAllowedStrategies() external view returns (address[] memory) {
-        return allowedStrategies.values();
+    function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
+        return totalStCeloInSpecificGroupStrategies;
     }
 
     /**
-     * @notice Returns the length of allowed strategies.
+     * @notice Returns the length of specific group strategies.
      * @return The length of active groups.
      */
-    function getAllowedStrategiesLength() external view returns (uint256) {
-        return allowedStrategies.length();
+    function getSpecificGroupStrategiesLength() external view returns (uint256) {
+        return specificGroupStrategies.length();
     }
 
     /**
-     * @notice Returns the allowed strategy on index.
-     * @return The active group.
+     * @notice Returns the specific group strategy on index.
+     * @return The specific group.
      */
-    function getAllowedStrategy(uint256 index) external view returns (address) {
-        return allowedStrategies.at(index);
+    function getSpecificGroupStrategy(uint256 index) external view returns (address) {
+        return specificGroupStrategies.at(index);
+    }
+
+    /**
+     * @notice Returns the specific group strategies
+     * @return The specific group strategies.
+     */
+    function getSpecificGroupStrategies() external view returns (address[] memory) {
+        return specificGroupStrategies.values();
     }
 }

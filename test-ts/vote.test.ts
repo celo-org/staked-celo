@@ -710,13 +710,13 @@ describe("Vote", async function (this: any) {
     it("reverts with zero stCelo address", async () => {
       await expect(
         voteContract.connect(ownerSigner).setDependencies(ADDRESS_ZERO, nonAccount.address)
-      ).revertedWith("stakedCelo null address");
+      ).revertedWith("stakedCelo null");
     });
 
     it("reverts with zero account address", async () => {
       await expect(
         voteContract.connect(ownerSigner).setDependencies(nonStakedCelo.address, ADDRESS_ZERO)
-      ).revertedWith("account null address");
+      ).revertedWith("account null");
     });
 
     it("cannot be called by a non-Owner account", async () => {

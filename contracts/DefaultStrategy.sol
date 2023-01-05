@@ -10,7 +10,7 @@ import "./interfaces/IAccount.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
-import "./interfaces/IAllowedStrategy.sol";
+import "./interfaces/ISpecificGroupStrategy.sol";
 
 contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -26,30 +26,37 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Contract used for checking group health and rebalancing.
+     * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
      */
-    IGroupHealth public groupHealthContract;
+    IGroupHealth public groupHealth;
 
     /**
-     * @notice An instance of the Account contract this Manager manages.
+     * @notice An instance of the Account contract for the StakedCelo protocol.
      */
     IAccount internal account;
 
     /**
-     * @notice Contract used for checking group health and rebalancing.
+     * @notice An instance of the SpeicficGroupStrategy for the StakedCelo protocol.
      */
-    IAllowedStrategy public allowedStrategyContract;
+    ISpecificGroupStrategy public specificGroupStrategy;
+
+    /**
+     * @notice Emitted when a deprecated group is no longer being voted for and
+     * the contract forgets about it entirely.
+     * @param group The group's address.
+     */
+    event GroupRemoved(address indexed group);
 
     /**
      * @notice Used when attempting to withdraw from allowed strategy
-     * but group does not have enough Celo. Group either doesn't have enough stCelo
+     * but group does not have enough CELO. Group either doesn't have enough stCelo
      * or it is necessary to rebalance the group.
      * @param group The group's address.
      */
     error GroupNotBalancedOrNotEnoughStCelo(address group);
 
     /**
-     * @notice Used when there isn't enough CELO voting for a account's strategy
+     * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
      * @param group The group's address.
      */
@@ -61,13 +68,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * Election.sol.
      */
     error NoVotableGroups();
-
-    /**
-     * @notice Emitted when a deprecated group is no longer being voted for and
-     * the contract forgets about it entirely.
-     * @param group The group's address.
-     */
-    event GroupRemoved(address indexed group);
 
     /**
      * @notice Used when attempting to activate a group that is already active.
@@ -114,20 +114,20 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Set this contract's dependencies in the StakedCelo system.
      * @param _account The address of the Account contract.
-     * @param _groupHealth The address of the Group health contract.
-     * @param _allowedStrategy The address of the AllowedStrategy contract.
+     * @param _groupHealth The address of the GroupHealth contract.
+     * @param _specificGroupStrategy The address of the SpecificGroupStrategy contract.
      */
     function setDependencies(
         address _account,
         address _groupHealth,
-        address _allowedStrategy
+        address _specificGroupStrategy
     ) external onlyOwner {
-        require(_account != address(0), "account null address");
-        require(_groupHealth != address(0), "validate group null address");
-        require(_allowedStrategy != address(0), "allowedStrategy null address");
+        require(_account != address(0), "Account null");
+        require(_groupHealth != address(0), "GroupHealth null");
+        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
 
-        groupHealthContract = IGroupHealth(_groupHealth);
-        allowedStrategyContract = IAllowedStrategy(_allowedStrategy);
+        groupHealth = IGroupHealth(_groupHealth);
+        specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
         account = IAccount(_account);
     }
 
@@ -170,10 +170,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < groups.length; i++) {
             uint256 votes;
-            if (allowedStrategyContract.isAllowedStrategy(groups[i])) {
+            if (specificGroupStrategy.isSpecificGroupStrategy(groups[i])) {
                 uint256 realCeloInGroup = account.getCeloForGroup(groups[i]);
                 uint256 minExpectedCeloInGroup = IManager(manager).toCelo(
-                    allowedStrategyContract.getTotalStCeloVotesForStrategy(groups[i])
+                    specificGroupStrategy.getTotalStCeloVotesForStrategy(groups[i])
                 );
                 if (realCeloInGroup < minExpectedCeloInGroup) {
                     revert GroupNotBalancedOrNotEnoughStCelo(groups[i]);
@@ -472,7 +472,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * Election contract).
      */
     function activateGroup(address group) external onlyManager {
-        if (!groupHealthContract.isValidGroup(group)) {
+        if (!groupHealth.isValidGroup(group)) {
             revert GroupNotEligible(group);
         }
 
