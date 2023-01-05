@@ -26,6 +26,7 @@ task(MULTISIG_EXECUTE_PROPOSAL, MULTISIG_EXECUTE_PROPOSAL_TASK_DESCRIPTION)
   .addOptionalParam(LOG_LEVEL, LOG_LEVEL_DESCRIPTION, undefined, types.string)
   .addFlag(USE_LEDGER, USE_LEDGER_DESCRIPTION)
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
+
   .setAction(async (args: TransactionArguments, hre) => {
     taskLogger.setLogLevel(args.logLevel);
     try {

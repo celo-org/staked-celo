@@ -8,7 +8,7 @@ const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export async function withdraw(
   hre: HardhatRuntimeEnvironment,
   signer: Signer,
-  beneficiaryAddress: string,
+  beneficiaryAddress: string
 ) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const accountContract = await hre.ethers.getContract("Account");
