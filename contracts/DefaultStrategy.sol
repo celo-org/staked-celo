@@ -190,7 +190,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Distributes votes by computing the number of votes each active
-     * group should receive, then calling out to `Account.scheduleVotes`.
+     * group should receive.
      * @param votes The amount of votes to distribute.
      * @dev The vote distribution strategy is to try and have each validator
      * group to be receiving the same amount of votes from the system. If a
