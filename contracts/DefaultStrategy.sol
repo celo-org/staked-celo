@@ -154,7 +154,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function generateDefaultStrategyGroupsVotesToDistributeTo(uint256 votes)
+    function generateGroupVotesToDistributeTo(uint256 votes)
         external
         onlyManager
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
@@ -214,8 +214,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Distributes withdrawals from default strategy by computing the number of votes that
-     * should be withdrawn from each group, then calling out to
-     * `Account.scheduleWithdrawals`.
+     * should be withdrawn from each group.
      * @param withdrawal The amount of votes to withdraw.
      * CELO.
      * @dev The withdrawal distribution strategy is to:
@@ -226,7 +225,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * votes, it will not be withdrawn from, and instead we'll try to evenly
      * distribute between the remaining groups.
      */
-    function distributeWithdrawalsDefaultStrategy(uint256 withdrawal)
+    function calculateAndUpdateForWithdrawal(uint256 withdrawal)
         external
         onlyManager
         returns (address[] memory finalGroups, uint256[] memory finalVotes)

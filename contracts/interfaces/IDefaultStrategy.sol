@@ -2,11 +2,11 @@
 pragma solidity 0.8.11;
 
 interface IDefaultStrategy {
-    function generateDefaultStrategyGroupsVotesToDistributeTo(uint256 votes)
+    function generateGroupVotesToDistributeTo(uint256 votes)
         external
         returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
-    function distributeWithdrawalsDefaultStrategy(uint256 withdrawal)
+    function calculateAndUpdateForWithdrawal(uint256 withdrawal)
         external
         returns (address[] memory finalGroups, uint256[] memory finalVotes);
 

@@ -247,7 +247,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Marks a group as votable for default strategy.
+     * @notice Marks a group as votable as part of the default strategy.
      * @param group The address of the group to add to the set of votable
      * groups.
      * @dev Fails if the maximum number of groups are already being voted for by
@@ -661,8 +661,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             finalGroups[0] = strategy;
             finalVotes[0] = votes;
         } else {
-            (finalGroups, finalVotes) = defaultStrategy
-                .generateDefaultStrategyGroupsVotesToDistributeTo(votes);
+            (finalGroups, finalVotes) = defaultStrategy.generateGroupVotesToDistributeTo(votes);
         }
 
         return (finalGroups, finalVotes);
@@ -690,7 +689,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 .calculateAndUpdateForWithdrawal(strategy, withdrawal, stCeloAmount);
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
-                .distributeWithdrawalsDefaultStrategy(withdrawal);
+                .calculateAndUpdateForWithdrawal(withdrawal);
         }
 
         account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
