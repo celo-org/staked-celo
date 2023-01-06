@@ -51,6 +51,37 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * @notice An instance of the StakedCelo contract this Manager manages.
+     */
+    IStakedCelo internal stakedCelo;
+
+    /**
+     * @notice An instance of the Account contract this Manager manages.
+     */
+    IAccount internal account;
+
+    /**
+     * @notice Votes of Account's contract per proposal.
+     */
+    mapping(uint256 => ProposalVoteRecord) private voteRecords;
+
+    /**
+     * @notice History of all voters.
+     */
+    mapping(address => Voter) private voters;
+
+    /**
+     * @notice Timestamps of every voted proposal.
+     */
+    mapping(uint256 => uint256) public proposalTimestamps;
+
+    /**
+     * @notice Duration of proposal in referendum stage
+     * (It has to be same as in Governance contrtact).
+     */
+    uint256 public referendumDuration;
+
+    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
@@ -86,37 +117,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error NotEnoughStakedCelo(address account);
 
     /**
-     * @notice An instance of the StakedCelo contract this Manager manages.
-     */
-    IStakedCelo internal stakedCelo;
-
-    /**
-     * @notice An instance of the Account contract this Manager manages.
-     */
-    IAccount internal account;
-
-    /**
-     * @notice Votes of Account's contract per proposal.
-     */
-    mapping(uint256 => ProposalVoteRecord) private voteRecords;
-
-    /**
-     * @notice History of all voters.
-     */
-    mapping(address => Voter) private voters;
-
-    /**
-     * @notice Timestamps of every voted proposal.
-     */
-    mapping(uint256 => uint256) public proposalTimestamps;
-
-    /**
-     * @notice Duration of proposal in referendum stage
-     * (It has to be same as in Governance contrtact).
-     */
-    uint256 public referendumDuration;
-
-    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -146,6 +146,26 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         require(_account != address(0), "account null");
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 1, 0);
     }
 
     /**
@@ -256,16 +276,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns save timestamp of proposal.
-     * @param proposalId The proposal UUID.
-     * @return The timestamp of proposal.
-     */
-    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
-        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
-        return timestamp;
-    }
-
-    /**
      * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
      * And it will remove voted proposals from account history if appropriate.
      * @param beneficiary The beneficiary.
@@ -311,6 +321,24 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * @notice Sets referendum duration. It should always be the same as in Governance.
+     */
+    function setReferendumDuration() public onlyOwner {
+        uint256 newReferendumDuration = getGovernance().getReferendumStageDuration();
+        referendumDuration = newReferendumDuration;
+    }
+
+    /**
+     * @notice Returns save timestamp of proposal.
+     * @param proposalId The proposal UUID.
+     * @return The timestamp of proposal.
+     */
+    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
+        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
+        return timestamp;
+    }
+
+    /**
      * @notice Retuns proposals still in referendum stage that voter voted on.
      * @param voter The voter.
      * @return Proposals in referendum stage.
@@ -350,14 +378,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         return toStakedCelo(lockedAmount);
-    }
-
-    /**
-     * @notice Sets referendum duration. It should always be the same as in Governance.
-     */
-    function setReferendumDuration() public onlyOwner {
-        uint256 newReferendumDuration = getGovernance().getReferendumStageDuration();
-        referendumDuration = newReferendumDuration;
     }
 
     /**
@@ -423,25 +443,5 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         return totalVotesRequested;
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 1, 0);
     }
 }

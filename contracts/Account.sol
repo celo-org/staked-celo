@@ -201,6 +201,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     /**
      * @param _registry The address of the Celo registry.
      * @param _manager The address of the Manager contract.
@@ -220,9 +223,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             revert AccountCreationFailed();
         }
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
 
     /**
      * @notice Deposits CELO sent via msg.value as unlocked CELO intended as
@@ -645,6 +645,26 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 2, 0, 0);
+    }
+
+    /**
      * @notice Revokes votes from a validator group. It first attempts to revoke pending votes,
      * and then active votes if necessary.
      * @dev Reverts if `revokeAmount` exceeds the total number of pending and active votes for
@@ -690,6 +710,41 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         );
 
         scheduledVotes[group].toRevoke -= revokeAmount;
+    }
+
+    /**
+     * @notice Turns on/off voting for more then max number of groups.
+     * @param flag The on/off flag.
+     */
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
+        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public onlyManager {
+        bool voteResult = getGovernance().votePartially(
+            proposalId,
+            index,
+            yesVotes,
+            noVotes,
+            abstainVotes
+        );
+        if (!voteResult) {
+            revert VotingNotSuccessful(proposalId);
+        }
     }
 
     /**
@@ -815,61 +870,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         return (pendingWithdrawal.value, pendingWithdrawal.timestamp);
-    }
-
-    /**
-     * @notice Turns on/off voting for more then max number of groups.
-     * @param flag The on/off flag.
-     */
-    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
-        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
-    }
-
-    /**
-     * @notice Votes on a proposal in the referendum stage.
-     * @param proposalId The ID of the proposal to vote on.
-     * @param index The index of the proposal ID in `dequeued`.
-     * @param yesVotes The yes votes weight.
-     * @param noVotes The no votes weight.
-     * @param abstainVotes The abstain votes weight.
-     */
-    function votePartially(
-        uint256 proposalId,
-        uint256 index,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
-    ) public onlyManager {
-        bool voteResult = getGovernance().votePartially(
-            proposalId,
-            index,
-            yesVotes,
-            noVotes,
-            abstainVotes
-        );
-        if (!voteResult) {
-            revert VotingNotSuccessful(proposalId);
-        }
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 2, 0, 0);
     }
 
     /**

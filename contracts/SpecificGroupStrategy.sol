@@ -216,20 +216,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         totalStCeloInSpecificGroupStrategies += value;
     }
 
-    function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
-        public
-        onlyManager
-    {
-        specificGroupStrategyTotalStCeloVotes[strategy] -= value;
-        totalStCeloInSpecificGroupStrategies -= value;
-    }
-
     function isSpecificGroupStrategy(address strategy) external view returns (bool) {
         return specificGroupStrategies.contains(strategy);
-    }
-
-    function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
-        return specificGroupStrategyTotalStCeloVotes[strategy];
     }
 
     function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
@@ -278,5 +266,17 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         )
     {
         return (1, 1, 0, 0);
+    }
+
+    function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
+        public
+        onlyManager
+    {
+        specificGroupStrategyTotalStCeloVotes[strategy] -= value;
+        totalStCeloInSpecificGroupStrategies -= value;
+    }
+
+    function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
+        return specificGroupStrategyTotalStCeloVotes[strategy];
     }
 }

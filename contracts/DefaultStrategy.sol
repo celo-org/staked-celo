@@ -296,25 +296,108 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Sorts an array of GroupWithVotes structs based on increasing
-     * `votes` values.
-     * @param groupsWithVotes The array to sort.
-     * @dev This is an in-place insertion sort. In general in Solidity we should
-     * be careful of algorithms on arrays, especially O(n^2) ones, but here
-     * we're guaranteed to be working with a small array, its length is bounded
-     * by the maximum number of groups that can be voted for in Elections.sol.
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
      */
-    function sortGroupsWithVotes(GroupWithVotes[] memory groupsWithVotes) internal pure {
-        for (uint256 i = 1; i < groupsWithVotes.length; i++) {
-            uint256 j = i;
-            while (j > 0 && groupsWithVotes[j].votes < groupsWithVotes[j - 1].votes) {
-                (groupsWithVotes[j], groupsWithVotes[j - 1]) = (
-                    groupsWithVotes[j - 1],
-                    groupsWithVotes[j]
-                );
-                j--;
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 0, 0);
+    }
+
+    /**
+     * @notice Returns the active groups that can receive the entire `votes`
+     * amount based on their current receivable votes limit in Election.sol.
+     * @param votes The number of votes that would potentially be added.
+     * @return The list of votable active groups.
+     */
+    function getVotableGroups(uint256 votes) internal returns (address[] memory) {
+        uint256 numberGroups = IManager(manager).getGroupsLength();
+        uint256 numberVotableGroups = 0;
+        address[] memory votableGroups = new address[](numberGroups);
+
+        for (uint256 i = 0; i < numberGroups; i++) {
+            address group = IManager(manager).getGroup(i);
+            uint256 scheduledVotes = account.scheduledVotesForGroup(group);
+            if (getElection().canReceiveVotes(group, votes + scheduledVotes)) {
+                votableGroups[numberVotableGroups] = group;
+                numberVotableGroups++;
             }
         }
+
+        address[] memory votableGroupsFinal = new address[](numberVotableGroups);
+        for (uint256 i = 0; i < numberVotableGroups; i++) {
+            votableGroupsFinal[i] = votableGroups[i];
+        }
+
+        return votableGroupsFinal;
+    }
+
+    /**
+     * @notice Calculates how many votes should be withdrawn from each
+     * deprecated group.
+     * @param withdrawal The total amount of votes that needs to be withdrawn.
+     * @return deprecatedGroupsWithdrawn The array of deprecated groups to be
+     * withdrawn from.
+     * @return deprecatedWithdrawalsPerGroup The amount of votes to withdraw
+     * from the respective deprecated group in `deprecatedGroupsWithdrawn`.
+     * @return numberDeprecatedGroupsWithdrawn The number of groups in
+     * `deprecatedGroupsWithdrawn` that have a non zero withdrawal.
+     * @return remainingWithdrawal The number of votes that still need to be
+     * withdrawn after withdrawing from deprecated groups.
+     * @dev Non zero entries of `deprecatedWithdrawalsPerGroup` will be exactly
+     * a prefix of length `numberDeprecatedGroupsWithdrawn`.
+     */
+    function getDeprecatedGroupsWithdrawalDistribution(uint256 withdrawal)
+        internal
+        returns (
+            address[] memory deprecatedGroupsWithdrawn,
+            uint256[] memory deprecatedWithdrawalsPerGroup,
+            uint256 numberDeprecatedGroupsWithdrawn,
+            uint256 remainingWithdrawal
+        )
+    {
+        remainingWithdrawal = withdrawal;
+        uint256 numberDeprecatedGroups = IManager(manager).getDeprecatedGroupsLength();
+        deprecatedGroupsWithdrawn = new address[](numberDeprecatedGroups);
+        deprecatedWithdrawalsPerGroup = new uint256[](numberDeprecatedGroups);
+        numberDeprecatedGroupsWithdrawn = 0;
+
+        for (uint256 i = 0; i < numberDeprecatedGroups; i++) {
+            numberDeprecatedGroupsWithdrawn++;
+            deprecatedGroupsWithdrawn[i] = IManager(manager).getDeprecatedGroup(i);
+            uint256 currentVotes = account.getCeloForGroup(deprecatedGroupsWithdrawn[i]);
+            deprecatedWithdrawalsPerGroup[i] = Math.min(remainingWithdrawal, currentVotes);
+            remainingWithdrawal -= deprecatedWithdrawalsPerGroup[i];
+
+            if (currentVotes == deprecatedWithdrawalsPerGroup[i]) {
+                if (!IManager(manager).removeDeprecatedGroup(deprecatedGroupsWithdrawn[i])) {
+                    revert FailedToRemoveDeprecatedGroup(deprecatedGroupsWithdrawn[i]);
+                }
+                emit GroupRemoved(deprecatedGroupsWithdrawn[i]);
+            }
+
+            if (remainingWithdrawal == 0) {
+                break;
+            }
+        }
+
+        return (
+            deprecatedGroupsWithdrawn,
+            deprecatedWithdrawalsPerGroup,
+            numberDeprecatedGroupsWithdrawn,
+            remainingWithdrawal
+        );
     }
 
     /**
@@ -411,107 +494,24 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns the active groups that can receive the entire `votes`
-     * amount based on their current receivable votes limit in Election.sol.
-     * @param votes The number of votes that would potentially be added.
-     * @return The list of votable active groups.
+     * @notice Sorts an array of GroupWithVotes structs based on increasing
+     * `votes` values.
+     * @param groupsWithVotes The array to sort.
+     * @dev This is an in-place insertion sort. In general in Solidity we should
+     * be careful of algorithms on arrays, especially O(n^2) ones, but here
+     * we're guaranteed to be working with a small array, its length is bounded
+     * by the maximum number of groups that can be voted for in Elections.sol.
      */
-    function getVotableGroups(uint256 votes) internal returns (address[] memory) {
-        uint256 numberGroups = IManager(manager).getGroupsLength();
-        uint256 numberVotableGroups = 0;
-        address[] memory votableGroups = new address[](numberGroups);
-
-        for (uint256 i = 0; i < numberGroups; i++) {
-            address group = IManager(manager).getGroup(i);
-            uint256 scheduledVotes = account.scheduledVotesForGroup(group);
-            if (getElection().canReceiveVotes(group, votes + scheduledVotes)) {
-                votableGroups[numberVotableGroups] = group;
-                numberVotableGroups++;
+    function sortGroupsWithVotes(GroupWithVotes[] memory groupsWithVotes) internal pure {
+        for (uint256 i = 1; i < groupsWithVotes.length; i++) {
+            uint256 j = i;
+            while (j > 0 && groupsWithVotes[j].votes < groupsWithVotes[j - 1].votes) {
+                (groupsWithVotes[j], groupsWithVotes[j - 1]) = (
+                    groupsWithVotes[j - 1],
+                    groupsWithVotes[j]
+                );
+                j--;
             }
         }
-
-        address[] memory votableGroupsFinal = new address[](numberVotableGroups);
-        for (uint256 i = 0; i < numberVotableGroups; i++) {
-            votableGroupsFinal[i] = votableGroups[i];
-        }
-
-        return votableGroupsFinal;
-    }
-
-    /**
-     * @notice Calculates how many votes should be withdrawn from each
-     * deprecated group.
-     * @param withdrawal The total amount of votes that needs to be withdrawn.
-     * @return deprecatedGroupsWithdrawn The array of deprecated groups to be
-     * withdrawn from.
-     * @return deprecatedWithdrawalsPerGroup The amount of votes to withdraw
-     * from the respective deprecated group in `deprecatedGroupsWithdrawn`.
-     * @return numberDeprecatedGroupsWithdrawn The number of groups in
-     * `deprecatedGroupsWithdrawn` that have a non zero withdrawal.
-     * @return remainingWithdrawal The number of votes that still need to be
-     * withdrawn after withdrawing from deprecated groups.
-     * @dev Non zero entries of `deprecatedWithdrawalsPerGroup` will be exactly
-     * a prefix of length `numberDeprecatedGroupsWithdrawn`.
-     */
-    function getDeprecatedGroupsWithdrawalDistribution(uint256 withdrawal)
-        internal
-        returns (
-            address[] memory deprecatedGroupsWithdrawn,
-            uint256[] memory deprecatedWithdrawalsPerGroup,
-            uint256 numberDeprecatedGroupsWithdrawn,
-            uint256 remainingWithdrawal
-        )
-    {
-        remainingWithdrawal = withdrawal;
-        uint256 numberDeprecatedGroups = IManager(manager).getDeprecatedGroupsLength();
-        deprecatedGroupsWithdrawn = new address[](numberDeprecatedGroups);
-        deprecatedWithdrawalsPerGroup = new uint256[](numberDeprecatedGroups);
-        numberDeprecatedGroupsWithdrawn = 0;
-
-        for (uint256 i = 0; i < numberDeprecatedGroups; i++) {
-            numberDeprecatedGroupsWithdrawn++;
-            deprecatedGroupsWithdrawn[i] = IManager(manager).getDeprecatedGroup(i);
-            uint256 currentVotes = account.getCeloForGroup(deprecatedGroupsWithdrawn[i]);
-            deprecatedWithdrawalsPerGroup[i] = Math.min(remainingWithdrawal, currentVotes);
-            remainingWithdrawal -= deprecatedWithdrawalsPerGroup[i];
-
-            if (currentVotes == deprecatedWithdrawalsPerGroup[i]) {
-                if (!IManager(manager).removeDeprecatedGroup(deprecatedGroupsWithdrawn[i])) {
-                    revert FailedToRemoveDeprecatedGroup(deprecatedGroupsWithdrawn[i]);
-                }
-                emit GroupRemoved(deprecatedGroupsWithdrawn[i]);
-            }
-
-            if (remainingWithdrawal == 0) {
-                break;
-            }
-        }
-
-        return (
-            deprecatedGroupsWithdrawn,
-            deprecatedWithdrawalsPerGroup,
-            numberDeprecatedGroupsWithdrawn,
-            remainingWithdrawal
-        );
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 0, 0);
     }
 }

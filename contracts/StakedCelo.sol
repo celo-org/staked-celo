@@ -107,12 +107,23 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns vote stCELO locked balance.
-     * @param account The address of locked stCELO balance.
-     * @return The amount of locked stCELO.
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
      */
-    function lockedVoteBalanceOf(address account) public view returns (uint256) {
-        return _lockedBalances[account];
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 2, 1);
     }
 
     /**
@@ -138,6 +149,15 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     }
 
     /**
+     * @notice Returns vote stCELO locked balance.
+     * @param account The address of locked stCELO balance.
+     * @return The amount of locked stCELO.
+     */
+    function lockedVoteBalanceOf(address account) public view returns (uint256) {
+        return _lockedBalances[account];
+    }
+
+    /**
      * @notice Registers transfer to manager whenever stCelo is being transfered.
      **/
     function _afterTokenTransfer(
@@ -150,25 +170,5 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             return;
         }
         IManager(manager).transfer(from, to, amount);
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 2, 1);
     }
 }

@@ -265,6 +265,152 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Returns deprecated.
+     */
+    function removeDeprecatedGroup(address group) external onlyDefaultStrategy returns (bool) {
+        return deprecatedGroups.remove(group);
+    }
+
+    /**
+     * @notice Marks a group as deprecated.
+     * @param group The group to deprecate.
+     * @dev A deprecated group will remain in the `deprecatedGroups` array as
+     * long as it is still being voted for by the Account contract. Deprecated
+     * groups will be the first to have their votes withdrawn.
+     */
+    function deprecateGroup(address group) external onlyOwner {
+        _deprecateGroup(group);
+    }
+
+    /**
+     * @notice Marks an unhealthy group as deprecated.
+     * @param group The group to deprecate if unhealthy.
+     * @dev A deprecated group will remain in the `deprecatedGroups` array as
+     * long as it is still being voted for by the Account contract. Deprecated
+     * groups will be the first to have their votes withdrawn.
+     */
+    function deprecateUnhealthyGroup(address group) external {
+        if (groupHealth.isValidGroup(group)) {
+            revert HealthyGroup(group);
+        }
+        _deprecateGroup((group));
+    }
+
+    /**
+     * @notice Marks a group as allowed strategy for voting.
+     * @param strategy The address of the group to add to the set of allowed
+     * strategies.
+     */
+    function allowStrategy(address strategy) external onlyOwner {
+        specificGroupStrategy.allowStrategy(strategy);
+    }
+
+    /**
+     * @notice Marks a group as not allowed strategy for voting
+     * and redistributes votes to default strategy.
+     * @param strategy The address of the group to remove from the set of allowed
+     * strategies.
+     */
+    function blockStrategy(address strategy) external onlyOwner {
+        uint256 strategyTotalStCeloVotes = specificGroupStrategy.blockStrategy(strategy);
+
+        if (strategyTotalStCeloVotes != 0) {
+            _transferWithoutChecks(strategy, address(0), strategyTotalStCeloVotes);
+        }
+    }
+
+    /**
+     * @notice Used to withdraw CELO from the system, in exchange for burning
+     * stCELO.
+     * @param stakedCeloAmount The amount of stCELO to burn.
+     * @dev Calculates the CELO amount based on the ratio of outstanding stCELO
+     * and the total amount of CELO owned and used for voting by Account. See
+     * `toCelo`.
+     * @dev The funds need to be withdrawn using calls to `Account.withdraw` and
+     * `Account.finishPendingWithdrawal`.
+     */
+    function withdraw(uint256 stakedCeloAmount) external {
+        if (
+            activeGroups.length() +
+                deprecatedGroups.length() +
+                specificGroupStrategy.getSpecificGroupStrategiesLength() ==
+            0
+        ) {
+            revert NoGroups();
+        }
+
+        distributeWithdrawals(stakedCeloAmount, msg.sender);
+        stakedCelo.burn(msg.sender, stakedCeloAmount);
+    }
+
+    /**
+     * @notice Revokes votes on already voted proposal.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     */
+    function revokeVotes(uint256 proposalId, uint256 index) external {
+        IVote vote = IVote(voteContract);
+
+        (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
+            msg.sender,
+            proposalId
+        );
+
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    /**
+     * @notice Unlock balance of vote stCelo and update beneficiary vote history.
+     * @param beneficiary The account to be unlocked.
+     */
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
+        external
+        returns (uint256)
+    {
+        IVote vote = IVote(voteContract);
+        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
+    }
+
+    /**
+     * @notice Used to deposit CELO into the StakedCelo system. The user will
+     * receive an amount of stCELO proportional to their contribution. The CELO
+     * will be scheduled to be voted for with the Account contract.
+     * The CELO will be distributed based on accoutn strategy.
+     */
+    function deposit() external payable {
+        address strategy = _checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
+
+        uint256 stCeloValue = toStakedCelo(msg.value);
+        if (strategy == address(0)) {
+            if (activeGroups.length() == 0) {
+                revert NoActiveGroups();
+            }
+        } else {
+            if (!groupHealth.isValidGroup(strategy)) {
+                // if invalid group vote for default strategy
+                strategies[msg.sender] = address(0);
+                strategy = address(0);
+                uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
+                if (stCeloBalance != 0) {
+                    _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
+                }
+            } else {
+                specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
+                    strategy,
+                    stCeloValue
+                );
+            }
+        }
+
+        stakedCelo.mint(msg.sender, stCeloValue);
+
+        address[] memory finalGroups;
+        uint256[] memory finalVotes;
+        (finalGroups, finalVotes) = distributeVotes(msg.value, strategy);
+        account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
+    }
+
+    /**
      * @notice Returns the array of active groups.
      * @return The array of active groups.
      */
@@ -313,43 +459,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns deprecated.
-     */
-    function removeDeprecatedGroup(address group) external onlyDefaultStrategy returns (bool) {
-        return deprecatedGroups.remove(group);
-    }
-
-    /**
      * @notice Returns whether deprecated groups contain group.
      * @return The group.
      */
     function deprecatedGroupsContain(address group) external view returns (bool) {
         return deprecatedGroups.contains(group);
-    }
-
-    /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
-     * @dev A deprecated group will remain in the `deprecatedGroups` array as
-     * long as it is still being voted for by the Account contract. Deprecated
-     * groups will be the first to have their votes withdrawn.
-     */
-    function deprecateGroup(address group) external onlyOwner {
-        _deprecateGroup(group);
-    }
-
-    /**
-     * @notice Marks an unhealthy group as deprecated.
-     * @param group The group to deprecate if unhealthy.
-     * @dev A deprecated group will remain in the `deprecatedGroups` array as
-     * long as it is still being voted for by the Account contract. Deprecated
-     * groups will be the first to have their votes withdrawn.
-     */
-    function deprecateUnhealthyGroup(address group) external {
-        if (groupHealth.isValidGroup(group)) {
-            revert HealthyGroup(group);
-        }
-        _deprecateGroup((group));
     }
 
     /**
@@ -361,66 +475,127 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Used to deposit CELO into the StakedCelo system. The user will
-     * receive an amount of stCELO proportional to their contribution. The CELO
-     * will be scheduled to be voted for with the Account contract.
-     * The CELO will be distributed based on accoutn strategy.
+     * @notice Returns which strategy is account using
+     * address(0) = default strategy
+     * !address(0) = voting for allowed validator group
+     * @param accountAddress The account.
+     * @return The strategy.
      */
-    function deposit() external payable {
-        address strategy = _checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
-
-        uint256 stCeloValue = toStakedCelo(msg.value);
-        if (strategy == address(0)) {
-            if (activeGroups.length() == 0) {
-                revert NoActiveGroups();
-            }
-        } else {
-            if (!groupHealth.isValidGroup(strategy)) {
-                // if invalid group vote for default strategy
-                strategies[msg.sender] = address(0);
-                strategy = address(0);
-                uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
-                if (stCeloBalance != 0) {
-                    _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
-                }
-            } else {
-                specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
-                    strategy,
-                    stCeloValue
-                );
-            }
-        }
-
-        stakedCelo.mint(msg.sender, stCeloValue);
-
-        address[] memory finalGroups;
-        uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = distributeVotes(msg.value, strategy);
-        account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
+    function getAccountStrategy(address accountAddress) external view returns (address) {
+        return _checkStrategy(strategies[accountAddress]);
     }
 
     /**
-     * @notice Used to withdraw CELO from the system, in exchange for burning
-     * stCELO.
-     * @param stakedCeloAmount The amount of stCELO to burn.
-     * @dev Calculates the CELO amount based on the ratio of outstanding stCELO
-     * and the total amount of CELO owned and used for voting by Account. See
-     * `toCelo`.
-     * @dev The funds need to be withdrawn using calls to `Account.withdraw` and
-     * `Account.finishPendingWithdrawal`.
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
      */
-    function withdraw(uint256 stakedCeloAmount) external {
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 3, 0, 0);
+    }
+
+    /**
+     * @notice Whenever stCELO is being transferd we will check whether origin and target
+     * account use same strategy. If strategy differs we will schedule votes for transfer.
+     * @param from The from account.
+     * @param to The to account.
+     * @param stCeloAmount The stCelo amount.
+     */
+    function transfer(
+        address from,
+        address to,
+        uint256 stCeloAmount
+    ) public onlyStakedCelo {
+        address fromStrategy = strategies[from];
+        address toStrategy = strategies[to];
+        _transfer(fromStrategy, toStrategy, stCeloAmount, from, to);
+    }
+
+    /**
+     * @notice Allows account to change strategy.
+     * address(0) = default strategy
+     * !address(0) = voting for allowed validator group. Group needs to be in allowed
+     * @param newStrategy The from account.
+     */
+    function changeStrategy(address newStrategy) public {
         if (
-            activeGroups.length() +
-                deprecatedGroups.length() +
-                specificGroupStrategy.getSpecificGroupStrategiesLength() ==
-            0
+            newStrategy != address(0) &&
+            (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
+                !groupHealth.isValidGroup(newStrategy))
         ) {
-            revert NoGroups();
+            revert GroupNotEligible(newStrategy);
         }
 
-        distributeWithdrawals(stakedCeloAmount, msg.sender);
-        stakedCelo.burn(msg.sender, stakedCeloAmount);
+        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
+        if (stCeloAmount != 0) {
+            address currentStrategy = strategies[msg.sender];
+            _transfer(currentStrategy, newStrategy, stCeloAmount, msg.sender, msg.sender);
+        }
+
+        strategies[msg.sender] = _checkStrategy(newStrategy);
+    }
+
+    /**
+     * @notice Unlock vote balance of stCelo.
+     * @param accountAddress The account to be unlocked.
+     */
+    function unlockBalance(address accountAddress) public {
+        stakedCelo.unlockVoteBalance(accountAddress);
+    }
+
+    /**
+     * @notice Rebalances Celo between groups that have incorrect Celo-stCelo ratio.
+     * FromGroup is required to have more Celo than it should and ToGroup needs
+     * to have less Celo than it should.
+     * @param fromGroup The from group.
+     * @param toGroup The to group.
+     */
+    function rebalance(address fromGroup, address toGroup) public {
+        address[] memory fromGroups;
+        address[] memory toGroups;
+        uint256[] memory fromVotes;
+        uint256[] memory toVotes;
+        (fromGroups, toGroups, fromVotes, toVotes) = groupHealth.rebalance(fromGroup, toGroup);
+        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        IVote vote = IVote(voteContract);
+
+        (
+            uint256 stCeloUsedForVoting,
+            uint256 totalYesVotes,
+            uint256 totalNoVotes,
+            uint256 totalAbstainVotes
+        ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
+
+        stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
     /**
@@ -455,6 +630,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         return (stCeloAmount * celoBalance) / stCeloSupply;
+    }
+
+    /**
+     * @notice Checks if strategy was depracated. Not allowed strategy is reverted to default.
+     * @param strategy The strategy.
+     * @return Up to date strategy
+     */
+    function _checkStrategy(address strategy) public view returns (address) {
+        if (strategy != address(0) && !specificGroupStrategy.isSpecificGroupStrategy(strategy)) {
+            // strategy not allowed revert to default strategy
+            return address(0);
+        }
+
+        return strategy;
     }
 
     /**
@@ -508,150 +697,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Whenever stCELO is being transferd we will check whether origin and target
-     * account use same strategy. If strategy differs we will schedule votes for transfer.
-     * @param from The from account.
-     * @param to The to account.
-     * @param stCeloAmount The stCelo amount.
-     */
-    function transfer(
-        address from,
-        address to,
-        uint256 stCeloAmount
-    ) public onlyStakedCelo {
-        address fromStrategy = strategies[from];
-        address toStrategy = strategies[to];
-        _transfer(fromStrategy, toStrategy, stCeloAmount, from, to);
-    }
-
-    /**
-     * @notice Allows account to change strategy.
-     * address(0) = default strategy
-     * !address(0) = voting for allowed validator group. Group needs to be in allowed
-     * @param newStrategy The from account.
-     */
-    function changeStrategy(address newStrategy) public {
-        if (
-            newStrategy != address(0) &&
-            (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
-                !groupHealth.isValidGroup(newStrategy))
-        ) {
-            revert GroupNotEligible(newStrategy);
-        }
-
-        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
-        if (stCeloAmount != 0) {
-            address currentStrategy = strategies[msg.sender];
-            _transfer(currentStrategy, newStrategy, stCeloAmount, msg.sender, msg.sender);
-        }
-
-        strategies[msg.sender] = _checkStrategy(newStrategy);
-    }
-
-    /**
-     * @notice Rebalances Celo between groups that have incorrect Celo-stCelo ratio.
-     * FromGroup is required to have more Celo than it should and ToGroup needs
-     * to have less Celo than it should.
-     * @param fromGroup The from group.
-     * @param toGroup The to group.
-     */
-    function rebalance(address fromGroup, address toGroup) public {
-        address[] memory fromGroups;
-        address[] memory toGroups;
-        uint256[] memory fromVotes;
-        uint256[] memory toVotes;
-        (fromGroups, toGroups, fromVotes, toVotes) = groupHealth.rebalance(fromGroup, toGroup);
-        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
-    }
-
-    /**
-     * @notice Votes on a proposal in the referendum stage.
-     * @param proposalId The ID of the proposal to vote on.
-     * @param index The index of the proposal ID in `dequeued`.
-     * @param yesVotes The yes votes weight.
-     * @param noVotes The no votes weight.
-     * @param abstainVotes The abstain votes weight.
-     */
-    function voteProposal(
-        uint256 proposalId,
-        uint256 index,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
-    ) public {
-        IVote vote = IVote(voteContract);
-
-        (
-            uint256 stCeloUsedForVoting,
-            uint256 totalYesVotes,
-            uint256 totalNoVotes,
-            uint256 totalAbstainVotes
-        ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
-
-        stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
-        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
-    }
-
-    /**
-     * @notice Revokes votes on already voted proposal.
-     * @param proposalId The ID of the proposal to vote on.
-     * @param index The index of the proposal ID in `dequeued`.
-     */
-    function revokeVotes(uint256 proposalId, uint256 index) external {
-        IVote vote = IVote(voteContract);
-
-        (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
-            msg.sender,
-            proposalId
-        );
-
-        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
-    }
-
-    /**
-     * @notice Unlock balance of vote stCelo and update beneficiary vote history.
-     * @param beneficiary The account to be unlocked.
-     */
-    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
-        external
-        returns (uint256)
-    {
-        IVote vote = IVote(voteContract);
-        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
-    }
-
-    /**
-     * @notice Unlock vote balance of stCelo.
-     * @param accountAddress The account to be unlocked.
-     */
-    function unlockBalance(address accountAddress) public {
-        stakedCelo.unlockVoteBalance(accountAddress);
-    }
-
-    /**
-     * @notice Marks a group as allowed strategy for voting.
-     * @param strategy The address of the group to add to the set of allowed
-     * strategies.
-     */
-    function allowStrategy(address strategy) external onlyOwner {
-        specificGroupStrategy.allowStrategy(strategy);
-    }
-
-    /**
-     * @notice Marks a group as not allowed strategy for voting
-     * and redistributes votes to default strategy.
-     * @param strategy The address of the group to remove from the set of allowed
-     * strategies.
-     */
-    function blockStrategy(address strategy) external onlyOwner {
-        uint256 strategyTotalStCeloVotes = specificGroupStrategy.blockStrategy(strategy);
-
-        if (strategyTotalStCeloVotes != 0) {
-            _transferWithoutChecks(strategy, address(0), strategyTotalStCeloVotes);
-        }
-    }
-
-    /**
      * @notice Marks a group as deprecated.
      * @param group The group to deprecate.
      */
@@ -692,20 +737,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             strategies[accountAddress] = checkedStrategy;
         }
         return checkedStrategy;
-    }
-
-    /**
-     * @notice Checks if strategy was depracated. Not allowed strategy is reverted to default.
-     * @param strategy The strategy.
-     * @return Up to date strategy
-     */
-    function _checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && !specificGroupStrategy.isSpecificGroupStrategy(strategy)) {
-            // strategy not allowed revert to default strategy
-            return address(0);
-        }
-
-        return strategy;
     }
 
     /**
@@ -768,36 +799,5 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
-    }
-
-    /**
-     * @notice Returns which strategy is account using
-     * address(0) = default strategy
-     * !address(0) = voting for allowed validator group
-     * @param accountAddress The account.
-     * @return The strategy.
-     */
-    function getAccountStrategy(address accountAddress) external view returns (address) {
-        return _checkStrategy(strategies[accountAddress]);
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 3, 0, 0);
     }
 }

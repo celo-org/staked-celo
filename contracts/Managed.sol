@@ -29,15 +29,6 @@ abstract contract Managed is Initializable, OwnableUpgradeable {
     error NullAddress();
 
     /**
-     * @dev Initializes the contract in an upgradable context.
-     * @param _manager The initial managing address.
-     */
-    // solhint-disable-next-line func-name-mixedcase
-    function __Managed_init(address _manager) internal onlyInitializing {
-        _setManager(_manager);
-    }
-
-    /**
      * @dev Throws if called by any account other than the manager.
      */
     modifier onlyManager() {
@@ -52,6 +43,15 @@ abstract contract Managed is Initializable, OwnableUpgradeable {
      * @param _manager The new manager address.
      */
     function setManager(address _manager) external onlyOwner {
+        _setManager(_manager);
+    }
+
+    /**
+     * @dev Initializes the contract in an upgradable context.
+     * @param _manager The initial managing address.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function __Managed_init(address _manager) internal onlyInitializing {
         _setManager(_manager);
     }
 

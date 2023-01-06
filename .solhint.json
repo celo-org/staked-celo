@@ -4,6 +4,7 @@
     "compiler-version": ["error", "0.8.11"],
     "func-visibility": ["warn", { "ignoreConstructors": true }],
     "func-param-name-mixedcase": "warn",
+    "ordering": "error",
     "max-line-length": ["error", 100],
     "private-vars-leading-underscore": "off",
     "not-rely-on-time": "off"

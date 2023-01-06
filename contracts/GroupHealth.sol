@@ -104,6 +104,26 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 0, 0);
+    }
+
+    /**
      * @notice Checks if a group meets the validator group health requirements.
      * @param group The group to check for.
      * @return Whether or not the group is valid.
@@ -263,25 +283,5 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         return false;
-    }
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 0, 0);
     }
 }
