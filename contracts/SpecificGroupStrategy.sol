@@ -8,6 +8,7 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
+import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
 
 contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
@@ -33,6 +34,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
      */
     IGroupHealth public groupHealth;
+
+    /**
+     * @notice An instance of the DefaultStrategy contract for the StakedCelo protocol.
+     */
+    IDefaultStrategy public defaultStrategy;
 
     /**
      * @notice An instance of the Account contract for the StakedCelo protocol.
@@ -123,13 +129,20 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice Set this contract's dependencies in the StakedCelo system.
      * @param _account The address of the Account contract.
      * @param _groupHealth The address of the GroupHealth contract.
+     * @param _defaultStrategy The address of the DefaultStrategy contract.
      */
-    function setDependencies(address _account, address _groupHealth) external onlyOwner {
+    function setDependencies(
+        address _account,
+        address _groupHealth,
+        address _defaultStrategy
+    ) external onlyOwner {
         require(_account != address(0), "Account null");
         require(_groupHealth != address(0), "GroupHealth null");
+        require(_defaultStrategy != address(0), "DefaultStrategy null");
 
         account = IAccount(_account);
         groupHealth = IGroupHealth(_groupHealth);
+        defaultStrategy = IDefaultStrategy(_defaultStrategy);
     }
 
     /**
@@ -137,7 +150,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param group The address of the group to add to the set of specific group
      * strategies.
      */
-    function allowStrategy(address group) external onlyManager {
+    function allowStrategy(address group) external onlyOwner {
         if (!groupHealth.isValidGroup(group)) {
             revert StrategyNotEligible(group);
         }
@@ -155,26 +168,33 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Marks a group as not specific group strategy for voting.
-     * @param group The address of the group to remove from the set of specific group
+     * @param strategy The address of the group to remove from the set of specific group
      * strategies.
-     * @return total stCelo in blocked strategy
      */
-    function blockStrategy(address group) external onlyManager returns (uint256) {
-        if (IManager(manager).getGroupsLength() == 0) {
+    function blockStrategy(address strategy) external onlyOwner {
+        if (defaultStrategy.getGroupsLength() == 0) {
             revert NoActiveGroups();
         }
 
-        if (!specificGroupStrategies.contains(group)) {
-            revert StrategyAlreadyBlocked(group);
+        if (!specificGroupStrategies.contains(strategy)) {
+            revert StrategyAlreadyBlocked(strategy);
         }
 
-        if (!specificGroupStrategies.remove(group)) {
-            revert FailedToBlockStrategy(group);
+        if (!specificGroupStrategies.remove(strategy)) {
+            revert FailedToBlockStrategy(strategy);
         }
 
-        emit StrategyBlocked(group);
+        emit StrategyBlocked(strategy);
 
-        return getTotalStCeloVotesForStrategy(group);
+        uint256 strategyTotalStCeloVotes = getTotalStCeloVotesForStrategy(strategy);
+
+        if (strategyTotalStCeloVotes != 0) {
+            IManager(manager).transferBetweenStrategies(
+                strategy,
+                address(0),
+                strategyTotalStCeloVotes
+            );
+        }
     }
 
     /**

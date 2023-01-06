@@ -10,6 +10,7 @@ import {
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
@@ -147,7 +148,7 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
 }
 
 export async function allowStrategies(
-  managerContract: Manager,
+  specificGroupStrategyContract: SpecificGroupStrategy,
   groupHealthContract: GroupHealth,
   multisigOwner: string,
   strategyAddresses: string[]
@@ -161,10 +162,12 @@ export async function allowStrategies(
     if (!isValidGroup) {
       throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
     }
-    destinations.push(managerContract.address);
+    destinations.push(specificGroupStrategyContract.address);
     values.push("0");
     payloads.push(
-      managerContract.interface.encodeFunctionData("allowStrategy", [strategyAddresses[i]])
+      specificGroupStrategyContract.interface.encodeFunctionData("allowStrategy", [
+        strategyAddresses[i],
+      ])
     );
   }
 
@@ -173,6 +176,7 @@ export async function allowStrategies(
 
 export async function activateValidators(
   managerContract: Manager,
+  defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
   multisigOwner: string,
   groupAddresses: string[]
@@ -186,10 +190,10 @@ export async function activateValidators(
     if (!isValidGroup) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
-    destinations.push(managerContract.address);
+    destinations.push(defaultStrategyContract.address);
     values.push("0");
     payloads.push(
-      managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+      defaultStrategyContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
     );
   }
 
@@ -478,17 +482,17 @@ export async function setGovernanceConcurrentProposals(count: number) {
 }
 
 export async function getGroupsSafe(
-  managerContract: Manager,
+  defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const activeGroupsLengthPromise = managerContract.getGroupsLength();
+  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
   const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
 
   const activeGroupsPromises = [];
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-    activeGroupsPromises.push(managerContract.getGroup(i));
+    activeGroupsPromises.push(defaultStrategy.getGroup(i));
   }
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
@@ -521,9 +525,10 @@ export async function getRealVsExpectedCeloForGroups(
 export async function rebalanceGroups(
   managerContract: Manager,
   groupHealthContract: GroupHealth,
-  specificGroupStrategy: SpecificGroupStrategy
+  specificGroupStrategy: SpecificGroupStrategy,
+  defaultStrategy: DefaultStrategy
 ) {
-  const allGroups = await getGroupsSafe(managerContract, specificGroupStrategy);
+  const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
 
   // Diff needs to be > 1 so we don't run into rounding problems

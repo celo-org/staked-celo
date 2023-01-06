@@ -10,6 +10,7 @@ import "./interfaces/IManager.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
+import "./interfaces/IDefaultStrategy.sol";
 
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
@@ -23,9 +24,14 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     IAccount public account;
 
     /**
-     * @notice An instance of the specificGroupStrategy contract for the StakedCelo protocol.
+     * @notice An instance of the SpecificGroupStrategy contract for the StakedCelo protocol.
      */
     ISpecificGroupStrategy public specificGroupStrategy;
+
+    /**
+     * @notice An instance of the DefaultStrategy contract for the StakedCelo protocol.
+     */
+    IDefaultStrategy public defaultStrategy;
 
     /**
      * @notice An instance of the Manager contract for the StakedCelo protocol.
@@ -84,22 +90,26 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
      * @param _specificGroupStrategy The address of the SpecificGroupStrategy contract.
+     * @param _defaultStrategy The address of the DefaultStrategy contract.
      * @param _manager The address of the Manager contract.
      */
     function setDependencies(
         address _stakedCelo,
         address _account,
         address _specificGroupStrategy,
+        address _defaultStrategy,
         address _manager
     ) external onlyOwner {
         require(_stakedCelo != address(0), "StakedCelo null");
         require(_account != address(0), "Account null");
         require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
+        require(_defaultStrategy != address(0), "DefaultStrategy null");
         require(_manager != address(0), "Manager null");
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
         specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
+        defaultStrategy = IDefaultStrategy(_defaultStrategy);
         manager = IManager(_manager);
     }
 
@@ -163,7 +173,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function getExpectedAndRealCeloForGroup(address group) public view returns (uint256, uint256) {
         bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
-        bool isActiveGroup = manager.groupsContain(group);
+        bool isActiveGroup = defaultStrategy.groupsContain(group);
         uint256 realCelo = account.getCeloForGroup(group);
 
         if (!isSpecificGroupStrategy && !isActiveGroup) {
@@ -182,7 +192,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 stCeloInDefaultStrategy = stCeloSupply -
                 specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                manager.getGroupsLength();
+                defaultStrategy.getGroupsLength();
 
             return (manager.toCelo(supposedStCeloInActiveGroup), realCelo);
         }
@@ -192,7 +202,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256 stCeloInDefaultStrategy = stCeloSupply -
                 specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
             uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                manager.getGroupsLength();
+                defaultStrategy.getGroupsLength();
             uint256 supposedstCeloInSpecificGroupStrategy = specificGroupStrategy
                 .getTotalStCeloVotesForStrategy(group);
 
@@ -226,7 +236,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 realFromCelo;
 
         if (
-            !manager.groupsContain(toGroup) &&
+            !defaultStrategy.groupsContain(toGroup) &&
             !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
         ) {
             // rebalancinch to deprecated/non-existant group is not allowed

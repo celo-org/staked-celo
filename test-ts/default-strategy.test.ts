@@ -128,20 +128,18 @@ describe("DefaultStrategy", () => {
     });
   });
 
-  describe("#generateDefaultStrategyGroupsVotesToDistributeTo", () => {
+  describe("#generateGroupVotesToDistributeTo", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract
-          .connect(nonManager)
-          .generateDefaultStrategyGroupsVotesToDistributeTo(10)
+        defaultStrategyContract.connect(nonManager).generateGroupVotesToDistributeTo(10)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });
 
-  describe("#distributeWithdrawalsDefaultStrategy", () => {
+  describe("#calculateAndUpdateForWithdrawal", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).distributeWithdrawalsDefaultStrategy(10)
+        defaultStrategyContract.connect(nonManager).calculateAndUpdateForWithdrawal(10)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });
@@ -150,7 +148,7 @@ describe("DefaultStrategy", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         defaultStrategyContract.connect(nonManager).activateGroup(nonVote.address)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+      ).revertedWith(`Ownable: caller is not the owner`);
     });
   });
 });

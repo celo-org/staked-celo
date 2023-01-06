@@ -11,4 +11,10 @@ interface IDefaultStrategy {
         returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
     function activateGroup(address group) external;
+
+    function groupsContain(address group) external view returns (bool);
+
+    function getGroupsLength() external view returns (uint256);
+
+    function getDeprecatedGroupsLength() external view returns (uint256);
 }

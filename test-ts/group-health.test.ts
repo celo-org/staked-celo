@@ -62,7 +62,13 @@ describe("GroupHealth", () => {
       await expect(
         groupHealthContract
           .connect(ownerSigner)
-          .setDependencies(ADDRESS_ZERO, nonVote.address, nonVote.address, nonVote.address)
+          .setDependencies(
+            ADDRESS_ZERO,
+            nonVote.address,
+            nonVote.address,
+            nonVote.address,
+            nonVote.address
+          )
       ).revertedWith("StakedCelo null");
     });
 
@@ -70,7 +76,13 @@ describe("GroupHealth", () => {
       await expect(
         groupHealthContract
           .connect(ownerSigner)
-          .setDependencies(nonVote.address, ADDRESS_ZERO, nonVote.address, nonVote.address)
+          .setDependencies(
+            nonVote.address,
+            ADDRESS_ZERO,
+            nonVote.address,
+            nonVote.address,
+            nonVote.address
+          )
       ).revertedWith("Account null");
     });
 
@@ -78,15 +90,41 @@ describe("GroupHealth", () => {
       await expect(
         groupHealthContract
           .connect(ownerSigner)
-          .setDependencies(nonVote.address, nonVote.address, ADDRESS_ZERO, nonVote.address)
+          .setDependencies(
+            nonVote.address,
+            nonVote.address,
+            ADDRESS_ZERO,
+            nonVote.address,
+            nonVote.address
+          )
       ).revertedWith("SpecificGroupStrategy null");
+    });
+
+    it("reverts with zero default strategy address", async () => {
+      await expect(
+        groupHealthContract
+          .connect(ownerSigner)
+          .setDependencies(
+            nonVote.address,
+            nonVote.address,
+            nonVote.address,
+            ADDRESS_ZERO,
+            nonVote.address
+          )
+      ).revertedWith("DefaultStrategy null");
     });
 
     it("reverts with zero Manager address", async () => {
       await expect(
         groupHealthContract
           .connect(ownerSigner)
-          .setDependencies(nonVote.address, nonVote.address, nonVote.address, ADDRESS_ZERO)
+          .setDependencies(
+            nonVote.address,
+            nonVote.address,
+            nonVote.address,
+            nonVote.address,
+            ADDRESS_ZERO
+          )
       ).revertedWith("Manager null");
     });
 
@@ -97,6 +135,7 @@ describe("GroupHealth", () => {
           nonStakedCelo.address,
           nonAccount.address,
           nonVote.address,
+          nonOwner.address,
           nonManager.address
         );
 
@@ -108,6 +147,9 @@ describe("GroupHealth", () => {
 
       const specificGroupStrategy = await groupHealthContract.specificGroupStrategy();
       expect(specificGroupStrategy).to.eq(nonVote.address);
+
+      const defaultStrategy = await groupHealthContract.defaultStrategy();
+      expect(defaultStrategy).to.eq(nonOwner.address);
 
       const manager = await groupHealthContract.manager();
       expect(manager).to.eq(nonManager.address);
@@ -121,6 +163,7 @@ describe("GroupHealth", () => {
             nonStakedCelo.address,
             nonAccount.address,
             nonAccount.address,
+            nonVote.address,
             nonVote.address
           )
       ).revertedWith("Ownable: caller is not the owner");

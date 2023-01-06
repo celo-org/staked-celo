@@ -4,6 +4,7 @@ import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
@@ -28,6 +29,7 @@ after(() => {
 describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
+  let defaultStrategyContract: DefaultStrategy;
   let groupHealthContract: GroupHealth;
 
   const deployerAccountName = "deployer";
@@ -93,10 +95,12 @@ describe("e2e", () => {
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
+    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(
       managerContract,
+      defaultStrategyContract,
       groupHealthContract,
       multisigOwner0.address,
       activatedGroupAddresses

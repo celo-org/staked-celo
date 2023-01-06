@@ -8,6 +8,7 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { Vote } from "../typechain-types/Vote";
@@ -34,6 +35,7 @@ describe("Vote", async function (this: any) {
   let groupHealthContract: GroupHealth;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
+  let defaultStrategyContract: DefaultStrategy;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
@@ -147,10 +149,12 @@ describe("Vote", async function (this: any) {
     managerContract = await hre.ethers.getContract("Manager");
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
+    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(
       managerContract,
+      defaultStrategyContract,
       groupHealthContract,
       multisigOwner0.address,
       activatedGroupAddresses

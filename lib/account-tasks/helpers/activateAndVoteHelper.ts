@@ -4,13 +4,13 @@ import { taskLogger } from "../../logger";
 
 export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
-  const managerContract = await hre.ethers.getContract("Manager");
   const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+  const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
-  const activeGroups = await managerContract.getGroups();
+  const activeGroups = await defaultStrategy.getGroups();
   const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
   const groupList = new Set<string>(activeGroups.concat(allowedStrategies)).values();
   taskLogger.debug("groups:", groupList);

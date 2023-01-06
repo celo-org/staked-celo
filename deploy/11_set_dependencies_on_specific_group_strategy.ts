@@ -6,6 +6,7 @@ import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy"
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const groupHealth = await hre.deployments.get("GroupHealth");
+  const defaultStrategy = await hre.deployments.get("DefaultStrategy");
   const specificGroupStrategy: SpecificGroupStrategy = await hre.ethers.getContract(
     "SpecificGroupStrategy"
   );
@@ -13,7 +14,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if ((await specificGroupStrategy.callStatic.owner()) !== multisig.address) {
     await executeAndWait(
-      specificGroupStrategy.setDependencies(account.address, groupHealth.address)
+      specificGroupStrategy.setDependencies(
+        account.address,
+        groupHealth.address,
+        defaultStrategy.address
+      )
     );
   }
 };

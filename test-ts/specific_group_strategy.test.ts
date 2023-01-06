@@ -62,7 +62,7 @@ describe("SpecificGroupStrategy", () => {
       await expect(
         specificGroupStrategyContract
           .connect(ownerSigner)
-          .setDependencies(ADDRESS_ZERO, nonVote.address)
+          .setDependencies(ADDRESS_ZERO, nonVote.address, nonVote.address)
       ).revertedWith("Account null");
     });
 
@@ -70,26 +70,37 @@ describe("SpecificGroupStrategy", () => {
       await expect(
         specificGroupStrategyContract
           .connect(ownerSigner)
-          .setDependencies(nonVote.address, ADDRESS_ZERO)
+          .setDependencies(nonVote.address, ADDRESS_ZERO, nonVote.address)
       ).revertedWith("GroupHealth null");
+    });
+
+    it("reverts with zero defaultStrategy address", async () => {
+      await expect(
+        specificGroupStrategyContract
+          .connect(ownerSigner)
+          .setDependencies(nonVote.address, nonVote.address, ADDRESS_ZERO)
+      ).revertedWith("DefaultStrategy null");
     });
 
     it("sets the vote contract", async () => {
       await specificGroupStrategyContract
         .connect(ownerSigner)
-        .setDependencies(nonAccount.address, nonStakedCelo.address);
+        .setDependencies(nonAccount.address, nonStakedCelo.address, nonOwner.address);
       const account = await specificGroupStrategyContract.account();
       expect(account).to.eq(nonAccount.address);
 
       const groupHealth = await specificGroupStrategyContract.groupHealth();
       expect(groupHealth).to.eq(nonStakedCelo.address);
+
+      const defaultStrategy = await specificGroupStrategyContract.defaultStrategy();
+      expect(defaultStrategy).to.eq(nonOwner.address);
     });
 
     it("cannot be called by a non-Owner account", async () => {
       await expect(
         specificGroupStrategyContract
           .connect(nonOwner)
-          .setDependencies(nonStakedCelo.address, nonAccount.address)
+          .setDependencies(nonStakedCelo.address, nonAccount.address, nonAccount.address)
       ).revertedWith("Ownable: caller is not the owner");
     });
   });
@@ -128,7 +139,7 @@ describe("SpecificGroupStrategy", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         specificGroupStrategyContract.connect(nonManager).allowStrategy(nonVote.address)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+      ).revertedWith(`Ownable: caller is not the owner`);
     });
   });
 
@@ -136,7 +147,7 @@ describe("SpecificGroupStrategy", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         specificGroupStrategyContract.connect(nonManager).blockStrategy(nonVote.address)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+      ).revertedWith(`Ownable: caller is not the owner`);
     });
   });
 });

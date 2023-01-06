@@ -18,17 +18,8 @@ contract MockManager is IManager {
     uint256 private lockedStCelo = 0;
     MockTransfer[] public transfers;
 
-    function setLockedStCelo(uint256 _lockedStCelo) public {
-        lockedStCelo = _lockedStCelo;
-    }
-
-    function updateHistoryAndReturnLockedStCeloInVoting(address)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return lockedStCelo;
+    receive() external payable {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function transfer(
@@ -39,24 +30,25 @@ contract MockManager is IManager {
         transfers.push(MockTransfer(from, to, amount));
     }
 
-    function transferLength() public view returns (uint256) {
-        return transfers.length;
-    }
-
-    function getTransfer(uint256 index)
-        public
-        view
-        returns (
-            address,
-            address,
-            uint256
-        )
-    {
-        return (transfers[index].from, transfers[index].to, transfers[index].amount);
-    }
-
-    receive() external payable {
+    function transferBetweenStrategies(
+        address fromStrategy,
+        address toStrategy,
+        uint256 stCeloAmount
+    ) external {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function removeDeprecatedGroup(address group) external returns (bool) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function updateHistoryAndReturnLockedStCeloInVoting(address)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return lockedStCelo;
     }
 
     function getGroupsLength() external view returns (uint256) {
@@ -79,10 +71,6 @@ contract MockManager is IManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function removeDeprecatedGroup(address group) external returns (bool) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function toCelo(uint256 stCeloAmount) external view returns (uint256) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -93,5 +81,25 @@ contract MockManager is IManager {
 
     function deprecatedGroupsContain(address group) external view returns (bool) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function setLockedStCelo(uint256 _lockedStCelo) public {
+        lockedStCelo = _lockedStCelo;
+    }
+
+    function transferLength() public view returns (uint256) {
+        return transfers.length;
+    }
+
+    function getTransfer(uint256 index)
+        public
+        view
+        returns (
+            address,
+            address,
+            uint256
+        )
+    {
+        return (transfers[index].from, transfers[index].to, transfers[index].amount);
     }
 }

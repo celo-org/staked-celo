@@ -7,6 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const manager = await hre.deployments.get("Manager");
   const specificGroupStrategy = await hre.deployments.get("SpecificGroupStrategy");
+  const defaultStrategy = await hre.deployments.get("DefaultStrategy");
   const stakedCelo = await hre.deployments.get("StakedCelo");
   const groupHealth: GroupHealth = await hre.ethers.getContract("GroupHealth");
   const multisig = await hre.deployments.get("MultiSig");
@@ -17,6 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         stakedCelo.address,
         account.address,
         specificGroupStrategy.address,
+        defaultStrategy.address,
         manager.address
       )
     );

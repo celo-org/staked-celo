@@ -9,6 +9,7 @@ import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { Account } from "../typechain-types/Account";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
@@ -49,6 +50,7 @@ describe("e2e governance vote", () => {
   let validatorAddresses: string[];
 
   let stakedCeloContract: StakedCelo;
+  let defaultStrategyContract: DefaultStrategy;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unused-vars
   before(async function (this: any) {
@@ -102,6 +104,7 @@ describe("e2e governance vote", () => {
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
+    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
     const approver = await governanceWrapper.getApprover();
     impersonateAccount(approver);
@@ -115,6 +118,7 @@ describe("e2e governance vote", () => {
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(
       managerContract,
+      defaultStrategyContract,
       groupHealthContract,
       multisigOwner0.address,
       activatedGroupAddresses

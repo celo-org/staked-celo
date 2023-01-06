@@ -32,15 +32,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     IAccount internal account;
 
     /**
-     * @notice The set of currently active groups that will be voted for with
-     * new deposits.
+     * @notice OBSOLETE
      */
     EnumerableSet.AddressSet private activeGroups;
 
     /**
-     * @notice The set of deprecated groups. These are groups that should no
-     * longer receive new votes from deposits, but still need to be kept track
-     * of because the Account contract is still voting for them.
+     * @notice OBSOLETE
      */
     EnumerableSet.AddressSet private deprecatedGroups;
 
@@ -75,42 +72,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param voteContract The new vote contract address.
      */
     event VoteContractSet(address indexed voteContract);
-    /**
-     * @notice Emitted when a group is deprecated.
-     * @param group The group's address.
-     */
-    event GroupDeprecated(address indexed group);
+
     /**
      * @notice Emitted when a deprecated group is no longer being voted for and
      * the contract forgets about it entirely.
      * @param group The group's address.
      */
     event GroupRemoved(address indexed group);
-    /**
-     * @notice Emitted when a new group is activated for voting.
-     * @param group The group's address.
-     */
-    event GroupActivated(address indexed group);
-
-    /**
-     * @notice Used when attempting to deprecate a group that is not active.
-     * @param group The group's address.
-     */
-    error GroupNotActive(address group);
-
-    /**
-     * @notice Used when an attempt to add an active group to the EnumerableSet
-     * fails.
-     * @param group The group's address.
-     */
-    error FailedToAddActiveGroup(address group);
-
-    /**
-     * @notice Used when an attempt to add a deprecated group to the
-     * EnumerableSet fails.
-     * @param group The group's address.
-     */
-    error FailedToAddDeprecatedGroup(address group);
 
     /**
      * @notice Used when an attempt to remove a deprecated group from the
@@ -144,34 +112,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupNotEligible(address group);
 
     /**
-     * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
-     * @param group The group's address.
-     */
-    error HealthyGroup(address group);
-
-    /**
      * @notice Used when an `onlyStCelo` function is called by a non-stCelo contract.
      * @param caller `msg.sender` that called the function.
      */
     error CallerNotStakedCelo(address caller);
 
     /**
-     * @notice Used when an `onlyDefaultStrategy` function
-     * is called by a non-defaultStrategy contract.
+     * @notice Used when an `onlyStrategy` function
+     * is called by a non-strategy contract.
      * @param caller `msg.sender` that called the function.
      */
-    error CallerNotDefaultStrategy(address caller);
+    error CallerNotStrategy(address caller);
 
     /**
      * @notice Used when attempting to change strategy to same strategy.
      */
     error SameStrategy();
-
-    /**
-     * @notice Used when attempting to deposit when there are not active groups
-     * to vote for.
-     */
-    error NoActiveGroups();
 
     /**
      * @dev Throws if called by any account other than StakedCelo.
@@ -186,9 +142,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @dev Throws if called by any account other than DefaultStrategy.
      */
-    modifier onlyDefaultStrategy() {
-        if (address(defaultStrategy) != msg.sender) {
-            revert CallerNotStakedCelo(msg.sender);
+    modifier onlyStrategy() {
+        if (
+            address(defaultStrategy) != msg.sender && address(specificGroupStrategy) != msg.sender
+        ) {
+            revert CallerNotStrategy(msg.sender);
         }
         _;
     }
@@ -247,79 +205,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Marks a group as votable as part of the default strategy.
-     * @param group The address of the group to add to the set of votable
-     * groups.
-     * @dev Fails if the maximum number of groups are already being voted for by
-     * the Account smart contract (as per the `maxNumGroupsVotedFor` in the
-     * Election contract).
-     */
-    function activateGroup(address group) external onlyOwner {
-        defaultStrategy.activateGroup(group);
-
-        if (!activeGroups.add(group)) {
-            revert FailedToAddActiveGroup(group);
-        }
-
-        emit GroupActivated(group);
-    }
-
-    /**
-     * @notice Returns deprecated.
-     */
-    function removeDeprecatedGroup(address group) external onlyDefaultStrategy returns (bool) {
-        return deprecatedGroups.remove(group);
-    }
-
-    /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
-     * @dev A deprecated group will remain in the `deprecatedGroups` array as
-     * long as it is still being voted for by the Account contract. Deprecated
-     * groups will be the first to have their votes withdrawn.
-     */
-    function deprecateGroup(address group) external onlyOwner {
-        _deprecateGroup(group);
-    }
-
-    /**
-     * @notice Marks an unhealthy group as deprecated.
-     * @param group The group to deprecate if unhealthy.
-     * @dev A deprecated group will remain in the `deprecatedGroups` array as
-     * long as it is still being voted for by the Account contract. Deprecated
-     * groups will be the first to have their votes withdrawn.
-     */
-    function deprecateUnhealthyGroup(address group) external {
-        if (groupHealth.isValidGroup(group)) {
-            revert HealthyGroup(group);
-        }
-        _deprecateGroup((group));
-    }
-
-    /**
-     * @notice Marks a group as allowed strategy for voting.
-     * @param strategy The address of the group to add to the set of allowed
-     * strategies.
-     */
-    function allowStrategy(address strategy) external onlyOwner {
-        specificGroupStrategy.allowStrategy(strategy);
-    }
-
-    /**
-     * @notice Marks a group as not allowed strategy for voting
-     * and redistributes votes to default strategy.
-     * @param strategy The address of the group to remove from the set of allowed
-     * strategies.
-     */
-    function blockStrategy(address strategy) external onlyOwner {
-        uint256 strategyTotalStCeloVotes = specificGroupStrategy.blockStrategy(strategy);
-
-        if (strategyTotalStCeloVotes != 0) {
-            _transferWithoutChecks(strategy, address(0), strategyTotalStCeloVotes);
-        }
-    }
-
-    /**
      * @notice Used to withdraw CELO from the system, in exchange for burning
      * stCELO.
      * @param stakedCeloAmount The amount of stCELO to burn.
@@ -331,8 +216,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function withdraw(uint256 stakedCeloAmount) external {
         if (
-            activeGroups.length() +
-                deprecatedGroups.length() +
+            defaultStrategy.getGroupsLength() +
+                defaultStrategy.getDeprecatedGroupsLength() +
                 specificGroupStrategy.getSpecificGroupStrategiesLength() ==
             0
         ) {
@@ -381,11 +266,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address strategy = _checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
 
         uint256 stCeloValue = toStakedCelo(msg.value);
-        if (strategy == address(0)) {
-            if (activeGroups.length() == 0) {
-                revert NoActiveGroups();
-            }
-        } else {
+        if (strategy != address(0)) {
             if (!groupHealth.isValidGroup(strategy)) {
                 // if invalid group vote for default strategy
                 strategies[msg.sender] = address(0);
@@ -408,70 +289,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory finalVotes;
         (finalGroups, finalVotes) = distributeVotes(msg.value, strategy);
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
-    }
-
-    /**
-     * @notice Returns the array of active groups.
-     * @return The array of active groups.
-     */
-    function getGroups() external view returns (address[] memory) {
-        return activeGroups.values();
-    }
-
-    /**
-     * @notice Returns the length of active groups.
-     * @return The length of active groups.
-     */
-    function getGroupsLength() external view returns (uint256) {
-        return activeGroups.length();
-    }
-
-    /**
-     * @notice Returns the active group on index.
-     * @return The active group.
-     */
-    function getGroup(uint256 index) external view returns (address) {
-        return activeGroups.at(index);
-    }
-
-    /**
-     * @notice Returns whether active groups contain group.
-     * @return The group.
-     */
-    function groupsContain(address group) external view returns (bool) {
-        return activeGroups.contains(group);
-    }
-
-    /**
-     * @notice Returns the length of deprecated groups.
-     * @return The length of deprecated groups.
-     */
-    function getDeprecatedGroupsLength() external view returns (uint256) {
-        return deprecatedGroups.length();
-    }
-
-    /**
-     * @notice Returns the deprecated group on index.
-     * @return The deprecated group.
-     */
-    function getDeprecatedGroup(uint256 index) external view returns (address) {
-        return deprecatedGroups.at(index);
-    }
-
-    /**
-     * @notice Returns whether deprecated groups contain group.
-     * @return The group.
-     */
-    function deprecatedGroupsContain(address group) external view returns (bool) {
-        return deprecatedGroups.contains(group);
-    }
-
-    /**
-     * @notice Returns the list of deprecated groups.
-     * @return The list of deprecated groups.
-     */
-    function getDeprecatedGroups() external view returns (address[] memory) {
-        return deprecatedGroups.values();
     }
 
     /**
@@ -520,6 +337,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address fromStrategy = strategies[from];
         address toStrategy = strategies[to];
         _transfer(fromStrategy, toStrategy, stCeloAmount, from, to);
+    }
+
+    /**
+     * @notice Schedules transfer of Celo between strategies.
+     * @param fromStrategy The from strategy.
+     * @param toStrategy The to strategy.
+     * @param stCeloAmount The stCelo amount.
+     */
+    function transferBetweenStrategies(
+        address fromStrategy,
+        address toStrategy,
+        uint256 stCeloAmount
+    ) public onlyStrategy {
+        _transferWithoutChecks(fromStrategy, toStrategy, stCeloAmount);
     }
 
     /**
@@ -693,31 +524,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
-    }
-
-    /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
-     */
-    function _deprecateGroup(address group) private {
-        bool activeGroupsRemoval = activeGroups.remove(group);
-        if (!activeGroupsRemoval) {
-            revert GroupNotActive(group);
-        }
-
-        emit GroupDeprecated(group);
-
-        if (
-            account.getCeloForGroup(group) -
-                toCelo(specificGroupStrategy.getTotalStCeloVotesForStrategy(group)) >
-            0
-        ) {
-            if (!deprecatedGroups.add(group)) {
-                revert FailedToAddDeprecatedGroup(group);
-            }
-        } else {
-            emit GroupRemoved(group);
-        }
     }
 
     /**

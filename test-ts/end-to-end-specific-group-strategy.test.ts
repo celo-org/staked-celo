@@ -6,6 +6,7 @@ import hre from "hardhat";
 import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
@@ -36,7 +37,8 @@ describe("e2e specific group strategy voting", () => {
   let accountContract: Account;
   let managerContract: Manager;
   let groupHealthContract: GroupHealth;
-  let specificGroupStrategy: SpecificGroupStrategy;
+  let specificGroupStrategyContract: SpecificGroupStrategy;
+  let defaultStrategy: DefaultStrategy;
 
   const deployerAccountName = "deployer";
   // default strategy
@@ -119,11 +121,13 @@ describe("e2e specific group strategy voting", () => {
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
-    specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+    specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
+    defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(
       managerContract,
+      defaultStrategy,
       groupHealthContract,
       multisigOwner0.address,
       activatedGroupAddresses
@@ -145,13 +149,13 @@ describe("e2e specific group strategy voting", () => {
       .connect(depositor4)
       .changeStrategy(specificGroupStrategySameAsActive.address);
 
-    await expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract);
+    await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor4).deposit({ value: amountOfCeloToDeposit });
 
-    await expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract);
+    await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
     // default strategy -> default strategy
     await stakedCeloContract
@@ -174,7 +178,7 @@ describe("e2e specific group strategy voting", () => {
       .connect(depositor3)
       .transfer(depositor4.address, amountOfCeloToDeposit.div(2));
 
-    await expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract);
+    await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
     await expectStCeloBalance(depositor0.address, amountOfCeloToDeposit.div(2));
     await expectStCeloBalance(depositor1.address, amountOfCeloToDeposit);
@@ -187,7 +191,7 @@ describe("e2e specific group strategy voting", () => {
     await mineToNextEpoch(hre.web3);
     await activateAndVoteTest();
     await distributeAllRewards();
-    await expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract);
+    await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
     await rebalanceAllAndActivate();
 
@@ -297,11 +301,21 @@ describe("e2e specific group strategy voting", () => {
     await expect(managerContract.connect(depositor1).changeStrategy(strategy)).revertedWith(
       `GroupNotEligible("${strategy}")`
     );
-    await allowStrategies(managerContract, groupHealthContract, multisigOwner0.address, [strategy]);
+    await allowStrategies(
+      specificGroupStrategyContract,
+      groupHealthContract,
+      multisigOwner0.address,
+      [strategy]
+    );
   }
 
   async function rebalanceAllAndActivate() {
-    await rebalanceGroups(managerContract, groupHealthContract, specificGroupStrategy);
+    await rebalanceGroups(
+      managerContract,
+      groupHealthContract,
+      specificGroupStrategyContract,
+      defaultStrategy
+    );
     await revoke(hre, depositor0);
     await activateAndVoteTest();
   }
@@ -358,8 +372,8 @@ describe("e2e specific group strategy voting", () => {
     ).to.be.true;
   }
 
-  async function expectSumOfExpectedAndRealCeloInGroupsToEqual(managerContract: Manager) {
-    const allGroups = await getGroupsSafe(managerContract, specificGroupStrategy);
+  async function expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy: DefaultStrategy) {
+    const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategyContract);
     const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
     const expectedSum = hre.ethers.BigNumber.from(0);
     const realSum = hre.ethers.BigNumber.from(0);
