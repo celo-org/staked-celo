@@ -15,7 +15,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Specific groups strategies (validator groups) that can be chosen to voted on.
+     * @notice Specific groups strategies (validator groups) that can be chosen to be voted on.
      */
     EnumerableSet.AddressSet private specificGroupStrategies;
 
