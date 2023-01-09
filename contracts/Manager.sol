@@ -527,7 +527,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if strategy was depracated. Depracated strategy is reverted to default.
+     * @notice Checks if strategy was deprecated. Deprecated strategy is reverted to default.
      * Updates the strategies.
      * @param accountAddress The account.
      * @param strategy The strategy.
