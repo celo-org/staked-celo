@@ -157,6 +157,10 @@ describe("e2e specific group strategy voting", () => {
 
     await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
+    await activateAndVoteTest();
+    await mineToNextEpoch(hre.web3);
+    await activateAndVoteTest();
+
     // default strategy -> default strategy
     await stakedCeloContract
       .connect(depositor0)
