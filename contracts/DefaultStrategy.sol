@@ -277,7 +277,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Distributes withdrawals from default strategy by computing the number of votes that
      * should be withdrawn from each group.
      * @param withdrawal The amount of votes to withdraw.
-     * CELO.
      * @dev The withdrawal distribution strategy is to:
      * 1. Withdraw as much as possible from any deprecated groups.
      * 2. If more votes still need to be withdrawn, try and have each validator
