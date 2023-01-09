@@ -50,7 +50,6 @@ describe("Vote", async function (this: any) {
   async function proposeNewProposal(dequeue = true) {
     const minDeposit = await governanceWrapper.minDeposit();
     const dequeueFrequency = await governanceWrapper.dequeueFrequency();
-    console.log("dequeueFrequency", dequeueFrequency.toString());
 
     const ownertx: ProposalTransaction = {
       value: "0",
@@ -559,7 +558,6 @@ describe("Vote", async function (this: any) {
           depositor0.address
         );
         const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
-        console.log("gas used:", lockedCeloInVotingReceipt.gasUsed.toString());
 
         const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
           .topics as string[];
@@ -635,8 +633,6 @@ describe("Vote", async function (this: any) {
 
       beforeEach(async () => {
         referendumDuration = await voteContract.referendumDuration();
-        console.log("referendumDuration", referendumDuration.toString());
-        // await timeTravel(referendumDuration.div(2).toNumber());
         await proposeNewProposal(false);
         await proposeNewProposal();
         await managerContract
@@ -664,8 +660,6 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return correct order of voted proposals", async () => {
-        console.log("proposal1", await governanceWrapper.getProposal(proposal2Id));
-
         const votedProposals = await voteContract.getVotedStillRelevantProposals(
           await depositor0.getAddress()
         );
