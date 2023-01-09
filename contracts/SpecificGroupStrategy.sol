@@ -228,18 +228,32 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
     }
 
-    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
+    /**
+     * @notice Adds value to totals of specific group strategy and
+     * total stCelo in all specific group strategies.
+     * @param strategy The validator group that we are adding to.
+     * @param stCeloAmount The added amount of stCelo.
+     */
+    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
         external
         onlyManager
     {
-        specificGroupStrategyTotalStCeloVotes[strategy] += value;
-        totalStCeloInSpecificGroupStrategies += value;
+        specificGroupStrategyTotalStCeloVotes[strategy] += stCeloAmount;
+        totalStCeloInSpecificGroupStrategies += stCeloAmount;
     }
 
+    /**
+     * @notice Returns is strategy is specific group strategy.
+     * @return Whether or not is specific group strategy.
+     */
     function isSpecificGroupStrategy(address strategy) external view returns (bool) {
         return specificGroupStrategies.contains(strategy);
     }
 
+    /**
+     * @notice Returns the total stCelo locked in specific groups.
+     * @return The total stCelo.
+     */
     function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
         return totalStCeloInSpecificGroupStrategies;
     }
@@ -288,14 +302,24 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         return (1, 1, 0, 0);
     }
 
-    function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
-        public
-        onlyManager
-    {
-        specificGroupStrategyTotalStCeloVotes[strategy] -= value;
-        totalStCeloInSpecificGroupStrategies -= value;
+    /**
+     * @notice Subtracts value from totals of specific group strategy and
+     * total stCelo in all specific group strategies.
+     * @param strategy The validator group that we are adding to.
+     * @param stCeloAmount The subtracted amount of stCelo.
+     */
+    function subtractFromSpecificGroupStrategyTotalStCeloVotes(
+        address strategy,
+        uint256 stCeloAmount
+    ) public onlyManager {
+        specificGroupStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
+        totalStCeloInSpecificGroupStrategies -= stCeloAmount;
     }
 
+    /**
+     * @notice Returns the specific group total stCelo
+     * @return The total stCelo amount.
+     */
     function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
         return specificGroupStrategyTotalStCeloVotes[strategy];
     }

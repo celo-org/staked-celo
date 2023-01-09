@@ -11,7 +11,6 @@ import "./interfaces/IVote.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning

@@ -522,6 +522,41 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Turns on/off voting for more then max number of groups.
+     * @param flag The on/off flag.
+     */
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external onlyOwner {
+        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) external onlyManager {
+        bool voteResult = getGovernance().votePartially(
+            proposalId,
+            index,
+            yesVotes,
+            noVotes,
+            abstainVotes
+        );
+        if (!voteResult) {
+            revert VotingNotSuccessful(proposalId);
+        }
+    }
+
+    /**
      * @notice Gets the total amount of CELO this contract controls. This is the
      * unlocked CELO balance of the contract plus the amount of LockedGold for this contract,
      * which included unvoting and voting LockedGold.
@@ -710,41 +745,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         );
 
         scheduledVotes[group].toRevoke -= revokeAmount;
-    }
-
-    /**
-     * @notice Turns on/off voting for more then max number of groups.
-     * @param flag The on/off flag.
-     */
-    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
-        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
-    }
-
-    /**
-     * @notice Votes on a proposal in the referendum stage.
-     * @param proposalId The ID of the proposal to vote on.
-     * @param index The index of the proposal ID in `dequeued`.
-     * @param yesVotes The yes votes weight.
-     * @param noVotes The no votes weight.
-     * @param abstainVotes The abstain votes weight.
-     */
-    function votePartially(
-        uint256 proposalId,
-        uint256 index,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
-    ) public onlyManager {
-        bool voteResult = getGovernance().votePartially(
-            proposalId,
-            index,
-            yesVotes,
-            noVotes,
-            abstainVotes
-        );
-        if (!voteResult) {
-            revert VotingNotSuccessful(proposalId);
-        }
     }
 
     /**
