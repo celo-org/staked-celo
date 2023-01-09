@@ -669,7 +669,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * and then active votes if necessary.
      * @dev Reverts if `revokeAmount` exceeds the total number of pending and active votes for
      * the group from this contract.
-     * @param group The group to withdraw CELO from.
+     * @param group The group to revoke CELO from.
      * @param lesserAfterPendingRevoke Used by Election's `revokePending`. This is the group that
      * is before `group` within the validators sorted LinkedList, or address(0) if there isn't one,
      * after the revoke of pending votes has occurred.
