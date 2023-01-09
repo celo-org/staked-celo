@@ -140,7 +140,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @dev Throws if called by any account other than DefaultStrategy.
+     * @dev Throws if called by any account other than allowed strategy contracts.
      */
     modifier onlyStrategy() {
         if (
