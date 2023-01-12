@@ -19,4 +19,6 @@ interface IManager {
     ) external;
 
     function toCelo(uint256 stCeloAmount) external view returns (uint256);
+
+    function toStakedCelo(uint256 celoAmount) external view returns (uint256);
 }

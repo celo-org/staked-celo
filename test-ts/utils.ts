@@ -531,8 +531,7 @@ export async function rebalanceGroups(
   const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
 
-  // Diff needs to be > 1 so we don't run into rounding problems
-  const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(EthersBigNumber.from(1)));
+  const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
   if (unbalanced.length == 0) {
     return;
   }
@@ -543,11 +542,6 @@ export async function rebalanceGroups(
   let lastIndex = sortedUnbalancedDesc.length - 1;
 
   while (firstIndex < lastIndex) {
-    console.log(
-      "Rebalancing",
-      sortedUnbalancedDesc[firstIndex].group,
-      sortedUnbalancedDesc[lastIndex].group
-    );
     await managerContract.rebalance(
       sortedUnbalancedDesc[firstIndex].group,
       sortedUnbalancedDesc[lastIndex].group

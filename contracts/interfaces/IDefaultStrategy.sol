@@ -2,9 +2,11 @@
 pragma solidity 0.8.11;
 
 interface IDefaultStrategy {
-    function generateGroupVotesToDistributeTo(uint256 votes)
-        external
-        returns (address[] memory finalGroups, uint256[] memory finalVotes);
+    function generateGroupVotesToDistributeTo(
+        uint256 votes,
+        uint256 stCeloAmount,
+        bool add
+    ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
     function calculateAndUpdateForWithdrawal(uint256 withdrawal)
         external
@@ -17,4 +19,8 @@ interface IDefaultStrategy {
     function getGroupsLength() external view returns (uint256);
 
     function getDeprecatedGroupsLength() external view returns (uint256);
+
+    function getTotalStCeloVotesForStrategy(address strategy) external view returns (uint256);
+
+    function getTotalStCeloInDefaultStrategy() external view returns (uint256);
 }

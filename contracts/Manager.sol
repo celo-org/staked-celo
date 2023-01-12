@@ -264,7 +264,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function deposit() external payable {
         address strategy = _checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
 
-        uint256 stCeloValue = toStakedCelo(msg.value);
+        uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
             if (!groupHealth.isValidGroup(strategy)) {
                 // if invalid group vote for default strategy
@@ -274,19 +274,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 if (stCeloBalance != 0) {
                     _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
                 }
-            } else {
-                specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
-                    strategy,
-                    stCeloValue
-                );
             }
         }
 
-        stakedCelo.mint(msg.sender, stCeloValue);
+        stakedCelo.mint(msg.sender, stCeloAmount);
 
         address[] memory finalGroups;
         uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = distributeVotes(msg.value, strategy);
+        (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy, true);
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
     }
 
@@ -479,19 +474,29 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Distributes votes according to chosen strategy.
      * @param votes The amount of votes to distribute.
+     * @param stCeloAmount The amount of stCelo that was minted.
      * @param strategy The chosen strategy.
+     * @param add Whether funds are being added or removed.
      */
-    function distributeVotes(uint256 votes, address strategy)
-        private
-        returns (address[] memory finalGroups, uint256[] memory finalVotes)
-    {
+    function distributeVotes(
+        uint256 votes,
+        uint256 stCeloAmount,
+        address strategy,
+        bool add
+    ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (strategy != address(0)) {
-            finalGroups = new address[](1);
-            finalVotes = new uint256[](1);
-            finalGroups[0] = strategy;
-            finalVotes[0] = votes;
+            (finalGroups, finalVotes) = specificGroupStrategy.generateGroupVotesToDistributeTo(
+                strategy,
+                votes,
+                stCeloAmount,
+                add
+            );
         } else {
-            (finalGroups, finalVotes) = defaultStrategy.generateGroupVotesToDistributeTo(votes);
+            (finalGroups, finalVotes) = defaultStrategy.generateGroupVotesToDistributeTo(
+                votes,
+                stCeloAmount,
+                add
+            );
         }
 
         return (finalGroups, finalVotes);
@@ -583,24 +588,29 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) private {
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeVotes(toCelo(stCeloAmount), fromStrategy);
+        (fromGroups, fromVotes) = distributeVotes(
+            toCelo(stCeloAmount),
+            stCeloAmount,
+            fromStrategy,
+            false
+        );
 
         address[] memory toGroups;
         uint256[] memory toVotes;
-        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), toStrategy);
+        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy, true);
 
-        if (fromStrategy != address(0)) {
-            specificGroupStrategy.subtractFromSpecificGroupStrategyTotalStCeloVotes(
-                fromStrategy,
-                stCeloAmount
-            );
-        }
-        if (toStrategy != address(0)) {
-            specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
-                toStrategy,
-                stCeloAmount
-            );
-        }
+        // if (fromStrategy != address(0)) {
+        //     specificGroupStrategy.subtractFromSpecificGroupStrategyTotalStCeloVotes(
+        //         fromStrategy,
+        //         stCeloAmount
+        //     );
+        // }
+        // if (toStrategy != address(0)) {
+        //     specificGroupStrategy.addToSpecificGroupStrategyTotalStCeloVotes(
+        //         toStrategy,
+        //         stCeloAmount
+        //     );
+        // }
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }

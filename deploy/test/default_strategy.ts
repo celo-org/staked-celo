@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, owner } = await hre.getNamedAccounts();
   const managerAddress = (await hre.deployments.get("Manager")).address;
 
-  await deploy("DefaultStrategy", {
+  await deploy("MockDefaultStrategyFull", {
     from: deployer,
     log: true,
     proxy: {

@@ -102,4 +102,8 @@ contract MockManager is IManager {
     {
         return (transfers[index].from, transfers[index].to, transfers[index].amount);
     }
+
+    function toStakedCelo(uint256 celoAmount) public view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

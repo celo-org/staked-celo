@@ -2,11 +2,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
@@ -16,6 +18,7 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
+  rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
@@ -31,6 +34,7 @@ describe("e2e", () => {
   let managerContract: Manager;
   let defaultStrategyContract: DefaultStrategy;
   let groupHealthContract: GroupHealth;
+  let specificGroupStrategyContract: SpecificGroupStrategy;
 
   const deployerAccountName = "deployer";
   // deposits CELO, receives stCELO, but never withdraws it
@@ -96,6 +100,7 @@ describe("e2e", () => {
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
     defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+    specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(
@@ -125,6 +130,14 @@ describe("e2e", () => {
     await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
+    await rebalanceGroups(
+      managerContract,
+      groupHealthContract,
+      specificGroupStrategyContract,
+      defaultStrategyContract
+    );
+    await revoke(hre, depositor0);
+    await activateAndVoteTest();
 
     const withdrawStakedCelo = await managerContract
       .connect(depositor1)

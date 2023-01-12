@@ -11,24 +11,24 @@ import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
 
-contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract OverflowStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Specific groups strategies (validator groups) that can be chosen to be voted on.
+     * @notice Overflow strategies (validator groups) that can be chosen to be voted on.
      */
-    EnumerableSet.AddressSet private specificGroupStrategies;
+    EnumerableSet.AddressSet private overflowStrategies;
 
     /**
-     * @notice stCelo that was cast for specific group strategies,
+     * @notice stCelo that was cast for overflow strategies,
      * strategy => stCelo amount
      */
-    mapping(address => uint256) private specificGroupStrategyTotalStCeloVotes;
+    mapping(address => uint256) private overflowStrategyTotalStCeloVotes;
 
     /**
-     * @notice Total stCelo that was voted with on specific group strategies
+     * @notice Total stCelo that was voted with on overflow strategies
      */
-    uint256 private totalStCeloInSpecificGroupStrategies;
+    uint256 private totalStCeloInOverflowStrategies;
 
     /**
      * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
@@ -46,7 +46,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     IAccount public account;
 
     /**
-     * @notice Emitted when a new group is specific group for voting.
+     * @notice Emitted when a new group is overflow strategy for voting.
      * @param group The group's address.
      */
     event StrategyAllowed(address indexed group);
@@ -64,11 +64,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error StrategyAlreadyBlocked(address group);
 
     /**
-     * @notice Used when an attempt to add an specific group strategy to the EnumerableSet
+     * @notice Used when an attempt to add an overflow strategy to the EnumerableSet
      * fails.
      * @param group The group's address.
      */
-    error FailedToAddSpecificGroupStrategy(address group);
+    error FailedToAddOverflowStrategy(address group);
 
     /**
      * @notice Used when attempting to disallow a strategy failed.
@@ -89,14 +89,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error StrategyNotEligible(address group);
 
     /**
-     * @notice Used when attempting to withdraw from specific group strategy
+     * @notice Used when attempting to withdraw from overflow strategy
      * but group does not have enough Celo. Group either doesn't have enough stCelo
      * or it is necessary to rebalance the group.
      * @param group The group's address.
-     * @param expected The expected vote amount.
-     * @param real The real vote amount.
      */
-    error GroupNotBalancedOrNotEnoughStCelo(address group, uint256 expected, uint256 real);
+    error GroupNotBalancedOrNotEnoughStCelo(address group);
 
     /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
@@ -110,12 +108,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * to vote for.
      */
     error NoActiveGroups();
-
-    /**
-     * @notice Used when attempting to deposit when chosen strategy cannot receive any new votes.
-     * @param group The group's address.
-     */
-    error StrategyCannotReceiveVote(address group);
 
     /**
      * @notice Initialize the contract with registry and owner.
@@ -154,8 +146,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Marks a group as specific group strategy for voting.
-     * @param group The address of the group to add to the set of specific group
+     * @notice Marks a group as overflow strategy for voting.
+     * @param group The address of the group to add to the set of overflow strategy
      * strategies.
      */
     function allowStrategy(address group) external onlyOwner {
@@ -163,20 +155,20 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyNotEligible(group);
         }
 
-        if (specificGroupStrategies.contains(group)) {
+        if (overflowStrategies.contains(group)) {
             revert StrategyAlreadyAdded(group);
         }
 
-        if (!specificGroupStrategies.add(group)) {
-            revert FailedToAddSpecificGroupStrategy(group);
+        if (!overflowStrategies.add(group)) {
+            revert FailedToAddOverflowStrategy(group);
         }
 
         emit StrategyAllowed(group);
     }
 
     /**
-     * @notice Marks a group as not specific group strategy for voting.
-     * @param strategy The address of the group to remove from the set of specific group
+     * @notice Marks a group as not overflow strategy for voting.
+     * @param strategy The address of the group to remove from the set of overflow strategy
      * strategies.
      */
     function blockStrategy(address strategy) external onlyOwner {
@@ -184,11 +176,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert NoActiveGroups();
         }
 
-        if (!specificGroupStrategies.contains(strategy)) {
+        if (!overflowStrategies.contains(strategy)) {
             revert StrategyAlreadyBlocked(strategy);
         }
 
-        if (!specificGroupStrategies.remove(strategy)) {
+        if (!overflowStrategies.remove(strategy)) {
             revert FailedToBlockStrategy(strategy);
         }
 
@@ -206,7 +198,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Used to withdraw CELO from the system from specific group strategy
+     * @notice Used to withdraw CELO from the system from overflow strategy
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function
      * @param strategy The validator group that we want to withdraw from.
@@ -221,7 +213,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
         uint256 votesRemaining = account.getCeloForGroup(strategy);
         if (votesRemaining < withdrawal) {
-            revert GroupNotBalancedOrNotEnoughStCelo(strategy, withdrawal, votesRemaining);
+            revert GroupNotBalancedOrNotEnoughStCelo(strategy);
         }
 
         groups = new address[](1);
@@ -229,81 +221,65 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         groups[0] = strategy;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > specificGroupStrategyTotalStCeloVotes[strategy]) {
+        if (stCeloWithdrawalAmount > overflowStrategyTotalStCeloVotes[strategy]) {
             revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
+        subtractFromOverflowStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
     }
 
     /**
-     * @notice Generates groups and votes to distribute votes to.
-     * @param strategy The validator group that we want to deposit to or transfer from.
-     * @param votes The amount of votes.
-     * @param add Whether funds are being added or removed.
-     * @return finalGroups The groups to withdraw from.
-     * @return finalVotes The amount to withdraw from each group.
+     * @notice Adds value to totals of overflow strategy and
+     * total stCelo in all overflow strategy strategies.
+     * @param strategy The validator group that we are adding to.
+     * @param stCeloAmount The added amount of stCelo.
      */
-    function generateGroupVotesToDistributeTo(
-        address strategy,
-        uint256 votes,
-        uint256 stCeloAmount,
-        bool add
-    ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
-        uint256 scheduledVotes = account.scheduledVotesForGroup(strategy);
-        if (!getElection().canReceiveVotes(strategy, votes + scheduledVotes)) {
-            revert StrategyCannotReceiveVote(strategy);
-        }
-        finalGroups = new address[](1);
-        finalVotes = new uint256[](1);
-        finalGroups[0] = strategy;
-        finalVotes[0] = votes;
-
-        if (add) {
-            addToSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
-        } else {
-            subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
-        }
+    function addToOverflowStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
+        external
+        onlyManager
+    {
+        overflowStrategyTotalStCeloVotes[strategy] += stCeloAmount;
+        totalStCeloInOverflowStrategies += stCeloAmount;
     }
 
     /**
-     * @notice Returns is strategy is specific group strategy.
-     * @return Whether or not is specific group strategy.
+     * @notice Returns is strategy is overflow strategy.
+     * @return Whether or not is overflow strategy.
      */
-    function isSpecificGroupStrategy(address strategy) external view returns (bool) {
-        return specificGroupStrategies.contains(strategy);
+    function isOverflowStrategy(address strategy) external view returns (bool) {
+        return overflowStrategies.contains(strategy);
     }
 
     /**
-     * @notice Returns the total stCelo locked in specific groups.
+     * @notice Returns the total stCelo locked in overflow strategies.
      * @return The total stCelo.
      */
-    function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
-        return totalStCeloInSpecificGroupStrategies;
+    function getTotalStCeloInOverflowStrategies() external view returns (uint256) {
+        return totalStCeloInOverflowStrategies;
     }
 
     /**
-     * @notice Returns the length of specific group strategies.
+     * @notice Returns the length of overflow strategy strategies.
      * @return The length of active groups.
      */
-    function getSpecificGroupStrategiesLength() external view returns (uint256) {
-        return specificGroupStrategies.length();
+    function getOverflowStrategiesLength() external view returns (uint256) {
+        return overflowStrategies.length();
     }
 
     /**
-     * @notice Returns the specific group strategy on index.
-     * @return The specific group.
+     * @notice Returns the overflow strategy on index.
+     * @return The overflow strategy.
      */
-    function getSpecificGroupStrategy(uint256 index) external view returns (address) {
-        return specificGroupStrategies.at(index);
+    function getOverflowStrategy(uint256 index) external view returns (address) {
+        return overflowStrategies.at(index);
     }
 
     /**
-     * @notice Returns the specific group strategies
-     * @return The specific group strategies.
+     * @notice Returns the overflow strategy strategies
+     * @return The overflow strategy strategies.
      */
-    function getSpecificGroupStrategies() external view returns (address[] memory) {
-        return specificGroupStrategies.values();
+    function getOverflowStrategies() external view returns (address[] memory) {
+        return overflowStrategies.values();
     }
 
     /**
@@ -327,38 +303,24 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Adds value to totals of specific group strategy and
-     * total stCelo in all specific group strategies.
-     * @param strategy The validator group that we are adding to.
-     * @param stCeloAmount The added amount of stCelo.
-     */
-    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
-        public
-        onlyManager
-    {
-        specificGroupStrategyTotalStCeloVotes[strategy] += stCeloAmount;
-        totalStCeloInSpecificGroupStrategies += stCeloAmount;
-    }
-
-    /**
-     * @notice Subtracts value from totals of specific group strategy and
-     * total stCelo in all specific group strategies.
+     * @notice Subtracts value from totals of overflow strategy and
+     * total stCelo in all overflow strategy strategies.
      * @param strategy The validator group that we are adding to.
      * @param stCeloAmount The subtracted amount of stCelo.
      */
-    function subtractFromSpecificGroupStrategyTotalStCeloVotes(
-        address strategy,
-        uint256 stCeloAmount
-    ) public onlyManager {
-        specificGroupStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
-        totalStCeloInSpecificGroupStrategies -= stCeloAmount;
+    function subtractFromOverflowStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
+        public
+        onlyManager
+    {
+        overflowStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
+        totalStCeloInOverflowStrategies -= stCeloAmount;
     }
 
     /**
-     * @notice Returns the specific group total stCelo
+     * @notice Returns the overflow strategy total stCelo
      * @return The total stCelo amount.
      */
     function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
-        return specificGroupStrategyTotalStCeloVotes[strategy];
+        return overflowStrategyTotalStCeloVotes[strategy];
     }
 }

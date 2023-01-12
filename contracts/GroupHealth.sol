@@ -171,48 +171,39 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * vs actual amount voted for by Acccount contract
      * @param group The group.
      */
-    function getExpectedAndRealCeloForGroup(address group) public view returns (uint256, uint256) {
+    function getExpectedAndRealCeloForGroup(address group)
+        public
+        view
+        returns (uint256 expectedCelo, uint256 realCelo)
+    {
         bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
         bool isActiveGroup = defaultStrategy.groupsContain(group);
-        uint256 realCelo = account.getCeloForGroup(group);
+        realCelo = account.getCeloForGroup(group);
 
         if (!isSpecificGroupStrategy && !isActiveGroup) {
-            return (0, realCelo);
-        }
-
-        if (isSpecificGroupStrategy && !isActiveGroup) {
-            return (
-                manager.toCelo(specificGroupStrategy.getTotalStCeloVotesForStrategy(group)),
-                realCelo
+            expectedCelo = 0;
+        } else if (isSpecificGroupStrategy && !isActiveGroup) {
+            expectedCelo = manager.toCelo(
+                specificGroupStrategy.getTotalStCeloVotesForStrategy(group)
             );
-        }
-
-        if (!isSpecificGroupStrategy && isActiveGroup) {
-            uint256 stCeloSupply = stakedCelo.totalSupply();
-            uint256 stCeloInDefaultStrategy = stCeloSupply -
-                specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
-            uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                defaultStrategy.getGroupsLength();
-
-            return (manager.toCelo(supposedStCeloInActiveGroup), realCelo);
-        }
-
-        if (isSpecificGroupStrategy && isActiveGroup) {
-            uint256 stCeloSupply = stakedCelo.totalSupply();
-            uint256 stCeloInDefaultStrategy = stCeloSupply -
-                specificGroupStrategy.getTotalStCeloInSpecificGroupStrategies();
-            uint256 supposedStCeloInActiveGroup = stCeloInDefaultStrategy /
-                defaultStrategy.getGroupsLength();
-            uint256 supposedstCeloInSpecificGroupStrategy = specificGroupStrategy
+        } else if (!isSpecificGroupStrategy && isActiveGroup) {
+            expectedCelo = manager.toCelo(
+                defaultStrategy.getTotalStCeloVotesForStrategy(group)
+                // defaultStrategy.getTotalStCeloInDefaultStrategy() /
+                //     defaultStrategy.getGroupsLength()
+            );
+        } else if (isSpecificGroupStrategy && isActiveGroup) {
+            // uint256 expectedStCeloInActiveGroup = defaultStrategy
+            //     .getTotalStCeloInDefaultStrategy() / defaultStrategy.getGroupsLength();
+            uint256 expectedStCeloInActiveGroup = defaultStrategy.getTotalStCeloVotesForStrategy(
+                group
+            );
+            uint256 expectedStCeloInSpecificGroupStrategy = specificGroupStrategy
                 .getTotalStCeloVotesForStrategy(group);
-
-            return (
-                manager.toCelo(supposedStCeloInActiveGroup + supposedstCeloInSpecificGroupStrategy),
-                realCelo
+            expectedCelo = manager.toCelo(
+                expectedStCeloInActiveGroup + expectedStCeloInSpecificGroupStrategy
             );
         }
-
-        revert GroupNotEligible(group);
     }
 
     /**

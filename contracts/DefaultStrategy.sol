@@ -54,6 +54,17 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     ISpecificGroupStrategy public specificGroupStrategy;
 
     /**
+     * @notice stCelo that was cast for default group strategy,
+     * strategy => stCelo amount
+     */
+    mapping(address => uint256) private defaultStrategyTotalStCeloVotes;
+
+    /**
+     * @notice Total stCelo that was voted with on default strategy
+     */
+    uint256 private totalStCeloInDefaultStrategy;
+
+    /**
      * @notice Emitted when a deprecated group is no longer being voted for and
      * the contract forgets about it entirely.
      * @param group The group's address.
@@ -77,8 +88,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * but group does not have enough CELO. Group either doesn't have enough stCelo
      * or it is necessary to rebalance the group.
      * @param group The group's address.
+     * @param expected The expected vote amount.
+     * @param real The real vote amount.
      */
-    error GroupNotBalancedOrNotEnoughStCelo(address group);
+    error GroupNotBalancedOrNotEnoughStCelo(address group, uint256 expected, uint256 real);
 
     /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
@@ -192,6 +205,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Distributes votes by computing the number of votes each active
      * group should receive.
      * @param votes The amount of votes to distribute.
+     * @param stCeloAmountMinted The stCeloAmount that was minted.
+     * @param add Whether funds are being added or removed.
      * @dev The vote distribution strategy is to try and have each validator
      * group to be receiving the same amount of votes from the system. If a
      * group already has more votes than the average of the total available
@@ -211,11 +226,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function generateGroupVotesToDistributeTo(uint256 votes)
-        external
-        onlyManager
-        returns (address[] memory finalGroups, uint256[] memory finalVotes)
-    {
+    function generateGroupVotesToDistributeTo(
+        uint256 votes,
+        uint256 stCeloAmountMinted,
+        bool add
+    ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (activeGroups.length() == 0) {
             revert NoActiveGroups();
         }
@@ -265,9 +280,20 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         finalGroups = new address[](groupsVoted);
         finalVotes = new uint256[](groupsVoted);
 
+        uint256 stCeloVoteRatio = stCeloAmountMinted / votes;
+
         for (uint256 i = 0; i < groupsVoted; i++) {
             finalGroups[i] = sortedGroups[i].group;
             finalVotes[i] = votesPerGroup[i];
+            uint256 stCeloAmount = finalVotes[i] * stCeloVoteRatio;
+            if (add) {
+                addToStrategyTotalStCeloVotes(finalGroups[i], stCeloAmount);
+            } else {
+                subtractFromStrategyTotalStCeloVotes(
+                    finalGroups[i],
+                    Math.min(defaultStrategyTotalStCeloVotes[finalGroups[i]], stCeloAmount)
+                );
+            }
         }
 
         return (finalGroups, finalVotes);
@@ -356,6 +382,17 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         if (!activeGroups.add(group)) {
             revert FailedToAddActiveGroup(group);
         }
+
+        // TODO: remove once migrated to v2
+        uint256 specificGroupTotalStCelo = specificGroupStrategy.getTotalStCeloVotesForStrategy(
+            group
+        );
+        uint256 stCeloForWholeGroup = IManager(manager).toStakedCelo(
+            account.getCeloForGroup(group)
+        );
+        uint256 currentStCelo = stCeloForWholeGroup -
+            Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
+        addToStrategyTotalStCeloVotes(group, currentStCelo);
 
         emit GroupActivated(group);
     }
@@ -450,6 +487,22 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
+     * @notice Returns the group total stCelo
+     * @return The total stCelo amount.
+     */
+    function getTotalStCeloVotesForStrategy(address strategy) external view returns (uint256) {
+        return defaultStrategyTotalStCeloVotes[strategy];
+    }
+
+    /**
+     * @notice Returns the total stCelo locked in default strategy.
+     * @return The total stCelo.
+     */
+    function getTotalStCeloInDefaultStrategy() external view returns (uint256) {
+        return totalStCeloInDefaultStrategy;
+    }
+
+    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -530,7 +583,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         for (uint256 i = 0; i < numberDeprecatedGroups; i++) {
             numberDeprecatedGroupsWithdrawn++;
             deprecatedGroupsWithdrawn[i] = deprecatedGroups.at(i);
-            uint256 currentVotes = account.getCeloForGroup(deprecatedGroupsWithdrawn[i]);
+            uint256 currentStCeloInStrategy = defaultStrategyTotalStCeloVotes[
+                deprecatedGroupsWithdrawn[i]
+            ];
+            uint256 currentVotes = IManager(manager).toCelo(currentStCeloInStrategy);
             deprecatedWithdrawalsPerGroup[i] = Math.min(remainingWithdrawal, currentVotes);
             remainingWithdrawal -= deprecatedWithdrawalsPerGroup[i];
 
@@ -540,6 +596,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 }
                 emit GroupRemoved(deprecatedGroupsWithdrawn[i]);
             }
+
+            subtractFromStrategyTotalStCeloVotes(
+                deprecatedGroupsWithdrawn[i],
+                currentStCeloInStrategy
+            );
 
             if (remainingWithdrawal == 0) {
                 break;
@@ -555,43 +616,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns a list of group addresses with their corresponding
-     * current total votes, sorted by the number of votes, and the total number
-     * of votes in the system.
-     * @param groups The array of addresses of the groups to sort.
-     * @return The array of GroupWithVotes structs, sorted by number of votes.
-     * @return The total number of votes assigned to active groups.
-     */
-    function getSortedGroupsWithVotes(address[] memory groups)
-        internal
-        view
-        returns (GroupWithVotes[] memory, uint256)
-    {
-        GroupWithVotes[] memory groupsWithVotes = new GroupWithVotes[](groups.length);
-        uint256 totalVotes = 0;
-        for (uint256 i = 0; i < groups.length; i++) {
-            uint256 votes;
-            if (specificGroupStrategy.isSpecificGroupStrategy(groups[i])) {
-                uint256 realCeloInGroup = account.getCeloForGroup(groups[i]);
-                uint256 minExpectedCeloInGroup = IManager(manager).toCelo(
-                    specificGroupStrategy.getTotalStCeloVotesForStrategy(groups[i])
-                );
-                if (realCeloInGroup < minExpectedCeloInGroup) {
-                    revert GroupNotBalancedOrNotEnoughStCelo(groups[i]);
-                }
-                votes = realCeloInGroup - minExpectedCeloInGroup;
-            } else {
-                votes = account.getCeloForGroup(groups[i]);
-            }
-            totalVotes += votes;
-            groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
-        }
-
-        sortGroupsWithVotes(groupsWithVotes);
-        return (groupsWithVotes, totalVotes);
-    }
-
-    /**
      * @notice Calculates how votes should be withdrawn from each active group.
      * @param withdrawal The number of votes that need to be withdrawn.
      * @return The array of group addresses that should be withdrawn from.
@@ -600,7 +624,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      */
     function getActiveGroupWithdrawalDistribution(uint256 withdrawal)
         internal
-        view
         returns (address[] memory, uint256[] memory)
     {
         uint256 numberGroups = activeGroups.length();
@@ -639,12 +662,65 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         for (uint256 i = 0; i < numberGroupsWithdrawn; i++) {
             groupsWithdrawn[i] = sortedGroups[i + offset].group;
             withdrawalsPerGroup[i] = sortedGroups[i + offset].votes - targetVotes;
+            subtractFromStrategyTotalStCeloVotes(
+                groupsWithdrawn[i],
+                IManager(manager).toStakedCelo(withdrawalsPerGroup[i])
+            );
             if (availableVotes % numberGroupsWithdrawn > i) {
                 withdrawalsPerGroup[i]--;
             }
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);
+    }
+
+    /**
+     * @notice Adds value to totals of group strategy and
+     * total stCelo in all group strategies.
+     * @param strategy The validator group that we are adding to.
+     * @param stCeloAmount The added amount of stCelo.
+     */
+    function addToStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) internal {
+        defaultStrategyTotalStCeloVotes[strategy] += stCeloAmount;
+        totalStCeloInDefaultStrategy += stCeloAmount;
+    }
+
+    /**
+     * @notice Subtracts value from totals of group strategy and
+     * total stCelo in all group strategies.
+     * @param strategy The validator group that we are adding to.
+     * @param stCeloAmount The subtracted amount of stCelo.
+     */
+    function subtractFromStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) internal {
+        defaultStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
+        totalStCeloInDefaultStrategy -= stCeloAmount;
+    }
+
+    /**
+     * @notice Returns a list of group addresses with their corresponding
+     * current total votes, sorted by the number of votes, and the total number
+     * of votes in the system.
+     * @param groups The array of addresses of the groups to sort.
+     * @return The array of GroupWithVotes structs, sorted by number of votes.
+     * @return The total number of votes assigned to active groups.
+     */
+    function getSortedGroupsWithVotes(address[] memory groups)
+        internal
+        view
+        returns (GroupWithVotes[] memory, uint256)
+    {
+        GroupWithVotes[] memory groupsWithVotes = new GroupWithVotes[](groups.length);
+        uint256 totalVotes = 0;
+        for (uint256 i = 0; i < groups.length; i++) {
+            uint256 realCeloInGroup = account.getCeloForGroup(groups[i]);
+            uint256 stCeloInStrategy = defaultStrategyTotalStCeloVotes[groups[i]];
+            uint256 votes = Math.min(realCeloInGroup, IManager(manager).toCelo(stCeloInStrategy));
+            totalVotes += votes;
+            groupsWithVotes[i] = GroupWithVotes(groups[i], votes);
+        }
+
+        sortGroupsWithVotes(groupsWithVotes);
+        return (groupsWithVotes, totalVotes);
     }
 
     /**
@@ -681,13 +757,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
         emit GroupDeprecated(group);
 
-        if (
-            account.getCeloForGroup(group) -
-                IManager(manager).toCelo(
-                    specificGroupStrategy.getTotalStCeloVotesForStrategy(group)
-                ) >
-            0
-        ) {
+        uint256 strategyTotalStCeloVotes = defaultStrategyTotalStCeloVotes[group];
+
+        if (IManager(manager).toCelo(strategyTotalStCeloVotes) > 0) {
             if (!deprecatedGroups.add(group)) {
                 revert FailedToAddDeprecatedGroup(group);
             }

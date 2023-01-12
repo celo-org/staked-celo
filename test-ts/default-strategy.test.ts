@@ -41,7 +41,7 @@ describe("DefaultStrategy", () => {
       manager = await hre.ethers.getContract("Manager");
       groupHealthContract = await hre.ethers.getContract("GroupHealth");
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
-      defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+      defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategyFull");
 
       [owner] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
@@ -131,7 +131,7 @@ describe("DefaultStrategy", () => {
   describe("#generateGroupVotesToDistributeTo", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).generateGroupVotesToDistributeTo(10)
+        defaultStrategyContract.connect(nonManager).generateGroupVotesToDistributeTo(10, 20, false)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });

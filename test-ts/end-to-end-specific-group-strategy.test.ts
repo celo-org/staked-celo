@@ -51,6 +51,9 @@ describe("e2e specific group strategy voting", () => {
   let depositor3: SignerWithAddress;
   // allowed strategy that is same as one of the active groups
   let depositor4: SignerWithAddress;
+  // only deposits to default strategy and never withdraws
+  let depositor5: SignerWithAddress;
+  // only deposits to strategy that is different from active groups
   let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
@@ -87,6 +90,7 @@ describe("e2e specific group strategy voting", () => {
     [depositor2] = await randomSigner(parseUnits("300"));
     [depositor3] = await randomSigner(parseUnits("300"));
     [depositor4] = await randomSigner(parseUnits("300"));
+    [depositor5] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("300"));
     const accounts = await hre.kit.contracts.getAccounts();
     await accounts.createAccount().sendAndWaitForReceipt({
@@ -154,6 +158,7 @@ describe("e2e specific group strategy voting", () => {
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor4).deposit({ value: amountOfCeloToDeposit });
+    await managerContract.connect(depositor5).deposit({ value: amountOfCeloToDeposit });
 
     await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
@@ -223,7 +228,6 @@ describe("e2e specific group strategy voting", () => {
     const depositor4ExpectedCeloToBeWithdrawn = await managerContract.toCelo(
       depositor4BeforeWithdrawalStCeloBalance
     );
-
     await managerContract.connect(depositor0).withdraw(amountOfCeloToDeposit.div(2));
     await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
     await managerContract.connect(depositor3).withdraw(amountOfCeloToDeposit);
@@ -269,8 +273,10 @@ describe("e2e specific group strategy voting", () => {
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
     await finishPendingWithdrawalForAccount(depositor4.address);
 
-    expect(0).to.eq((await stakedCeloContract.totalSupply()).toNumber());
-    expect(0).to.eq(await accountContract.getTotalCelo());
+    expect(parseUnits("1")).to.eq((await stakedCeloContract.totalSupply()).toString());
+    expect(await managerContract.toCelo(parseUnits("1"))).to.eq(
+      await accountContract.getTotalCelo()
+    );
 
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
     await expectStCeloBalance(
