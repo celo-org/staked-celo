@@ -111,6 +111,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error NotEnoughStakedCelo(address account);
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -135,8 +140,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param _account The address of the Account contract.
      */
     function setDependencies(address _stakedCelo, address _account) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo null address");
-        require(_account != address(0), "account null address");
+        if (_stakedCelo == address(0) || _account == address(0)) {
+            revert AddressZeroNotAllowed();
+        }
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
     }

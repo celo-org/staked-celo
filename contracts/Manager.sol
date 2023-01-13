@@ -156,6 +156,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error HealthyGroup(address group);
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -186,9 +191,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address _account,
         address _vote
     ) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo null address");
-        require(_account != address(0), "account null address");
-        require(_vote != address(0), "vote null address");
+        if (_stakedCelo == address(0) || _account == address(0) || _vote == address(0)) {
+            revert AddressZeroNotAllowed();
+        }
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
