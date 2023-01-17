@@ -2793,9 +2793,7 @@ describe("Manager", () => {
       });
 
       it("should return correct amount for real and expected", async () => {
-        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
-          groupAddresses[2]
-        );
+        const [expected, real] = await manager.getExpectedAndActualCeloForGroup(groupAddresses[2]);
         expect(expected).to.eq(0);
         expect(real).to.eq(depositedValue);
       });
@@ -2816,9 +2814,7 @@ describe("Manager", () => {
       });
 
       it("should return correct amount for real and expected", async () => {
-        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
-          groupAddresses[0]
-        );
+        const [expected, real] = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         expect(expected).to.eq(0);
         expect(real).to.eq(depositedValue / 2);
       });
@@ -2835,9 +2831,7 @@ describe("Manager", () => {
       it("should return same amount for real and expected", async () => {
         await account.setCeloForGroup(groupAddresses[0], depositedValue);
 
-        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
-          groupAddresses[0]
-        );
+        const [expected, real] = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         expect(expected).to.eq(real);
       });
 
@@ -2845,9 +2839,7 @@ describe("Manager", () => {
         const celoForGroup = 50;
         await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
-          groupAddresses[0]
-        );
+        const [expected, real] = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         expect(expected).to.eq(depositedValue);
         expect(real).to.eq(celoForGroup);
       });
@@ -2870,7 +2862,7 @@ describe("Manager", () => {
         });
 
         it("should return same amount for real and expected", async () => {
-          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
+          const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(real);
@@ -2880,7 +2872,7 @@ describe("Manager", () => {
           const celoForGroup = 60;
           await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
+          const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(depositedValue / 2);
@@ -2904,7 +2896,7 @@ describe("Manager", () => {
             groupAddresses[0],
             defaultDepositedValue / 2 + specificGroupStrategyDepositedValue
           );
-          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
+          const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(real);
@@ -2914,7 +2906,7 @@ describe("Manager", () => {
           const celoForGroup = 60;
           await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
+          const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(defaultDepositedValue / 2 + specificGroupStrategyDepositedValue);
@@ -3057,9 +3049,7 @@ describe("Manager", () => {
           });
 
           it("should schedule transfer from deprecated group", async () => {
-            const exRe0 = await groupHealthContract.getExpectedAndActualCeloForGroup(
-              groupAddresses[0]
-            );
+            const exRe0 = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
             await defaultStrategyContract.deprecateGroup(groupAddresses[0]);
             await manager.rebalance(groupAddresses[0], groupAddresses[1]);
 

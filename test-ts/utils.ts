@@ -511,12 +511,9 @@ export async function getGroupsSafe(
   return [...allGroupsSet];
 }
 
-export async function getRealVsExpectedCeloForGroups(
-  groupHealthContract: GroupHealth,
-  groups: string[]
-) {
+export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {
   const expectedVsRealPromises = groups.map(async (group) => {
-    const expectedVsReal = await groupHealthContract.getExpectedAndActualCeloForGroup(group);
+    const expectedVsReal = await managerContract.getExpectedAndActualCeloForGroup(group);
     return {
       group,
       expected: expectedVsReal[0],
@@ -535,7 +532,7 @@ export async function rebalanceGroups(
   defaultStrategy: DefaultStrategy
 ) {
   const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
-  const expectedVsReal = await getRealVsExpectedCeloForGroups(groupHealthContract, allGroups);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
 
   const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
   if (unbalanced.length == 0) {

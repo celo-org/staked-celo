@@ -398,10 +398,7 @@ describe("e2e specific group strategy voting", () => {
 
   async function expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy: DefaultStrategy) {
     const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategyContract);
-    const expectedVsReal = await getRealVsExpectedCeloForGroups(
-      groupHealthContract as unknown as GroupHealth,
-      allGroups
-    );
+    const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
     const expectedSum = hre.ethers.BigNumber.from(0);
     const realSum = hre.ethers.BigNumber.from(0);
     for (const group of expectedVsReal) {

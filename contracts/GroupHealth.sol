@@ -14,7 +14,6 @@ import "./interfaces/IDefaultStrategy.sol";
 
 /**
  * @title GroupHealth stores and updates info about validator group health.
- * Contract returns group validity and also possible need for rebalancing.
  */
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
@@ -60,34 +59,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error GroupNotEligible(address group);
-
-    /**
-     * @notice Used when rebalancing to not active nor allowed group.
-     * @param group The group's address.
-     */
-    error InvalidToGroup(address group);
-
-    /**
-     * @notice Used when rebalancing from address(0) group.
-     * @param group The group's address.
-     */
-    error InvalidFromGroup(address group);
-
-    /**
-     * @notice Used when rebalancing and fromGroup doesn't have any extra CELO.
-     * @param group The group's address.
-     * @param actualCelo The actual CELO value.
-     * @param expectedCelo The expected CELO value.
-     */
-    error RebalanceNoExtraCelo(address group, uint256 actualCelo, uint256 expectedCelo);
-
-    /**
-     * @notice Used when rebalancing and toGroup has enough CELO.
-     * @param group The group's address.
-     * @param actualCelo The actual CELO value.
-     * @param expectedCelo The expected CELO value.
-     */
-    error RebalanceEnoughCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
      * @notice Used when updating validator group health more than once in epoch.
@@ -229,107 +200,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function isValidGroup(address group) public view returns (bool) {
         GroupValid memory groupValid = groupsHealth[group];
         return groupValid.healthy;
-    }
-
-    /**
-     * @notice Returns expected CELO amount voted for by Account contract
-     * vs actual amount voted for by Account contract.
-     * @param group The group.
-     * @return expectedCelo The CELO which group should have.
-     * @return actualCelo The CELO which group has.
-     */
-    function getExpectedAndActualCeloForGroup(address group)
-        public
-        view
-        returns (uint256 expectedCelo, uint256 actualCelo)
-    {
-        bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
-        bool isActiveGroup = defaultStrategy.groupsContain(group);
-        actualCelo = account.getCeloForGroup(group);
-
-        if (!isSpecificGroupStrategy && !isActiveGroup) {
-            expectedCelo = 0;
-        } else if (isSpecificGroupStrategy && !isActiveGroup) {
-            expectedCelo = manager.toCelo(
-                specificGroupStrategy.getTotalStCeloVotesForStrategy(group)
-            );
-        } else if (!isSpecificGroupStrategy && isActiveGroup) {
-            expectedCelo = manager.toCelo(defaultStrategy.getTotalStCeloVotesForStrategy(group));
-        } else if (isSpecificGroupStrategy && isActiveGroup) {
-            uint256 expectedStCeloInActiveGroup = defaultStrategy.getTotalStCeloVotesForStrategy(
-                group
-            );
-            uint256 expectedStCeloInSpecificGroupStrategy = specificGroupStrategy
-                .getTotalStCeloVotesForStrategy(group);
-            expectedCelo = manager.toCelo(
-                expectedStCeloInActiveGroup + expectedStCeloInSpecificGroupStrategy
-            );
-        }
-    }
-
-    /**
-     * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
-     * fromGroup is required to have more CELO than it should and toGroup needs
-     * to have less CELO than it should.
-     * @param fromGroup The from group.
-     * @param toGroup The to group.
-     * @return fromGroups The origin groups for CELO during rebalance.
-     * @return toGroups The destination groups for CELO during  rebalance.
-     * @return fromVotes The origin CELO amounts during rebalance.
-     * @return toVotes The destination CELO amounts during rebalance.
-     */
-    function rebalance(address fromGroup, address toGroup)
-        public
-        view
-        returns (
-            address[] memory fromGroups,
-            address[] memory toGroups,
-            uint256[] memory fromVotes,
-            uint256[] memory toVotes
-        )
-    {
-        uint256 expectedFromCelo;
-        uint256 actualFromCelo;
-
-        if (
-            !defaultStrategy.groupsContain(toGroup) &&
-            !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
-        ) {
-            // rebalancing to deprecated/non-existent group is not allowed
-            revert InvalidToGroup(toGroup);
-        }
-
-        if (fromGroup == address(0)) {
-            revert InvalidFromGroup(fromGroup);
-        }
-
-        (expectedFromCelo, actualFromCelo) = getExpectedAndActualCeloForGroup(fromGroup);
-
-        if (actualFromCelo <= expectedFromCelo) {
-            // fromGroup needs to have more CELO than it should
-            revert RebalanceNoExtraCelo(fromGroup, actualFromCelo, expectedFromCelo);
-        }
-
-        uint256 expectedToCelo;
-        uint256 actualToCelo;
-
-        (expectedToCelo, actualToCelo) = getExpectedAndActualCeloForGroup(toGroup);
-
-        if (actualToCelo >= expectedToCelo) {
-            // toGroup needs to have less CELO than it should
-            revert RebalanceEnoughCelo(toGroup, actualToCelo, expectedToCelo);
-        }
-
-        fromGroups = new address[](1);
-        toGroups = new address[](1);
-        fromVotes = new uint256[](1);
-        toVotes = new uint256[](1);
-
-        fromGroups[0] = fromGroup;
-        fromVotes[0] = Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo);
-
-        toGroups[0] = toGroup;
-        toVotes[0] = fromVotes[0];
     }
 
     /**
