@@ -55,12 +55,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     mapping(address => GroupValid) public groupsHealth;
 
     /**
-     * @notice Used when a group does not meet the validator group health requirements.
-     * @param group The group's address.
-     */
-    error GroupNotEligible(address group);
-
-    /**
      * @notice Used when updating validator group health more than once in epoch.
      * @param group The group's address.
      */

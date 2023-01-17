@@ -388,10 +388,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert InvalidToGroup(toGroup);
         }
 
-        if (fromGroup == address(0)) {
-            revert InvalidFromGroup(fromGroup);
-        }
-
         (expectedFromCelo, actualFromCelo) = getExpectedAndActualCeloForGroup(fromGroup);
 
         if (actualFromCelo <= expectedFromCelo) {
@@ -466,22 +462,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         bool isActiveGroup = defaultStrategy.groupsContain(group);
         actualCelo = account.getCeloForGroup(group);
 
-        if (!isSpecificGroupStrategy && !isActiveGroup) {
-            expectedCelo = 0;
-        } else if (isSpecificGroupStrategy && !isActiveGroup) {
-            expectedCelo = toCelo(specificGroupStrategy.getTotalStCeloVotesForStrategy(group));
-        } else if (!isSpecificGroupStrategy && isActiveGroup) {
-            expectedCelo = toCelo(defaultStrategy.getTotalStCeloVotesForStrategy(group));
-        } else if (isSpecificGroupStrategy && isActiveGroup) {
-            uint256 expectedStCeloInActiveGroup = defaultStrategy.getTotalStCeloVotesForStrategy(
+        uint256 stCELOFromDefaultStrategy;
+        uint256 stCELOFromSpecificStrategy;
+
+        if (isSpecificGroupStrategy) {
+            stCELOFromSpecificStrategy = specificGroupStrategy.getTotalStCeloVotesForStrategy(
                 group
             );
-            uint256 expectedStCeloInSpecificGroupStrategy = specificGroupStrategy
-                .getTotalStCeloVotesForStrategy(group);
-            expectedCelo = toCelo(
-                expectedStCeloInActiveGroup + expectedStCeloInSpecificGroupStrategy
-            );
         }
+
+        if (isActiveGroup) {
+            stCELOFromDefaultStrategy = defaultStrategy.getTotalStCeloVotesForStrategy(group);
+        }
+
+        expectedCelo = toCelo(stCELOFromSpecificStrategy + stCELOFromDefaultStrategy);
     }
 
     /**

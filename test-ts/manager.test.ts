@@ -2920,15 +2920,6 @@ describe("Manager", () => {
     const fromGroupDepositedValue = 100;
     const toGroupDepositedValue = 77;
 
-    it("should revert when trying to balance 0x0 and some group", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
-      await manager.changeStrategy(groupAddresses[0]);
-      await manager.deposit({ value: fromGroupDepositedValue });
-      await expect(manager.rebalance(ADDRESS_ZERO, groupAddresses[0])).revertedWith(
-        `InvalidFromGroup("${ADDRESS_ZERO}")`
-      );
-    });
-
     it("should revert when trying to balance some and 0x0 group", async () => {
       await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
