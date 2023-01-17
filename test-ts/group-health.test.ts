@@ -66,7 +66,8 @@ describe("GroupHealth", () => {
   describe("#setDependencies()", () => {
     let ownerSigner: SignerWithAddress;
 
-    before(async () => {
+    before(async function () {
+      this.timeout(100000);
       const managerOwner = await manager.owner();
       ownerSigner = await getImpersonatedSigner(managerOwner);
     });
@@ -190,7 +191,8 @@ describe("GroupHealth", () => {
     const validators: SignerWithAddress[] = [];
     const validatorAddresses: string[] = [];
 
-    before(async () => {
+    before(async function () {
+      this.timeout(100000);
       try {
         for (let i = 0; i < 10; i++) {
           const [group] = await randomSigner(parseUnits("11000"));

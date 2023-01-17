@@ -2,10 +2,6 @@
 pragma solidity 0.8.11;
 
 interface IGroupHealth {
-    function isValidGroup(address group) external view returns (bool);
-
-    function getExpectedAndRealCeloForGroup(address group) external view returns (uint256, uint256);
-
     function rebalance(address fromGroup, address toGroup)
         external
         returns (
@@ -14,4 +10,11 @@ interface IGroupHealth {
             uint256[] memory fromVotes,
             uint256[] memory toVotes
         );
+
+    function isValidGroup(address group) external view returns (bool);
+
+    function getExpectedAndActualCeloForGroup(address group)
+        external
+        view
+        returns (uint256, uint256);
 }

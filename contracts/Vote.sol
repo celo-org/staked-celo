@@ -10,6 +10,9 @@ import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 
+/**
+ * @title Handles governance voting for CELO in protocol.
+ */
 contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     /**
      * @notice Keeps track of total votes for proposal (votes of Account contract).
@@ -105,13 +108,13 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     event LockedStCeloInVoting(address account, uint256 lockedCelo);
 
     /**
-     * @notice Used when attempting to vote when there is no stCelo.
+     * @notice Used when attempting to vote when there is no stCELO.
      * @param account The account's address.
      */
     error NoStakedCelo(address account);
 
     /**
-     * @notice Used when attempting to vote when there is not enough of stCelo.
+     * @notice Used when attempting to vote when there is not enough of stCELO.
      * @param account The account's address.
      */
     error NotEnoughStakedCelo(address account);
@@ -315,9 +318,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             }
         }
 
-        uint256 stCelo = toStakedCelo(lockedAmount);
-        emit LockedStCeloInVoting(beneficiary, stCelo);
-        return stCelo;
+        uint256 stCELO = toStakedCelo(lockedAmount);
+        emit LockedStCeloInVoting(beneficiary, stCELO);
+        return stCELO;
     }
 
     /**
@@ -381,7 +384,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns vote weight of account owning stCelo.
+     * @notice Returns vote weight of account owning stCELO.
      * @param beneficiary The account.
      */
     function getVoteWeight(address beneficiary) public view returns (uint256) {

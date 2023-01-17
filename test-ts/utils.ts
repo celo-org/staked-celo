@@ -516,7 +516,7 @@ export async function getRealVsExpectedCeloForGroups(
   groups: string[]
 ) {
   const expectedVsRealPromises = groups.map(async (group) => {
-    const expectedVsReal = await groupHealthContract.getExpectedAndRealCeloForGroup(group);
+    const expectedVsReal = await groupHealthContract.getExpectedAndActualCeloForGroup(group);
     return {
       group,
       expected: expectedVsReal[0],

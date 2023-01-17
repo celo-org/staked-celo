@@ -730,7 +730,7 @@ describe("Manager", () => {
             .withArgs(specificGroupStrategy.address);
         });
 
-        it("reverts when disallowing a not allowed strategy", async () => {
+        it("reverts when blocking already blocked strategy", async () => {
           await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
             `StrategyAlreadyBlocked("${groupAddresses[3]}")`
           );
@@ -1313,7 +1313,7 @@ describe("Manager", () => {
         ]);
       });
 
-      it("should not schedule transfers to default strategy when no balance for allowed strategy", async () => {
+      it("should not schedule transfers to default strategy when no balance for specific strategy", async () => {
         await specificGroupStrategyContract.blockStrategy(groupAddresses[4]);
         const [
           lastTransferFromGroups,
@@ -2426,7 +2426,7 @@ describe("Manager", () => {
         expect(lastTransferToVotes.length).to.eq(0);
       });
 
-      it("should schedule transfers if default strategy => allowed strategy", async () => {
+      it("should schedule transfers if default strategy => specific strategy", async () => {
         const specificGroupStrategyDeposit = 10;
         const specificGroupStrategyAddress = groupAddresses[2];
 
@@ -2453,7 +2453,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When depositor voted for allowed strategy", () => {
+    describe("When depositor voted for specific strategy", () => {
       const withdrawals = [40, 50];
       let specificGroupStrategyAddress: string;
       let specificGroupStrategyDeposit: BigNumber;
@@ -2478,9 +2478,9 @@ describe("Manager", () => {
       });
 
       it("should not schedule any transfers if second account also voted for same allowed group", async () => {
-        const differentspecificGroupStrategyDeposit = parseUnits("1");
+        const differentSpecificGroupStrategyDeposit = parseUnits("1");
         await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
-        await manager.connect(depositor2).deposit({ value: differentspecificGroupStrategyDeposit });
+        await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
 
         await manager.connect(stakedCeloSigner).transfer(depositor.address, depositor2.address, 10);
         const [
@@ -2496,7 +2496,7 @@ describe("Manager", () => {
         expect(lastTransferToVotes.length).to.eq(0);
       });
 
-      it("should schedule transfers if allowed strategy => default strategy", async () => {
+      it("should schedule transfers if specific strategy => default strategy", async () => {
         await manager
           .connect(stakedCeloSigner)
           .transfer(depositor.address, depositor2.address, specificGroupStrategyDeposit);
@@ -2517,15 +2517,15 @@ describe("Manager", () => {
         );
       });
 
-      it("should schedule transfers if allowed strategy => different allowed strategy", async () => {
-        const differentspecificGroupStrategyDeposit = parseUnits("1");
+      it("should schedule transfers if specific strategy => different specific strategy", async () => {
+        const differentSpecificGroupStrategyDeposit = parseUnits("1");
         await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
-        await manager.connect(depositor2).deposit({ value: differentspecificGroupStrategyDeposit });
+        await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
 
         await manager
           .connect(stakedCeloSigner)
-          .transfer(depositor2.address, depositor.address, differentspecificGroupStrategyDeposit);
+          .transfer(depositor2.address, depositor.address, differentSpecificGroupStrategyDeposit);
 
         const [
           lastTransferFromGroups,
@@ -2535,27 +2535,27 @@ describe("Manager", () => {
         ] = await account.getLastTransferValues();
 
         expect(lastTransferFromGroups).to.deep.eq([groupAddresses[0]]);
-        expect(lastTransferFromVotes).to.deep.eq([differentspecificGroupStrategyDeposit]);
+        expect(lastTransferFromVotes).to.deep.eq([differentSpecificGroupStrategyDeposit]);
 
         expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
-        expect(lastTransferToVotes).to.deep.eq([differentspecificGroupStrategyDeposit]);
+        expect(lastTransferToVotes).to.deep.eq([differentSpecificGroupStrategyDeposit]);
       });
 
-      it("should schedule transfers to default if different allowed strategy was disallowed", async () => {
-        const differentspecificGroupStrategyDeposit = BigNumber.from(100);
-        const differentspecificGroupStrategyAddress = groupAddresses[0];
+      it("should schedule transfers to default if different specific strategy was disallowed", async () => {
+        const differentSpecificGroupStrategyDeposit = BigNumber.from(100);
+        const differentSpecificGroupStrategyAddress = groupAddresses[0];
         await specificGroupStrategyContract.blockStrategy(specificGroupStrategyAddress);
-        await specificGroupStrategyContract.allowStrategy(differentspecificGroupStrategyAddress);
-        await manager.connect(depositor2).changeStrategy(differentspecificGroupStrategyAddress);
-        await manager.connect(depositor2).deposit({ value: differentspecificGroupStrategyDeposit });
+        await specificGroupStrategyContract.allowStrategy(differentSpecificGroupStrategyAddress);
+        await manager.connect(depositor2).changeStrategy(differentSpecificGroupStrategyAddress);
+        await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
         await account.setCeloForGroup(
-          differentspecificGroupStrategyAddress,
-          differentspecificGroupStrategyDeposit
+          differentSpecificGroupStrategyAddress,
+          differentSpecificGroupStrategyDeposit
         );
 
         await manager
           .connect(stakedCeloSigner)
-          .transfer(depositor2.address, depositor.address, differentspecificGroupStrategyDeposit);
+          .transfer(depositor2.address, depositor.address, differentSpecificGroupStrategyDeposit);
 
         const [
           lastTransferFromGroups,
@@ -2564,8 +2564,8 @@ describe("Manager", () => {
           lastTransferToVotes,
         ] = await account.getLastTransferValues();
 
-        expect(lastTransferFromGroups).to.deep.eq([differentspecificGroupStrategyAddress]);
-        expect(lastTransferFromVotes).to.deep.eq([differentspecificGroupStrategyDeposit]);
+        expect(lastTransferFromGroups).to.deep.eq([differentSpecificGroupStrategyAddress]);
+        expect(lastTransferFromVotes).to.deep.eq([differentSpecificGroupStrategyDeposit]);
 
         expect(lastTransferToGroups).to.deep.eq([groupAddresses[1], groupAddresses[0]]);
         expect(lastTransferToVotes.length).to.eq(2);
@@ -2574,25 +2574,25 @@ describe("Manager", () => {
         );
       });
 
-      it("should schedule transfers from default if allowed strategy was blocked", async () => {
-        const differentspecificGroupStrategyDeposit = BigNumber.from(1000);
-        const differentspecificGroupStrategyAddress = groupAddresses[0];
-        await specificGroupStrategyContract.allowStrategy(differentspecificGroupStrategyAddress);
-        await manager.connect(depositor2).changeStrategy(differentspecificGroupStrategyAddress);
-        await manager.connect(depositor2).deposit({ value: differentspecificGroupStrategyDeposit });
+      it("should schedule transfers from default if specific strategy was blocked", async () => {
+        const differentSpecificGroupStrategyDeposit = BigNumber.from(1000);
+        const differentSpecificGroupStrategyAddress = groupAddresses[0];
+        await specificGroupStrategyContract.allowStrategy(differentSpecificGroupStrategyAddress);
+        await manager.connect(depositor2).changeStrategy(differentSpecificGroupStrategyAddress);
+        await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
         await account.setCeloForGroup(
-          differentspecificGroupStrategyAddress,
-          differentspecificGroupStrategyDeposit.add(withdrawals[0])
+          differentSpecificGroupStrategyAddress,
+          differentSpecificGroupStrategyDeposit.add(withdrawals[0])
         );
-        await specificGroupStrategyContract.blockStrategy(differentspecificGroupStrategyAddress);
+        await specificGroupStrategyContract.blockStrategy(differentSpecificGroupStrategyAddress);
         await account.setCeloForGroup(
-          differentspecificGroupStrategyAddress,
-          differentspecificGroupStrategyDeposit
+          differentSpecificGroupStrategyAddress,
+          differentSpecificGroupStrategyDeposit
         );
 
         await manager
           .connect(stakedCeloSigner)
-          .transfer(depositor2.address, depositor.address, differentspecificGroupStrategyDeposit);
+          .transfer(depositor2.address, depositor.address, differentSpecificGroupStrategyDeposit);
 
         const [
           lastTransferFromGroups,
@@ -2604,11 +2604,11 @@ describe("Manager", () => {
         expect(lastTransferFromGroups).to.deep.eq([groupAddresses[1], groupAddresses[0]]);
         expect(lastTransferFromVotes.length).to.eq(2);
         expect(lastTransferFromVotes[0].add(lastTransferFromVotes[1])).to.deep.eq(
-          differentspecificGroupStrategyDeposit
+          differentSpecificGroupStrategyDeposit
         );
 
         expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
-        expect(lastTransferToVotes).to.deep.eq([differentspecificGroupStrategyDeposit]);
+        expect(lastTransferToVotes).to.deep.eq([differentSpecificGroupStrategyDeposit]);
       });
     });
   });
@@ -2664,12 +2664,12 @@ describe("Manager", () => {
       });
 
       it("should change account strategy ", async () => {
-        const strategy = await manager.connect(depositor).getAccountStrategy(depositor.address);
+        const strategy = await manager.connect(depositor).getAddressStrategy(depositor.address);
         expect(groupAddresses[0]).to.eq(strategy);
       });
     });
 
-    describe("When depositor voted for allowed strategy", () => {
+    describe("When depositor voted for specific strategy", () => {
       let specificGroupStrategyDeposit: BigNumber;
 
       beforeEach(async () => {
@@ -2679,7 +2679,7 @@ describe("Manager", () => {
         await manager.deposit({ value: specificGroupStrategyDeposit });
       });
 
-      it("should schedule nothing when trying to change to same allowed strategy", async () => {
+      it("should schedule nothing when trying to change to same specific strategy", async () => {
         await manager.changeStrategy(specificGroupStrategyAddress);
         const [
           lastTransferFromGroups,
@@ -2694,7 +2694,7 @@ describe("Manager", () => {
         expect(lastTransferToVotes).to.deep.eq([]);
       });
 
-      it("should schedule transfers when changing to different allowed strategy", async () => {
+      it("should schedule transfers when changing to different specific strategy", async () => {
         const differentspecificGroupStrategy = groupAddresses[0];
 
         await specificGroupStrategyContract.allowStrategy(differentspecificGroupStrategy);
@@ -2754,7 +2754,7 @@ describe("Manager", () => {
         expect(lastTransferToVotes).to.deep.eq([]);
       });
 
-      it("should schedule transfers when changing to allowed strategy", async () => {
+      it("should schedule transfers when changing to specific strategy", async () => {
         await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.changeStrategy(specificGroupStrategyAddress);
         const [
@@ -2774,7 +2774,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#getExpectedAndRealCeloForGroup()", () => {
+  describe("#getExpectedAndActualCeloForGroup()", () => {
     describe("When strategy is disallowed", () => {
       const withdrawals = [50, 50];
       const depositedValue = 100;
@@ -2793,7 +2793,7 @@ describe("Manager", () => {
       });
 
       it("should return correct amount for real and expected", async () => {
-        const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
           groupAddresses[2]
         );
         expect(expected).to.eq(0);
@@ -2816,7 +2816,7 @@ describe("Manager", () => {
       });
 
       it("should return correct amount for real and expected", async () => {
-        const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
           groupAddresses[0]
         );
         expect(expected).to.eq(0);
@@ -2835,7 +2835,7 @@ describe("Manager", () => {
       it("should return same amount for real and expected", async () => {
         await account.setCeloForGroup(groupAddresses[0], depositedValue);
 
-        const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
           groupAddresses[0]
         );
         expect(expected).to.eq(real);
@@ -2845,7 +2845,7 @@ describe("Manager", () => {
         const celoForGroup = 50;
         await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-        const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+        const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
           groupAddresses[0]
         );
         expect(expected).to.eq(depositedValue);
@@ -2870,7 +2870,7 @@ describe("Manager", () => {
         });
 
         it("should return same amount for real and expected", async () => {
-          const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(real);
@@ -2880,7 +2880,7 @@ describe("Manager", () => {
           const celoForGroup = 60;
           await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-          const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(depositedValue / 2);
@@ -2904,7 +2904,7 @@ describe("Manager", () => {
             groupAddresses[0],
             defaultDepositedValue / 2 + specificGroupStrategyDepositedValue
           );
-          const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(real);
@@ -2914,7 +2914,7 @@ describe("Manager", () => {
           const celoForGroup = 60;
           await account.setCeloForGroup(groupAddresses[0], celoForGroup);
 
-          const [expected, real] = await groupHealthContract.getExpectedAndRealCeloForGroup(
+          const [expected, real] = await groupHealthContract.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
           expect(expected).to.eq(defaultDepositedValue / 2 + specificGroupStrategyDepositedValue);
@@ -3057,7 +3057,7 @@ describe("Manager", () => {
           });
 
           it("should schedule transfer from deprecated group", async () => {
-            const exRe0 = await groupHealthContract.getExpectedAndRealCeloForGroup(
+            const exRe0 = await groupHealthContract.getExpectedAndActualCeloForGroup(
               groupAddresses[0]
             );
             await defaultStrategyContract.deprecateGroup(groupAddresses[0]);
@@ -3091,7 +3091,7 @@ describe("Manager", () => {
             }
           });
 
-          it("should schedule transfer from disallowed strategy", async () => {
+          it("should schedule transfer from disspecific strategy", async () => {
             await specificGroupStrategyContract.blockStrategy(groupAddresses[0]);
             await manager.rebalance(groupAddresses[0], groupAddresses[1]);
 
@@ -3108,7 +3108,7 @@ describe("Manager", () => {
             expect(lastTransferToVotes).to.deep.eq([BigNumber.from(1)]);
           });
 
-          it("should revert when rebalance to disallowed strategy", async () => {
+          it("should revert when rebalance to disspecific strategy", async () => {
             await specificGroupStrategyContract.blockStrategy(groupAddresses[1]);
             await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
               `InvalidToGroup("${groupAddresses[1]}")`

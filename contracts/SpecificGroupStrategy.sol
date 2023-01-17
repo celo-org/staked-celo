@@ -11,6 +11,10 @@ import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
 
+/**
+ * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
+ * for accounts with specific strategy selected.
+ */
 contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -20,13 +24,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     EnumerableSet.AddressSet private specificGroupStrategies;
 
     /**
-     * @notice stCelo that was cast for specific group strategies,
-     * strategy => stCelo amount
+     * @notice stCELO that was cast for specific group strategies,
+     * strategy => stCELO amount
      */
     mapping(address => uint256) private specificGroupStrategyTotalStCeloVotes;
 
     /**
-     * @notice Total stCelo that was voted with on specific group strategies
+     * @notice Total stCELO that was voted with on specific group strategies
      */
     uint256 private totalStCeloInSpecificGroupStrategies;
 
@@ -90,7 +94,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Used when attempting to withdraw from specific group strategy
-     * but group does not have enough Celo. Group either doesn't have enough stCelo
+     * but group does not have enough CELO. Group either doesn't have enough stCELO
      * or it is necessary to rebalance the group.
      * @param group The group's address.
      * @param expected The expected vote amount.
@@ -116,6 +120,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param group The group's address.
      */
     error StrategyCannotReceiveVote(address group);
+
+    /**
+     * @notice Used when attempting to withdraw but there are no groups being
+     * voted for.
+     */
+    error NoGroups();
 
     /**
      * @notice Initialize the contract with registry and owner.
@@ -219,6 +229,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
+        if (specificGroupStrategies.length() == 0) {
+            revert NoGroups();
+        }
+
         uint256 votesRemaining = account.getCeloForGroup(strategy);
         if (votesRemaining < withdrawal) {
             revert GroupNotBalancedOrNotEnoughStCelo(strategy, withdrawal, votesRemaining);
@@ -275,8 +289,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the total stCelo locked in specific groups.
-     * @return The total stCelo.
+     * @notice Returns the total stCELO locked in specific groups.
+     * @return The total stCELO.
      */
     function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
         return totalStCeloInSpecificGroupStrategies;
@@ -291,7 +305,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the specific group strategy on index.
+     * @notice Returns the specific group strategy at index.
      * @return The specific group.
      */
     function getSpecificGroupStrategy(uint256 index) external view returns (address) {
@@ -328,9 +342,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Adds value to totals of specific group strategy and
-     * total stCelo in all specific group strategies.
+     * total stCELO in all specific group strategies.
      * @param strategy The validator group that we are adding to.
-     * @param stCeloAmount The added amount of stCelo.
+     * @param stCeloAmount The added amount of stCELO.
      */
     function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
         public
@@ -342,9 +356,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Subtracts value from totals of specific group strategy and
-     * total stCelo in all specific group strategies.
+     * total stCELO in all specific group strategies.
      * @param strategy The validator group that we are adding to.
-     * @param stCeloAmount The subtracted amount of stCelo.
+     * @param stCeloAmount The subtracted amount of stCELO.
      */
     function subtractFromSpecificGroupStrategyTotalStCeloVotes(
         address strategy,
@@ -355,8 +369,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the specific group total stCelo
-     * @return The total stCelo amount.
+     * @notice Returns the specific group total stCELO
+     * @return The total stCELO amount.
      */
     function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
         return specificGroupStrategyTotalStCeloVotes[strategy];

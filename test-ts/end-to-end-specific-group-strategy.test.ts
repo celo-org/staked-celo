@@ -46,13 +46,13 @@ describe("e2e specific group strategy voting", () => {
   const deployerAccountName = "deployer";
   // default strategy
   let depositor0: SignerWithAddress;
-  // allowed strategy that is different from active groups
+  // specific strategy that is different from active groups
   let depositor1: SignerWithAddress;
-  // allowed strategy that is same as one of the active groups
+  // specific strategy that is same as one of the active groups
   let depositor2: SignerWithAddress;
   // default strategy
   let depositor3: SignerWithAddress;
-  // allowed strategy that is same as one of the active groups
+  // specific strategy that is same as one of the active groups
   let depositor4: SignerWithAddress;
   // only deposits to default strategy and never withdraws
   let depositor5: SignerWithAddress;

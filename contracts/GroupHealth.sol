@@ -12,6 +12,10 @@ import "./interfaces/IAccount.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
 
+/**
+ * @title GroupHealth stores and updates info about validator group health.
+ * Contract returns group validity and also possible need for rebalancing.
+ */
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Stores validity of group.
@@ -70,20 +74,20 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error InvalidFromGroup(address group);
 
     /**
-     * @notice Used when rebalancing and fromGroup doesn't have any extra Celo.
+     * @notice Used when rebalancing and fromGroup doesn't have any extra CELO.
      * @param group The group's address.
-     * @param realCelo The real Celo value.
-     * @param expectedCelo The expected Celo value.
+     * @param actualCelo The actual CELO value.
+     * @param expectedCelo The expected CELO value.
      */
-    error RebalanceNoExtraCelo(address group, uint256 realCelo, uint256 expectedCelo);
+    error RebalanceNoExtraCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
-     * @notice Used when rebalancing and toGroup has enough Celo.
+     * @notice Used when rebalancing and toGroup has enough CELO.
      * @param group The group's address.
-     * @param realCelo The real Celo value.
-     * @param expectedCelo The expected Celo value.
+     * @param actualCelo The actual CELO value.
+     * @param expectedCelo The expected CELO value.
      */
-    error RebalanceEnoughCelo(address group, uint256 realCelo, uint256 expectedCelo);
+    error RebalanceEnoughCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
      * @notice Used when updating validator group health more than once in epoch.
@@ -99,7 +103,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the CELO registry.
      * @param _owner The address of the contract owner.
      */
     function initialize(address _registry, address _owner) external initializer {
@@ -178,7 +182,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         IValidators validators = getValidators();
 
-        // add check if group is !registered
         if (!validators.isValidatorGroup(group)) {
             groupsHealth[group].healthy = false;
             return false;
@@ -229,18 +232,20 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns expected Celo amount voted for by Account contract
-     * vs actual amount voted for by Acccount contract
+     * @notice Returns expected CELO amount voted for by Account contract
+     * vs actual amount voted for by Account contract.
      * @param group The group.
+     * @return expectedCelo The CELO which group should have.
+     * @return actualCelo The CELO which group has.
      */
-    function getExpectedAndRealCeloForGroup(address group)
+    function getExpectedAndActualCeloForGroup(address group)
         public
         view
-        returns (uint256 expectedCelo, uint256 realCelo)
+        returns (uint256 expectedCelo, uint256 actualCelo)
     {
         bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
         bool isActiveGroup = defaultStrategy.groupsContain(group);
-        realCelo = account.getCeloForGroup(group);
+        actualCelo = account.getCeloForGroup(group);
 
         if (!isSpecificGroupStrategy && !isActiveGroup) {
             expectedCelo = 0;
@@ -263,11 +268,15 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Rebalances Celo between groups that have incorrect Celo-stCelo ratio.
-     * FromGroup is required to have more Celo than it should and ToGroup needs
-     * to have less Celo than it should.
+     * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
+     * fromGroup is required to have more CELO than it should and toGroup needs
+     * to have less CELO than it should.
      * @param fromGroup The from group.
      * @param toGroup The to group.
+     * @return fromGroups The origin groups for CELO during rebalance.
+     * @return toGroups The destination groups for CELO during  rebalance.
+     * @return fromVotes The origin CELO amounts during rebalance.
+     * @return toVotes The destination CELO amounts during rebalance.
      */
     function rebalance(address fromGroup, address toGroup)
         public
@@ -280,13 +289,13 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         )
     {
         uint256 expectedFromCelo;
-        uint256 realFromCelo;
+        uint256 actualFromCelo;
 
         if (
             !defaultStrategy.groupsContain(toGroup) &&
             !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
         ) {
-            // rebalancinch to deprecated/non-existant group is not allowed
+            // rebalancing to deprecated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
 
@@ -294,21 +303,21 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert InvalidFromGroup(fromGroup);
         }
 
-        (expectedFromCelo, realFromCelo) = getExpectedAndRealCeloForGroup(fromGroup);
+        (expectedFromCelo, actualFromCelo) = getExpectedAndActualCeloForGroup(fromGroup);
 
-        if (realFromCelo <= expectedFromCelo) {
-            // fromGroup needs to have more Celo than it should
-            revert RebalanceNoExtraCelo(fromGroup, realFromCelo, expectedFromCelo);
+        if (actualFromCelo <= expectedFromCelo) {
+            // fromGroup needs to have more CELO than it should
+            revert RebalanceNoExtraCelo(fromGroup, actualFromCelo, expectedFromCelo);
         }
 
         uint256 expectedToCelo;
-        uint256 realToCelo;
+        uint256 actualToCelo;
 
-        (expectedToCelo, realToCelo) = getExpectedAndRealCeloForGroup(toGroup);
+        (expectedToCelo, actualToCelo) = getExpectedAndActualCeloForGroup(toGroup);
 
-        if (realToCelo >= expectedToCelo) {
-            // toGroup needs to have less Celo than it should
-            revert RebalanceEnoughCelo(toGroup, realToCelo, expectedToCelo);
+        if (actualToCelo >= expectedToCelo) {
+            // toGroup needs to have less CELO than it should
+            revert RebalanceEnoughCelo(toGroup, actualToCelo, expectedToCelo);
         }
 
         fromGroups = new address[](1);
@@ -317,7 +326,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         toVotes = new uint256[](1);
 
         fromGroups[0] = fromGroup;
-        fromVotes[0] = Math.min(realFromCelo - expectedFromCelo, expectedToCelo - realToCelo);
+        fromVotes[0] = Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo);
 
         toGroups[0] = toGroup;
         toVotes[0] = fromVotes[0];

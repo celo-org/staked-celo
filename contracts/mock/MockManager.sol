@@ -6,7 +6,7 @@ import "../interfaces/IManager.sol";
 /**
  * @notice This is a simple mock exposing the stCelo-facing Manager API as
  * simple functions that
- * 1. Return currently locked stCelo.
+ * 1. Return currently locked stCELO.
  */
 contract MockManager is IManager {
     struct MockTransfer {
