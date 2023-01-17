@@ -17,7 +17,6 @@ import {
   activateAndVoteTest,
   activateValidators,
   ADDRESS_ZERO,
-  electMinimumNumberOfValidators,
   electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
@@ -144,8 +143,6 @@ describe("Vote", async function (this: any) {
         await registerValidatorGroup(groups[i]);
         await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
       }
-
-      await electMinimumNumberOfValidators(groups, voter);
     } catch (error) {
       console.error(error);
     }

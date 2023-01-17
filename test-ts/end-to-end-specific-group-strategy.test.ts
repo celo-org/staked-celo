@@ -17,7 +17,6 @@ import {
   activateValidators,
   allowStrategies,
   distributeEpochRewards,
-  electMinimumNumberOfValidators,
   electMockValidatorGroupsAndUpdate,
   getGroupsSafe,
   getRealVsExpectedCeloForGroups,
@@ -116,8 +115,6 @@ describe("e2e specific group strategy voting", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
-    await electMinimumNumberOfValidators(groups, voter);
-
     specificGroupStrategyDifferentFromActive = groups[5];
     specificGroupStrategySameAsActive = groups[0];
   });
@@ -334,12 +331,7 @@ describe("e2e specific group strategy voting", () => {
   }
 
   async function rebalanceAllAndActivate() {
-    await rebalanceGroups(
-      managerContract,
-      groupHealthContract as unknown as GroupHealth,
-      specificGroupStrategyContract,
-      defaultStrategy
-    );
+    await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
     await revoke(hre, depositor0);
     await activateAndVoteTest();
   }

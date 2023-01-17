@@ -15,7 +15,6 @@ import {
   activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
-  electMinimumNumberOfValidators,
   electMockValidatorGroupsAndUpdate,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
@@ -93,7 +92,6 @@ describe("e2e", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
-    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -127,40 +125,30 @@ describe("e2e", () => {
     );
   });
 
+  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("1"));
+  const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("2"));
+  const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("3.5"));
+
   it("deposit and withdraw", async () => {
-    const amountOfCeloToDeposit = hre.ethers.BigNumber.from("10000000000000000");
-    const rewardsGroup0 = hre.ethers.BigNumber.from("1000000000000000000");
-    const rewardsGroup1 = hre.ethers.BigNumber.from("2000000000000000000");
-    const rewardsGroup2 = hre.ethers.BigNumber.from("3500000000000000000");
+    const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
 
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
-    let depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
-    expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+    expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
 
     await activateAndVoteTest();
     await mineToNextEpoch(hre.web3);
     await activateAndVoteTest();
 
-    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
-    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
-    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
-    await rebalanceGroups(
-      managerContract,
-      groupHealthContract as unknown as GroupHealth,
-      specificGroupStrategyContract,
-      defaultStrategyContract
-    );
+    await distributeAllRewards();
+
+    await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
     await revoke(hre, depositor0);
     await activateAndVoteTest();
 
-    const withdrawStakedCelo = await managerContract
-      .connect(depositor1)
-      .withdraw(amountOfCeloToDeposit);
-    await withdrawStakedCelo.wait();
+    await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
 
-    depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
-    expect(depositor1StakedCeloBalance).to.eq(0);
+    expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(0);
 
     await hre.run(ACCOUNT_WITHDRAW, {
       beneficiary: depositor1.address,
@@ -172,25 +160,16 @@ describe("e2e", () => {
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
 
-    const { timestamps } = await accountContract.getPendingWithdrawals(depositor1.address);
-
-    for (let i = 0; i < timestamps.length; i++) {
-      const finishPendingWithdrawal = await accountContract.finishPendingWithdrawal(
-        depositor1.address,
-        0,
-        0
-      );
-      await finishPendingWithdrawal.wait();
-    }
+    await finishPendingWithdrawals(depositor1.address);
 
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
-    const depositor2StakedCeloBalance = await stakedCeloContract.balanceOf(depositor2.address);
-    expect(
-      depositor2StakedCeloBalance.gt(0) && depositor2StakedCeloBalance.lt(amountOfCeloToDeposit)
-    ).to.be.true;
 
-    const depositor0StakedCeloBalance = await stakedCeloContract.balanceOf(depositor0.address);
-    expect(depositor0StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+    expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
+      await managerContract.toStakedCelo(amountOfCeloToDeposit)
+    );
+
+    expect(await stakedCeloContract.balanceOf(depositor0.address)).to.eq(amountOfCeloToDeposit);
+
     const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
     expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
 
@@ -198,9 +177,20 @@ describe("e2e", () => {
       .sub(depositor1BeforeWithdrawalBalance)
       .sub(amountOfCeloToDeposit);
 
-    expect(rewardsReceived).to.be.closeTo(
-      rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(301),
-      hre.ethers.BigNumber.from("100000000000000")
-    );
+    expect(rewardsReceived).to.deep.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(2));
   });
+
+  async function distributeAllRewards() {
+    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
+    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
+  }
+
+  async function finishPendingWithdrawals(address: string) {
+    const { timestamps } = await accountContract.getPendingWithdrawals(address);
+
+    for (let i = 0; i < timestamps.length; i++) {
+      await accountContract.finishPendingWithdrawal(address, 0, 0);
+    }
+  }
 });

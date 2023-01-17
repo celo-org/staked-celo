@@ -28,7 +28,6 @@ import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
   electGroup,
-  electMinimumNumberOfValidators,
   electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   impersonateAccount,
@@ -190,8 +189,6 @@ describe("Manager", () => {
         const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
         await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
       }
-
-      await electMinimumNumberOfValidators(groups, voter); // first 10 groups
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
     } catch (error) {

@@ -19,7 +19,6 @@ import {
   activateAndVoteTest,
   activateValidators,
   distributeEpochRewards,
-  electMinimumNumberOfValidators,
   electMockValidatorGroupsAndUpdate,
   impersonateAccount,
   mineToNextEpoch,
@@ -95,8 +94,6 @@ describe("e2e governance vote", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
-
-    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {

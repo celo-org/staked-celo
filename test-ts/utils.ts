@@ -227,23 +227,6 @@ export async function activateVotesForGroup(voter: SignerWithAddress) {
   await Promise.all(txs);
 }
 
-export async function electMinimumNumberOfValidators(
-  groups: SignerWithAddress[],
-  voter: SignerWithAddress
-) {
-  const election = await kit.contracts.getElection();
-  const { min } = await election.electableValidators();
-  const txs: Promise<void>[] = [];
-  for (let i = 0; i < min.toNumber(); i++) {
-    const tx = voteForGroup(groups[i].address, voter);
-    txs.push(tx);
-  }
-
-  await Promise.all(txs);
-  await mineToNextEpoch(kit.web3);
-  await activateVotesForGroup(voter);
-}
-
 export async function electGroup(groupAddress: string, voter: SignerWithAddress) {
   await voteForGroup(groupAddress, voter);
   await mineToNextEpoch(kit.web3);
@@ -527,7 +510,6 @@ export async function getRealVsExpectedCeloForGroups(managerContract: Manager, g
 
 export async function rebalanceGroups(
   managerContract: Manager,
-  groupHealthContract: GroupHealth,
   specificGroupStrategy: SpecificGroupStrategy,
   defaultStrategy: DefaultStrategy
 ) {
