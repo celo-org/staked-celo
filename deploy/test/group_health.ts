@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer, owner } = await hre.getNamedAccounts();
 
-  await deploy("GroupHealth", {
+  await deploy("MockGroupHealth", {
     from: deployer,
     log: true,
     proxy: {

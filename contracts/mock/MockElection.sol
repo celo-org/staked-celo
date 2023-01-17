@@ -40,22 +40,6 @@ contract MockElection is IElection {
 
     // ---- interface functions ----
 
-    function electValidatorSigners() external view returns (address[] memory) {
-        // silence complier error that this function can be pure
-        activateReturnValue;
-
-        address[] memory arr;
-        return arr;
-    }
-
-    function electNValidatorSigners(uint256, uint256) external view returns (address[] memory) {
-        // silence complier error that this function can be pure
-        activateReturnValue;
-
-        address[] memory arr;
-        return arr;
-    }
-
     function vote(
         address,
         uint256,
@@ -147,7 +131,60 @@ contract MockElection is IElection {
         return 0;
     }
 
+    // only owner
+    function setElectableValidators(uint256, uint256) external returns (bool) {
+        // silence complier error that this function can be view / pure
+        activateReturnValue = activateReturnValue;
+
+        return true;
+    }
+
+    function setMaxNumGroupsVotedFor(uint256) external returns (bool) {
+        // silence complier error that this function can be view / pure
+        activateReturnValue = activateReturnValue;
+
+        return true;
+    }
+
+    function setElectabilityThreshold(uint256) external returns (bool) {
+        // silence complier error that this function can be view / pure
+        activateReturnValue = activateReturnValue;
+
+        return true;
+    }
+
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external {
+        allowedToVoteOverMaxNumberOfGroupsMapping[msg.sender] = flag;
+    }
+
+    // only VM
+    function distributeEpochRewards(
+        address,
+        uint256,
+        address,
+        address
+    ) external {
+        // silence complier error that this function can be view / pure
+        activateReturnValue = activateReturnValue;
+    }
+
     // view functions
+    function electValidatorSigners() external view returns (address[] memory) {
+        // silence complier error that this function can be pure
+        activateReturnValue;
+
+        address[] memory arr;
+        return arr;
+    }
+
+    function electNValidatorSigners(uint256, uint256) external view returns (address[] memory) {
+        // silence complier error that this function can be pure
+        activateReturnValue;
+
+        address[] memory arr;
+        return arr;
+    }
+
     function getElectableValidators() external view returns (uint256, uint256) {
         // silence complier error that this function can be pure
         activateReturnValue;
@@ -305,44 +342,19 @@ contract MockElection is IElection {
         return hasActivatablePendingVotesReturnValue;
     }
 
-    // only owner
-    function setElectableValidators(uint256, uint256) external returns (bool) {
-        // silence complier error that this function can be view / pure
-        activateReturnValue = activateReturnValue;
-
-        return true;
-    }
-
-    function setMaxNumGroupsVotedFor(uint256) external returns (bool) {
-        // silence complier error that this function can be view / pure
-        activateReturnValue = activateReturnValue;
-
-        return true;
-    }
-
-    function setElectabilityThreshold(uint256) external returns (bool) {
-        // silence complier error that this function can be view / pure
-        activateReturnValue = activateReturnValue;
-
-        return true;
-    }
-
-    // only VM
-    function distributeEpochRewards(
-        address,
-        uint256,
-        address,
-        address
-    ) external {
-        // silence complier error that this function can be view / pure
-        activateReturnValue = activateReturnValue;
-    }
-
     function allowedToVoteOverMaxNumberOfGroups(address) external view returns (bool) {
         return allowedToVoteOverMaxNumberOfGroupsMapping[msg.sender];
     }
 
-    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external {
-        allowedToVoteOverMaxNumberOfGroupsMapping[msg.sender] = flag;
+    function validatorSignerAddressFromCurrentSet(uint256 index) external view returns (address) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function numberValidatorsInCurrentSet() external view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getEpochNumber() external view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

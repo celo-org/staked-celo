@@ -8,6 +8,7 @@ import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
@@ -15,6 +16,7 @@ import {
   activateValidators,
   distributeEpochRewards,
   electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
@@ -23,6 +25,7 @@ import {
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
+  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 after(() => {
@@ -33,7 +36,7 @@ describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
   let defaultStrategyContract: DefaultStrategy;
-  let groupHealthContract: GroupHealth;
+  let groupHealthContract: MockGroupHealth;
   let specificGroupStrategyContract: SpecificGroupStrategy;
 
   const deployerAccountName = "deployer";
@@ -103,10 +106,22 @@ describe("e2e", () => {
     specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+
+    groupHealthContract = await upgradeToMockGroupHealthE2E(
+      multisigOwner0,
+      groupHealthContract as unknown as GroupHealth
+    );
+    const validatorWrapper = await hre.kit.contracts.getValidators();
+    await electMockValidatorGroupsAndUpdate(
+      validatorWrapper,
+      groupHealthContract,
+      activatedGroupAddresses
+    );
+
     await activateValidators(
       managerContract,
       defaultStrategyContract,
-      groupHealthContract,
+      groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
       activatedGroupAddresses
     );
@@ -132,7 +147,7 @@ describe("e2e", () => {
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
     await rebalanceGroups(
       managerContract,
-      groupHealthContract,
+      groupHealthContract as unknown as GroupHealth,
       specificGroupStrategyContract,
       defaultStrategyContract
     );

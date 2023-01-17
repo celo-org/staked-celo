@@ -14,6 +14,14 @@ import "./interfaces/IDefaultStrategy.sol";
 
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
+     * @notice Stores validity of group.
+     */
+    struct GroupValid {
+        uint256 epochSetToHealthy;
+        bool healthy;
+    }
+
+    /**
      * @notice An instance of the StakedCelo contract for the StakedCelo protocol.
      */
     IStakedCelo public stakedCelo;
@@ -37,6 +45,11 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice An instance of the Manager contract for the StakedCelo protocol.
      */
     IManager public manager;
+
+    /**
+     * @notice Mapping that stores health state of groups.
+     */
+    mapping(address => GroupValid) public groupsHealth;
 
     /**
      * @notice Used when a group does not meet the validator group health requirements.
@@ -71,6 +84,18 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param expectedCelo The expected Celo value.
      */
     error RebalanceEnoughCelo(address group, uint256 realCelo, uint256 expectedCelo);
+
+    /**
+     * @notice Used when updating validator group health more than once in epoch.
+     * @param group The group's address.
+     */
+    error ValidatorGroupAlreadyUpdatedInEpoch(address group);
+
+    /**
+     * @notice Used when checking elected validator group members
+     * but there is member length and indexes length mismatch.
+     */
+    error MembersLengthMismatch();
 
     /**
      * @notice Initialize the contract with registry and owner.
@@ -134,36 +159,73 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if a group meets the validator group health requirements.
+     * @notice Updates validator group health.
      * @param group The group to check for.
+     * @param membersElectedIndex The indexes of elected members.
+     * This array needs to have same length as all (even not elected) members of validator group.
+     * Index of not elected member can be whatever uint256 number.
      * @return Whether or not the group is valid.
      */
-    function isValidGroup(address group) public view returns (bool) {
+    function updateGroupHealth(address group, uint256[] calldata membersElectedIndex)
+        public
+        returns (bool)
+    {
+        GroupValid storage groupHealth = groupsHealth[group];
+        uint256 currentEpoch = getElection().getEpochNumber();
+        if (groupHealth.epochSetToHealthy >= currentEpoch) {
+            revert ValidatorGroupAlreadyUpdatedInEpoch(group);
+        }
+
         IValidators validators = getValidators();
 
         // add check if group is !registered
         if (!validators.isValidatorGroup(group)) {
+            groupsHealth[group].healthy = false;
             return false;
         }
 
         (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
             .getValidatorGroup(group);
-
         // check if group has no members
         if (members.length == 0) {
+            groupsHealth[group].healthy = false;
             return false;
         }
         // check for recent slash
         if (slashMultiplier < 10**24) {
+            groupsHealth[group].healthy = false;
             return false;
         }
+        if (membersElectedIndex.length != members.length) {
+            revert MembersLengthMismatch();
+        }
+        uint256 currentNumberOfElectedValidators = numberValidatorsInCurrentSet();
         // check that at least one member is elected.
         for (uint256 i = 0; i < members.length; i++) {
-            if (isGroupMemberElected(members[i])) {
+            if (
+                isGroupMemberElected(
+                    members[i],
+                    membersElectedIndex[i],
+                    currentNumberOfElectedValidators
+                )
+            ) {
+                groupsHealth[group].healthy = true;
+                groupsHealth[group].epochSetToHealthy = currentEpoch;
                 return true;
             }
         }
+        groupsHealth[group].healthy = false;
         return false;
+    }
+
+    /**
+     * @notice Returns health state of validator group.
+     * @param group The group to check for.
+     * @return Whether or not the group is valid.
+     */
+    function isValidGroup(address group) public view returns (bool) {
+        GroupValid memory groupValid = groupsHealth[group];
+        return groupValid.healthy;
     }
 
     /**
@@ -187,14 +249,8 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 specificGroupStrategy.getTotalStCeloVotesForStrategy(group)
             );
         } else if (!isSpecificGroupStrategy && isActiveGroup) {
-            expectedCelo = manager.toCelo(
-                defaultStrategy.getTotalStCeloVotesForStrategy(group)
-                // defaultStrategy.getTotalStCeloInDefaultStrategy() /
-                //     defaultStrategy.getGroupsLength()
-            );
+            expectedCelo = manager.toCelo(defaultStrategy.getTotalStCeloVotesForStrategy(group));
         } else if (isSpecificGroupStrategy && isActiveGroup) {
-            // uint256 expectedStCeloInActiveGroup = defaultStrategy
-            //     .getTotalStCeloInDefaultStrategy() / defaultStrategy.getGroupsLength();
             uint256 expectedStCeloInActiveGroup = defaultStrategy.getTotalStCeloVotesForStrategy(
                 group
             );
@@ -270,19 +326,40 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Checks if a group member is elected.
      * @param groupMember The member of the group to check election status for.
+     * @param index The index of elected validator in current set.
+     * @param currentNumberOfElectedValidators The count of currently elected validators.
      * @return Whether or not the group member is elected.
      */
-    function isGroupMemberElected(address groupMember) private view returns (bool) {
-        IElection election = getElection();
-
-        address[] memory electedValidatorSigners = election.electValidatorSigners();
-
-        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
-            if (electedValidatorSigners[i] == groupMember) {
-                return true;
-            }
+    function isGroupMemberElected(
+        address groupMember,
+        uint256 index,
+        uint256 currentNumberOfElectedValidators
+    ) internal view returns (bool) {
+        if (index > currentNumberOfElectedValidators) {
+            return false;
         }
+        return validatorSignerAddressFromCurrentSet(index) == groupMember;
+    }
 
-        return false;
+    /**
+     * @notice Gets a validator address from the current validator set.
+     * @param index Index of requested validator in the validator set.
+     * @return Address of validator at the requested index.
+     */
+    function validatorSignerAddressFromCurrentSet(uint256 index)
+        internal
+        view
+        virtual
+        returns (address)
+    {
+        return getElection().validatorSignerAddressFromCurrentSet(index);
+    }
+
+    /**
+     * @notice Gets the size of the current elected validator set.
+     * @return Size of the current elected validator set.
+     */
+    function numberValidatorsInCurrentSet() internal view virtual returns (uint256) {
+        return getElection().numberValidatorsInCurrentSet();
     }
 }

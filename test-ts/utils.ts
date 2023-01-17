@@ -1,4 +1,6 @@
 import { CeloTxReceipt } from "@celo/connect";
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
 import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
@@ -11,8 +13,10 @@ import {
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
@@ -264,6 +268,8 @@ export async function updateGroupSlashingMultiplier(
 
   await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
   await validatorsContract.connect(mockSlasher).halveSlashingMultiplier(group.address);
+
+  await mineToNextEpoch(hre.web3);
 }
 
 // ---- Account utils ----
@@ -564,4 +570,76 @@ export async function rebalanceGroups(
   }
 
   console.log("Rebalance finished!");
+}
+
+export async function electMockValidatorGroupsAndUpdate(
+  validators: ValidatorsWrapper,
+  groupHealthContract: MockGroupHealth,
+  validatorGroups: string[],
+  revoke = false
+) {
+  let validatorsProcessed = 0;
+
+  for (let j = 0; j < validatorGroups.length; j++) {
+    const validatorGroup = validatorGroups[j];
+    const isValidatorGroup = await validators.isValidatorGroup(validatorGroup);
+    const groupIndexes: number[] = [];
+
+    if (isValidatorGroup) {
+      const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
+      for (let i = 0; i < validatorGroupDetail.members.length; i++) {
+        const mockIndex = validatorsProcessed++;
+        await groupHealthContract.setElectedValidator(
+          mockIndex,
+          revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
+        );
+        groupIndexes.push(mockIndex);
+      }
+    }
+
+    await groupHealthContract.updateGroupHealth(validatorGroup, groupIndexes);
+  }
+}
+
+export async function revokeElectionOnMockValidatorGroupsAndUpdate(
+  validators: ValidatorsWrapper,
+  groupHealthContract: MockGroupHealth,
+  validatorGroups: string[]
+) {
+  await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, validatorGroups, true);
+}
+
+// Since Ganache doesn't support Celo pre-compiles we need to mock some methods to be able to use GroupHealth in e2e tests
+export async function upgradeToMockGroupHealthE2E(
+  multisigOwner: SignerWithAddress,
+  groupHealthContract: GroupHealth
+) {
+  const mockGroupHealthFactory: MockGroupHealth__factory = (
+    await hre.ethers.getContractFactory("MockGroupHealth")
+  ).connect(multisigOwner) as MockGroupHealth__factory;
+  const mockGroupHealth = await mockGroupHealthFactory.deploy();
+
+  await submitAndExecuteProposal(
+    multisigOwner.address,
+    [groupHealthContract.address],
+    ["0"],
+    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])]
+  );
+
+  return mockGroupHealthFactory.attach(groupHealthContract.address);
+}
+
+export async function getIndexesOfElectedValidatorGroupMembers(
+  election: ElectionWrapper,
+  validators: ValidatorsWrapper,
+  validatorGroup: string
+) {
+  const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
+  const currentValidatorSigners = await election.getCurrentValidatorSigners();
+  const finalIndexes: number[] = [];
+  for (const member of validatorGroupDetail.members) {
+    const index = currentValidatorSigners.indexOf(member);
+    finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
+  }
+  return finalIndexes;
 }

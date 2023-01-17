@@ -12,6 +12,7 @@ import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
 import {
@@ -19,6 +20,7 @@ import {
   activateValidators,
   distributeEpochRewards,
   electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   impersonateAccount,
   mineToNextEpoch,
   randomSigner,
@@ -26,6 +28,7 @@ import {
   registerValidatorGroup,
   resetNetwork,
   timeTravel,
+  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 after(() => {
@@ -37,7 +40,7 @@ describe("e2e governance vote", () => {
   let managerContract: Manager;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
-  let groupHealthContract: GroupHealth;
+  let groupHealthContract: MockGroupHealth;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
@@ -116,10 +119,22 @@ describe("e2e governance vote", () => {
     });
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+
+    groupHealthContract = await upgradeToMockGroupHealthE2E(
+      multisigOwner0,
+      groupHealthContract as unknown as GroupHealth
+    );
+    const validatorWrapper = await hre.kit.contracts.getValidators();
+    await electMockValidatorGroupsAndUpdate(
+      validatorWrapper,
+      groupHealthContract,
+      activatedGroupAddresses
+    );
+
     await activateValidators(
       managerContract,
       defaultStrategyContract,
-      groupHealthContract,
+      groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
       activatedGroupAddresses
     );

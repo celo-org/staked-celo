@@ -11,12 +11,14 @@ import hre from "hardhat";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
   activateValidators,
   ADDRESS_ZERO,
   electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
   randomSigner,
@@ -26,13 +28,14 @@ import {
   setGovernanceConcurrentProposals,
   submitAndExecuteProposal,
   timeTravel,
+  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
-  let groupHealthContract: GroupHealth;
+  let groupHealthContract: MockGroupHealth;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
   let defaultStrategyContract: DefaultStrategy;
@@ -98,49 +101,54 @@ describe("Vote", async function (this: any) {
   }
 
   before(async () => {
-    await resetNetwork();
+    try {
+      await resetNetwork();
 
-    process.env = {
-      ...process.env,
-      TIME_LOCK_MIN_DELAY: "1",
-      TIME_LOCK_DELAY: "1",
-      MULTISIG_REQUIRED_CONFIRMATIONS: "1",
-      VALIDATOR_GROUPS: "",
-    };
+      process.env = {
+        ...process.env,
+        TIME_LOCK_MIN_DELAY: "1",
+        TIME_LOCK_DELAY: "1",
+        MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+        VALIDATOR_GROUPS: "",
+      };
 
-    [depositor0] = await randomSigner(parseUnits("300"));
-    [depositor1] = await randomSigner(parseUnits("300"));
-    [nonStakedCelo] = await randomSigner(parseUnits("100"));
-    [nonOwner] = await randomSigner(parseUnits("100"));
-    [nonAccount] = await randomSigner(parseUnits("100"));
-    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    [voter] = await randomSigner(parseUnits("300"));
-    const accounts = await hre.kit.contracts.getAccounts();
-    await accounts.createAccount().sendAndWaitForReceipt({
-      from: voter.address,
-    });
+      [depositor0] = await randomSigner(parseUnits("300"));
+      [depositor1] = await randomSigner(parseUnits("300"));
+      [nonStakedCelo] = await randomSigner(parseUnits("100"));
+      [nonOwner] = await randomSigner(parseUnits("100"));
+      [nonAccount] = await randomSigner(parseUnits("100"));
+      multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+      [voter] = await randomSigner(parseUnits("300"));
+      const accounts = await hre.kit.contracts.getAccounts();
+      await accounts.createAccount().sendAndWaitForReceipt({
+        from: voter.address,
+      });
 
-    groups = [];
-    activatedGroupAddresses = [];
-    groupAddresses = [];
-    validators = [];
-    validatorAddresses = [];
-    for (let i = 0; i < 10; i++) {
-      const [group] = await randomSigner(parseUnits("11000"));
-      groups.push(group);
-      if (i < 3) {
-        activatedGroupAddresses.push(groups[i].address);
+      groups = [];
+      activatedGroupAddresses = [];
+      groupAddresses = [];
+      validators = [];
+      validatorAddresses = [];
+
+      for (let i = 0; i < 10; i++) {
+        const [group] = await randomSigner(parseUnits("11000"));
+        groups.push(group);
+        if (i < 3) {
+          activatedGroupAddresses.push(groups[i].address);
+        }
+        groupAddresses.push(groups[i].address);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        validators.push(validator);
+        validatorAddresses.push(validators[i].address);
+
+        await registerValidatorGroup(groups[i]);
+        await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
       }
-      groupAddresses.push(groups[i].address);
-      const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      validators.push(validator);
-      validatorAddresses.push(validators[i].address);
 
-      await registerValidatorGroup(groups[i]);
-      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
+      await electMinimumNumberOfValidators(groups, voter);
+    } catch (error) {
+      console.error(error);
     }
-
-    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
@@ -151,11 +159,21 @@ describe("Vote", async function (this: any) {
     voteContract = await hre.ethers.getContract("Vote");
     defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
-    const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+    groupHealthContract = await upgradeToMockGroupHealthE2E(
+      multisigOwner0,
+      groupHealthContract as unknown as GroupHealth
+    );
+    const validatorWrapper = await hre.kit.contracts.getValidators();
+    await electMockValidatorGroupsAndUpdate(
+      validatorWrapper,
+      groupHealthContract,
+      activatedGroupAddresses
+    );
+
     await activateValidators(
       managerContract,
       defaultStrategyContract,
-      groupHealthContract,
+      groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
       activatedGroupAddresses
     );

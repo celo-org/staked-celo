@@ -4,9 +4,9 @@ import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
-import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { ADDRESS_ZERO, getImpersonatedSigner, randomSigner, resetNetwork } from "./utils";
 
@@ -18,7 +18,7 @@ describe("DefaultStrategy", () => {
   let account: MockAccount;
 
   let manager: Manager;
-  let groupHealthContract: GroupHealth;
+  let groupHealthContract: MockGroupHealth;
   let specificGroupStrategyContract: SpecificGroupStrategy;
   let defaultStrategyContract: DefaultStrategy;
   let nonVote: SignerWithAddress;
@@ -39,7 +39,7 @@ describe("DefaultStrategy", () => {
 
       await hre.deployments.fixture("FullTestManager");
       manager = await hre.ethers.getContract("Manager");
-      groupHealthContract = await hre.ethers.getContract("GroupHealth");
+      groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
       defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategyFull");
 

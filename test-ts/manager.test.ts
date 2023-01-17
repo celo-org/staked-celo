@@ -13,10 +13,10 @@ import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry
 import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
 import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
-import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategyFull } from "../typechain-types/MockDefaultStrategyFull";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
@@ -29,8 +29,10 @@ import {
   deregisterValidatorGroup,
   electGroup,
   electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   impersonateAccount,
+  mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorAndOnlyAffiliateToGroup,
@@ -38,6 +40,7 @@ import {
   REGISTRY_ADDRESS,
   removeMembersFromGroup,
   resetNetwork,
+  revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupSlashingMultiplier,
 } from "./utils";
 
@@ -56,7 +59,7 @@ describe("Manager", () => {
   let registryContract: MockRegistry;
 
   let manager: Manager;
-  let groupHealthContract: GroupHealth;
+  let groupHealthContract: MockGroupHealth;
   let specificGroupStrategyContract: SpecificGroupStrategy;
   let defaultStrategyContract: MockDefaultStrategyFull;
   let nonVote: SignerWithAddress;
@@ -90,7 +93,7 @@ describe("Manager", () => {
 
       await hre.deployments.fixture("FullTestManager");
       manager = await hre.ethers.getContract("Manager");
-      groupHealthContract = await hre.ethers.getContract("GroupHealth");
+      groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
       defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategyFull");
 
@@ -189,6 +192,8 @@ describe("Manager", () => {
       }
 
       await electMinimumNumberOfValidators(groups, voter); // first 10 groups
+
+      await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
     } catch (error) {
       console.error(error);
     }
@@ -228,7 +233,6 @@ describe("Manager", () => {
     describe("when group is not registered", () => {
       it("reverts when trying to add an unregistered group", async () => {
         const [unregisteredGroup] = await randomSigner(parseUnits("100"));
-
         await expect(defaultStrategyContract.activateGroup(unregisteredGroup.address)).revertedWith(
           `GroupNotEligible("${unregisteredGroup.address}")`
         );
@@ -254,6 +258,10 @@ describe("Manager", () => {
     describe("when group is not elected", () => {
       it("reverts when trying to add non elected group", async () => {
         const nonElectedGroup = groups[10];
+        await mineToNextEpoch(hre.web3);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          nonElectedGroup.address,
+        ]);
         await expect(defaultStrategyContract.activateGroup(nonElectedGroup.address)).revertedWith(
           `GroupNotEligible("${nonElectedGroup.address}")`
         );
@@ -261,27 +269,39 @@ describe("Manager", () => {
     });
 
     describe("when group has 3 validators, but only 1 is elected.", () => {
-      let gloup: SignerWithAddress;
+      let validatorGroupWithThreeValidators: SignerWithAddress;
       beforeEach(async () => {
-        [gloup] = await randomSigner(parseUnits("31000"));
-        await registerValidatorGroup(gloup);
+        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
+        const memberCount = 3;
+        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
 
-        for (let i = 0; i < 3; i++) {
+        const electedValidatorIndex = 0;
+
+        for (let i = 0; i < memberCount; i++) {
           const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+          await registerValidatorAndAddToGroupMembers(
+            validatorGroupWithThreeValidators,
+            validator,
+            validatorWallet
+          );
 
-          if (i === 2) {
-            await registerValidatorAndAddToGroupMembers(gloup, validator, validatorWallet);
-            await electGroup(gloup.address, someone);
-          } else {
-            await registerValidatorAndOnlyAffiliateToGroup(gloup, validator, validatorWallet);
+          if (i === memberCount - 1) {
+            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
           }
         }
+        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address, [
+          Number.MAX_SAFE_INTEGER.toString(),
+          Number.MAX_SAFE_INTEGER.toString(),
+          electedValidatorIndex,
+        ]);
       });
 
       it("emits a GroupActivated event", async () => {
-        await expect(defaultStrategyContract.activateGroup(gloup.address))
+        await expect(
+          defaultStrategyContract.activateGroup(validatorGroupWithThreeValidators.address)
+        )
           .to.emit(defaultStrategyContract, "GroupActivated")
-          .withArgs(gloup.address);
+          .withArgs(validatorGroupWithThreeValidators.address);
       });
     });
 
@@ -476,6 +496,10 @@ describe("Manager", () => {
     describe("when group is not elected", () => {
       it("reverts when trying to add non elected group", async () => {
         const nonElectedGroup = groups[10];
+        await mineToNextEpoch(hre.web3);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          groups[10].address,
+        ]);
         await expect(
           specificGroupStrategyContract.allowStrategy(nonElectedGroup.address)
         ).revertedWith(`StrategyNotEligible("${nonElectedGroup.address}")`);
@@ -483,27 +507,40 @@ describe("Manager", () => {
     });
 
     describe("when group has 3 validators, but only 1 is elected.", () => {
-      let gloup: SignerWithAddress;
+      let validatorGroupWithThreeValidators: SignerWithAddress;
       beforeEach(async () => {
-        [gloup] = await randomSigner(parseUnits("31000"));
-        await registerValidatorGroup(gloup);
+        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
+        const memberCount = 3;
+        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
 
-        for (let i = 0; i < 3; i++) {
+        const electedValidatorIndex = 0;
+
+        for (let i = 0; i < memberCount; i++) {
           const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+          await registerValidatorAndAddToGroupMembers(
+            validatorGroupWithThreeValidators,
+            validator,
+            validatorWallet
+          );
 
-          if (i === 2) {
-            await registerValidatorAndAddToGroupMembers(gloup, validator, validatorWallet);
-            await electGroup(gloup.address, someone);
-          } else {
-            await registerValidatorAndOnlyAffiliateToGroup(gloup, validator, validatorWallet);
+          if (i === memberCount - 1) {
+            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
           }
         }
+        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address, [
+          Number.MAX_SAFE_INTEGER.toString(),
+          Number.MAX_SAFE_INTEGER.toString(),
+          electedValidatorIndex,
+        ]);
+        await defaultStrategyContract.activateGroup(validatorGroupWithThreeValidators.address);
       });
 
       it("emits a StrategyAllowed event", async () => {
-        await expect(specificGroupStrategyContract.allowStrategy(gloup.address))
+        await expect(
+          specificGroupStrategyContract.allowStrategy(validatorGroupWithThreeValidators.address)
+        )
           .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-          .withArgs(gloup.address);
+          .withArgs(validatorGroupWithThreeValidators.address);
       });
     });
 
@@ -747,20 +784,10 @@ describe("Manager", () => {
 
     describe("when the group is not elected", () => {
       beforeEach(async () => {
-        const groupVotes = await election.getVotesForGroupByAccount(
-          voter.address,
-          deprecatedGroup.address
-        );
-
-        const revokeTx = await election.revoke(
-          voter.address,
-          deprecatedGroup.address,
-          groupVotes.active
-        );
-        for (let i = 0; i < revokeTx.length; i++) {
-          await revokeTx[i].sendAndWaitForReceipt({ from: voter.address });
-        }
-        await electGroup(groups[10].address, someone);
+        await mineToNextEpoch(hre.web3);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          groupAddresses[1],
+        ]);
       });
 
       it("should deprecate group", async () => {
@@ -773,6 +800,10 @@ describe("Manager", () => {
     describe("when the group is not registered", () => {
       beforeEach(async () => {
         await deregisterValidatorGroup(deprecatedGroup);
+        await mineToNextEpoch(hre.web3);
+        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          deprecatedGroup.address,
+        ]);
       });
 
       it("should deprecate group", async () => {
@@ -786,6 +817,10 @@ describe("Manager", () => {
       // if voting for a group that has no members, i get no rewards.
       beforeEach(async () => {
         await removeMembersFromGroup(deprecatedGroup);
+        await mineToNextEpoch(hre.web3);
+        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          deprecatedGroup.address,
+        ]);
       });
 
       it("should deprecate group", async () => {
@@ -796,28 +831,38 @@ describe("Manager", () => {
     });
 
     describe("when group has 3 validators, but only 1 is elected.", () => {
-      let gloups: SignerWithAddress;
+      let validatorGroupWithThreeValidators: SignerWithAddress;
       beforeEach(async () => {
-        [gloups] = await randomSigner(parseUnits("21000"));
-        await registerValidatorGroup(gloups);
+        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
+        const memberCount = 3;
+        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
 
-        for (let i = 0; i < 3; i++) {
+        const electedValidatorIndex = 0;
+
+        for (let i = 0; i < memberCount; i++) {
           const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+          await registerValidatorAndAddToGroupMembers(
+            validatorGroupWithThreeValidators,
+            validator,
+            validatorWallet
+          );
 
-          if (i === 2) {
-            await registerValidatorAndAddToGroupMembers(gloups, validator, validatorWallet);
-            await electGroup(gloups.address, someone);
-          } else {
-            await registerValidatorAndOnlyAffiliateToGroup(gloups, validator, validatorWallet);
+          if (i === memberCount - 1) {
+            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
           }
         }
-        await defaultStrategyContract.activateGroup(gloups.address);
+        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address, [
+          Number.MAX_SAFE_INTEGER.toString(),
+          Number.MAX_SAFE_INTEGER.toString(),
+          electedValidatorIndex,
+        ]);
+        await defaultStrategyContract.activateGroup(validatorGroupWithThreeValidators.address);
       });
 
       it("should revert with Healthy group message", async () => {
-        await expect(defaultStrategyContract.deprecateUnhealthyGroup(gloups.address)).revertedWith(
-          `HealthyGroup("${gloups.address}")`
-        );
+        await expect(
+          defaultStrategyContract.deprecateUnhealthyGroup(validatorGroupWithThreeValidators.address)
+        ).revertedWith(`HealthyGroup("${validatorGroupWithThreeValidators.address}")`);
       });
     });
 
@@ -830,6 +875,10 @@ describe("Manager", () => {
           deprecatedGroup,
           mockSlasher
         );
+        await mineToNextEpoch(hre.web3);
+        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          deprecatedGroup.address,
+        ]);
       });
 
       it("should deprecate group", async () => {
@@ -1233,6 +1282,11 @@ describe("Manager", () => {
           groups[4],
           mockSlasher
         );
+        await mineToNextEpoch(hre.web3);
+        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+          groups[4].address,
+        ]);
+
         await manager.connect(depositor).deposit({ value: 100 });
       });
 
@@ -2581,6 +2635,10 @@ describe("Manager", () => {
         slashedGroup,
         mockSlasher
       );
+      await mineToNextEpoch(hre.web3);
+      await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+        slashedGroup.address,
+      ]);
       await expect(manager.changeStrategy(slashedGroup.address)).revertedWith(
         `GroupNotEligible("${slashedGroup.address}")`
       );
