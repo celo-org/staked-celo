@@ -7,6 +7,7 @@
     "ordering": "error",
     "max-line-length": ["error", 100],
     "private-vars-leading-underscore": "off",
-    "not-rely-on-time": "off"
+    "not-rely-on-time": "off",
+    "reason-string": ["warn",{"maxLength":100}]
   }
 }
