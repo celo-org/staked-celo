@@ -1260,7 +1260,7 @@ describe("Manager", () => {
         manager
           .connect(ownerSigner)
           .setDependencies(ADDRESS_ZERO, nonAccount.address, nonVote.address)
-      ).revertedWith("stakedCelo null address");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero account address", async () => {
@@ -1268,7 +1268,7 @@ describe("Manager", () => {
         manager
           .connect(ownerSigner)
           .setDependencies(nonStakedCelo.address, ADDRESS_ZERO, nonVote.address)
-      ).revertedWith("account null address");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero vote address", async () => {
@@ -1276,7 +1276,7 @@ describe("Manager", () => {
         manager
           .connect(ownerSigner)
           .setDependencies(nonStakedCelo.address, nonAccount.address, ADDRESS_ZERO)
-      ).revertedWith("vote null address");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("sets the vote contract", async () => {
