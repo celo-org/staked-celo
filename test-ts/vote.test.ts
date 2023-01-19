@@ -22,7 +22,6 @@ import {
   registerValidatorGroup,
   resetNetwork,
   setGovernanceConcurrentProposals,
-  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
 
@@ -145,7 +144,6 @@ describe("Vote", async function (this: any) {
     managerContract = await hre.ethers.getContract("Manager");
     voteContract = await hre.ethers.getContract("Vote");
 
-    const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
     await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
   });
 
@@ -163,26 +161,11 @@ describe("Vote", async function (this: any) {
     });
   });
 
-  describe("#setReferendumDuration()", () => {
+  describe("#getReferendumDuration()", () => {
     it("should return same as governance referendum", async () => {
       const governanceStageDurations = await governanceWrapper.stageDurations();
-      const referendumDuration = await voteContract.referendumDuration();
+      const referendumDuration = await voteContract.getReferendumDuration();
       expect(referendumDuration.toString()).to.eq(governanceStageDurations.Referendum.toString());
-    });
-
-    it("should set new referendum duration and return same as governance", async () => {
-      const governanceStageDurations = await governanceWrapper.stageDurations();
-      const newReferendumDuration = governanceStageDurations.Referendum;
-
-      await submitAndExecuteProposal(
-        multisigOwner0.address,
-        [voteContract.address],
-        ["0"],
-        [voteContract.interface.encodeFunctionData("setReferendumDuration")]
-      );
-
-      const referendumDuration = await voteContract.referendumDuration();
-      expect(referendumDuration).to.eq(newReferendumDuration);
     });
   });
 
@@ -415,7 +398,7 @@ describe("Vote", async function (this: any) {
     });
   });
 
-  describe("#getLockedStCeloInVotingView()", () => {
+  describe("#getLockedStCeloInVoting()", () => {
     const proposal1Id = 1;
     const proposal1Index = 0;
     const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
@@ -478,25 +461,26 @@ describe("Vote", async function (this: any) {
     });
   });
 
-  describe("#getLockedStCeloInVoting()", () => {
+  describe("#updateHistoryAndReturnLockedStCeloInVoting()", () => {
     const proposal1Id = 1;
     const proposal1Index = 0;
     const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
-
+    let managerSigner: SignerWithAddress;
     beforeEach(async () => {
       await depositAndActivate(depositor0, amountOfCeloToDeposit);
       await proposeNewProposal();
+      managerSigner = await getImpersonatedSigner(managerContract.address, parseUnits("100"));
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-        depositor0.address
-      );
-      const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+      const lockedStCeloInVoting = await voteContract
+        .connect(managerSigner)
+        .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
+      const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
 
       const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
         .topics as string[];
-      const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+      const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
         event.topics.some((topic) => topic == eventTopics[0])
       );
       const eventArgs = voteContract.interface.decodeEventLog(
@@ -523,14 +507,14 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return locked celo", async () => {
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+        const lockedStCeloInVoting = await voteContract
+          .connect(managerSigner)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
+        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
 
         const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
           .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
           event.topics.some((topic) => topic == eventTopics[0])
         );
         const eventArgs = voteContract.interface.decodeEventLog(
@@ -554,14 +538,14 @@ describe("Vote", async function (this: any) {
             .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+        const lockedStCeloInVoting = await voteContract
+          .connect(managerSigner)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
+        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
 
         const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
           .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
           event.topics.some((topic) => topic == eventTopics[0])
         );
         const eventArgs = voteContract.interface.decodeEventLog(
@@ -591,14 +575,14 @@ describe("Vote", async function (this: any) {
             abstainVotesRevote
           );
 
-        const lockedCeloInVoting = await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-          depositor0.address
-        );
-        const lockedCeloInVotingReceipt = await lockedCeloInVoting.wait();
+        const lockedStCeloInVoting = await voteContract
+          .connect(managerSigner)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
+        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
 
         const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
           .topics as string[];
-        const event = lockedCeloInVotingReceipt!.events?.find((event) =>
+        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
           event.topics.some((topic) => topic == eventTopics[0])
         );
         const eventArgs = voteContract.interface.decodeEventLog(
@@ -632,7 +616,7 @@ describe("Vote", async function (this: any) {
       const abstainVotesProposal3 = hre.web3.utils.toWei("4");
 
       beforeEach(async () => {
-        referendumDuration = await voteContract.referendumDuration();
+        referendumDuration = await voteContract.getReferendumDuration();
         await proposeNewProposal(false);
         await proposeNewProposal();
         await managerContract
@@ -681,9 +665,9 @@ describe("Vote", async function (this: any) {
         const dequeueFrequency = (await governanceWrapper.dequeueFrequency()).toNumber();
         await timeTravel(referendumDuration.toNumber() - dequeueFrequency + 1);
         await (
-          await managerContract.updateHistoryAndReturnLockedStCeloInVoting(
-            await depositor0.getAddress()
-          )
+          await voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(await depositor0.getAddress())
         ).wait();
         const proposal1Timestamp = await voteContract.proposalTimestamps(proposal1Id);
         const proposal2Timestamp = await voteContract.proposalTimestamps(proposal2Id);
@@ -744,24 +728,19 @@ describe("Vote", async function (this: any) {
 
     beforeEach(async () => {
       const voteOwner = await voteContract.owner();
-      ownerSigner = await getImpersonatedSigner(voteOwner);
-      const tx = await nonOwner.sendTransaction({
-        to: ownerSigner.address,
-        value: parseUnits("1"),
-      });
-      await tx.wait();
+      ownerSigner = await getImpersonatedSigner(voteOwner, parseUnits("1"));
     });
 
     it("reverts with zero stCelo address", async () => {
       await expect(
         voteContract.connect(ownerSigner).setDependencies(ADDRESS_ZERO, nonAccount.address)
-      ).revertedWith("stakedCelo null address");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero account address", async () => {
       await expect(
         voteContract.connect(ownerSigner).setDependencies(nonStakedCelo.address, ADDRESS_ZERO)
-      ).revertedWith("account null address");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("cannot be called by a non-Owner account", async () => {
