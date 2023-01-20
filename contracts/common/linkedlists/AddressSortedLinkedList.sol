@@ -162,7 +162,7 @@ library AddressSortedLinkedList {
    * @param list A storage pointer to the underlying list.
    * @return The number of elements in the list.
    */
-  function getNumElements(SortedLinkedList.List storage list) internal view returns (uint256) {
+  function getNumElements(SortedLinkedList.List storage list) public view returns (uint256) {
     return list.list.numElements;
   }
 
@@ -171,7 +171,7 @@ library AddressSortedLinkedList {
    * @param list A storage pointer to the underlying list.
    * @return The key of the first element in the list.
    */
-  function getHead(SortedLinkedList.List storage list) internal view returns (address) {
+  function getHead(SortedLinkedList.List storage list) public view returns (address) {
     return toAddress(list.list.head);
   }
 
@@ -180,7 +180,25 @@ library AddressSortedLinkedList {
    * @param list A storage pointer to the underlying list.
    * @return The key of the last element in the list.
    */
-  function getTail(SortedLinkedList.List storage list) internal view returns (address) {
+  function getTail(SortedLinkedList.List storage list) public view returns (address) {
     return toAddress(list.list.tail);
+  }
+
+  /**
+   * @notice Returns Element based on key.
+   * @param list A storage pointer to the underlying list.
+   * @param key The element key.
+   * @return exists Whether or not the key exists.
+   * @return previousKey Previous key.
+   * @return nextKey Next key.
+   */
+  function get(SortedLinkedList.List storage list, address key) 
+    internal view returns (bool exists, address previousKey, address nextKey) {
+    LinkedList.Element memory element = list.get(toBytes(key));
+    exists = element.exists;
+    if (element.exists) {
+      previousKey = toAddress(element.previousKey);
+      nextKey = toAddress(element.nextKey);
+    }
   }
 }

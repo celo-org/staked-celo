@@ -4,7 +4,7 @@ import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
 import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
 import {
@@ -16,6 +16,7 @@ import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockDefaultStrategyFull } from "../typechain-types/MockDefaultStrategyFull";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
@@ -197,7 +198,11 @@ export async function activateValidators(
     destinations.push(defaultStrategyContract.address);
     values.push("0");
     payloads.push(
-      defaultStrategyContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+      defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
+        groupAddresses[i],
+        ADDRESS_ZERO,
+        ADDRESS_ZERO,
+      ])
     );
   }
 
@@ -480,12 +485,15 @@ export async function getGroupsSafe(
   const activeGroupsPromises = [];
   const specificGroupsPromises = [];
 
-  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-    activeGroupsPromises.push(defaultStrategy.getGroup(i));
-  }
+  let [key] = await defaultStrategy.getGroupsHead();
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
     specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
+  }
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroupsPromises.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
   }
 
   const allGroups = await Promise.all([...activeGroupsPromises, ...specificGroupsPromises]);
@@ -621,4 +629,17 @@ export async function getIndexesOfElectedValidatorGroupMembers(
     finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
   }
   return finalIndexes;
+}
+
+export async function logOrderedActiveGroups(defaultStrategyContract: MockDefaultStrategyFull) {
+  let [head] = await defaultStrategyContract.getGroupsHead();
+  const groupsForLog = [];
+
+  for (let i = 0; i < 3; i++) {
+    const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
+    const stCelo = await defaultStrategyContract.getTotalStCeloVotesForStrategy(head);
+    groupsForLog.unshift({ group: head, stCelo: formatEther(stCelo) });
+    head = prev;
+  }
+  console.log("orderedGroups:", JSON.stringify(groupsForLog));
 }

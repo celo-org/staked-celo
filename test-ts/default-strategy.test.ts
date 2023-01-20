@@ -147,7 +147,7 @@ describe("DefaultStrategy", () => {
   describe("#activateGroup", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).activateGroup(nonVote.address)
+        defaultStrategyContract.connect(nonManager).activateGroup(nonVote.address, ADDRESS_ZERO, ADDRESS_ZERO)
       ).revertedWith(`Ownable: caller is not the owner`);
     });
   });

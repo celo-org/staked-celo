@@ -34,13 +34,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log("Manager proxy was already deployed - skipping group activation");
     return;
   }
+  // TODO: move to default strategy
+  // const manager = await hre.ethers.getContract("Manager");
 
-  const manager = await hre.ethers.getContract("Manager");
-
-  for (let i = 0; i < validatorGroups.length; i++) {
-    console.log("activating group", validatorGroups[i]);
-    await executeAndWait(manager.activateGroup(validatorGroups[i]));
-  }
+  // for (let i = 0; i < validatorGroups.length; i++) {
+  //   console.log("activating group", validatorGroups[i]);
+  //   await executeAndWait(manager.activateGroup(validatorGroups[i]));
+  // }
 };
 
 func.id = "deploy_manager";

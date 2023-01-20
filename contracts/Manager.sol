@@ -597,6 +597,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         returns (address)
     {
         address checkedStrategy = checkStrategy(strategy);
+        //TODO: don't update strategies and test it
         if (checkedStrategy != strategy) {
             strategies[accountAddress] = checkedStrategy;
         }

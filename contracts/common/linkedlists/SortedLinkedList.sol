@@ -112,6 +112,16 @@ library SortedLinkedList {
   }
 
   /**
+   * @notice Returns Element based on key.
+   * @param list A storage pointer to the underlying list.
+   * @param key The element key.
+   * @return Whether or not the key is in the sorted list.
+   */
+  function get(List storage list, bytes32 key) internal view returns (LinkedList.Element memory) {
+    return list.list.get(key);
+  }
+
+  /**
    * @notice Returns the value for a particular key in the sorted list.
    * @param list A storage pointer to the underlying list.
    * @param key The element key.
