@@ -2152,7 +2152,7 @@ describe("Manager", () => {
             nonVote.address,
             nonVote.address
           )
-      ).revertedWith("StakedCelo null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero account address", async () => {
@@ -2167,7 +2167,7 @@ describe("Manager", () => {
             nonVote.address,
             nonVote.address
           )
-      ).revertedWith("Account null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero vote address", async () => {
@@ -2182,7 +2182,7 @@ describe("Manager", () => {
             nonVote.address,
             nonVote.address
           )
-      ).revertedWith("Vote null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero groupHealth address", async () => {
@@ -2197,7 +2197,7 @@ describe("Manager", () => {
             nonVote.address,
             nonVote.address
           )
-      ).revertedWith("GroupHealth null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero specific group strategy address", async () => {
@@ -2212,7 +2212,7 @@ describe("Manager", () => {
             ADDRESS_ZERO,
             nonVote.address
           )
-      ).revertedWith("SpecificGroupStrategy null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("reverts with zero default strategy address", async () => {
@@ -2227,7 +2227,7 @@ describe("Manager", () => {
             nonVote.address,
             ADDRESS_ZERO
           )
-      ).revertedWith("DefaultStrategy null");
+      ).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("sets the vote contract", async () => {

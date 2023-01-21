@@ -79,12 +79,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     mapping(uint256 => uint256) public proposalTimestamps;
 
     /**
-     * @notice Duration of proposal in referendum stage
-     * (It has to be same as in Governance contrtact).
-     */
-    uint256 public referendumDuration;
-
-    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
@@ -120,6 +114,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error NotEnoughStakedCelo(address account);
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -133,7 +132,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         __UsingRegistry_init(_registry);
         __Managed_init(_manager);
         _transferOwnership(_owner);
-        setReferendumDuration();
     }
 
     /**
@@ -145,8 +143,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param _account The address of the Account contract.
      */
     function setDependencies(address _stakedCelo, address _account) external onlyOwner {
-        require(_stakedCelo != address(0), "stakedCelo null");
-        require(_account != address(0), "account null");
+        if (_stakedCelo == address(0) || _account == address(0)) {
+            revert AddressZeroNotAllowed();
+        }
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
     }
@@ -279,16 +278,18 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * @notice Updates the beneficiaries voting history and returns locked stCELO in voting.
+     * (This stCELO cannot be unlocked.)
      * And it will remove voted proposals from account history if appropriate.
      * @param beneficiary The beneficiary.
+     * @return Currently locked stCELO in voting.
      */
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         public
-        onlyManager
-        returns (uint256 lockedAmount)
+        returns (uint256)
     {
         Voter storage voter = voters[beneficiary];
+        uint256 lockedAmount;
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
@@ -303,7 +304,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
                 continue;
             }
 
-            if (block.timestamp < proposalTimestamp + referendumDuration) {
+            if (
+                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+            ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(
                     lockedAmount,
@@ -324,14 +327,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Sets referendum duration. It should always be the same as in Governance.
-     */
-    function setReferendumDuration() public onlyOwner {
-        uint256 newReferendumDuration = getGovernance().getReferendumStageDuration();
-        referendumDuration = newReferendumDuration;
-    }
-
-    /**
      * @notice Returns save timestamp of proposal.
      * @param proposalId The proposal UUID.
      * @return The timestamp of proposal.
@@ -342,25 +337,22 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Retuns proposals still in referendum stage that voter voted on.
+     * @notice Returns proposals still in referendum stage that voter voted on.
      * @param voter The voter.
      * @return Proposals in referendum stage.
-     * (For up to date result call updateHistoryAndReturnLockedStCeloInVoting first)
+     * @dev For up to date result call updateHistoryAndReturnLockedStCeloInVoting first.
      */
     function getVotedStillRelevantProposals(address voter) public view returns (uint256[] memory) {
         return voters[voter].votedProposalIds;
     }
 
     /**
-     * @notice Retuns currently locked celo in voting. (This celo cannot be unlocked.)
+     * @notice Returns currently locked stCELO in voting. (This stCELO cannot be unlocked.)
      * @param beneficiary The account.
      */
-    function getLockedStCeloInVoting(address beneficiary)
-        public
-        view
-        returns (uint256 lockedAmount)
-    {
+    function getLockedStCeloInVoting(address beneficiary) public view returns (uint256) {
         Voter storage voter = voters[beneficiary];
+        uint256 lockedAmount;
 
         uint256 i = voter.votedProposalIds.length;
         while (i > 0) {
@@ -371,7 +363,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
                 continue;
             }
 
-            if (block.timestamp < proposalTimestamp + referendumDuration) {
+            if (
+                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+            ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(
                     lockedAmount,
@@ -381,6 +375,13 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         return toStakedCelo(lockedAmount);
+    }
+
+    /**
+     * @return Governance referendum duration.
+     */
+    function getReferendumDuration() public view returns (uint256) {
+        return getGovernance().getReferendumStageDuration();
     }
 
     /**
