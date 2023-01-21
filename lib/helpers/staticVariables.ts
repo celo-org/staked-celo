@@ -44,6 +44,7 @@ export const ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION =
 export const ACCOUNT_GET_PENDING_WITHDRAWALS_TASK_DESCRIPTION =
   "Returns the pending withdrawals for a beneficiary.";
 export const ACCOUNT_WITHDRAW_TASK_DESCRIPTION = "Withdraws CELO from account contract.";
+export const ACCOUNT_REVOKE_TASK_DESCRIPTION = "Revokes votes from a validator group.";
 
 // MANAGER TASK DESCRIPTIONS
 export const MANAGER_DEPOSIT_TASK_DESCRIPTION = "Deposits CELO in staked CELO protocol.";
