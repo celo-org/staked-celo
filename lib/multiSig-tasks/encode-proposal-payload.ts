@@ -9,6 +9,7 @@ import {
   FUNCTION_DESCRIPTION,
   MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { taskLogger } from "../logger";
 import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../tasksNames";
 
 task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION)
@@ -25,7 +26,8 @@ task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DES
       hre
     ) => {
       try {
-        console.log(`Starting ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} task...`);
+        taskLogger.setLogLevel("info");
+        taskLogger.info(`Starting ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} task...`);
         await setLocalNodeDeploymentPath(hre);
         const contract = await hre.ethers.getContract(args.contract);
         if (contract == null) {
@@ -36,12 +38,11 @@ task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DES
           args.function,
           args.args.split(",")
         );
-        console.log("encoded payload:");
-        console.log(encodedFunction);
+        taskLogger.info("encoded payload:", encodedFunction);
 
         return encodedFunction;
       } catch (error) {
-        console.log(error);
+        taskLogger.error("Error encoding payload", error);
       }
     }
   );

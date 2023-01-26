@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { task, types } from "hardhat/config";
 import { setLocalNodeDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
@@ -10,6 +9,7 @@ import {
   USE_NODE_ACCOUNT,
   USE_NODE_ACCOUNT_DESCRIPTION,
 } from "../helpers/staticVariables";
+import { taskLogger } from "../logger";
 import {
   MULTISIG_ENCODE_PROPOSAL_PAYLOAD,
   MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES,
@@ -22,7 +22,8 @@ task(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES, MULTISIG_ENCODE_SET_MANAGER_DEPEN
   .addFlag(USE_NODE_ACCOUNT, USE_NODE_ACCOUNT_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
-      console.log(`${MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES} task...`);
+      taskLogger.setLogLevel("info");
+      taskLogger.info(`${MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES} task...`);
       await setLocalNodeDeploymentPath(hre);
       const payload = await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
         contract: "Manager",
@@ -34,12 +35,12 @@ task(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES, MULTISIG_ENCODE_SET_MANAGER_DEPEN
         },${(await hre.deployments.get("Vote")).address}`,
       });
       const managerAddress = (await hre.deployments.get("Manager")).address;
-      console.log(chalk.green("--destinations"), managerAddress);
-      console.log(chalk.green("--values"), "0");
-      console.log(chalk.green("--payloads"), payload);
+      taskLogger.info("--destinations", managerAddress);
+      taskLogger.info("--values", "0");
+      taskLogger.info("--payloads", payload);
 
-      console.log(chalk.yellow(`Use these values with ${MULTISIG_SUBMIT_PROPOSAL} task`));
+      taskLogger.info(`Use these values with ${MULTISIG_SUBMIT_PROPOSAL} task`);
     } catch (error) {
-      console.log(chalk.red("Error getting groups:"), error);
+      taskLogger.error("Error getting groups:", error);
     }
   });
