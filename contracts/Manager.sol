@@ -87,6 +87,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupNotEligible(address group);
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Used when an `onlyStCelo` function is called by a non-stCELO contract.
      * @param caller `msg.sender` that called the function.
      */
@@ -186,12 +191,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address _specificGroupStrategy,
         address _defaultStrategy
     ) external onlyOwner {
-        require(_stakedCelo != address(0), "StakedCelo null");
-        require(_account != address(0), "Account null");
-        require(_vote != address(0), "Vote null");
-        require(_groupHealth != address(0), "GroupHealth null");
-        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
-        require(_defaultStrategy != address(0), "DefaultStrategy null");
+        if (
+            _stakedCelo == address(0) ||
+            _account == address(0) ||
+            _vote == address(0) ||
+            _groupHealth == address(0) ||
+            _specificGroupStrategy == address(0) ||
+            _defaultStrategy == address(0)
+        ) {
+            revert AddressZeroNotAllowed();
+        }
 
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);

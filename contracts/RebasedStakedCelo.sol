@@ -1,8 +1,7 @@
 //SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-
+import "./common/ERC20Upgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IAccount.sol";
