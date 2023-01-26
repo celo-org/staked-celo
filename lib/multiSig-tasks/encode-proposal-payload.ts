@@ -1,4 +1,5 @@
 import { task } from "hardhat/config";
+import { setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
 import {
   ARGS,
   ARGS_DESCRIPTION,
@@ -25,7 +26,7 @@ task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DES
     ) => {
       try {
         console.log(`Starting ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} task...`);
-
+        await setLocalNodeDeploymentPath(hre);
         const contract = await hre.ethers.getContract(args.contract);
         if (contract == null) {
           throw new Error(`Contract ${args.contract} not found!`);

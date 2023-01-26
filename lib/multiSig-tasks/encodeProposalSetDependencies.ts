@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { task, types } from "hardhat/config";
-import { TransactionArguments } from "../helpers/interfaceHelper";
+import { setLocalNodeDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
   ACCOUNT,
   ACCOUNT_DESCRIPTION,
@@ -23,7 +23,7 @@ task(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES, MULTISIG_ENCODE_SET_MANAGER_DEPEN
   .setAction(async (args: TransactionArguments, hre) => {
     try {
       console.log(`${MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES} task...`);
-
+      await setLocalNodeDeploymentPath(hre);
       const payload = await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
         contract: "Manager",
         function: "setDependencies",
