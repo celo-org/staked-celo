@@ -41,6 +41,6 @@ task(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES, MULTISIG_ENCODE_SET_MANAGER_DEPEN
 
       taskLogger.info(`Use these values with ${MULTISIG_SUBMIT_PROPOSAL} task`);
     } catch (error) {
-      taskLogger.error("Error getting groups:", error);
+      taskLogger.error("Error encoding manager setDependencies payload:", error);
     }
   });
