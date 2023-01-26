@@ -213,7 +213,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * `Account.finishPendingWithdrawal`.
      */
     function withdraw(uint256 stakedCeloAmount) external {
-        distributeWithdrawals(stakedCeloAmount, msg.sender);
+        distributeAndScheduleWithdrawals(stakedCeloAmount, msg.sender);
         stakedCelo.burn(msg.sender, stakedCeloAmount);
     }
 
@@ -271,7 +271,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         address[] memory finalGroups;
         uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy, true);
+        (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy);
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
     }
 
@@ -531,26 +531,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param votes The amount of votes to distribute.
      * @param stCeloAmount The amount of stCELO that was minted.
      * @param strategy The chosen strategy.
-     * @param add Whether funds are being added or removed.
      */
     function distributeVotes(
         uint256 votes,
         uint256 stCeloAmount,
-        address strategy,
-        bool add
+        address strategy
     ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (strategy != address(0)) {
             (finalGroups, finalVotes) = specificGroupStrategy.generateGroupVotesToDistributeTo(
                 strategy,
                 votes,
-                stCeloAmount,
-                add
+                stCeloAmount
             );
         } else {
             (finalGroups, finalVotes) = defaultStrategy.generateGroupVotesToDistributeTo(
                 votes,
-                stCeloAmount,
-                add
+                stCeloAmount
             );
         }
 
@@ -558,18 +554,34 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Distributes withdrawals according to chosen strategy.
+     * @notice Distributes withdrawals according to chosen strategy and schedules them.
      * @param stCeloAmount The amount of stCELO to be withdrawn.
      * @param beneficiary The address that should end up receiving the withdrawn
      * CELO.
      **/
-    function distributeWithdrawals(uint256 stCeloAmount, address beneficiary) private {
+    function distributeAndScheduleWithdrawals(uint256 stCeloAmount, address beneficiary) private {
+        address strategy = checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
+        (
+            address[] memory groupsWithdrawn,
+            uint256[] memory withdrawalsPerGroup
+        ) = distributeWithdrawals(stCeloAmount, strategy);
+        account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
+    }
+
+    /**
+     * @notice Distributes withdrawals according to chosen strategy.
+     * @param stCeloAmount The amount of stCELO to be withdrawn.
+     * @param strategy The strategy that will be used for withdrawal distribution
+     * CELO.
+     **/
+    function distributeWithdrawals(uint256 stCeloAmount, address strategy)
+        private
+        returns (address[] memory, uint256[] memory)
+    {
         uint256 withdrawal = toCelo(stCeloAmount);
         if (withdrawal == 0) {
             revert ZeroWithdrawal();
         }
-
-        address strategy = checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
 
         address[] memory groupsWithdrawn;
         uint256[] memory withdrawalsPerGroup;
@@ -582,7 +594,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 .calculateAndUpdateForWithdrawal(withdrawal);
         }
 
-        account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
+        return (groupsWithdrawn, withdrawalsPerGroup);
     }
 
     /**
@@ -643,16 +655,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) private {
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeVotes(
-            toCelo(stCeloAmount),
-            stCeloAmount,
-            fromStrategy,
-            false
-        );
+        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy);
 
         address[] memory toGroups;
         uint256[] memory toVotes;
-        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy, true);
+        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }

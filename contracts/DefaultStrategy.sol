@@ -216,7 +216,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * group should receive.
      * @param votes The amount of votes to distribute.
      * @param stCeloAmountMinted The stCeloAmount that was minted.
-     * @param add Whether funds are being added or removed.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      * @dev The vote distribution strategy is to try and have each validator
@@ -238,11 +237,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * NoVotableGroups, despite there still being some room for deposits, this
      * can be worked around by sending a few smaller deposits.
      */
-    function generateGroupVotesToDistributeTo(
-        uint256 votes,
-        uint256 stCeloAmountMinted,
-        bool add
-    ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
+    function generateGroupVotesToDistributeTo(uint256 votes, uint256 stCeloAmountMinted)
+        external
+        onlyManager
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
         if (activeGroups.length() == 0) {
             revert NoActiveGroups();
         }
@@ -298,14 +297,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             finalGroups[i] = sortedGroups[i].group;
             finalVotes[i] = votesPerGroup[i];
             uint256 stCeloAmount = finalVotes[i] * stCeloVoteRatio;
-            if (add) {
-                addToStrategyTotalStCeloVotes(finalGroups[i], stCeloAmount);
-            } else {
-                subtractFromStrategyTotalStCeloVotes(
-                    finalGroups[i],
-                    Math.min(defaultStrategyTotalStCeloVotes[finalGroups[i]], stCeloAmount)
-                );
-            }
+            addToStrategyTotalStCeloVotes(finalGroups[i], stCeloAmount);
         }
 
         return (finalGroups, finalVotes);

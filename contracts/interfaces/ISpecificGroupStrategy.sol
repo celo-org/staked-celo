@@ -20,8 +20,7 @@ interface ISpecificGroupStrategy {
     function generateGroupVotesToDistributeTo(
         address strategy,
         uint256 votes,
-        uint256 stCeloAmount,
-        bool add
+        uint256 stCeloAmount
     ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
     function isSpecificGroupStrategy(address strategy) external view returns (bool);
