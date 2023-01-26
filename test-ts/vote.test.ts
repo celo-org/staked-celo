@@ -168,7 +168,6 @@ describe("Vote", async function (this: any) {
     );
 
     await activateValidators(
-      managerContract,
       defaultStrategyContract,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,

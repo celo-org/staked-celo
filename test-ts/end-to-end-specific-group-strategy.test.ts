@@ -23,6 +23,7 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
+  rebalanceDefaultGroups,
   rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
@@ -141,7 +142,6 @@ describe("e2e specific group strategy voting", () => {
     ]);
 
     await activateValidators(
-      managerContract,
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
@@ -331,6 +331,7 @@ describe("e2e specific group strategy voting", () => {
   }
 
   async function rebalanceAllAndActivate() {
+    await rebalanceDefaultGroups(defaultStrategy)
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
     await revoke(hre, depositor0);
     await activateAndVoteTest();

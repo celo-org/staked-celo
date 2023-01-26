@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
 import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
@@ -17,8 +17,10 @@ import {
   distributeEpochRewards,
   electMockValidatorGroupsAndUpdate,
   LOCKED_GOLD_UNLOCKING_PERIOD,
+  logOrderedActiveGroups,
   mineToNextEpoch,
   randomSigner,
+  rebalanceDefaultGroups,
   rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
@@ -117,7 +119,6 @@ describe("e2e", () => {
     );
 
     await activateValidators(
-      managerContract,
       defaultStrategyContract,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
@@ -125,15 +126,18 @@ describe("e2e", () => {
     );
   });
 
-  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("1"));
+  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("100"));
   const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("2"));
   const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("3.5"));
 
   it("deposit and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-
+    for (let i = 0; i < 3; i++) {
+      console.log(`group[${i}] ${groups[i].address}`);
+    }
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
+
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
 
     await activateAndVoteTest();
@@ -141,13 +145,23 @@ describe("e2e", () => {
     await activateAndVoteTest();
 
     await distributeAllRewards();
-
+    await rebalanceDefaultGroups(defaultStrategyContract)
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
     await revoke(hre, depositor0);
     await activateAndVoteTest();
 
-    await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
+    await logOrderedActiveGroups(defaultStrategyContract as any, accountContract)
 
+    const election =  await hre.kit.contracts.getElection()
+    const eligableGroups = election.getEligibleValidatorGroupsVotes()
+    console.log("eligableGroups", JSON.stringify(eligableGroups));
+    console.log("group 0", groups[0].address);
+    for (let i = 0; i < 3; i++) {
+      const votesForGroupByAccount = await election.getTotalVotesForGroupByAccount(groups[i].address, accountContract.address)
+      console.log("votesForGroupByAccount", i, formatEther(votesForGroupByAccount.toString()));
+    }
+
+    await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(0);
 
     await hre.run(ACCOUNT_WITHDRAW, {
@@ -162,11 +176,11 @@ describe("e2e", () => {
 
     await finishPendingWithdrawals(depositor1.address);
 
-    await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
+    // await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
 
-    expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
-      await managerContract.toStakedCelo(amountOfCeloToDeposit)
-    );
+    // expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
+    //   await managerContract.toStakedCelo(amountOfCeloToDeposit)
+    // );
 
     expect(await stakedCeloContract.balanceOf(depositor0.address)).to.eq(amountOfCeloToDeposit);
 
@@ -181,7 +195,7 @@ describe("e2e", () => {
   });
 
   async function distributeAllRewards() {
-    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
   }

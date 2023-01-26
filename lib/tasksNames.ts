@@ -25,5 +25,4 @@ export const ACCOUNT_FINISH_PENDING_WITHDRAWAL = "stakedCelo:account:finishPendi
 
 export const MANAGER_DEPOSIT = "stakedCelo:manager:deposit";
 export const MANAGER_WITHDRAW = "stakedCelo:manager:withdraw";
-export const MANAGER_GET_DEPRECATED_GROUPS = "stakedCelo:manager:getDeprecatedGroups";
 export const MANAGER_GET_GROUPS = "stakedCelo:manager:getGroups";

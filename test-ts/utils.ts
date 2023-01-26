@@ -12,6 +12,7 @@ import {
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
@@ -22,6 +23,7 @@ import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import { DefaultGroupContract, ExpectVsReal, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -180,33 +182,31 @@ export async function allowStrategies(
 }
 
 export async function activateValidators(
-  managerContract: Manager,
   defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  const payloads: string[] = [];
-  const destinations: string[] = [];
-  const values: string[] = [];
-
+  let nextGroup = ADDRESS_ZERO;
   for (let i = 0; i < 3; i++) {
     const isValidGroup = await groupHealthContract.isValidGroup(groupAddresses[i]);
     if (!isValidGroup) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
-    destinations.push(defaultStrategyContract.address);
-    values.push("0");
-    payloads.push(
-      defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
-        groupAddresses[i],
-        ADDRESS_ZERO,
-        ADDRESS_ZERO,
-      ])
+    await submitAndExecuteProposal(
+      multisigOwner,
+      [defaultStrategyContract.address],
+      ["0"],
+      [
+        defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
+          groupAddresses[i],
+          ADDRESS_ZERO,
+          nextGroup,
+        ]),
+      ]
     );
+    nextGroup = groupAddresses[i];
   }
-
-  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
@@ -475,29 +475,40 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getGroupsSafe(
-  defaultStrategy: DefaultStrategy,
-  specificGroupStrategy: SpecificGroupStrategy
-) {
+export async function getDefaultGroupsSafe(defaultStrategy: DefaultGroupContract) {
   const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
-
-  const activeGroupsPromises = [];
-  const specificGroupsPromises = [];
-
   let [key] = await defaultStrategy.getGroupsHead();
+
+  const activeGroups = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroups.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+  }
+
+  return activeGroups;
+}
+
+export async function getSpecificGroupsSafe(specificGroupStrategy: SpecificGroupStrategy) {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
+  const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
     specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
   }
 
-  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-    activeGroupsPromises.push(key);
-    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
-  }
+  return Promise.all(specificGroupsPromises);
+}
 
-  const allGroups = await Promise.all([...activeGroupsPromises, ...specificGroupsPromises]);
-  const allGroupsSet = new Set(allGroups);
+export async function getGroupsSafe(
+  defaultStrategy: DefaultStrategy,
+  specificGroupStrategy: SpecificGroupStrategy
+) {
+  const activeGroups = getDefaultGroupsSafe(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroupsSafe(specificGroupStrategy);
+
+  const allGroups = await Promise.all([activeGroups, specificGroupsPromise]);
+  const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
 
   return [...allGroupsSet];
 }
@@ -516,14 +527,37 @@ export async function getRealVsExpectedCeloForGroups(managerContract: Manager, g
   return await Promise.all(expectedVsRealPromises);
 }
 
-export async function rebalanceGroups(
-  managerContract: Manager,
-  specificGroupStrategy: SpecificGroupStrategy,
-  defaultStrategy: DefaultStrategy
+export async function getRealVsExpectedStCeloForGroupsDefaultStrategy(
+  defaultStrategyContract: DefaultStrategy,
+  groups: string[]
 ) {
-  const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
-  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+  const expectedVsRealPromises = groups.map(async (group) => {
+    const expectedVsReal = await defaultStrategyContract.getExpectedAndActualStCeloForGroup(group);
+    return {
+      group,
+      expected: expectedVsReal[0],
+      real: expectedVsReal[1],
+      diff: expectedVsReal[1].sub(expectedVsReal[0]),
+    };
+  });
 
+  return await Promise.all(expectedVsRealPromises);
+}
+
+export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const expectedVsReal = await getRealVsExpectedStCeloForGroupsDefaultStrategy(
+    defaultStrategy,
+    activeGroups
+  );
+
+  rebalanceInternal(defaultStrategy, expectedVsReal);
+}
+
+async function rebalanceInternal(
+  rebalanceContract: RebalanceContract,
+  expectedVsReal: ExpectVsReal[]
+) {
   const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
   if (unbalanced.length == 0) {
     return;
@@ -535,7 +569,7 @@ export async function rebalanceGroups(
   let lastIndex = sortedUnbalancedDesc.length - 1;
 
   while (firstIndex < lastIndex) {
-    await managerContract.rebalance(
+    await rebalanceContract.rebalance(
       sortedUnbalancedDesc[firstIndex].group,
       sortedUnbalancedDesc[lastIndex].group
     );
@@ -557,6 +591,17 @@ export async function rebalanceGroups(
   }
 
   console.log("Rebalance finished!");
+}
+
+export async function rebalanceGroups(
+  managerContract: Manager,
+  specificGroupStrategy: SpecificGroupStrategy,
+  defaultStrategy: DefaultStrategy
+) {
+  const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+
+  rebalanceInternal(managerContract, expectedVsReal);
 }
 
 export async function electMockValidatorGroupsAndUpdate(
@@ -631,14 +676,22 @@ export async function getIndexesOfElectedValidatorGroupMembers(
   return finalIndexes;
 }
 
-export async function logOrderedActiveGroups(defaultStrategyContract: MockDefaultStrategyFull) {
+export async function logOrderedActiveGroups(
+  defaultStrategyContract: MockDefaultStrategyFull,
+  account?: Account
+) {
   let [head] = await defaultStrategyContract.getGroupsHead();
   const groupsForLog = [];
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < (await defaultStrategyContract.getGroupsLength()).toNumber(); i++) {
     const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
-    const stCelo = await defaultStrategyContract.getTotalStCeloVotesForStrategy(head);
-    groupsForLog.unshift({ group: head, stCelo: formatEther(stCelo) });
+    const stCelo = await defaultStrategyContract.stCELOInGroup(head);
+    const realCelo = await account?.getCeloForGroup(head);
+    groupsForLog.unshift({
+      group: head,
+      stCelo: formatEther(stCelo),
+      realCelo: formatEther(realCelo ?? 0),
+    });
     head = prev;
   }
   console.log("orderedGroups:", JSON.stringify(groupsForLog));

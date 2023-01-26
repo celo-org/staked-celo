@@ -5,12 +5,26 @@ import "../DefaultStrategy.sol";
 
 contract MockDefaultStrategyFull is DefaultStrategy {
     function addToStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount) public {
-        addToStrategyTotalStCeloVotes(strategy, stCeloAmount);
+        addToStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
     }
 
     function subtractFromStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount)
         internal
     {
-        subtractFromStrategyTotalStCeloVotes(strategy, stCeloAmount);
+        subtractFromStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
+    }
+
+    function getLesserAndGreaterOfActiveGroupsPublic(
+        address originalKey,
+        uint256 newValue,
+        uint256 loopLimit,
+        bool withdrawal
+    ) public view returns (address previous, address next) {
+        (previous, next) = getLesserAndGreaterOfActiveGroups(
+            originalKey,
+            newValue,
+            loopLimit,
+            withdrawal
+        );
     }
 }

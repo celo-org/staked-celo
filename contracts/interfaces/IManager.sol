@@ -18,6 +18,13 @@ interface IManager {
         uint256 stCeloAmount
     ) external;
 
+    function scheduleTransferWithinStrategy(
+        address[] calldata fromGroups,
+        address[] calldata toGroups,
+        uint256[] calldata fromVotes,
+        uint256[] calldata toVotes
+    ) external;
+
     function toCelo(uint256 stCeloAmount) external view returns (uint256);
 
     function toStakedCelo(uint256 celoAmount) external view returns (uint256);

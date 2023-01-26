@@ -1,6 +1,6 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import chalk from "chalk";
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, Contract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -15,10 +15,9 @@ export async function revoke(
   const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
   // Use deprecated and active groups to get the full list of groups with potential withdrawals.
-  const deprecatedGroups: [] = await defaultStrategy.getDeprecatedGroups();
-  const activeGroups: [] = await defaultStrategy.getGroups();
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy)
   const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
-  const groupList = new Set(deprecatedGroups.concat(activeGroups).concat(allowedStrategies)).values();
+  const groupList = new Set(activeGroups.concat(allowedStrategies)).values();
   console.log("DEBUG: groupList:", groupList);
 
   for (const group of groupList) {
@@ -134,4 +133,20 @@ async function findAddressIndex(
 ): Promise<number> {
   const list = await electionWrapper.getGroupsVotedForByAccount(account);
   return list.indexOf(group);
+}
+
+export async function getDefaultGroupsSafe(
+  defaultStrategy: Contract
+) : Promise<string[]> {
+  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
+  let [key] = await defaultStrategy.getGroupsHead();
+
+  const activeGroups = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroups.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+  }
+
+  return activeGroups
 }

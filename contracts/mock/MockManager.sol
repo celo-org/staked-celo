@@ -59,14 +59,6 @@ contract MockManager is IManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getGroups() external view returns (address[] memory) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function getDeprecatedGroupsLength() external view returns (uint256) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function getDeprecatedGroup(uint256 index) external view returns (address) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -104,6 +96,15 @@ contract MockManager is IManager {
     }
 
     function toStakedCelo(uint256 celoAmount) public view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function scheduleTransferWithinStrategy(
+        address[] calldata fromGroups,
+        address[] calldata toGroups,
+        uint256[] calldata fromVotes,
+        uint256[] calldata toVotes
+    ) external {
         // solhint-disable-previous-line no-empty-blocks
     }
 }
