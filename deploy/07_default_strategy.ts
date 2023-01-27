@@ -1,6 +1,10 @@
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { catchNotOwnerForProxy } from "../lib/deploy-utils";
+import { ADDRESS_ZERO } from "../test-ts/utils";
+
+const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
+  validatorGroupsString ? validatorGroupsString.split(",") : [];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -30,6 +34,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     })
   );
+
+  const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
+  const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
+
+  let nextGroup = ADDRESS_ZERO;
+  for (let i = 0; i < validatorGroups.length; i++) {
+    await defaultStrategy.activateGroup(validatorGroups[i], ADDRESS_ZERO, nextGroup);
+    nextGroup = validatorGroups[i];
+  }
 };
 
 func.id = "deploy_default_strategy";

@@ -229,13 +229,31 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 withdrawal,
         uint256 stCeloWithdrawalAmount
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        if (specificGroupStrategies.length() == 0) {
-            revert NoGroups();
-        }
-
         uint256 votesRemaining = account.getCeloForGroup(strategy);
         if (votesRemaining < withdrawal) {
             revert GroupNotBalancedOrNotEnoughStCelo(strategy, withdrawal, votesRemaining);
+        }
+
+       (groups, votes) = calculateAndUpdateForWithdrawalTransfer(strategy, withdrawal, stCeloWithdrawalAmount);
+    }
+
+    /**
+     * @notice Used to withdraw CELO from the system from specific group strategy
+     * that account voted for previously. It is expected that strategy will be balanced.
+     * For balancing use `rebalance` function
+     * @param strategy The validator group that we want to withdraw from.
+     * @param withdrawal The amount of stCELO to withdraw.
+     * @return groups The groups to withdraw from.
+     * @return votes The amount to withdraw from each group.
+     */
+    function calculateAndUpdateForWithdrawalTransfer(
+        // TODO: add tests
+        address strategy,
+        uint256 withdrawal,
+        uint256 stCeloWithdrawalAmount
+    ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
+        if (specificGroupStrategies.length() == 0) {
+            revert NoGroups();
         }
 
         groups = new address[](1);

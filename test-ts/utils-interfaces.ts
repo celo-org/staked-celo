@@ -33,3 +33,9 @@ export interface DefaultGroupContract extends BaseContract {
     overrides?: CallOverrides
   ): Promise<[string, string] & { previousAddress: string; nextAddress: string }>;
 }
+
+export interface OrderedGroup {
+  group: string,
+  stCelo: string,
+  realCelo: string,
+}

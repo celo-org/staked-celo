@@ -12,6 +12,7 @@ import "./Managed.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./common/linkedlists/AddressSortedLinkedList.sol";
+import "hardhat/console.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
@@ -83,7 +84,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Whether or not are active groups sorted.
      * If active groups are not sorted it is neccessary to call updateActiveGroupOrder
      */
-    bool sorted; // TODO: add tests for not sorted strategies
+    bool public sorted;
 
     /**
      * @notice Groups that need to be sorted
@@ -325,6 +326,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             countOfGroupsDistributedTo < numberOfGroupsToDistributeTo;
             countOfGroupsDistributedTo++
         ) {
+            // console.log("v %s g %s", votes, votedGroup);
             if (votes == 0 || votedGroup == address(0)) {
                 break;
             }
@@ -357,37 +359,29 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 );
             }
 
-            if (activeGroups.getNumElements() == 1) {
+            (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroups(
+                votedGroup,
+                stCELOInGroup[votedGroup],
+                withdraw
+            );
+            // console.log("%s %s %s %s", votedGroup, lesserKey, greaterKey);
+            if ((lesserKey != greaterKey || activeGroups.getNumElements() == 1) && sorted) {
+                // console.log("u");
                 activeGroups.update(
                     votedGroup,
                     stCELOInGroup[votedGroup],
-                    address(0),
-                    address(0)
+                    lesserKey,
+                    greaterKey
                 );
+                // console.log("d");
                 votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
             } else {
-                (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroups(
-                    votedGroup,
-                    stCELOInGroup[votedGroup],
-                    sortingLoopLimit,
-                    withdraw
-                );
-                if ((lesserKey != greaterKey || activeGroups.getNumElements() == 1) && sorted) {
-                    activeGroups.update(
-                        votedGroup,
-                        stCELOInGroup[votedGroup],
-                        lesserKey,
-                        greaterKey
-                    );
-                    votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+                unsortedGroups.add(votedGroup);
+                sorted = false;
+                if (withdraw) {
+                    (, votedGroup, ) = activeGroups.get(votedGroup);
                 } else {
-                    if (withdraw) {
-                        (, , votedGroup) = activeGroups.get(votedGroup);
-                    } else {
-                        (, votedGroup, ) = activeGroups.get(votedGroup);
-                    }
-                    sorted = false;
-                    unsortedGroups.add(votedGroup);
+                    (, , votedGroup) = activeGroups.get(votedGroup);
                 }
             }
         }
@@ -409,6 +403,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Distributes withdrawals from default strategy by computing the number of votes that
      * should be withdrawn from each group.
      * @param group The amount of votes to withdraw.
+     * @param lesserKey The key of the group less than the group to update.
+     * @param greaterKey The key of the group greater than the group to update.
      */
     function updateActiveGroupOrder(
         address group,
@@ -544,6 +540,23 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
+     * @notice Returns the length of unsorted groups.
+     * @return The length of unsorted groups.
+     */
+    function getUnsortedGroupsLength() external view returns(uint256) {
+        return unsortedGroups.length();
+    }
+
+    /**
+     * @notice Returns the unsorted group at index.
+     * @param index The index of unsorted grou
+     * @return The group.
+     */
+    function getUnsortedGroupAt(uint256 index) external view returns(address) {
+        return unsortedGroups.at(index);
+    }
+
+    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -593,6 +606,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
+        // TODO: add tests
         if (!activeGroups.contains(toGroup)) {
             // rebalancing to non-existent group is not allowed
             revert InvalidToGroup(toGroup);
@@ -623,10 +637,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         subtractFromStrategyTotalStCeloVotesInternal(fromGroup, toMove);
         addToStrategyTotalStCeloVotesInternal(toGroup, toMove);
         if (sorted) {
+            // TODO: add tests
             (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroupsDeposit(
                 toGroup,
-                stCELOInGroup[fromGroup],
-                sortingLoopLimit
+                stCELOInGroup[fromGroup]
             );
             if (lesserKey != greaterKey || activeGroups.getNumElements() == 1) {
                 activeGroups.update(
@@ -668,6 +682,16 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         totalStCeloInDefaultStrategy -= stCeloAmount;
     }
 
+    // /**
+    //  * @notice Adds/Subtracts value from totals of group strategy and
+    //  * total stCELO in all group strategies.
+    //  * @param group The validator group that we are adding to.
+    //  * @param stCeloAmount The amount of stCELO to add/subtract.
+    //  */
+    // function updateStCeloInGroup(address group, uint256 stCeloAmount, bool add) {
+
+    // }
+
     /**
      * @notice Marks a group as deprecated.
      * @param group The group to deprecate.
@@ -702,7 +726,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 fromVotes,
                 toVotes
             );
-            // TODO: add tests
         }
 
         emit GroupRemoved(group);
@@ -710,58 +733,66 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     function getLesserAndGreaterOfActiveGroupsDeposit(
         address originalKey,
-        uint256 newValue,
-        uint256 loopLimit
+        uint256 newValue
     ) private view returns (address previous, address next) {
+        uint256 loopLimit = sortingLoopLimit + 1;
         address originalKeyPrevious;
         previous = originalKey;
         (, originalKeyPrevious, next) = activeGroups.get(originalKey);
 
-        while (next != address(0) && loopLimit > 0) {
+        while (next != address(0) && loopLimit-- > 1) {
+            // console.log("p %s n %s", previous, next);
             if (newValue <= activeGroups.getValue(next)) {
-                return (previous == originalKey ? originalKeyPrevious : previous, next);
+                break; 
             }
             previous = next;
             (, , next) = activeGroups.get(previous);
-            loopLimit--;
         }
+
+        if (loopLimit == 0) {
+            return (address(0), address(0));
+        }
+
+        previous = previous == originalKey ? originalKeyPrevious : previous;
     }
 
     function getLesserAndGreaterOfActiveGroupsWithdrawal(
         address originalKey,
-        uint256 newValue,
-        uint256 loopLimit
+        uint256 newValue
     ) private view returns (address previous, address next) {
+        uint256 loopLimit = sortingLoopLimit + 1;
         address originalKeyNext;
         next = originalKey;
         (, previous, originalKeyNext) = activeGroups.get(originalKey);
-        while (previous != address(0) && loopLimit > 0) {
+        while (previous != address(0) && loopLimit-- > 1) {
             if (newValue >= activeGroups.getValue(previous)) {
-                return (previous, next == originalKey ? originalKeyNext : next);
+                break;
             }
             next = previous;
             (, previous, ) = activeGroups.get(next);
-            loopLimit--;
         }
+
+        if (loopLimit == 0) {
+            return (address(0), address(0));
+        }
+
+        next = next == originalKey ? originalKeyNext : next;
     }
 
     function getLesserAndGreaterOfActiveGroups(
         address originalKey,
         uint256 newValue,
-        uint256 loopLimit,
         bool withdrawal
     ) internal view returns (address previous, address next) {
         if (withdrawal) {
             (previous, next) = getLesserAndGreaterOfActiveGroupsWithdrawal(
                 originalKey,
-                newValue,
-                loopLimit
+                newValue
             );
         } else {
             (previous, next) = getLesserAndGreaterOfActiveGroupsDeposit(
                 originalKey,
-                newValue,
-                loopLimit
+                newValue
             );
         }
     }

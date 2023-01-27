@@ -23,7 +23,7 @@ import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import { DefaultGroupContract, ExpectVsReal, RebalanceContract } from "./utils-interfaces";
+import { DefaultGroupContract, ExpectVsReal, OrderedGroup, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -679,10 +679,10 @@ export async function getIndexesOfElectedValidatorGroupMembers(
   return finalIndexes;
 }
 
-export async function logOrderedActiveGroups(
+export async function getOrderedActiveGroups(
   defaultStrategyContract: MockDefaultStrategyFull,
   account?: Account
-) {
+): Promise<OrderedGroup[]> {
   let [head] = await defaultStrategyContract.getGroupsHead();
   const groupsForLog = [];
 
@@ -697,5 +697,16 @@ export async function logOrderedActiveGroups(
     });
     head = prev;
   }
-  console.log("orderedGroups:", JSON.stringify(groupsForLog));
+  return groupsForLog
+}
+
+export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategyFull,) {
+  const length = await defaultStrategyContract.getUnsortedGroupsLength()
+
+  const unsortedGroupsPromises = []
+
+  for (let i = 0; i < length.toNumber(); i++) {
+    unsortedGroupsPromises.push(defaultStrategyContract.getUnsortedGroupAt(i))
+  }
+  return await Promise.all(unsortedGroupsPromises)
 }

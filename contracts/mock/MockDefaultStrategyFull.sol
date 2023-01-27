@@ -13,18 +13,4 @@ contract MockDefaultStrategyFull is DefaultStrategy {
     {
         subtractFromStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
     }
-
-    function getLesserAndGreaterOfActiveGroupsPublic(
-        address originalKey,
-        uint256 newValue,
-        uint256 loopLimit,
-        bool withdrawal
-    ) public view returns (address previous, address next) {
-        (previous, next) = getLesserAndGreaterOfActiveGroups(
-            originalKey,
-            newValue,
-            loopLimit,
-            withdrawal
-        );
-    }
 }

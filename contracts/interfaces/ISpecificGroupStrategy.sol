@@ -8,6 +8,12 @@ interface ISpecificGroupStrategy {
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 
+    function calculateAndUpdateForWithdrawalTransfer(
+        address strategy,
+        uint256 withdrawal,
+        uint256 stCeloWithdrawalAmount
+    ) external returns (address[] memory groups, uint256[] memory votes);
+
     function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value) external;
 
     function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)

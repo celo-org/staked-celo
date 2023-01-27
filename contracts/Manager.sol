@@ -592,7 +592,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         (
             address[] memory groupsWithdrawn,
             uint256[] memory withdrawalsPerGroup
-        ) = distributeWithdrawals(stCeloAmount, strategy);
+        ) = distributeWithdrawals(stCeloAmount, strategy, false);
         account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
     }
 
@@ -600,9 +600,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Distributes withdrawals according to chosen strategy.
      * @param stCeloAmount The amount of stCELO to be withdrawn.
      * @param strategy The strategy that will be used for withdrawal distribution
+     * @param isTransfer Whether or not withdrawal is calculate for transfer
      * CELO.
      **/
-    function distributeWithdrawals(uint256 stCeloAmount, address strategy)
+    function distributeWithdrawals(uint256 stCeloAmount, address strategy, bool isTransfer)
         private
         returns (address[] memory, uint256[] memory)
     {
@@ -616,7 +617,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = specificGroupStrategy
+            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer 
+            ? specificGroupStrategy
+                .calculateAndUpdateForWithdrawalTransfer(strategy, withdrawal, stCeloAmount)
+            : specificGroupStrategy
                 .calculateAndUpdateForWithdrawal(strategy, withdrawal, stCeloAmount);
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
@@ -687,7 +691,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) private {
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy);
+        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy, true);
 
         address[] memory toGroups;
         uint256[] memory toVotes;

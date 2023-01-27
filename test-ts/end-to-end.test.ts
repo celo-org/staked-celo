@@ -16,7 +16,6 @@ import {
   distributeEpochRewards,
   electMockValidatorGroupsAndUpdate,
   LOCKED_GOLD_UNLOCKING_PERIOD,
-  logOrderedActiveGroups,
   mineToNextEpoch,
   randomSigner,
   rebalanceDefaultGroups,
@@ -153,8 +152,6 @@ describe("e2e", () => {
     });
     await activateAndVoteTest();
 
-    await logOrderedActiveGroups(defaultStrategyContract as any, accountContract)
-
     const election =  await hre.kit.contracts.getElection()
     const eligableGroups = election.getEligibleValidatorGroupsVotes()
     console.log("eligableGroups", JSON.stringify(eligableGroups));
@@ -179,11 +176,11 @@ describe("e2e", () => {
 
     await finishPendingWithdrawals(depositor1.address);
 
-    // await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
+    await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
 
-    // expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
-    //   await managerContract.toStakedCelo(amountOfCeloToDeposit)
-    // );
+    expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
+      await managerContract.toStakedCelo(amountOfCeloToDeposit)
+    );
 
     expect(await stakedCeloContract.balanceOf(depositor0.address)).to.eq(amountOfCeloToDeposit);
 
