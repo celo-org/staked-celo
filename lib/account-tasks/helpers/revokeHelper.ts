@@ -1,14 +1,11 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import chalk from "chalk";
 import { BigNumber, Contract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { taskLogger } from "../../logger";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
-export async function revoke(
-  hre: HardhatRuntimeEnvironment,
-  signer: Signer,
-) {
+export async function revoke(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const accountContract = await hre.ethers.getContract("Account");
   const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
@@ -17,20 +14,19 @@ export async function revoke(
   // Use deprecated and active groups to get the full list of groups with potential withdrawals.
   const activeGroups = await getDefaultGroupsSafe(defaultStrategy)
   const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
-  const groupList = new Set(activeGroups.concat(allowedStrategies)).values();
-  console.log("DEBUG: groupList:", groupList);
+  const groupList = new Set(
+    activeGroups.concat(allowedStrategies)
+  ).values();
+  taskLogger.debug("groupList:", groupList);
 
   for (const group of groupList) {
-    console.log(chalk.yellow("DEBUG: Current group", group));
+    taskLogger.debug("Current group", group);
 
     // check what the beneficiary withdrawal amount is for each group.
-    const scheduledToRevokeAmount: BigNumber =
-      await accountContract.scheduledRevokeForGroup(group);
+    const scheduledToRevokeAmount: BigNumber = await accountContract.scheduledRevokeForGroup(group);
 
-    console.log(
-      chalk.green(
-        `DEBUG: ToRevoke withdrawal amount from group: ${scheduledToRevokeAmount.toString()}. Group: ${group}`
-      )
+    taskLogger.debug(
+      `ToRevoke withdrawal amount from group: ${scheduledToRevokeAmount.toString()}. Group: ${group}`
     );
 
     if (scheduledToRevokeAmount.gt(0)) {
@@ -46,12 +42,12 @@ export async function revoke(
       const immediateWithdrawalAmount: BigNumber = await accountContract.scheduledVotesForGroup(
         group
       );
-      console.log("DEBUG: ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
+      taskLogger.debug("ImmediateWithdrawalAmount:", immediateWithdrawalAmount.toString());
 
       if (immediateWithdrawalAmount.lt(scheduledToRevokeAmount)) {
         remainingToRevokeAmount = scheduledToRevokeAmount.sub(immediateWithdrawalAmount);
 
-        console.log("remainingToRevokeAmount:", remainingToRevokeAmount.toString());
+        taskLogger.debug("remainingToRevokeAmount:", remainingToRevokeAmount.toString());
 
         // get AccountContract pending votes for group.
         const groupVote = await electionWrapper.getVotesForGroupByAccount(
@@ -60,7 +56,7 @@ export async function revoke(
         );
         const pendingVotes = groupVote.pending;
 
-        console.log("pendingVotes:", pendingVotes.toString());
+        taskLogger.debug("pendingVotes:", pendingVotes.toString());
 
         // amount to revoke from pending
         toRevokeFromPending = BigNumber.from(
@@ -69,7 +65,7 @@ export async function revoke(
             : pendingVotes.toString()
         );
 
-        console.log("toRevokeFromPending:", toRevokeFromPending.toString());
+        taskLogger.debug("toRevokeFromPending:", toRevokeFromPending.toString());
 
         // find lesser and greater for pending votes
         const lesserAndGreaterAfterPendingRevoke =
@@ -100,12 +96,12 @@ export async function revoke(
       const index = await findAddressIndex(electionWrapper, group, accountContract.address);
 
       // use current index
-      console.log("group:", group);
-      console.log("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
-      console.log("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
-      console.log("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
-      console.log("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
-      console.log("group index:", index);
+      taskLogger.debug("group:", group);
+      taskLogger.debug("lesserAfterPendingRevoke:", lesserAfterPendingRevoke);
+      taskLogger.debug("greaterAfterPendingRevoke:", greaterAfterPendingRevoke);
+      taskLogger.debug("lesserAfterActiveRevoke:", lesserAfterActiveRevoke);
+      taskLogger.debug("greaterAfterActiveRevoke:", greaterAfterActiveRevoke);
+      taskLogger.debug("group index:", index);
 
       const tx = await accountContract
         .connect(signer)
@@ -120,7 +116,7 @@ export async function revoke(
 
       const receipt = await tx.wait();
 
-      console.log(chalk.yellow("receipt status"), receipt.status);
+      taskLogger.debug("receipt status", receipt.status);
     }
   }
 }

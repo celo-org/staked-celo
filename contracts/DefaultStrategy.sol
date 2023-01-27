@@ -12,7 +12,6 @@ import "./Managed.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./common/linkedlists/AddressSortedLinkedList.sol";
-import "hardhat/console.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
@@ -342,7 +341,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                     getElection().getTotalVotesForGroup(votedGroup) -
                     account.scheduledVotesForGroup(votedGroup);
             }
-
             votesPerGroup[countOfGroupsDistributedTo] = Math.min(votesForGroup, votes);
 
             groups[countOfGroupsDistributedTo] = votedGroup;

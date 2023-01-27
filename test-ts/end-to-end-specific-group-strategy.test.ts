@@ -3,8 +3,7 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
-import { revoke } from "../lib/account-tasks/helpers/revokeHelper";
-import { ACCOUNT_WITHDRAW } from "../lib/tasksNames";
+import { ACCOUNT_REVOKE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
@@ -333,7 +332,11 @@ describe("e2e specific group strategy voting", () => {
   async function rebalanceAllAndActivate() {
     await rebalanceDefaultGroups(defaultStrategy)
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
-    await revoke(hre, depositor0);
+    await hre.run(ACCOUNT_REVOKE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+      logLevel: "info",
+    });
     await activateAndVoteTest();
   }
 

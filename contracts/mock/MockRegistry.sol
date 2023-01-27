@@ -18,6 +18,11 @@ contract MockRegistry is IRegistry, Ownable, Initializable {
     event RegistryUpdated(string identifier, bytes32 indexed identifierHash, address indexed addr);
 
     /**
+     * @notice Used when identifier has no entry in the registry contract.
+     */
+    error IdentifierHasNoRegistryEntry();
+
+    /**
      * @notice Associates the given address with the given identifier.
      * @param identifier Identifier of contract whose address we want to set.
      * @param addr Address of contract.
@@ -33,7 +38,9 @@ contract MockRegistry is IRegistry, Ownable, Initializable {
      * @dev Throws if address not set.
      */
     function getAddressForOrDie(bytes32 identifierHash) external view returns (address) {
-        require(registry[identifierHash] != address(0), "identifier has no registry entry");
+        if (registry[identifierHash] == address(0)) {
+            revert IdentifierHasNoRegistryEntry();
+        }
         return registry[identifierHash];
     }
 
@@ -52,7 +59,9 @@ contract MockRegistry is IRegistry, Ownable, Initializable {
      */
     function getAddressForStringOrDie(string calldata identifier) external view returns (address) {
         bytes32 identifierHash = keccak256(abi.encodePacked(identifier));
-        require(registry[identifierHash] != address(0), "identifier has no registry entry");
+        if (registry[identifierHash] == address(0)) {
+            revert IdentifierHasNoRegistryEntry();
+        }
         return registry[identifierHash];
     }
 

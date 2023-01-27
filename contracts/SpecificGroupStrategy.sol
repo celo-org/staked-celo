@@ -198,12 +198,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyAlreadyBlocked(strategy);
         }
 
-        if (!specificGroupStrategies.remove(strategy)) {
-            revert FailedToBlockStrategy(strategy);
-        }
-
-        emit StrategyBlocked(strategy);
-
         uint256 strategyTotalStCeloVotes = getTotalStCeloVotesForStrategy(strategy);
 
         if (strategyTotalStCeloVotes != 0) {
@@ -213,6 +207,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                 strategyTotalStCeloVotes
             );
         }
+
+        if (!specificGroupStrategies.remove(strategy)) {
+            revert FailedToBlockStrategy(strategy);
+        }
+
+        emit StrategyBlocked(strategy);
     }
 
     /**
@@ -254,15 +254,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice Generates groups and votes to distribute votes to.
      * @param strategy The validator group that we want to deposit to or transfer from.
      * @param votes The amount of votes.
-     * @param add Whether funds are being added or removed.
      * @return finalGroups The groups to withdraw from.
      * @return finalVotes The amount to withdraw from each group.
      */
     function generateGroupVotesToDistributeTo(
         address strategy,
         uint256 votes,
-        uint256 stCeloAmount,
-        bool add
+        uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         uint256 scheduledVotes = account.scheduledVotesForGroup(strategy);
         if (!getElection().canReceiveVotes(strategy, votes + scheduledVotes)) {
@@ -273,11 +271,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         finalGroups[0] = strategy;
         finalVotes[0] = votes;
 
-        if (add) {
-            addToSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
-        } else {
-            subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
-        }
+        addToSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
     }
 
     /**
