@@ -44,6 +44,7 @@ import {
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupSlashingMultiplier,
   getUnsortedGroups,
+  rebalanceDefaultGroups,
 } from "./utils";
 import { OrderedGroup } from "./utils-interfaces";
 
@@ -2576,12 +2577,16 @@ describe("Manager", () => {
         const depositedValue = 100;
         beforeEach(async () => {
           await manager.deposit({ value: depositedValue });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await rebalanceDefaultGroups(defaultStrategyContract as any)
         });
 
         it("should return same amount for real and expected", async () => {
           const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
+          console.log("expected", expected.toString());
+          console.log("real", real.toString());
           expect(expected).to.eq(real);
         });
 
@@ -2606,6 +2611,8 @@ describe("Manager", () => {
           await manager.connect(depositor).deposit({ value: defaultDepositedValue });
           await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
           await manager.connect(depositor2).deposit({ value: specificGroupStrategyDepositedValue });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await rebalanceDefaultGroups(defaultStrategyContract as any)
         });
 
         it("should return same amount for real and expected", async () => {
@@ -2972,6 +2979,7 @@ describe("Manager", () => {
       let totalDeposited = 0
       const withdrawn = 250
       beforeEach(async () => {
+        totalDeposited = 0
         await defaultStrategyContract.setSortingParams(3, 3, 3)
         for (let i = 0; i < 3; i++) {
           const toDeposit = (i + 1) * 100
