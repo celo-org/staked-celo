@@ -12,7 +12,6 @@ import "./interfaces/IVote.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
@@ -225,7 +224,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function withdraw(uint256 stakedCeloAmount) external {
         distributeAndScheduleWithdrawals(stakedCeloAmount, msg.sender);
         stakedCelo.burn(msg.sender, stakedCeloAmount);
-        console.log("withdraw end");
     }
 
     /**
@@ -263,7 +261,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * The CELO will be distributed based on address strategy.
      */
     function deposit() external payable {
-        console.log("Deposit start");
         address strategy = checkStrategy(strategies[msg.sender]);
 
         uint256 stCeloAmount = toStakedCelo(msg.value);
@@ -286,7 +283,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         stakedCelo.mint(msg.sender, stCeloAmount);
 
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
-        console.log("deposit end");
     }
 
     /**
@@ -527,7 +523,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function toCelo(uint256 stCeloAmount) public view returns (uint256) {
         uint256 stCeloSupply = stakedCelo.totalSupply();
         uint256 celoBalance = account.getTotalCelo();
-        console.log("stCeloSupply %s celoBalance %s", stCeloSupply, celoBalance);
 
         if (stCeloSupply == 0 || celoBalance == 0) {
             return stCeloAmount;
@@ -604,7 +599,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         bool isTransfer
     ) private returns (address[] memory, uint256[] memory) {
         uint256 withdrawal = toCelo(stCeloAmount);
-        console.log("withdrawal amount in stCelo %s  and Celo %s", stCeloAmount, withdrawal);
         if (withdrawal == 0) {
             revert ZeroWithdrawal();
         }

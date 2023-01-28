@@ -12,7 +12,6 @@ import "./Managed.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./common/linkedlists/AddressSortedLinkedList.sol";
-import "hardhat/console.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
@@ -691,7 +690,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         (, originalKeyPrevious, next) = activeGroups.get(originalKey);
 
         while (next != address(0) && loopLimit-- > 1) {
-            // console.log("p %s n %s", previous, next);
             if (newValue <= activeGroups.getValue(next)) {
                 break;
             }

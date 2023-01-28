@@ -1484,15 +1484,7 @@ describe("Manager", () => {
       describe("When withdrawn from head", () => {
         const withdrawn1 = 77;
         beforeEach(async () => {
-          console.log(
-            "orderedGroups",
-            JSON.stringify(await getOrderedActiveGroups(defaultStrategyContract))
-          );
           await manager.connect(depositor2).withdraw(withdrawn1);
-          console.log(
-            "orderedGroups",
-            JSON.stringify(await getOrderedActiveGroups(defaultStrategyContract))
-          );
         });
 
         it("should change current head", async () => {
@@ -2591,8 +2583,6 @@ describe("Manager", () => {
           const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
             groupAddresses[0]
           );
-          console.log("expected", expected.toString());
-          console.log("real", real.toString());
           expect(expected).to.eq(real);
         });
 
@@ -3169,7 +3159,6 @@ describe("Manager", () => {
 
       it("should have correctly ordered active groups", async () => {
         const orderedActiveGroups = await getOrderedActiveGroups(defaultStrategyContract);
-        console.log("orderedGroups", JSON.stringify(orderedActiveGroups));
         let previous = BigNumber.from(0);
         let totalAmountInProtocol = 0;
         for (let i = 0; i < orderedActiveGroups.length; i++) {
