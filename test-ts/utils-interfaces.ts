@@ -35,7 +35,7 @@ export interface DefaultGroupContract extends BaseContract {
 }
 
 export interface OrderedGroup {
-  group: string,
-  stCelo: string,
-  realCelo: string,
+  group: string;
+  stCelo: string;
+  realCelo: string;
 }

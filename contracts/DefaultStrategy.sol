@@ -692,7 +692,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     //  * @param stCeloAmount The amount of stCELO to add/subtract.
     //  */
     // function updateStCeloInGroup(address group, uint256 stCeloAmount, bool add) {
-        // TODO: consider using this method
+    // TODO: consider using this method
     // }
 
     /**

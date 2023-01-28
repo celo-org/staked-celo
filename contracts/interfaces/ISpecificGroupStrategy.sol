@@ -31,6 +31,8 @@ interface ISpecificGroupStrategy {
 
     function isSpecificGroupStrategy(address strategy) external view returns (bool);
 
+    function isValidSpecificGroupStrategy(address strategy) external view returns (bool);
+
     function getTotalStCeloVotesForStrategy(address strategy) external view returns (uint256);
 
     function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256);

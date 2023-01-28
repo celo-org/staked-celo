@@ -264,7 +264,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function deposit() external payable {
         console.log("Deposit start");
-        address strategy = checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
+        address strategy = checkStrategy(strategies[msg.sender]);
 
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
@@ -274,7 +274,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 strategy = address(0);
                 uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
                 if (stCeloBalance != 0) {
-                    _transfer(strategy, address(0), stCeloBalance, msg.sender, msg.sender);
+                    _transfer(strategy, address(0), stCeloBalance);
                 }
             }
         }
@@ -292,7 +292,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Returns which strategy an address is using
      * address(0) = default strategy
-     * !address(0) = voting for allowed validator group
+     * !address(0) = voting for specific validator group.
+     * Unhealthy and blocked strategies are reverted to default.
      * @param accountAddress The account address.
      * @return The strategy.
      */
@@ -334,7 +335,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) public onlyStakedCelo {
         address fromStrategy = strategies[from];
         address toStrategy = strategies[to];
-        _transfer(fromStrategy, toStrategy, stCeloAmount, from, to);
+        _transfer(fromStrategy, toStrategy, stCeloAmount);
     }
 
     /**
@@ -369,7 +370,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
         if (stCeloAmount != 0) {
             address currentStrategy = strategies[msg.sender];
-            _transfer(currentStrategy, newStrategy, stCeloAmount, msg.sender, msg.sender);
+            _transfer(currentStrategy, newStrategy, stCeloAmount);
         }
 
         strategies[msg.sender] = checkStrategy(newStrategy);
@@ -420,7 +421,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo)
         );
     }
-
 
     /**
      * @notice Allows strategy to initiate transfer without any checks.
@@ -565,7 +565,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && !specificGroupStrategy.isSpecificGroupStrategy(strategy)) {
+        if (strategy != address(0) && !specificGroupStrategy.isValidSpecificGroupStrategy(strategy)) {
             // strategy not allowed revert to default strategy
             return address(0);
         }
@@ -604,7 +604,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * CELO.
      **/
     function distributeAndScheduleWithdrawals(uint256 stCeloAmount, address beneficiary) private {
-        address strategy = checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
+        address strategy = checkStrategy(strategies[beneficiary]);
         (
             address[] memory groupsWithdrawn,
             uint256[] memory withdrawalsPerGroup
@@ -656,41 +656,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if strategy was deprecated. Deprecated strategy is reverted to default.
-     * Updates the strategies.
-     * @param accountAddress The account.
-     * @param strategy The strategy.
-     * @return Up to date strategy
-     */
-    function checkAndUpdateStrategy(address accountAddress, address strategy)
-        private
-        returns (address)
-    {
-        address checkedStrategy = checkStrategy(strategy);
-        //TODO: don't update strategies and test it
-        if (checkedStrategy != strategy) {
-            strategies[accountAddress] = checkedStrategy;
-        }
-        return checkedStrategy;
-    }
-
-    /**
      * @notice Schedules transfer of CELO between strategies.
      * @param fromStrategy The from validator group.
      * @param toStrategy The to validator group.
      * @param stCeloAmount The stCELO amount.
-     * @param from The from address.
-     * @param to The to address.
      */
     function _transfer(
         address fromStrategy,
         address toStrategy,
-        uint256 stCeloAmount,
-        address from,
-        address to
+        uint256 stCeloAmount
     ) private {
-        fromStrategy = checkAndUpdateStrategy(from, fromStrategy);
-        toStrategy = checkAndUpdateStrategy(to, toStrategy);
+        fromStrategy = checkStrategy(fromStrategy);
+        toStrategy = checkStrategy(toStrategy);
 
         if (fromStrategy == toStrategy) {
             // either both addresses use default strategy

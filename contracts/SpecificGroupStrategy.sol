@@ -305,6 +305,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
+     * @notice Returns is strategy is valid specific group strategy.
+     * @return Whether or not is valid specific group strategy.
+     */
+    function isValidSpecificGroupStrategy(address strategy) external view returns (bool) {
+        return specificGroupStrategies.contains(strategy) && groupHealth.isValidGroup(strategy);
+    }
+
+    /**
      * @notice Returns the total stCELO locked in specific groups.
      * @return The total stCELO.
      */
