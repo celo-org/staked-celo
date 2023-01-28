@@ -111,16 +111,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     event GroupDeprecated(address indexed group);
 
     /**
-     * @notice Used when attempting to withdraw from specific strategy
-     * but group does not have enough CELO. Group either doesn't have enough stCELO
-     * or it is necessary to rebalance the group.
-     * @param group The group's address.
-     * @param expected The expected vote amount.
-     * @param real The real vote amount.
-     */
-    error GroupNotBalancedOrNotEnoughStCelo(address group, uint256 expected, uint256 real);
-
-    /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
      * @param group The group's address.
@@ -128,24 +118,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error CantWithdrawAccordingToStrategy(address group);
 
     /**
-     * @notice Used when attempting to deposit when the total deposit amount
-     * would tip each active group over the voting limit as defined in
-     * Election.sol.
-     */
-    error NoVotableGroups();
-
-    /**
      * @notice Used when attempting to activate a group that is already active.
      * @param group The group's address.
      */
     error GroupAlreadyAdded(address group);
-
-    /**
-     * @notice Used when an attempt to remove a deprecated group from the
-     * EnumerableSet fails.
-     * @param group The group's address.
-     */
-    error FailedToRemoveDeprecatedGroup(address group);
 
     /**
      * @notice Used when a group does not meet the validator group health requirements.
@@ -173,13 +149,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error HealthyGroup(address group);
 
     /**
-     * @notice Used when an attempt to add a deprecated group to the
-     * EnumerableSet fails.
-     * @param group The group's address.
-     */
-    error FailedToAddDeprecatedGroup(address group);
-
-    /**
      * @notice Used when attempting to deposit when there are not active groups
      * to vote for.
      */
@@ -189,12 +158,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Used when atempting to distribute votes but validator group limit is reached.
      */
     error NotAbleToDistributeVotes();
-
-    /**
-     * @notice Used when attempting to withdraw but there are no groups being
-     * voted for.
-     */
-    error NoGroups();
 
     /**
      * @notice Used when attempting sort active groups when there are no unsorted group.
@@ -302,103 +265,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Distributes votes by computing the number of votes each active
-     * group should either receive of should be subtracted from.
-     * @param votes The amount of votes to distribute.
-     * @param withdraw Generation for either desposit or withdrawal.
-     * @return finalGroups The groups that were chosen for distribution.
-     * @return finalVotes The votes of chosen finalGroups.
-     */
-    function generateVoteDistributionInternal(uint256 votes, bool withdraw)
-        private
-        returns (address[] memory finalGroups, uint256[] memory finalVotes)
-    {
-        if (activeGroups.getNumElements() == 0) {
-            revert NoActiveGroups();
-        }
-
-        uint256 numberOfGroupsToDistributeTo = Math.min(
-            maxGroupsToDistributeTo,
-            activeGroups.getNumElements()
-        );
-
-        address[] memory groups = new address[](numberOfGroupsToDistributeTo);
-        uint256[] memory votesPerGroup = new uint256[](numberOfGroupsToDistributeTo);
-
-        address votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
-        uint256 countOfGroupsDistributedTo;
-        for (
-            countOfGroupsDistributedTo = 0;
-            countOfGroupsDistributedTo < numberOfGroupsToDistributeTo;
-            countOfGroupsDistributedTo++
-        ) {
-            // console.log("v %s g %s", votes, votedGroup);
-            if (votes == 0 || votedGroup == address(0)) {
-                break;
-            }
-
-            uint256 votesForGroup;
-
-            if (withdraw) {
-                votesForGroup = IManager(manager).toCelo(stCELOInGroup[votedGroup]);
-            } else {
-                votesForGroup =
-                    getElection().getNumVotesReceivable(votedGroup) -
-                    getElection().getTotalVotesForGroup(votedGroup) -
-                    account.scheduledVotesForGroup(votedGroup);
-            }
-            votesPerGroup[countOfGroupsDistributedTo] = Math.min(votesForGroup, votes);
-
-            groups[countOfGroupsDistributedTo] = votedGroup;
-            votes -= votesPerGroup[countOfGroupsDistributedTo];
-            if (withdraw) {
-                subtractFromStrategyTotalStCeloVotesInternal(
-                    votedGroup,
-                    IManager(manager).toStakedCelo(votesPerGroup[countOfGroupsDistributedTo])
-                );
-            } else {
-                addToStrategyTotalStCeloVotesInternal(
-                    votedGroup,
-                    IManager(manager).toStakedCelo(votesPerGroup[countOfGroupsDistributedTo])
-                );
-            }
-
-            (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroups(
-                votedGroup,
-                stCELOInGroup[votedGroup],
-                withdraw
-            );
-            // console.log("%s %s %s %s", votedGroup, lesserKey, greaterKey);
-            if ((lesserKey != greaterKey || activeGroups.getNumElements() == 1) && sorted) {
-                // console.log("u");
-                activeGroups.update(votedGroup, stCELOInGroup[votedGroup], lesserKey, greaterKey);
-                // console.log("d");
-                votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
-            } else {
-                unsortedGroups.add(votedGroup);
-                sorted = false;
-                if (withdraw) {
-                    (, votedGroup, ) = activeGroups.get(votedGroup);
-                } else {
-                    (, , votedGroup) = activeGroups.get(votedGroup);
-                }
-            }
-        }
-
-        if (votes != 0) {
-            revert NotAbleToDistributeVotes();
-        }
-
-        finalGroups = new address[](countOfGroupsDistributedTo);
-        finalVotes = new uint256[](countOfGroupsDistributedTo);
-
-        for (uint256 j = 0; j < countOfGroupsDistributedTo; j++) {
-            finalGroups[j] = groups[j];
-            finalVotes[j] = votesPerGroup[j];
-        }
-    }
-
-    /**
      * @notice Distributes withdrawals from default strategy by computing the number of votes that
      * should be withdrawn from each group.
      * @param group The amount of votes to withdraw.
@@ -464,7 +330,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         );
         uint256 currentStCelo = stCeloForWholeGroup -
             Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
-        addToStrategyTotalStCeloVotesInternal(group, currentStCelo);
+
+        updateGroupStCelo(group, currentStCelo, true);
 
         emit GroupActivated(group);
     }
@@ -576,28 +443,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns expected stCELO vs actual stCELO for group.
-     * @param group The group.
-     * @return expectedStCelo The stCELO which group should have.
-     * @return actualStCelo The stCELO which group has.
-     */
-    function getExpectedAndActualStCeloForGroup(address group)
-        public
-        view
-        returns (uint256 expectedStCelo, uint256 actualStCelo)
-    {
-        address head = activeGroups.getHead();
-        expectedStCelo = totalStCeloInDefaultStrategy / activeGroups.getNumElements();
-        if (group == head) {
-            uint256 divisionResidue = totalStCeloInDefaultStrategy -
-                (expectedStCelo * activeGroups.getNumElements());
-            expectedStCelo += divisionResidue;
-        }
-
-        actualStCelo = stCELOInGroup[group];
-    }
-
-    /**
      * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
      * FromGroup is required to have more CELO than it should and ToGroup needs
      * to have less CELO than it should.
@@ -635,8 +480,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             expectedToStCelo - actualToStCelo
         );
 
-        subtractFromStrategyTotalStCeloVotesInternal(fromGroup, toMove);
-        addToStrategyTotalStCeloVotesInternal(toGroup, toMove);
+        updateGroupStCelo(fromGroup, toMove, false);
+        updateGroupStCelo(toGroup, toMove, true);
         if (sorted) {
             (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroupsWithdrawal(
                 fromGroup,
@@ -660,40 +505,59 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Adds value to totals of group strategy and
-     * total stCELO in all group strategies.
-     * @param strategy The validator group that we are adding to.
-     * @param stCeloAmount The added amount of stCELO.
+     * @notice Returns expected stCELO vs actual stCELO for group.
+     * @param group The group.
+     * @return expectedStCelo The stCELO which group should have.
+     * @return actualStCelo The stCELO which group has.
      */
-    function addToStrategyTotalStCeloVotesInternal(address strategy, uint256 stCeloAmount)
-        internal
+    function getExpectedAndActualStCeloForGroup(address group)
+        public
+        view
+        returns (uint256 expectedStCelo, uint256 actualStCelo)
     {
-        stCELOInGroup[strategy] += stCeloAmount;
-        totalStCeloInDefaultStrategy += stCeloAmount;
+        address head = activeGroups.getHead();
+        expectedStCelo = totalStCeloInDefaultStrategy / activeGroups.getNumElements();
+        if (group == head) {
+            uint256 divisionResidue = totalStCeloInDefaultStrategy -
+                (expectedStCelo * activeGroups.getNumElements());
+            expectedStCelo += divisionResidue;
+        }
+
+        actualStCelo = stCELOInGroup[group];
     }
 
     /**
-     * @notice Subtracts value from totals of group strategy and
-     * total stCELO in all group strategies.
-     * @param strategy The validator group that we are adding to.
-     * @param stCeloAmount The subtracted amount of stCELO.
+     * @notice Adds/substracts value to totals of group and
+     * total stCELO in default strategy.
+     * @param strategy The validator group that we are updating.
+     * @param stCeloAmount The amount of stCELO.
+     * @param add Whether to add or substract.
      */
-    function subtractFromStrategyTotalStCeloVotesInternal(address strategy, uint256 stCeloAmount)
-        internal
-    {
-        stCELOInGroup[strategy] -= stCeloAmount;
-        totalStCeloInDefaultStrategy -= stCeloAmount;
+    function updateGroupStCelo(
+        address strategy,
+        uint256 stCeloAmount,
+        bool add
+    ) internal {
+        if (add) {
+            stCELOInGroup[strategy] += stCeloAmount;
+            totalStCeloInDefaultStrategy += stCeloAmount;
+        } else {
+            stCELOInGroup[strategy] -= stCeloAmount;
+            totalStCeloInDefaultStrategy -= stCeloAmount;
+        }
     }
 
-    // /**
-    //  * @notice Adds/Subtracts value from totals of group strategy and
-    //  * total stCELO in all group strategies.
-    //  * @param group The validator group that we are adding to.
-    //  * @param stCeloAmount The amount of stCELO to add/subtract.
-    //  */
-    // function updateStCeloInGroup(address group, uint256 stCeloAmount, bool add) {
-    // TODO: consider using this method
-    // }
+    function getLesserAndGreaterOfActiveGroups(
+        address originalKey,
+        uint256 newValue,
+        bool withdrawal
+    ) internal view returns (address previous, address next) {
+        if (withdrawal) {
+            (previous, next) = getLesserAndGreaterOfActiveGroupsWithdrawal(originalKey, newValue);
+        } else {
+            (previous, next) = getLesserAndGreaterOfActiveGroupsDeposit(originalKey, newValue);
+        }
+    }
 
     /**
      * @notice Marks a group as deprecated.
@@ -711,7 +575,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         uint256 strategyTotalStCeloVotes = stCELOInGroup[group];
 
         if (strategyTotalStCeloVotes > 0) {
-            subtractFromStrategyTotalStCeloVotesInternal(group, strategyTotalStCeloVotes);
+            updateGroupStCelo(group, strategyTotalStCeloVotes, false);
             address[] memory fromGroups = new address[](1);
             uint256[] memory fromVotes = new uint256[](1);
             fromGroups[0] = group;
@@ -732,6 +596,88 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
 
         emit GroupRemoved(group);
+    }
+
+    /**
+     * @notice Distributes votes by computing the number of votes each active
+     * group should either receive of should be subtracted from.
+     * @param votesAmount The amount of votes to distribute.
+     * @param withdraw Generation for either desposit or withdrawal.
+     * @return finalGroups The groups that were chosen for distribution.
+     * @return finalVotes The votes of chosen finalGroups.
+     */
+    function generateVoteDistributionInternal(uint256 votesAmount, bool withdraw)
+        private
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        if (activeGroups.getNumElements() == 0) {
+            revert NoActiveGroups();
+        }
+
+        uint256 maxGroupCount = Math.min(maxGroupsToDistributeTo, activeGroups.getNumElements());
+
+        address[] memory groups = new address[](maxGroupCount);
+        uint256[] memory votes = new uint256[](maxGroupCount);
+
+        address votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+        uint256 groupsIndex;
+        uint256 groupVotes;
+
+        for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
+            if (votesAmount == 0 || votedGroup == address(0)) {
+                break;
+            }
+
+            if (withdraw) {
+                groupVotes = IManager(manager).toCelo(stCELOInGroup[votedGroup]);
+            } else {
+                groupVotes =
+                    getElection().getNumVotesReceivable(votedGroup) -
+                    getElection().getTotalVotesForGroup(votedGroup) -
+                    account.scheduledVotesForGroup(votedGroup);
+            }
+
+            votes[groupsIndex] = Math.min(groupVotes, votesAmount);
+            groups[groupsIndex] = votedGroup;
+
+            votesAmount -= votes[groupsIndex];
+
+            updateGroupStCelo(
+                votedGroup,
+                IManager(manager).toStakedCelo(votes[groupsIndex]),
+                !withdraw
+            );
+
+            (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroups(
+                votedGroup,
+                stCELOInGroup[votedGroup],
+                withdraw
+            );
+            if ((lesserKey != greaterKey || activeGroups.getNumElements() == 1) && sorted) {
+                activeGroups.update(votedGroup, stCELOInGroup[votedGroup], lesserKey, greaterKey);
+                votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+            } else {
+                unsortedGroups.add(votedGroup);
+                sorted = false;
+                if (withdraw) {
+                    (, votedGroup, ) = activeGroups.get(votedGroup);
+                } else {
+                    (, , votedGroup) = activeGroups.get(votedGroup);
+                }
+            }
+        }
+
+        if (votesAmount != 0) {
+            revert NotAbleToDistributeVotes();
+        }
+
+        finalGroups = new address[](groupsIndex);
+        finalVotes = new uint256[](groupsIndex);
+
+        for (uint256 j = 0; j < groupsIndex; j++) {
+            finalGroups[j] = groups[j];
+            finalVotes[j] = votes[j];
+        }
     }
 
     function getLesserAndGreaterOfActiveGroupsDeposit(address originalKey, uint256 newValue)
@@ -782,17 +728,5 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
 
         next = next == originalKey ? originalKeyNext : next;
-    }
-
-    function getLesserAndGreaterOfActiveGroups(
-        address originalKey,
-        uint256 newValue,
-        bool withdrawal
-    ) internal view returns (address previous, address next) {
-        if (withdrawal) {
-            (previous, next) = getLesserAndGreaterOfActiveGroupsWithdrawal(originalKey, newValue);
-        } else {
-            (previous, next) = getLesserAndGreaterOfActiveGroupsDeposit(originalKey, newValue);
-        }
     }
 }

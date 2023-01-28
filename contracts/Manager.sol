@@ -442,29 +442,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Schedules transfer between 2 groups.
-     * @param fromGroup The group the deposited CELO is intended to be revoked from.
-     * @param toGroup The group the transferred CELO is intended to vote for.
-     * @param votes The amount of CELO to be transfered.
-     */
-    function scheduleRebalanceTransfer(
-        address fromGroup,
-        address toGroup,
-        uint256 votes
-    ) private {
-        address[] memory fromGroups = new address[](1);
-        address[] memory toGroups = new address[](1);
-        uint256[] memory fromVotes = new uint256[](1);
-        uint256[] memory toVotes = new uint256[](1);
-
-        fromGroups[0] = fromGroup;
-        fromVotes[0] = votes;
-        toGroups[0] = toGroup;
-        toVotes[0] = fromVotes[0];
-        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
-    }
-
-    /**
      * @notice Votes on a proposal in the referendum stage.
      * @param proposalId The ID of the proposal to vote on.
      * @param index The index of the proposal ID in `dequeued`.
@@ -565,7 +542,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && !specificGroupStrategy.isValidSpecificGroupStrategy(strategy)) {
+        if (
+            strategy != address(0) && !specificGroupStrategy.isValidSpecificGroupStrategy(strategy)
+        ) {
             // strategy not allowed revert to default strategy
             return address(0);
         }
@@ -697,6 +676,29 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory toVotes;
         (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
 
+        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * @notice Schedules transfer between 2 groups.
+     * @param fromGroup The group the deposited CELO is intended to be revoked from.
+     * @param toGroup The group the transferred CELO is intended to vote for.
+     * @param votes The amount of CELO to be transfered.
+     */
+    function scheduleRebalanceTransfer(
+        address fromGroup,
+        address toGroup,
+        uint256 votes
+    ) private {
+        address[] memory fromGroups = new address[](1);
+        address[] memory toGroups = new address[](1);
+        uint256[] memory fromVotes = new uint256[](1);
+        uint256[] memory toVotes = new uint256[](1);
+
+        fromGroups[0] = fromGroup;
+        fromVotes[0] = votes;
+        toGroups[0] = toGroup;
+        toVotes[0] = fromVotes[0];
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }
 }

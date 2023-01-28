@@ -143,7 +143,7 @@ describe("e2e", () => {
     await activateAndVoteTest();
 
     await distributeAllRewards();
-    await rebalanceDefaultGroups(defaultStrategyContract)
+    await rebalanceDefaultGroups(defaultStrategyContract);
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
     await hre.run(ACCOUNT_REVOKE, {
       account: deployerAccountName,
@@ -152,12 +152,15 @@ describe("e2e", () => {
     });
     await activateAndVoteTest();
 
-    const election =  await hre.kit.contracts.getElection()
-    const eligableGroups = election.getEligibleValidatorGroupsVotes()
+    const election = await hre.kit.contracts.getElection();
+    const eligableGroups = election.getEligibleValidatorGroupsVotes();
     console.log("eligableGroups", JSON.stringify(eligableGroups));
     console.log("group 0", groups[0].address);
     for (let i = 0; i < 3; i++) {
-      const votesForGroupByAccount = await election.getTotalVotesForGroupByAccount(groups[i].address, accountContract.address)
+      const votesForGroupByAccount = await election.getTotalVotesForGroupByAccount(
+        groups[i].address,
+        accountContract.address
+      );
       console.log("votesForGroupByAccount", i, formatEther(votesForGroupByAccount.toString()));
     }
 

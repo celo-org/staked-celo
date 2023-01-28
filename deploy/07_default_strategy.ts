@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
   const libInstance = await lib.deploy();
   await libInstance.deployed();
-  console.log("Library Address--->" + libInstance.address)
+  console.log("Library Address--->" + libInstance.address);
 
   const managerAddress = (await hre.deployments.get("Manager")).address;
   await catchNotOwnerForProxy(

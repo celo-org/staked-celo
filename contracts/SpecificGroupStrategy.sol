@@ -242,37 +242,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Used to withdraw CELO from the system from specific group strategy
-     * that account voted for previously. It is expected that strategy will be balanced.
-     * For balancing use `rebalance` function
-     * @param strategy The validator group that we want to withdraw from.
-     * @param withdrawal The amount of stCELO to withdraw.
-     * @return groups The groups to withdraw from.
-     * @return votes The amount to withdraw from each group.
-     */
-    function calculateAndUpdateForWithdrawalTransfer(
-        // TODO: add tests
-        address strategy,
-        uint256 withdrawal,
-        uint256 stCeloWithdrawalAmount
-    ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        if (specificGroupStrategies.length() == 0) {
-            revert NoGroups();
-        }
-
-        groups = new address[](1);
-        votes = new uint256[](1);
-        groups[0] = strategy;
-        votes[0] = withdrawal;
-
-        if (stCeloWithdrawalAmount > specificGroupStrategyTotalStCeloVotes[strategy]) {
-            revert CantWithdrawAccordingToStrategy(strategy);
-        }
-
-        subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
-    }
-
-    /**
      * @notice Generates groups and votes to distribute votes to.
      * @param strategy The validator group that we want to deposit to or transfer from.
      * @param votes The amount of votes.
@@ -362,6 +331,37 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         )
     {
         return (1, 1, 0, 0);
+    }
+
+    /**
+     * @notice Used to withdraw CELO from the system from specific group strategy
+     * that account voted for previously. It is expected that strategy will be balanced.
+     * For balancing use `rebalance` function
+     * @param strategy The validator group that we want to withdraw from.
+     * @param withdrawal The amount of stCELO to withdraw.
+     * @return groups The groups to withdraw from.
+     * @return votes The amount to withdraw from each group.
+     */
+    function calculateAndUpdateForWithdrawalTransfer(
+        // TODO: add tests
+        address strategy,
+        uint256 withdrawal,
+        uint256 stCeloWithdrawalAmount
+    ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
+        if (specificGroupStrategies.length() == 0) {
+            revert NoGroups();
+        }
+
+        groups = new address[](1);
+        votes = new uint256[](1);
+        groups[0] = strategy;
+        votes[0] = withdrawal;
+
+        if (stCeloWithdrawalAmount > specificGroupStrategyTotalStCeloVotes[strategy]) {
+            revert CantWithdrawAccordingToStrategy(strategy);
+        }
+
+        subtractFromSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloWithdrawalAmount);
     }
 
     /**

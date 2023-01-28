@@ -330,7 +330,7 @@ describe("e2e specific group strategy voting", () => {
   }
 
   async function rebalanceAllAndActivate() {
-    await rebalanceDefaultGroups(defaultStrategy)
+    await rebalanceDefaultGroups(defaultStrategy);
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
     await hre.run(ACCOUNT_REVOKE, {
       account: deployerAccountName,

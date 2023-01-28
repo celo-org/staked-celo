@@ -4,16 +4,16 @@ pragma solidity 0.8.11;
 import "../DefaultStrategy.sol";
 
 contract MockDefaultStrategyFull is DefaultStrategy {
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function addToStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount) public {
-        addToStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
+        updateGroupStCelo(strategy, stCeloAmount, true);
     }
 
     function subtractFromStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount)
         internal
     {
-        subtractFromStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
+        updateGroupStCelo(strategy, stCeloAmount, false);
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
 }
