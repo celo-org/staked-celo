@@ -234,7 +234,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert GroupNotBalancedOrNotEnoughStCelo(strategy, withdrawal, votesRemaining);
         }
 
-       (groups, votes) = calculateAndUpdateForWithdrawalTransfer(strategy, withdrawal, stCeloWithdrawalAmount);
+        (groups, votes) = calculateAndUpdateForWithdrawalTransfer(
+            strategy,
+            withdrawal,
+            stCeloWithdrawalAmount
+        );
     }
 
     /**

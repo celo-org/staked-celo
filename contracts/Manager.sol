@@ -414,13 +414,24 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert RebalanceEnoughCelo(toGroup, actualToCelo, expectedToCelo);
         }
 
-        scheduleTransfer(
+        scheduleRebalanceTransfer(
             fromGroup,
             toGroup,
             Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo)
         );
     }
 
+
+    /**
+     * @notice Allows strategy to initiate transfer without any checks.
+     * This method is supopsed to be used for transfers between groups
+     * only within strategy
+     * @param fromGroups The groups the deposited CELO is intended to be revoked from.
+     * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
+     * @param toGroups The groups the transferred CELO is intended to vote for.
+     * @param toVotes The amount of CELO to schedule for each respective group
+     * from `toGroups`.
+     */
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
         address[] calldata toGroups,
@@ -428,10 +439,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] calldata toVotes
     ) public onlyStrategy {
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
-        // TODO: add tests
     }
 
-    function scheduleTransfer(
+    /**
+     * @notice Schedules transfer between 2 groups.
+     * @param fromGroup The group the deposited CELO is intended to be revoked from.
+     * @param toGroup The group the transferred CELO is intended to vote for.
+     * @param votes The amount of CELO to be transfered.
+     */
+    function scheduleRebalanceTransfer(
         address fromGroup,
         address toGroup,
         uint256 votes
@@ -603,10 +619,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param isTransfer Whether or not withdrawal is calculate for transfer
      * CELO.
      **/
-    function distributeWithdrawals(uint256 stCeloAmount, address strategy, bool isTransfer)
-        private
-        returns (address[] memory, uint256[] memory)
-    {
+    function distributeWithdrawals(
+        uint256 stCeloAmount,
+        address strategy,
+        bool isTransfer
+    ) private returns (address[] memory, uint256[] memory) {
         uint256 withdrawal = toCelo(stCeloAmount);
         console.log("withdrawal amount in stCelo %s  and Celo %s", stCeloAmount, withdrawal);
         if (withdrawal == 0) {
@@ -617,11 +634,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer 
-            ? specificGroupStrategy
-                .calculateAndUpdateForWithdrawalTransfer(strategy, withdrawal, stCeloAmount)
-            : specificGroupStrategy
-                .calculateAndUpdateForWithdrawal(strategy, withdrawal, stCeloAmount);
+            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
+                ? specificGroupStrategy.calculateAndUpdateForWithdrawalTransfer(
+                    strategy,
+                    withdrawal,
+                    stCeloAmount
+                )
+                : specificGroupStrategy.calculateAndUpdateForWithdrawal(
+                    strategy,
+                    withdrawal,
+                    stCeloAmount
+                );
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
                 withdrawal,

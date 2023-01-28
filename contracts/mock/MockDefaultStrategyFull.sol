@@ -13,4 +13,7 @@ contract MockDefaultStrategyFull is DefaultStrategy {
     {
         subtractFromStrategyTotalStCeloVotesInternal(strategy, stCeloAmount);
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 }
