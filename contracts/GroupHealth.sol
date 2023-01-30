@@ -14,7 +14,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Stores validity of group.
      */
     struct GroupValid {
-        uint256 epochSetToHealthy;
+        uint128 epochSetToHealthy;
         bool healthy;
     }
 
@@ -42,7 +42,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the CELO registry.
+     * @param _registry The address of the CELO Registry.
      * @param _owner The address of the contract owner.
      */
     function initialize(address _registry, address _owner) external initializer {
@@ -83,7 +83,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         returns (bool)
     {
         GroupValid storage groupHealth = groupsHealth[group];
-        uint256 currentEpoch = getElection().getEpochNumber();
+        uint128 currentEpoch = uint128(getElection().getEpochNumber());
         if (groupHealth.epochSetToHealthy >= currentEpoch) {
             revert ValidatorGroupAlreadyUpdatedInEpoch(group);
         }

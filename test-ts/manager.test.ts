@@ -2063,7 +2063,7 @@ describe("Manager", () => {
         it("should revert since groups are not rebalanced", async () => {
           await expect(
             manager.connect(depositor).withdraw(specificGroupStrategyWithdrawal)
-          ).revertedWith(`CantWithdrawAccordingToStrategy("${ADDRESS_ZERO}")`);
+          ).revertedWith(`CantWithdrawAccordingToStrategy()`);
         });
 
         it('should withdraw correctly after "rebalance"', async () => {

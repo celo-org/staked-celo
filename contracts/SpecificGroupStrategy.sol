@@ -129,7 +129,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the Manager contract.
      */

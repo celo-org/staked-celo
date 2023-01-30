@@ -90,9 +90,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
-     * @param group The group's address.
      */
-    error CantWithdrawAccordingToStrategy(address group);
+    error CantWithdrawAccordingToStrategy();
 
     /**
      * @notice Used when attempting to deposit when the total deposit amount
@@ -154,7 +153,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error FailedToAddDeprecatedGroup(address group);
 
     /**
-     * @notice Used when attempting to deposit when there are not active groups
+     * @notice Used when attempting to deposit when there are no active groups
      * to vote for.
      */
     error NoActiveGroups();
@@ -167,7 +166,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the Manager contract.
      */
@@ -638,7 +637,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         uint256 availableVotes;
         (sortedGroups, availableVotes) = getSortedGroupsWithVotes(activeGroups.values());
         if (availableVotes < withdrawal) {
-            revert CantWithdrawAccordingToStrategy(address(0));
+            revert CantWithdrawAccordingToStrategy();
         }
         availableVotes -= withdrawal;
 

@@ -33,6 +33,8 @@ describe("GroupHealth", () => {
       this.timeout(100000);
       await resetNetwork();
 
+      [nonManager] = await randomSigner(parseUnits("100"));
+
       await hre.deployments.fixture("FullTestManager");
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
     } catch (error) {
