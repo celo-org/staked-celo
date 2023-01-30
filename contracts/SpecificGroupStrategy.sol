@@ -128,6 +128,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error NoGroups();
 
     /**
+     * @notice Used when attempting to block a healthy group using.
+     * @param group The group's address.
+     */
+    error HealthyGroup(address group);
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -186,33 +192,22 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Marks a group as not specific group strategy for voting.
-     * @param strategy The address of the group to remove from the set of specific group
+     * @param group The address of the group to remove from the set of specific group
      * strategies.
      */
-    function blockStrategy(address strategy) external onlyOwner {
-        if (defaultStrategy.getGroupsLength() == 0) {
-            revert NoActiveGroups();
+    function blockStrategy(address group) external onlyOwner {
+        _blockStrategy(group);
+    }
+
+    /**
+     * @notice Blocks unhealthy group.
+     * @param group The group to block if unhealthy.
+     */
+    function blockUnhealthyStrategy(address group) external {
+        if (groupHealth.isValidGroup(group)) {
+            revert HealthyGroup(group);
         }
-
-        if (!specificGroupStrategies.contains(strategy)) {
-            revert StrategyAlreadyBlocked(strategy);
-        }
-
-        uint256 strategyTotalStCeloVotes = getTotalStCeloVotesForStrategy(strategy);
-
-        if (strategyTotalStCeloVotes != 0) {
-            IManager(manager).transferBetweenStrategies(
-                strategy,
-                address(0),
-                strategyTotalStCeloVotes
-            );
-        }
-
-        if (!specificGroupStrategies.remove(strategy)) {
-            revert FailedToBlockStrategy(strategy);
-        }
-
-        emit StrategyBlocked(strategy);
+        _blockStrategy(group);
     }
 
     /**
@@ -398,5 +393,36 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      */
     function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
         return specificGroupStrategyTotalStCeloVotes[strategy];
+    }
+
+    /**
+     * @notice Marks a group as not specific group strategy for voting.
+     * @param group The address of the group to remove from the set of specific group
+     * strategies.
+     */
+    function _blockStrategy(address group) private {
+        if (defaultStrategy.getGroupsLength() == 0) {
+            revert NoActiveGroups();
+        }
+
+        if (!specificGroupStrategies.contains(group)) {
+            revert StrategyAlreadyBlocked(group);
+        }
+
+        uint256 strategyTotalStCeloVotes = getTotalStCeloVotesForStrategy(group);
+
+        if (strategyTotalStCeloVotes != 0) {
+            IManager(manager).transferBetweenStrategies(
+                group,
+                address(0),
+                strategyTotalStCeloVotes
+            );
+        }
+
+        if (!specificGroupStrategies.remove(group)) {
+            revert FailedToBlockStrategy(group);
+        }
+
+        emit StrategyBlocked(group);
     }
 }
