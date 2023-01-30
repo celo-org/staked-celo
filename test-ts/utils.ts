@@ -17,7 +17,7 @@ import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
-import { MockDefaultStrategyFull } from "../typechain-types/MockDefaultStrategyFull";
+import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
@@ -508,7 +508,7 @@ export async function getSpecificGroupsSafe(specificGroupStrategy: SpecificGroup
   return Promise.all(specificGroupsPromises);
 }
 
-export async function getGroupsSafe(
+export async function getGroupsOfAllStrategies(
   defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
@@ -597,8 +597,6 @@ async function rebalanceInternal(
       lastIndex--;
     }
   }
-
-  console.log("Rebalance finished!");
 }
 
 export async function rebalanceGroups(
@@ -606,7 +604,7 @@ export async function rebalanceGroups(
   specificGroupStrategy: SpecificGroupStrategy,
   defaultStrategy: DefaultStrategy
 ) {
-  const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
+  const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
 
   rebalanceInternal(managerContract, expectedVsReal);
@@ -685,7 +683,7 @@ export async function getIndexesOfElectedValidatorGroupMembers(
 }
 
 export async function getOrderedActiveGroups(
-  defaultStrategyContract: MockDefaultStrategyFull,
+  defaultStrategyContract: MockDefaultStrategy,
   account?: Account
 ): Promise<OrderedGroup[]> {
   let [head] = await defaultStrategyContract.getGroupsHead();
@@ -705,7 +703,7 @@ export async function getOrderedActiveGroups(
   return groupsForLog;
 }
 
-export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategyFull) {
+export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
   const length = await defaultStrategyContract.getUnsortedGroupsLength();
 
   const unsortedGroupsPromises = [];

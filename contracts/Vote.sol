@@ -120,7 +120,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the contract manager.
      */
@@ -136,7 +136,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
 
     /**
      * @notice Set this contract's dependencies in the StakedCelo system.
-     * @dev Manager, Account and StakedCelo all reference each other
+     * @dev The StakedCelo contracts all reference each other
      * so we need a way of setting these after all contracts are
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.

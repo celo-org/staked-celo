@@ -112,9 +112,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
-     * @param group The group's address.
      */
-    error CantWithdrawAccordingToStrategy(address group);
+    error CantWithdrawAccordingToStrategy();
 
     /**
      * @notice Used when attempting to activate a group that is already active.
@@ -193,7 +192,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the Manager contract.
      */

@@ -6,12 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 
-import "./interfaces/IManager.sol";
-import "./interfaces/IStakedCelo.sol";
-import "./interfaces/IAccount.sol";
-import "./interfaces/ISpecificGroupStrategy.sol";
-import "./interfaces/IDefaultStrategy.sol";
-
 /**
  * @title GroupHealth stores and updates info about validator group health.
  */
@@ -20,36 +14,11 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice Stores validity of group.
      */
     struct GroupValid {
-        uint256 epochSetToHealthy;
+        uint128 epochSetToHealthy;
         bool healthy;
     }
 
-    /**
-     * @notice An instance of the StakedCelo contract for the StakedCelo protocol.
-     */
-    IStakedCelo public stakedCelo;
-
-    /**
-     * @notice An instance of the Account contract for the StakedCelo protocol.
-     */
-    IAccount public account;
-
-    /**
-     * @notice An instance of the SpecificGroupStrategy contract for the StakedCelo protocol.
-     */
-    ISpecificGroupStrategy public specificGroupStrategy;
-
-    /**
-     * @notice An instance of the DefaultStrategy contract for the StakedCelo protocol.
-     */
-    IDefaultStrategy public defaultStrategy;
-
-    /**
-     * @notice An instance of the Manager contract for the StakedCelo protocol.
-     */
-    IManager public manager;
-
-    /**
+    /*¨
      * @notice Mapping that stores health state of groups.
      */
     mapping(address => GroupValid) public groupsHealth;
@@ -67,44 +36,18 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error MembersLengthMismatch();
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the CELO registry.
+     * @param _registry The address of the CELO Registry.
      * @param _owner The address of the contract owner.
      */
     function initialize(address _registry, address _owner) external initializer {
         _transferOwnership(_owner);
         __UsingRegistry_init(_registry);
-    }
-
-    /**
-     * @notice Set this contract's dependencies in the StakedCelo system.
-     * @dev Manager, Account and StakedCelo all reference each other
-     * so we need a way of setting these after all contracts are
-     * deployed and initialized.
-     * @param _stakedCelo the address of the StakedCelo contract.
-     * @param _account The address of the Account contract.
-     * @param _specificGroupStrategy The address of the SpecificGroupStrategy contract.
-     * @param _defaultStrategy The address of the DefaultStrategy contract.
-     * @param _manager The address of the Manager contract.
-     */
-    function setDependencies(
-        address _stakedCelo,
-        address _account,
-        address _specificGroupStrategy,
-        address _defaultStrategy,
-        address _manager
-    ) external onlyOwner {
-        require(_stakedCelo != address(0), "StakedCelo null");
-        require(_account != address(0), "Account null");
-        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
-        require(_defaultStrategy != address(0), "DefaultStrategy null");
-        require(_manager != address(0), "Manager null");
-
-        stakedCelo = IStakedCelo(_stakedCelo);
-        account = IAccount(_account);
-        specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
-        defaultStrategy = IDefaultStrategy(_defaultStrategy);
-        manager = IManager(_manager);
     }
 
     /**
@@ -140,7 +83,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         returns (bool)
     {
         GroupValid storage groupHealth = groupsHealth[group];
-        uint256 currentEpoch = getElection().getEpochNumber();
+        uint128 currentEpoch = uint128(getElection().getEpochNumber());
         if (groupHealth.epochSetToHealthy >= currentEpoch) {
             revert ValidatorGroupAlreadyUpdatedInEpoch(group);
         }
@@ -187,7 +130,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Returns health state of validator group.
+     * @notice Returns the health state of a validator group.
      * @param group The group to check for.
      * @return Whether or not the group is valid.
      */

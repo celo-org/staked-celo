@@ -205,7 +205,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     receive() external payable {}
 
     /**
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _manager The address of the Manager contract.
      * @param _owner The address of the contract owner.
      */
@@ -342,7 +342,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
      * after the revoke of active votes has occurred.
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
-     * `group` in the this contract's array of groups it is voting for.
+     * `group` in this contract's array of groups it is voting for.
      * @return The amount of immediately withdrawn CELO that is obtained from scheduledVotes
      * for `group`.
      */

@@ -13,7 +13,7 @@ import { MockValidators__factory } from "../typechain-types/factories/MockValida
 import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
-import { MockDefaultStrategyFull } from "../typechain-types/MockDefaultStrategyFull";
+import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
@@ -65,7 +65,7 @@ describe("SpecificGroupStrategy", () => {
   let stakedCelo: MockStakedCelo;
   let voteContract: MockVote;
   let groupHealthContract: MockGroupHealth;
-  let defaultStrategyContract: MockDefaultStrategyFull;
+  let defaultStrategyContract: MockDefaultStrategy;
 
   let nonOwner: SignerWithAddress;
 
@@ -84,7 +84,7 @@ describe("SpecificGroupStrategy", () => {
       manager = await hre.ethers.getContract("Manager");
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
-      defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategyFull");
+      defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
       validators = await hre.kit.contracts.getValidators();
       lockedGold = await hre.kit.contracts.getLockedGold();
 

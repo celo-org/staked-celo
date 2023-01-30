@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Library Address--->" + libInstance.address)
 
 
-  await deploy("MockDefaultStrategyFull", {
+  await deploy("MockDefaultStrategy", {
     from: deployer,
     log: true,
     libraries: { AddressSortedLinkedList: libInstance.address },

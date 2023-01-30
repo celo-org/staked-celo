@@ -1,6 +1,8 @@
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
+import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../lib/tasksNames";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -18,6 +20,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         account.address,
         groupHealth.address,
         defaultStrategy.address
+      )
+    );
+  } else {
+    console.log(
+      chalk.red(
+        `SpecificGroupStrategy is already owned by multisig run task ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} to set dependencies address in SpecificGroupStrategy contract!`
       )
     );
   }
