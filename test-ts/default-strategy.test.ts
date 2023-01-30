@@ -41,7 +41,7 @@ describe("DefaultStrategy", () => {
       manager = await hre.ethers.getContract("Manager");
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
-      defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategyFull");
+      defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
 
       [owner] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));

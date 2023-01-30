@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "../DefaultStrategy.sol";
 
-contract MockDefaultStrategyFull is DefaultStrategy {
+contract MockDefaultStrategy is DefaultStrategy {
     function addToStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount) public {
         addToStrategyTotalStCeloVotes(strategy, stCeloAmount);
     }
