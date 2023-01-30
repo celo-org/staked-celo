@@ -863,6 +863,52 @@ describe("DefaultStrategy", () => {
       });
     });
 
+    describe("when deposited with 1 sorting loop limit to TAIL only", () => {
+      let originalTail: string;
+      beforeEach(async () => {
+        await defaultStrategyContract.setSortingParams(3, 3, 1);
+        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        for (let i = 0; i < 3; i++) {
+          await manager.deposit({ value: (i + 1) * 100 });
+        }
+      });
+
+      it("should have sorted flag set to false", async () => {
+        expect(await defaultStrategyContract.sorted()).to.be.false;
+      });
+
+      it("should have tail in unsorted groups", async () => {
+        const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+        expect(unsortedGroups).to.have.deep.members([originalTail]);
+      });
+
+      describe("When updateActiveGroupOrder called", () => {
+        beforeEach(async () => {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          await defaultStrategyContract.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
+        });
+
+        it("should change the head", async () => {
+          const [currentHead] = await defaultStrategyContract.getGroupsHead();
+          expect(currentHead).to.eq(originalTail);
+        });
+
+        it("should change the tail", async () => {
+          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          expect(currentTail).to.not.eq(originalTail);
+        });
+
+        it("should empty unsorted groups", async () => {
+          const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+          expect(unsortedGroups).to.have.deep.members([]);
+        });
+
+        it("should have sorted flag set to true", async () => {
+          expect(await defaultStrategyContract.sorted()).to.be.true;
+        });
+      });
+    });
+
     describe("when deposited with 0 sorting loop limit to more groups", () => {
       let originalTail: string;
       let originalOrderedGroups: OrderedGroup[];
