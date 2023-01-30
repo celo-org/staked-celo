@@ -167,7 +167,6 @@ describe("Vote", async function (this: any) {
     );
 
     await activateValidators(
-      managerContract,
       defaultStrategyContract,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
@@ -506,7 +505,6 @@ describe("Vote", async function (this: any) {
           .connect(managerSigner)
           .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
       )
-        // await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
         .to.emit(voteContract, "LockedStCeloInVoting")
         .withArgs(depositor0.address, hre.ethers.BigNumber.from(0));
     });
@@ -526,7 +524,6 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return locked celo", async () => {
-        // await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
         await expect(
           voteContract
             .connect(managerSigner)
@@ -549,7 +546,6 @@ describe("Vote", async function (this: any) {
             .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        // await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
         await expect(
           voteContract
             .connect(managerSigner)
@@ -578,7 +574,6 @@ describe("Vote", async function (this: any) {
             abstainVotesRevote
           );
 
-        // await expect(managerContract.updateHistoryAndReturnLockedStCeloInVoting(depositor0.address))
         await expect(
           voteContract
             .connect(managerSigner)

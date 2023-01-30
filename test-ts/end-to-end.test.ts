@@ -116,7 +116,6 @@ describe("e2e", () => {
     );
 
     await activateValidators(
-      managerContract,
       defaultStrategyContract,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,

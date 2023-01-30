@@ -129,7 +129,6 @@ describe("e2e governance vote", () => {
     );
 
     await activateValidators(
-      managerContract,
       defaultStrategyContract,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,

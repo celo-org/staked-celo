@@ -145,13 +145,6 @@ describe("Manager", () => {
         specificGroupStrategyContract.address,
         defaultStrategyContract.address
       );
-      await groupHealthContract.setDependencies(
-        stakedCelo.address,
-        account.address,
-        specificGroupStrategyContract.address,
-        defaultStrategyContract.address,
-        manager.address
-      );
       await specificGroupStrategyContract.setDependencies(
         account.address,
         groupHealthContract.address,

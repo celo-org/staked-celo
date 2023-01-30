@@ -17,7 +17,7 @@ import {
   allowStrategies,
   distributeEpochRewards,
   electMockValidatorGroupsAndUpdate,
-  getGroupsSafe,
+  getGroupsOfAllStrategies,
   getRealVsExpectedCeloForGroups,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
@@ -140,7 +140,6 @@ describe("e2e specific group strategy voting", () => {
     ]);
 
     await activateValidators(
-      managerContract,
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
       multisigOwner0.address,
@@ -392,7 +391,10 @@ describe("e2e specific group strategy voting", () => {
   }
 
   async function expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy: DefaultStrategy) {
-    const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategyContract);
+    const allGroups = await getGroupsOfAllStrategies(
+      defaultStrategy,
+      specificGroupStrategyContract
+    );
     const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
     const expectedSum = hre.ethers.BigNumber.from(0);
     const realSum = hre.ethers.BigNumber.from(0);

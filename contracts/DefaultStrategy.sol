@@ -88,16 +88,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     event GroupDeprecated(address indexed group);
 
     /**
-     * @notice Used when attempting to withdraw from specific strategy
-     * but group does not have enough CELO. Group either doesn't have enough stCELO
-     * or it is necessary to rebalance the group.
-     * @param group The group's address.
-     * @param expected The expected vote amount.
-     * @param real The real vote amount.
-     */
-    error GroupNotBalancedOrNotEnoughStCelo(address group, uint256 expected, uint256 real);
-
-    /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
      * @param group The group's address.

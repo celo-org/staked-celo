@@ -1,5 +1,4 @@
 import { CeloTxReceipt } from "@celo/connect";
-import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
@@ -179,7 +178,6 @@ export async function allowStrategies(
 }
 
 export async function activateValidators(
-  managerContract: Manager,
   defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
   multisigOwner: string,
@@ -473,7 +471,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getGroupsSafe(
+export async function getGroupsOfAllStrategies(
   defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
@@ -516,7 +514,7 @@ export async function rebalanceGroups(
   specificGroupStrategy: SpecificGroupStrategy,
   defaultStrategy: DefaultStrategy
 ) {
-  const allGroups = await getGroupsSafe(defaultStrategy, specificGroupStrategy);
+  const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
 
   const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
@@ -550,8 +548,6 @@ export async function rebalanceGroups(
       lastIndex--;
     }
   }
-
-  console.log("Rebalance finished!");
 }
 
 export async function electMockValidatorGroupsAndUpdate(
@@ -609,19 +605,4 @@ export async function upgradeToMockGroupHealthE2E(
   );
 
   return mockGroupHealthFactory.attach(groupHealthContract.address);
-}
-
-export async function getIndexesOfElectedValidatorGroupMembers(
-  election: ElectionWrapper,
-  validators: ValidatorsWrapper,
-  validatorGroup: string
-) {
-  const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
-  const currentValidatorSigners = await election.getCurrentValidatorSigners();
-  const finalIndexes: number[] = [];
-  for (const member of validatorGroupDetail.members) {
-    const index = currentValidatorSigners.indexOf(member);
-    finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
-  }
-  return finalIndexes;
 }
