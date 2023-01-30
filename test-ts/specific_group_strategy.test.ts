@@ -1,3 +1,4 @@
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -21,6 +22,7 @@ import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
@@ -28,6 +30,7 @@ import {
   electMockValidatorGroupsAndUpdate,
   getDefaultGroupsSafe,
   getImpersonatedSigner,
+  impersonateAccount,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
@@ -66,6 +69,7 @@ describe("SpecificGroupStrategy", () => {
   let voteContract: MockVote;
   let groupHealthContract: MockGroupHealth;
   let defaultStrategyContract: MockDefaultStrategy;
+  let election: ElectionWrapper;
 
   let nonOwner: SignerWithAddress;
 
@@ -87,6 +91,7 @@ describe("SpecificGroupStrategy", () => {
       defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
       validators = await hre.kit.contracts.getValidators();
       lockedGold = await hre.kit.contracts.getLockedGold();
+      election = await hre.kit.contracts.getElection();
 
       [owner] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
@@ -416,12 +421,45 @@ describe("SpecificGroupStrategy", () => {
         await electGroup(additionalGroup.address, someone);
 
         for (let i = 0; i < 10; i++) {
-          await defaultStrategyContract.activateGroup(
-            groups[i].address,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO
-          );
+          await specificGroupStrategyContract.allowStrategy(groups[i].address);
         }
+      });
+
+      it("cannot add another group", async () => {
+        await expect(
+          specificGroupStrategyContract.allowStrategy(additionalGroup.address)
+        ).revertedWith("MaxGroupsVotedForReached()");
+      });
+
+      it("can add another group when enabled in Election contract", async () => {
+        const accountAddress = account.address;
+        const sendFundsTx = await nonOwner.sendTransaction({
+          value: parseUnits("1"),
+          to: accountAddress,
+        });
+        await sendFundsTx.wait();
+        await impersonateAccount(accountAddress);
+
+        const accountsContract = await hre.kit.contracts.getAccounts();
+        const createAccountTxObject = accountsContract.createAccount();
+        await createAccountTxObject.send({
+          from: accountAddress,
+        });
+        // TODO: once contractkit updated - use just election contract from contractkit
+        const electionContract = new hre.kit.web3.eth.Contract(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          electionContractData.abi as any,
+          election.address
+        );
+        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+          from: accountAddress,
+        });
+
+        await expect(specificGroupStrategyContract.allowStrategy(additionalGroup.address))
+          .to.emit(specificGroupStrategyContract, "StrategyAllowed")
+          .withArgs(additionalGroup.address);
       });
     });
   });

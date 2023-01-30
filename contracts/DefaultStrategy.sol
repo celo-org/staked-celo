@@ -311,7 +311,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
 
         if (
-            activeGroups.getNumElements() >= getElection().maxNumGroupsVotedFor() &&
+            (specificGroupStrategy.getSpecificGroupStrategiesLength() +
+                activeGroups.getNumElements()) >=
+            getElection().maxNumGroupsVotedFor() &&
             !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
         ) {
             revert MaxGroupsVotedForReached();

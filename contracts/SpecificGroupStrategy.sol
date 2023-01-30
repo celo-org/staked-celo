@@ -134,6 +134,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error HealthyGroup(address group);
 
     /**
+     * @notice Used when attempting to allow a strategy when the maximum number
+     * of groups voted (as allowed by the Election contract) is already being
+     * voted for.
+     */
+    error MaxGroupsVotedForReached();
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
@@ -175,6 +182,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function allowStrategy(address group) external onlyOwner {
+        if (
+            (defaultStrategy.getGroupsLength() + specificGroupStrategies.length()) >=
+            getElection().maxNumGroupsVotedFor() &&
+            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
+        ) {
+            revert MaxGroupsVotedForReached();
+        }
+
         if (!groupHealth.isValidGroup(group)) {
             revert StrategyNotEligible(group);
         }
