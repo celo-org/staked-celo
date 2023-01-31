@@ -339,11 +339,7 @@ describe("DefaultStrategy", () => {
             await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
           }
         }
-        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address, [
-          Number.MAX_SAFE_INTEGER.toString(),
-          Number.MAX_SAFE_INTEGER.toString(),
-          electedValidatorIndex,
-        ]);
+        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
       });
 
       it("emits a GroupActivated event", async () => {
@@ -1226,11 +1222,7 @@ describe("DefaultStrategy", () => {
             await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
           }
         }
-        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address, [
-          Number.MAX_SAFE_INTEGER.toString(),
-          Number.MAX_SAFE_INTEGER.toString(),
-          electedValidatorIndex,
-        ]);
+        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
         const [head] = await defaultStrategyContract.getGroupsHead();
         await defaultStrategyContract.activateGroup(
           validatorGroupWithThreeValidators.address,
