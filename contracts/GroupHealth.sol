@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
@@ -10,18 +11,24 @@ import "./common/UUPSOwnableUpgradeable.sol";
  * @title GroupHealth stores and updates info about validator group health.
  */
 contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
-    /**
-     * @notice Stores validity of group.
-     */
-    struct GroupValid {
-        uint128 epochSetToHealthy;
-        bool healthy;
-    }
+    using EnumerableSet for EnumerableSet.AddressSet;
 
-    /*¨
+    /**
      * @notice Mapping that stores health state of groups.
      */
-    mapping(address => GroupValid) public groupsHealth;
+    mapping(address => bool) public groupsHealth;
+
+    /**
+     * @notice Used as helper varible during call to `areGroupMembersElected`.
+     */
+    mapping(address => bool) private membersMappingHelper;
+
+    /**
+     * @notice Emitted when `updateGroupHealth` called.
+     * @param group The group that is being updated.
+     * @param healthy Whether or not group is healthy.
+     */
+    event GroupHealthUpdated(address group, bool healthy);
 
     /**
      * @notice Used when updating validator group health more than once in epoch.
@@ -73,25 +80,14 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Updates validator group health.
      * @param group The group to check for.
-     * @param membersElectedIndex The indexes of elected members.
-     * This array needs to have same length as all (even not elected) members of validator group.
-     * Index of not elected member can be whatever uint256 number.
      * @return Whether or not the group is valid.
      */
-    function updateGroupHealth(address group, uint256[] calldata membersElectedIndex)
-        public
-        returns (bool)
-    {
-        GroupValid storage groupHealth = groupsHealth[group];
-        uint128 currentEpoch = uint128(getElection().getEpochNumber());
-        if (groupHealth.epochSetToHealthy >= currentEpoch) {
-            revert ValidatorGroupAlreadyUpdatedInEpoch(group);
-        }
-
+    function updateGroupHealth(address group) public returns (bool) {
         IValidators validators = getValidators();
 
         if (!validators.isValidatorGroup(group)) {
-            groupsHealth[group].healthy = false;
+            groupsHealth[group] = false;
+            emit GroupHealthUpdated(group, false);
             return false;
         }
 
@@ -99,33 +95,26 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             .getValidatorGroup(group);
         // check if group has no members
         if (members.length == 0) {
-            groupsHealth[group].healthy = false;
+            groupsHealth[group] = false;
+            emit GroupHealthUpdated(group, false);
             return false;
         }
         // check for recent slash
         if (slashMultiplier < 10**24) {
-            groupsHealth[group].healthy = false;
+            groupsHealth[group] = false;
+            emit GroupHealthUpdated(group, false);
             return false;
         }
-        if (membersElectedIndex.length != members.length) {
-            revert MembersLengthMismatch();
-        }
-        uint256 currentNumberOfElectedValidators = numberValidatorsInCurrentSet();
+
         // check that at least one member is elected.
-        for (uint256 i = 0; i < members.length; i++) {
-            if (
-                isGroupMemberElected(
-                    members[i],
-                    membersElectedIndex[i],
-                    currentNumberOfElectedValidators
-                )
-            ) {
-                groupsHealth[group].healthy = true;
-                groupsHealth[group].epochSetToHealthy = currentEpoch;
-                return true;
-            }
+        if (areGroupMembersElected(members)) {
+            groupsHealth[group] = true;
+            emit GroupHealthUpdated(group, true);
+            return true;
         }
-        groupsHealth[group].healthy = false;
+
+        groupsHealth[group] = false;
+        emit GroupHealthUpdated(group, false);
         return false;
     }
 
@@ -135,26 +124,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Whether or not the group is valid.
      */
     function isValidGroup(address group) public view returns (bool) {
-        GroupValid memory groupValid = groupsHealth[group];
-        return groupValid.healthy;
-    }
-
-    /**
-     * @notice Checks if a group member is elected.
-     * @param groupMember The member of the group to check election status for.
-     * @param index The index of elected validator in current set.
-     * @param currentNumberOfElectedValidators The count of currently elected validators.
-     * @return Whether or not the group member is elected.
-     */
-    function isGroupMemberElected(
-        address groupMember,
-        uint256 index,
-        uint256 currentNumberOfElectedValidators
-    ) internal view returns (bool) {
-        if (index > currentNumberOfElectedValidators) {
-            return false;
-        }
-        return validatorSignerAddressFromCurrentSet(index) == groupMember;
+        return groupsHealth[group];
     }
 
     /**
@@ -177,5 +147,32 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function numberValidatorsInCurrentSet() internal view virtual returns (uint256) {
         return getElection().numberValidatorsInCurrentSet();
+    }
+
+    /**
+     * @notice Checks if any of group members are elected.
+     * @param members All group members of checked validator group.
+     * @return Whether or not any of the group members are elected.
+     */
+    function areGroupMembersElected(address[] memory members) private returns (bool) {
+        for (uint256 j = 0; j < members.length; j++) {
+            membersMappingHelper[members[j]] = true;
+        }
+
+        bool result;
+        address validator;
+        uint256 n = numberValidatorsInCurrentSet();
+        for (uint256 i = 0; i < n; i++) {
+            validator = validatorSignerAddressFromCurrentSet(i);
+            if (membersMappingHelper[validator] == true) {
+                result = true;
+                break;
+            }
+        }
+
+        for (uint256 j = 0; j < members.length; j++) {
+            membersMappingHelper[members[j]] = false;
+        }
+        return result;
     }
 }

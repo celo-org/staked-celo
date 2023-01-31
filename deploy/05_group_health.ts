@@ -6,6 +6,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
 
+  const multisig = await hre.deployments.get("MultiSig");
+
   await catchNotOwnerForProxy(
     deploy("GroupHealth", {
       from: deployer,
@@ -16,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         execute: {
           init: {
             methodName: "initialize",
-            args: [hre.ethers.constants.AddressZero, deployer],
+            args: [hre.ethers.constants.AddressZero, multisig.address],
           },
         },
       },

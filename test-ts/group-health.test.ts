@@ -1,18 +1,28 @@
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
+import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
+import { MockLockedGold } from "../typechain-types/MockLockedGold";
+import { MockRegistry } from "../typechain-types/MockRegistry";
+import { MockValidators } from "../typechain-types/MockValidators";
 import {
-  ADDRESS_ZERO,
+  deregisterValidatorGroup,
   electMockValidatorGroupsAndUpdate,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
+  REGISTRY_ADDRESS,
+  removeMembersFromGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
+  updateGroupSlashingMultiplier,
 } from "./utils";
 
 after(() => {
@@ -24,11 +34,18 @@ describe("GroupHealth", () => {
   let nonManager: SignerWithAddress;
 
   let validatorsWrapper: ValidatorsWrapper;
+  let registryContract: MockRegistry;
+  let owner: SignerWithAddress;
+  let lockedGoldContract: MockLockedGold;
+  let validatorsContract: MockValidators;
+  let lockedGold: LockedGoldWrapper;
+  let mockSlasher: SignerWithAddress;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let snapshotId: any;
 
   const groups: SignerWithAddress[] = [];
+  const activatedGroups: SignerWithAddress[] = [];
   const activatedGroupAddresses: string[] = [];
   const groupAddresses: string[] = [];
   const validators: SignerWithAddress[] = [];
@@ -40,23 +57,49 @@ describe("GroupHealth", () => {
       await resetNetwork();
 
       [nonManager] = await randomSigner(parseUnits("100"));
+      [owner] = await randomSigner(parseUnits("100"));
+      [mockSlasher] = await randomSigner(parseUnits("100"));
+
+      lockedGold = await hre.kit.contracts.getLockedGold();
+      validatorsWrapper = await hre.kit.contracts.getValidators();
 
       await hre.deployments.fixture("FullTestManager");
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
 
+      const registryFactory: MockRegistry__factory = (
+        await hre.ethers.getContractFactory("MockRegistry")
+      ).connect(owner) as MockRegistry__factory;
+      registryContract = registryFactory.attach(REGISTRY_ADDRESS);
+
+      const lockedGoldFactory: MockLockedGold__factory = (
+        await hre.ethers.getContractFactory("MockLockedGold")
+      ).connect(owner) as MockLockedGold__factory;
+      lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
+
+      const validatorsFactory: MockValidators__factory = (
+        await hre.ethers.getContractFactory("MockValidators")
+      ).connect(owner) as MockValidators__factory;
+      validatorsContract = validatorsFactory.attach(validatorsWrapper.address);
+
+      const validatorMembers = 3;
+
       for (let i = 0; i < 10; i++) {
-        const [group] = await randomSigner(parseUnits("11000"));
+        const [group] = await randomSigner(parseUnits("11000").mul(validatorMembers));
         groups.push(group);
         if (i < 3) {
           activatedGroupAddresses.push(groups[i].address);
+          activatedGroups.push(groups[i]);
         }
         groupAddresses.push(groups[i].address);
-        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        validators.push(validator);
-        validatorAddresses.push(validators[i].address);
 
-        await registerValidatorGroup(groups[i]);
-        await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
+        await registerValidatorGroup(groups[i], validatorMembers);
+
+        for (let j = 0; j < validatorMembers; j++) {
+          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+          validators.push(validator);
+          validatorAddresses.push(validator.address);
+          await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -65,7 +108,6 @@ describe("GroupHealth", () => {
 
   beforeEach(async () => {
     snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
-    validatorsWrapper = await hre.kit.contracts.getValidators();
   });
 
   afterEach(async () => {
@@ -80,9 +122,11 @@ describe("GroupHealth", () => {
 
     describe("When validity updated (invalid)", () => {
       beforeEach(async () => {
-        await groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], [
-          Number.MAX_SAFE_INTEGER.toString(),
-        ]);
+        for (let i = 0; i < 150; i++) {
+          await groupHealthContract.setElectedValidator(i, nonManager.address);
+        }
+
+        await groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]);
       });
 
       it("should return invalid", async () => {
@@ -142,12 +186,6 @@ describe("GroupHealth", () => {
   });
 
   describe("#updateGroupHealth()", () => {
-    it("should revert update when invalid indexes length provided", async () => {
-      await expect(
-        groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], [])
-      ).revertedWith(`MembersLengthMismatch()`);
-    });
-
     describe("When updated", () => {
       beforeEach(async () => {
         await electMockValidatorGroupsAndUpdate(
@@ -156,61 +194,47 @@ describe("GroupHealth", () => {
           activatedGroupAddresses
         );
       });
-      it("should not allow to update to valid again since it was updated to valid this epoch already", async () => {
-        await expect(
-          groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], [])
-        ).revertedWith(`ValidatorGroupAlreadyUpdatedInEpoch("${activatedGroupAddresses[0]}")`);
+
+      it("should update to valid", async () => {
+        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+          .to.emit(groupHealthContract, "GroupHealthUpdated")
+          .withArgs(activatedGroupAddresses[0], true);
       });
 
-      it("should not allow to update to invalid again since it was updated to valid this epoch already", async () => {
-        const mockIndex = 6;
-        await groupHealthContract.setElectedValidator(mockIndex, ADDRESS_ZERO);
-        await expect(
-          groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], [mockIndex])
-        ).revertedWith(`ValidatorGroupAlreadyUpdatedInEpoch("${activatedGroupAddresses[0]}")`);
+      it("should update to invalid when slashed", async () => {
+        await updateGroupSlashingMultiplier(
+          registryContract,
+          lockedGoldContract,
+          validatorsContract,
+          activatedGroups[0],
+          mockSlasher
+        );
+        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+          .to.emit(groupHealthContract, "GroupHealthUpdated")
+          .withArgs(activatedGroupAddresses[0], false);
       });
 
-      describe("When in next epoch", () => {
-        beforeEach(async () => {
-          await mineToNextEpoch(hre.web3);
-        });
+      it("should update to invalid when no members", async () => {
+        await removeMembersFromGroup(activatedGroups[0]);
+        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+          .to.emit(groupHealthContract, "GroupHealthUpdated")
+          .withArgs(activatedGroupAddresses[0], false);
+      });
 
-        describe("When updated to valid", () => {
-          beforeEach(async () => {
-            await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
-              activatedGroupAddresses[0],
-            ]);
-          });
+      it("should update to invalid when group not registered", async () => {
+        await deregisterValidatorGroup(activatedGroups[0]);
+        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+          .to.emit(groupHealthContract, "GroupHealthUpdated")
+          .withArgs(activatedGroupAddresses[0], false);
+      });
 
-          it("should not allow to update again since it was updated to valid this epoch already", async () => {
-            await expect(
-              groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], [])
-            ).revertedWith(`ValidatorGroupAlreadyUpdatedInEpoch("${activatedGroupAddresses[0]}")`);
-          });
-        });
-
-        describe("When updated to invalid", () => {
-          beforeEach(async () => {
-            await revokeElectionOnMockValidatorGroupsAndUpdate(
-              validatorsWrapper,
-              groupHealthContract,
-              [activatedGroupAddresses[0]]
-            );
-          });
-
-          it("should allow to update again since group is invalid", async () => {
-            const indexes: number[] = [];
-            const validatorGroupDetail = await validatorsWrapper.getValidatorGroup(
-              activatedGroupAddresses[0]
-            );
-            for (let i = 0; i < validatorGroupDetail.members.length; i++) {
-              await groupHealthContract.setElectedValidator(i, validatorGroupDetail.members[i]);
-              indexes.push(i);
-            }
-
-            await groupHealthContract.updateGroupHealth(activatedGroupAddresses[0], indexes);
-          });
-        });
+      it("should update to invalid when group not elected", async () => {
+        await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+          activatedGroupAddresses[0],
+        ]);
+        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+          .to.emit(groupHealthContract, "GroupHealthUpdated")
+          .withArgs(activatedGroupAddresses[0], false);
       });
     });
   });
