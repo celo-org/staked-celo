@@ -3,7 +3,6 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
 import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
-import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
@@ -14,7 +13,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const stakedCelo: StakedCelo = await hre.ethers.getContract("StakedCelo");
   const manager: Manager = await hre.ethers.getContract("Manager");
   const vote: Vote = await hre.ethers.getContract("Vote");
-  const groupHealth: GroupHealth = await hre.ethers.getContract("GroupHealth");
   const specificGroupStrategy: SpecificGroupStrategy = await hre.ethers.getContract(
     "SpecificGroupStrategy"
   );
@@ -32,9 +30,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   if ((await vote.callStatic.owner()) !== multisig.address) {
     await executeAndWait(vote.transferOwnership(multisig.address));
-  }
-  if ((await groupHealth.callStatic.owner()) !== multisig.address) {
-    await executeAndWait(groupHealth.transferOwnership(multisig.address));
   }
   if ((await specificGroupStrategy.callStatic.owner()) !== multisig.address) {
     await executeAndWait(specificGroupStrategy.transferOwnership(multisig.address));

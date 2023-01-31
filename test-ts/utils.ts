@@ -621,7 +621,6 @@ export async function electMockValidatorGroupsAndUpdate(
   for (let j = 0; j < validatorGroups.length; j++) {
     const validatorGroup = validatorGroups[j];
     const isValidatorGroup = await validators.isValidatorGroup(validatorGroup);
-    const groupIndexes: number[] = [];
 
     if (isValidatorGroup) {
       const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
@@ -631,11 +630,10 @@ export async function electMockValidatorGroupsAndUpdate(
           mockIndex,
           revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
         );
-        groupIndexes.push(mockIndex);
       }
     }
 
-    await groupHealthContract.updateGroupHealth(validatorGroup, groupIndexes);
+    await groupHealthContract.updateGroupHealth(validatorGroup);
   }
 }
 
@@ -644,7 +642,24 @@ export async function revokeElectionOnMockValidatorGroupsAndUpdate(
   groupHealthContract: MockGroupHealth,
   validatorGroups: string[]
 ) {
-  await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, validatorGroups, true);
+  const allValidatorsInValGroup = await Promise.all(
+    validatorGroups.map(async (vg) => {
+      const valGroup = await validators.getValidatorGroup(vg);
+      return valGroup.members;
+    })
+  );
+
+  const flattened = allValidatorsInValGroup.flat();
+  const valGroupsSet = new Set(flattened);
+  for (let i = 0; i < (await groupHealthContract.numberOfValidators()).toNumber(); i++) {
+    const electedValidator = await groupHealthContract.electedValidators(i);
+    if (valGroupsSet.has(electedValidator)) {
+      await groupHealthContract.setElectedValidator(i, ADDRESS_ZERO);
+    }
+  }
+  for (let j = 0; j < validatorGroups.length; j++) {
+    await groupHealthContract.updateGroupHealth(validatorGroups[j]);
+  }
 }
 
 // Since Ganache doesn't support Celo pre-compiles we need to mock some methods to be able to use GroupHealth in e2e tests
