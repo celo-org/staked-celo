@@ -559,7 +559,7 @@ export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
     activeGroups
   );
 
-  rebalanceInternal(defaultStrategy, expectedVsReal);
+  await rebalanceInternal(defaultStrategy, expectedVsReal);
 }
 
 async function rebalanceInternal(
@@ -575,6 +575,7 @@ async function rebalanceInternal(
 
   let firstIndex = 0;
   let lastIndex = sortedUnbalancedDesc.length - 1;
+
 
   while (firstIndex < lastIndex) {
     await rebalanceContract.rebalance(

@@ -481,9 +481,37 @@ describe("Manager", () => {
           ).revertedWith("NotAbleToDistributeVotes()");
         });
       });
+
+      describe('When voting for specific strategy with overflow', () => {
+        const depositAmount = parseUnits("50")
+
+        beforeEach(async () => {
+          await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
+          await manager.connect(depositor).changeStrategy(groupAddresses[0]);
+          await manager.connect(depositor).deposit({ value: depositAmount });
+        });
+
+        it('should overflow to default strategy', async () => {
+          const [stCeloInStrategy, overflowAmount] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+          expect(stCeloInStrategy).to.eq(depositAmount)
+          expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity))
+        });
+
+        it('should schedule the overflow to default strategy', async () => {
+          const [votedGroups, votes] = await account.getLastScheduledVotes();
+          expect(votedGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
+  
+          expect(votes).to.have.deep.members([firstGroupCapacity, depositAmount.sub(firstGroupCapacity)]);
+        });
+
+        it('should not change total stCelo of default strategy', async () => {
+          const currentDefaultStrategyStCeloBalance = await defaultStrategyContract.totalStCeloInDefaultStrategy()
+          expect(currentDefaultStrategyStCeloBalance).to.deep.eq(depositAmount.sub(firstGroupCapacity))
+        });
+      });
     });
 
-    describe("When voted for allowed validator group", () => {
+    describe("When voted for specific strategy", () => {
       beforeEach(async () => {
         await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
@@ -500,7 +528,7 @@ describe("Manager", () => {
         expect(allowedStrategies[0]).to.eq(groupAddresses[0]);
       });
 
-      it("should schedule votes for allowed group", async () => {
+      it("should schedule votes for specific group strategy", async () => {
         const [votedGroups, votes] = await account.getLastScheduledVotes();
         expect(votedGroups).to.deep.equal(groupAddresses.slice(0, 1));
         expect(votes).to.deep.equal([BigNumber.from("100")]);
@@ -647,7 +675,7 @@ describe("Manager", () => {
         }
       });
 
-      describe("When voted for allowed validator group which is not in active groups", () => {
+      describe("When voted for specific validator group which is not in active groups", () => {
         beforeEach(async () => {
           await specificGroupStrategyContract.allowStrategy(groupAddresses[2]);
           await manager.connect(depositor).changeStrategy(groupAddresses[2]);
@@ -663,7 +691,7 @@ describe("Manager", () => {
           expect(allowedStrategies).to.deep.eq([groupAddresses[2]]);
         });
 
-        it("should schedule votes for allowed group", async () => {
+        it("should schedule votes for specific group strategy", async () => {
           const [votedGroups, votes] = await account.getLastScheduledVotes();
           expect(votedGroups).to.deep.equal([groupAddresses[2]]);
           expect(votes).to.deep.equal([BigNumber.from("100")]);
@@ -675,7 +703,7 @@ describe("Manager", () => {
         });
       });
 
-      describe("When voted for allowed validator group which is in active groups", () => {
+      describe("When voted for specific validator group which is in active groups", () => {
         let specificGroupStrategyAddress: string;
         beforeEach(async () => {
           specificGroupStrategyAddress = groupAddresses[0];
@@ -693,7 +721,7 @@ describe("Manager", () => {
           expect(allowedStrategies).to.deep.eq([specificGroupStrategyAddress]);
         });
 
-        it("should schedule votes for allowed group", async () => {
+        it("should schedule votes for specific group strategy", async () => {
           const [votedGroups, votes] = await account.getLastScheduledVotes();
           expect(votedGroups).to.deep.equal([groupAddresses[0]]);
           expect(votes).to.deep.equal([BigNumber.from("100")]);
@@ -923,7 +951,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When voted for allowed validator group - no active groups", () => {
+    describe("When voted for specific validator group - no active groups", () => {
       beforeEach(async () => {
         await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
@@ -931,28 +959,28 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[0], 100);
       });
 
-      it("should withdraw less than originally deposited from allowed group", async () => {
+      it("should withdraw less than originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(60);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupAddresses[0]]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
       });
 
-      it("should withdraw same amount as originally deposited from allowed group", async () => {
+      it("should withdraw same amount as originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupAddresses[0]]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
       });
 
-      it("should revert when withdraw more amount than originally deposited from allowed group", async () => {
+      it("should revert when withdraw more amount than originally deposited from specific group strategy", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          `GroupNotBalancedOrNotEnoughStCelo("${groupAddresses[0]}", 110, 100)`
+          `CantWithdrawAccordingToStrategy("${groupAddresses[0]}")`
         );
       });
     });
 
-    describe("When there are other active groups besides allowed validator group - allowed is different from active", () => {
+    describe("When there are other active groups besides specific validator group - allowed is different from active", () => {
       const withdrawals = [40, 50];
       const specificGroupStrategyWithdrawal = 100;
       let specificGroupStrategy: SignerWithAddress;
@@ -985,7 +1013,7 @@ describe("Manager", () => {
         expect(allowedStrategies).to.deep.eq([specificGroupStrategy.address]);
       });
 
-      it("should withdraw less than originally deposited from allowed group", async () => {
+      it("should withdraw less than originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(60);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroupStrategy.address]);
@@ -996,7 +1024,7 @@ describe("Manager", () => {
         expect(allowedStrategies).to.deep.eq([specificGroupStrategy.address]);
       });
 
-      it("should withdraw same amount as originally deposited from allowed group", async () => {
+      it("should withdraw same amount as originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect([specificGroupStrategy.address]).to.deep.equal(withdrawnGroups);
@@ -1027,9 +1055,9 @@ describe("Manager", () => {
         expect(allowedStrategies).to.deep.eq([]);
       });
 
-      it("should revert when withdraw more amount than originally deposited from allowed group", async () => {
+      it("should revert when withdraw more amount than originally deposited from specific group strategy", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
-          `GroupNotBalancedOrNotEnoughStCelo("${specificGroupStrategy.address}", 110, 100)`
+          `CantWithdrawAccordingToStrategy("${specificGroupStrategy.address}")`
         );
       });
 
@@ -1049,7 +1077,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When there are other active groups besides allowed validator group - allowed is one of the active groups", () => {
+    describe("When there are other active groups besides specific validator group - allowed is one of the active groups", () => {
       const withdrawals = [40, 50];
       const specificGroupStrategyWithdrawal = 100;
 
@@ -1069,24 +1097,119 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: specificGroupStrategyWithdrawal });
       });
 
-      it("should withdraw less than originally deposited from allowed group", async () => {
+      it("should withdraw less than originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(60);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupAddresses[1]]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
       });
 
-      it("should withdraw same amount as originally deposited from allowed group", async () => {
+      it("should withdraw same amount as originally deposited from specific group strategy", async () => {
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupAddresses[1]]);
         expect(withdrawals).to.deep.equal([BigNumber.from("100")]);
       });
 
-      it("should revert when withdraw more amount than originally deposited from allowed group", async () => {
+      it("should revert when withdraw more amount than originally deposited from specific group strategy", async () => {
         await expect(manager.connect(depositor).withdraw(110)).revertedWith(
           `CantWithdrawAccordingToStrategy("${groupAddresses[1]}")`
         );
+      });
+    });
+
+    describe("when groups are close to their voting limit", () => {
+      const firstGroupCapacity = parseUnits("40.166666666666666666");
+      const depositAmount = parseUnits("50")
+      let originalDefaultHead: string;
+      let previousOfHead: string
+      let originalOverflow: BigNumber
+  
+      beforeEach(async () => {
+        // For more info about these numbers check comment above
+        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+  
+        for (let i = 2; i >= 0; i--) {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+  
+          await lockedGold.lock().sendAndWaitForReceipt({
+            from: voter.address,
+            value: votes[i].toString(),
+          });
+        }
+  
+        for (let i = 0; i < 3; i++) {
+          const voteTx = await election.vote(
+            groupAddresses[i],
+            new BigNumberJs(votes[i].toString())
+          );
+          await voteTx.sendAndWaitForReceipt({ from: voter.address });
+        }
+
+        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
+        await manager.connect(depositor).changeStrategy(groupAddresses[0]);
+        await manager.connect(depositor).deposit({ value: depositAmount });
+        await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity)
+        await rebalanceDefaultGroups(defaultStrategyContract as any);
+        [originalDefaultHead] = await defaultStrategyContract.getGroupsHead();
+        [previousOfHead] = await defaultStrategyContract.getGroupPreviousAndNext(originalDefaultHead)
+        originalOverflow = await specificGroupStrategyContract.totalStCeloOverflow()
+      });
+
+      describe('When withdrawing amount only from overflow', () => {
+        const toWithdraw = parseUnits("5")
+
+        beforeEach(async () => {
+          await manager.connect(depositor).withdraw(toWithdraw)
+        });
+
+        it('should overflow to default strategy', async () => {
+          const [stCeloInStrategy, overflowAmount] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+          expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw))
+          expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity).sub(toWithdraw))
+        });
+  
+        it('should schedule withdraw from default strategy only', async () => {
+          const [groups, votes] = await account.getLastScheduledWithdrawals();
+         
+          expect(groups).to.have.deep.members([previousOfHead, originalDefaultHead]);
+          expect(votes).to.have.deep.members([originalOverflow.div(3), toWithdraw.sub(originalOverflow.div(3))]);
+        });
+  
+        it('should add overflow to default strategy stCelo balance', async () => {
+          const currentDefaultStrategyStCeloBalance = await defaultStrategyContract.totalStCeloInDefaultStrategy()
+          const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0])
+          expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow)
+        });
+      });
+
+      describe('When withdrawing amount over overflow', () => {
+        const toWithdraw = parseUnits("20")
+
+        beforeEach(async () => {
+          await manager.connect(depositor).withdraw(toWithdraw)
+        });
+
+        it('should overflow to default strategy', async () => {
+          const [stCeloInStrategy, overflowAmount] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+          expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw))
+          expect(overflowAmount).to.eq(0)
+        });
+  
+        it('should schedule withdraw from default specific strategy', async () => {
+          const [groups, votes] = await account.getLastScheduledWithdrawals();
+
+          const originalOverflow = depositAmount.sub(firstGroupCapacity)
+          expect(groups).to.have.deep.members([groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0]]);
+          expect(votes).to.have.deep.members([originalOverflow.div(3), originalOverflow.div(3), originalOverflow.div(3), toWithdraw.sub(originalOverflow)]);
+        });
+  
+        it('should add overflow to default strategy stCelo balance', async () => {
+          const currentDefaultStrategyStCeloBalance = await defaultStrategyContract.totalStCeloInDefaultStrategy()
+          const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0])
+          expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow)
+        });
       });
     });
   });
@@ -1436,7 +1559,7 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
       });
 
-      it("should not schedule any transfers if second account also voted for same allowed group", async () => {
+      it("should not schedule any transfers if second account also voted for same specific group strategy", async () => {
         const differentSpecificGroupStrategyDeposit = parseUnits("1");
         await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
@@ -1602,7 +1725,7 @@ describe("Manager", () => {
       );
     });
 
-    it("should revert when not allowed group", async () => {
+    it("should revert when not specific group strategy", async () => {
       await expect(manager.changeStrategy(groupAddresses[0])).revertedWith(
         `GroupNotEligible("${groupAddresses[0]}")`
       );
@@ -1734,7 +1857,7 @@ describe("Manager", () => {
   });
 
   describe("#getExpectedAndActualCeloForGroup()", () => {
-    describe("When strategy is disallowed", () => {
+    describe("When strategy is blocked", () => {
       const withdrawals = [50, 50];
       const depositedValue = 100;
 
@@ -1781,7 +1904,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When group is only in allowed", () => {
+    describe("When group is only in specific group strategy", () => {
       const depositedValue = 100;
       beforeEach(async () => {
         await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
@@ -1877,6 +2000,63 @@ describe("Manager", () => {
           );
           expect(expected).to.eq(defaultDepositedValue / 2 + specificGroupStrategyDepositedValue);
           expect(real).to.eq(celoForGroup);
+        });
+      });
+    });
+
+    describe("when groups are close to their voting limit", () => {
+      const firstGroupCapacity = parseUnits("40.166666666666666666");
+      const thirdGroupCapacity = parseUnits("200.166666666666666666");
+      let originalDefaultHead: string;
+      let previousOfHead: string
+      let originalOverflow: BigNumber
+  
+      beforeEach(async () => {
+        // For more info about these numbers check comment above
+        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+  
+        // activating first 2 groups, third is used as specific group
+        for (let i = 2; i >= 0; i--) {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          if (i < 2) {
+            await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          } else {
+            await specificGroupStrategyContract.allowStrategy(groupAddresses[i]);
+          }
+  
+          await lockedGold.lock().sendAndWaitForReceipt({
+            from: voter.address,
+            value: votes[i].toString(),
+          });
+        }
+  
+        for (let i = 0; i < 3; i++) {
+          const voteTx = await election.vote(
+            groupAddresses[i],
+            new BigNumberJs(votes[i].toString())
+          );
+          await voteTx.sendAndWaitForReceipt({ from: voter.address });
+        }
+
+        [originalDefaultHead] = await defaultStrategyContract.getGroupsHead();
+        [previousOfHead] = await defaultStrategyContract.getGroupPreviousAndNext(originalDefaultHead)
+        originalOverflow = await specificGroupStrategyContract.totalStCeloOverflow()
+      });
+
+      describe('When depositing to specific strategy that is not used in active groups', () => {
+        const deposit = parseUnits("250");
+        beforeEach(async () => {
+          await manager.connect(depositor).changeStrategy(groupAddresses[2])
+          await manager.connect(depositor).deposit({value: deposit})
+          await account.setCeloForGroup(groupAddresses[2], thirdGroupCapacity)
+        });
+
+        it('should return expected without overflow', async () => {
+          const [expected, actual] = await manager.getExpectedAndActualCeloForGroup(groupAddresses[2]);
+          const stCeloInDefaultStrategy = await defaultStrategyContract.totalStCeloInDefaultStrategy()
+          expect(expected).to.deep.eq(thirdGroupCapacity) 
+          expect(actual).to.deep.eq(thirdGroupCapacity);
+          expect(stCeloInDefaultStrategy).to.deep.eq(deposit.sub(thirdGroupCapacity));
         });
       });
     });
@@ -2176,6 +2356,58 @@ describe("Manager", () => {
 
         expect(lastTransferToGroups).to.have.deep.members([currentTail]);
         expect(lastTransferToVotes).to.deep.eq([BigNumber.from(100)]);
+      });
+    });
+  });
+
+  describe('#getReceivableVotesForGroup()', () => {
+    it('should revert when not validator group', async () => {
+      await expect(manager.getReceivableVotesForGroup(nonAccount.address))
+        .revertedWith("Not validator group")
+    });
+
+    describe('When having validator groups close to voting limit', () => {
+      const firstGroupCapacity = parseUnits("40.166666666666666666");
+
+      beforeEach(async () => {
+        // For more info about these numbers check comment above
+        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+        for (let i = 2; i >= 0; i--) {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+
+          await lockedGold.lock().sendAndWaitForReceipt({
+            from: voter.address,
+            value: votes[i].toString(),
+          });
+        }
+
+        for (let i = 0; i < 3; i++) {
+          const voteTx = await election.vote(
+            groupAddresses[i],
+            new BigNumberJs(votes[i].toString())
+          );
+          await voteTx.sendAndWaitForReceipt({ from: voter.address });
+        }
+      });
+
+      it('should return correct amount of receivable votes', async () => {
+        const receivableAmount = await manager.getReceivableVotesForGroup(groupAddresses[0])
+        expect(receivableAmount).to.eq(firstGroupCapacity)
+      });
+
+      describe('When having some votes scheduled', () => {
+        let scheduledVotes: BigNumber;
+        beforeEach(async () => {
+          scheduledVotes = parseUnits("2")
+          await account.setScheduledVotes(groupAddresses[0], scheduledVotes)
+        });
+
+        it('should return correct amount', async () => {
+          const receivableAmount = await manager.getReceivableVotesForGroup(groupAddresses[0])
+          expect(receivableAmount).to.eq(firstGroupCapacity.sub(scheduledVotes))
+        });
       });
     });
   });

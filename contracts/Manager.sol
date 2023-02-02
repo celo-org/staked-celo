@@ -133,6 +133,18 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error RebalanceEnoughCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
+     * @notice Used when trying to overflow rebalance group that is not overflowing.
+     * @param group The group's address.
+     */
+    error FromGroupNotOverflowing(address group);
+    
+    /**
+     * @notice Used when trying to overflow rebalance to group that is overflowing.
+     * @param group The group's address.
+     */
+    error ToGroupOverflowing(address group);
+
+    /**
      * @dev Throws if called by any address other than StakedCelo.
      */
     modifier onlyStakedCelo() {
@@ -411,11 +423,51 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert RebalanceEnoughCelo(toGroup, actualToCelo, expectedToCelo);
         }
 
-        scheduleRebalanceTransfer(
-            fromGroup,
-            toGroup,
-            Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo)
+        uint256 receivableVotes = getReceivableVotesForGroup(toGroup);
+
+        if (receivableVotes == 0) {
+            revert ToGroupOverflowing(toGroup);
+        }
+
+        uint256 toMove = Math.min(
+            Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo),
+            receivableVotes
         );
+
+        scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
+    }
+
+    /**
+     * @notice Rebalance according to CElO overflow rather than stCELO ratio.
+     * If one of the groups is overflowing and there are still some votes that
+     * are scheduled for the group, this function allows to transfer these
+     * votes to any active group in protocol that is not overflowing yet.
+     * @param fromGroup The from group.
+     * @param toGroup The to group.
+     */
+    function rebalanceOverflow(address fromGroup, address toGroup) public {
+        // TODO: add tests
+        if (!defaultStrategy.groupsContain(toGroup)) {
+            revert InvalidToGroup(toGroup);
+        }
+
+        uint256 fromReceivableVotes = getReceivableVotesForGroup(fromGroup);
+        if (fromReceivableVotes != 0) {
+            revert FromGroupNotOverflowing(fromGroup);
+        }
+
+        uint256 fromScheduledVotes = account.scheduledVotesForGroup(fromGroup);
+        if (fromScheduledVotes != 0) {
+            revert FromGroupNotOverflowing(fromGroup);
+        }
+
+        uint256 toReceivableVotes = getReceivableVotesForGroup(toGroup);
+        if (toReceivableVotes == 0) {
+            revert ToGroupOverflowing(toGroup);
+        }
+
+        uint256 toMove = Math.min(fromScheduledVotes, toReceivableVotes);
+        scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
     }
 
     /**
@@ -485,9 +537,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCELOFromDefaultStrategy;
 
         if (isSpecificGroupStrategy) {
-            stCELOFromSpecificStrategy = specificGroupStrategy.getTotalStCeloVotesForStrategy(
+            uint256 overflow;
+            (stCELOFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
                 group
             );
+
+            stCELOFromSpecificStrategy -= overflow;
         }
 
         if (isActiveGroup) {
@@ -548,6 +603,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * Returns votes count that can be received by group.
+     * @param group The group that can receive votes
+     */
+    function getReceivableVotesForGroup(address group) public view returns (uint256) {
+        return
+            getElection().getNumVotesReceivable(group) -
+            getElection().getTotalVotesForGroup(group) -
+            account.scheduledVotesForGroup(group);
+    }
+
+    /**
      * @notice Distributes votes according to chosen strategy.
      * @param votes The amount of votes to distribute.
      * @param stCeloAmount The amount of stCELO that was minted.
@@ -565,7 +631,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 stCeloAmount
             );
         } else {
-            (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(votes, false);
+            (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(
+                votes,
+                false,
+                address(0)
+            );
         }
 
         return (finalGroups, finalVotes);
@@ -598,8 +668,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address strategy,
         bool isTransfer
     ) private returns (address[] memory, uint256[] memory) {
-        uint256 withdrawal = toCelo(stCeloAmount);
-        if (withdrawal == 0) {
+        uint256 celoAmount = toCelo(stCeloAmount);
+        if (celoAmount == 0) {
             revert ZeroWithdrawal();
         }
 
@@ -610,18 +680,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
                 ? specificGroupStrategy.calculateAndUpdateForWithdrawalTransfer(
                     strategy,
-                    withdrawal,
+                    celoAmount,
                     stCeloAmount
                 )
                 : specificGroupStrategy.calculateAndUpdateForWithdrawal(
                     strategy,
-                    withdrawal,
+                    celoAmount,
                     stCeloAmount
                 );
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
-                withdrawal,
-                true
+                celoAmount,
+                true,
+                address(0)
             );
         }
 

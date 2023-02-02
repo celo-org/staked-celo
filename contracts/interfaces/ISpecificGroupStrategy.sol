@@ -4,13 +4,13 @@ pragma solidity 0.8.11;
 interface ISpecificGroupStrategy {
     function calculateAndUpdateForWithdrawal(
         address strategy,
-        uint256 withdrawal,
+        uint256 celoWitdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 
     function calculateAndUpdateForWithdrawalTransfer(
         address strategy,
-        uint256 withdrawal,
+        uint256 celoWitdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 
@@ -33,9 +33,16 @@ interface ISpecificGroupStrategy {
 
     function isValidSpecificGroupStrategy(address strategy) external view returns (bool);
 
-    function getTotalStCeloVotesForStrategy(address strategy) external view returns (uint256);
+    function getStCeloInStrategy(address strategy)
+        external
+        view
+        returns (uint256 total, uint256 overflow);
 
     function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256);
 
     function getSpecificGroupStrategiesLength() external view returns (uint256);
+
+    function totalStCeloLocked() external view returns (uint256);
+
+    function totalStCeloOverflow() external view returns (uint256);
 }

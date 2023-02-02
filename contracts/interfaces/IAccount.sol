@@ -8,7 +8,7 @@ interface IAccount {
 
     function scheduleVotes(address[] calldata group, uint256[] calldata votes) external payable;
 
-    function scheduledVotesForGroup(address group) external returns (uint256);
+    function scheduledVotesForGroup(address group) external view returns (uint256);
 
     function scheduleTransfer(
         address[] calldata fromGroups,

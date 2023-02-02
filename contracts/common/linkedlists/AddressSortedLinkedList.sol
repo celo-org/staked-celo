@@ -184,6 +184,55 @@ library AddressSortedLinkedList {
     return toAddress(list.list.tail);
   }
 
+  function getLesserAndGreaterOfActiveGroupsDeposit(SortedLinkedList.List storage list, address originalKey, uint256 newValue, uint256 loopLimit)
+        public
+        view
+        returns (address previous, address next)
+    {
+        loopLimit++;
+        address originalKeyPrevious;
+        previous = originalKey;
+        (, originalKeyPrevious, next) = get(list, originalKey);
+
+        while (next != address(0) && loopLimit-- > 1) {
+            if (newValue <= getValue(list, next)) {
+                break;
+            }
+            previous = next;
+            (, , next) = get(list, previous);
+        }
+
+        if (loopLimit == 0) {
+            return (address(0), address(0));
+        }
+
+        previous = previous == originalKey ? originalKeyPrevious : previous;
+    }
+
+    function getLesserAndGreaterOfActiveGroupsWithdrawal(SortedLinkedList.List storage list, address originalKey, uint256 newValue, uint256 loopLimit)
+        public
+        view
+        returns (address previous, address next)
+    {
+        loopLimit++;
+        address originalKeyNext;
+        next = originalKey;
+        (, previous, originalKeyNext) = get(list, originalKey);
+        while (previous != address(0) && loopLimit-- > 1) {
+            if (newValue >= getValue(list, previous)) {
+                break;
+            }
+            next = previous;
+            (, previous, ) = get(list, next);
+        }
+
+        if (loopLimit == 0) {
+            return (address(0), address(0));
+        }
+
+        next = next == originalKey ? originalKeyNext : next;
+    }
+
   /**
    * @notice Returns Element based on key.
    * @param list A storage pointer to the underlying list.

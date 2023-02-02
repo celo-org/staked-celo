@@ -4,7 +4,7 @@ import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
@@ -23,6 +23,7 @@ import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import electionContractData from "./code/abi/electionAbi.json";
+import BigNumberJs from "bignumber.js";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
@@ -258,26 +259,6 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategyContract
           .connect(nonManager)
           .calculateAndUpdateForWithdrawal(nonVote.address, 10, 10)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-  });
-
-  describe("#addToSpecificGroupStrategyTotalStCeloVotes", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract
-          .connect(nonManager)
-          .addToSpecificGroupStrategyTotalStCeloVotes(nonVote.address, 10)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-  });
-
-  describe("#subtractFromSpecificGroupStrategyTotalStCeloVotes", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract
-          .connect(nonManager)
-          .subtractFromSpecificGroupStrategyTotalStCeloVotes(nonVote.address, 10)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });
@@ -679,6 +660,95 @@ describe("SpecificGroupStrategy", () => {
         )
           .to.emit(specificGroupStrategyContract, "StrategyBlocked")
           .withArgs(groupAddresses[1]);
+      });
+    });
+  });
+
+  describe('#rebalanceOverflownGroup()', () => {
+    const thirdGroupCapacity = parseUnits("200.166666666666666666");
+
+    beforeEach(async () => {
+      // For more info about these numbers check comment in manager test
+      const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+      // activating first 2 groups, third is used as specific group
+      for (let i = 2; i >= 0; i--) {
+        const [head] = await defaultStrategyContract.getGroupsHead();
+        if (i < 2) {
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        } else {
+          await specificGroupStrategyContract.allowStrategy(groupAddresses[i]);
+        }
+
+        await lockedGold.lock().sendAndWaitForReceipt({
+          from: voter.address,
+          value: votes[i].toString(),
+        });
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const voteTx = await election.vote(
+          groupAddresses[i],
+          new BigNumberJs(votes[i].toString())
+        );
+        await voteTx.sendAndWaitForReceipt({ from: voter.address });
+      }
+    });
+    it('should revert when from group is not overflowing', async () => {
+      await expect(specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[0]))
+      .revertedWith(`GroupNotOverflowing("${groupAddresses[0]}")`)
+    });
+
+    describe('When third group overflowing', () => {
+      const deposit = parseUnits("250")
+      beforeEach(async () => {
+        await manager.connect(depositor).changeStrategy(groupAddresses[2])
+        await manager.connect(depositor).deposit({value: deposit})
+        const [scheduledGroups, scheduledVotes] = await account.getLastScheduledVotes()
+        for (let i = 0; i < scheduledGroups.length; i++) {
+          await account.setScheduledVotes(scheduledGroups[i], scheduledVotes[i])
+        }
+      });
+
+      it('should revert when group is overflowing and no capacity was freed', async () => {
+        await expect(specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2]))
+        .revertedWith(`GroupStillOverflowing("${groupAddresses[2]}")`)
+      });
+
+      describe('When some capacity was freed and rebalanced', () => {
+        let originalOverflow: BigNumber
+        beforeEach(async () => {
+          const revokeTx = await election.revokePending(voter.address, groupAddresses[2], new BigNumberJs(thirdGroupCapacity.toString()))
+          await revokeTx.sendAndWaitForReceipt({from: voter.address});
+          [,originalOverflow] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[2])
+          await specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2]);
+        });
+
+        it('should return 0 overflow', async () => {
+          const [total, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[2])
+          expect(overflow).to.deep.eq(BigNumber.from("0"))
+          expect(total).to.deep.eq(deposit)
+        });
+
+        it('should remove stCelo from default strategy', async () => {
+          const stCeloInDefault = await defaultStrategyContract.totalStCeloInDefaultStrategy()
+          expect(stCeloInDefault).to.deep.eq(BigNumber.from(0))
+        });
+
+        it('should schedule transfers from active groups', async () => {
+          const [
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes,
+          ] = await account.getLastTransferValues();
+  
+          expect(lastTransferFromGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
+          expect(lastTransferFromVotes[0].add(lastTransferFromVotes[1])).to.deep.eq(originalOverflow)
+  
+          expect(lastTransferToGroups).to.have.deep.members([groupAddresses[2]]);
+          expect(lastTransferToVotes).to.have.deep.members([originalOverflow]);
+        });
       });
     });
   });
