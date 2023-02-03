@@ -204,10 +204,10 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
         await manager.connect(depositor).deposit({ value: 99 });
       });
 
@@ -218,42 +218,42 @@ describe("Manager", () => {
       });
 
       it("should change the tail", async () => {
-        const [newTail] = await defaultStrategyContract.getGroupsTail();
+        const [newTail] = await defaultStrategyContract.getActiveGroupsTail();
         expect(originalTail).not.eq(newTail);
       });
 
       it("should update head", async () => {
-        const [newHead] = await defaultStrategyContract.getGroupsHead();
+        const [newHead] = await defaultStrategyContract.getActiveGroupsHead();
         expect(newHead).to.eq(originalTail);
       });
 
       describe("When another deposit is made", () => {
         let tailAfterFirstDeposit: string;
         beforeEach(async () => {
-          [tailAfterFirstDeposit] = await defaultStrategyContract.getGroupsTail();
+          [tailAfterFirstDeposit] = await defaultStrategyContract.getActiveGroupsTail();
           await manager.connect(depositor).deposit({ value: 100 });
         });
 
         it("should update tail accordingly", async () => {
-          const [newTail] = await defaultStrategyContract.getGroupsTail();
+          const [newTail] = await defaultStrategyContract.getActiveGroupsTail();
           expect(originalTail).not.eq(newTail);
           expect(tailAfterFirstDeposit).not.eq(newTail);
         });
 
         it("should update head", async () => {
-          const [newHead] = await defaultStrategyContract.getGroupsHead();
+          const [newHead] = await defaultStrategyContract.getActiveGroupsHead();
           expect(newHead).to.eq(tailAfterFirstDeposit);
         });
       });
 
       describe("when tail group is deprecated", () => {
         beforeEach(async () => {
-          const [tail] = await defaultStrategyContract.getGroupsTail();
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await defaultStrategyContract.deprecateGroup(tail);
         });
 
         it("distributes votes to new tail", async () => {
-          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
           await manager.connect(depositor).deposit({ value: 100 });
           const [votedGroups, votes] = await account.getLastScheduledVotes();
           expect(votedGroups).to.deep.equal([currentTail]);
@@ -265,7 +265,7 @@ describe("Manager", () => {
     describe("stCELO minting", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
@@ -361,7 +361,7 @@ describe("Manager", () => {
         const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
         for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
 
           await lockedGold.lock().sendAndWaitForReceipt({
@@ -551,7 +551,7 @@ describe("Manager", () => {
       let originalTail: string;
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
@@ -571,7 +571,7 @@ describe("Manager", () => {
           groups[4].address,
         ]);
 
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
         await manager.connect(depositor).deposit({ value: 100 });
       });
 
@@ -619,7 +619,7 @@ describe("Manager", () => {
       describe("Block strategy - group other than active", () => {
         beforeEach(async () => {
           for (let i = 0; i < 2; i++) {
-            const [head] = await defaultStrategyContract.getGroupsHead();
+            const [head] = await defaultStrategyContract.getActiveGroupsHead();
             await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
           }
@@ -634,7 +634,7 @@ describe("Manager", () => {
 
         it("should schedule votes for default strategy", async () => {
           const secondDepositedValue = 1000;
-          const [tail] = await defaultStrategyContract.getGroupsTail();
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await manager.deposit({ value: secondDepositedValue });
           const [votedGroups, votes] = await account.getLastScheduledVotes();
           expect(votedGroups).to.have.deep.members([tail]);
@@ -645,7 +645,7 @@ describe("Manager", () => {
       describe("Block strategy - group one of active", () => {
         beforeEach(async () => {
           for (let i = 0; i < 3; i++) {
-            const [head] = await defaultStrategyContract.getGroupsHead();
+            const [head] = await defaultStrategyContract.getActiveGroupsHead();
             await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
             await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(
@@ -664,7 +664,7 @@ describe("Manager", () => {
 
         it("should schedule votes for default strategy", async () => {
           const secondDepositedValue = 1000;
-          const [tail] = await defaultStrategyContract.getGroupsTail();
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await manager.deposit({ value: secondDepositedValue });
           const [votedGroups, votes] = await account.getLastScheduledVotes();
           expect(votedGroups).to.have.deep.members([tail]);
@@ -676,7 +676,7 @@ describe("Manager", () => {
     describe("When we have 2 active validator groups", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
@@ -753,13 +753,13 @@ describe("Manager", () => {
       beforeEach(async () => {
         let nextGroup = ADDRESS_ZERO;
         for (let i = 0; i < 3; i++) {
-          const [tail] = await defaultStrategyContract.getGroupsTail();
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await defaultStrategyContract.activateGroup(groupAddresses[i], nextGroup, tail);
           nextGroup = groupAddresses[i];
           await manager.connect(depositor2).deposit({ value: 100 });
         }
 
-        [originalHead] = await defaultStrategyContract.getGroupsHead();
+        [originalHead] = await defaultStrategyContract.getActiveGroupsHead();
       });
 
       describe("When withdrawn from head", () => {
@@ -769,12 +769,12 @@ describe("Manager", () => {
         });
 
         it("should change current head", async () => {
-          const [currentHead] = await defaultStrategyContract.getGroupsHead();
+          const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
           expect(currentHead).not.eq(originalHead);
         });
 
         it("should update current tail", async () => {
-          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
           expect(currentTail).to.eq(originalHead);
         });
 
@@ -790,18 +790,18 @@ describe("Manager", () => {
           let headAfterWithdrawal1: string;
           let tailAfterWithdrawal1: string;
           beforeEach(async () => {
-            headAfterWithdrawal1 = (await defaultStrategyContract.getGroupsHead())[0];
-            tailAfterWithdrawal1 = (await defaultStrategyContract.getGroupsTail())[0];
+            headAfterWithdrawal1 = (await defaultStrategyContract.getActiveGroupsHead())[0];
+            tailAfterWithdrawal1 = (await defaultStrategyContract.getActiveGroupsTail())[0];
             await manager.connect(depositor2).withdraw(withdrawn2);
           });
 
           it("should change current head", async () => {
-            const [currentHead] = await defaultStrategyContract.getGroupsHead();
+            const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
             expect(currentHead).not.eq(headAfterWithdrawal1);
           });
 
           it("should update current tail", async () => {
-            const [currentTail] = await defaultStrategyContract.getGroupsTail();
+            const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
             expect(currentTail).to.eq(tailAfterWithdrawal1);
           });
 
@@ -819,8 +819,8 @@ describe("Manager", () => {
         let originalPreviousHead: string;
 
         beforeEach(async () => {
-          [originalHead] = await defaultStrategyContract.getGroupsHead();
-          [originalPreviousHead] = await defaultStrategyContract.getGroupPreviousAndNext(
+          [originalHead] = await defaultStrategyContract.getActiveGroupsHead();
+          [originalPreviousHead] = await defaultStrategyContract.getActiveGroupPreviousAndNext(
             originalHead
           );
         });
@@ -848,7 +848,7 @@ describe("Manager", () => {
     describe("stCELO burning", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
           await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(groupAddresses[i], 100);
@@ -1046,7 +1046,7 @@ describe("Manager", () => {
         await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
         const [, , , lastTransferToVotes] = await account.getLastTransferValues();
 
-        const [groupHead] = await defaultStrategyContract.getGroupsHead();
+        const [groupHead] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(
           groupHead,
           lastTransferToVotes[0]
@@ -1074,7 +1074,7 @@ describe("Manager", () => {
         });
 
         it('should withdraw correctly after "rebalance"', async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await manager.connect(depositor).withdraw(specificGroupStrategyWithdrawal);
 
           const [withdrawnGroups, groupWithdrawals] = await account.getLastScheduledWithdrawals();
@@ -1090,7 +1090,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
@@ -1137,7 +1137,7 @@ describe("Manager", () => {
         const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
         for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
 
           await lockedGold.lock().sendAndWaitForReceipt({
@@ -1160,8 +1160,8 @@ describe("Manager", () => {
         await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await rebalanceDefaultGroups(defaultStrategyContract as any);
-        [originalDefaultHead] = await defaultStrategyContract.getGroupsHead();
-        [previousOfHead] = await defaultStrategyContract.getGroupPreviousAndNext(
+        [originalDefaultHead] = await defaultStrategyContract.getActiveGroupsHead();
+        [previousOfHead] = await defaultStrategyContract.getActiveGroupPreviousAndNext(
           originalDefaultHead
         );
         originalOverflow = await specificGroupStrategyContract.totalStCeloOverflow();
@@ -1492,7 +1492,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
           await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(
@@ -1555,7 +1555,7 @@ describe("Manager", () => {
           lastTransferToVotes,
         ] = await account.getLastTransferValues();
 
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
 
         expect(lastTransferFromGroups).to.deep.eq([head]);
         expect(lastTransferFromVotes).to.deep.eq([defaultGroupDeposit]);
@@ -1572,7 +1572,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
           await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(
@@ -1610,7 +1610,7 @@ describe("Manager", () => {
       });
 
       it("should schedule transfers if specific strategy => default strategy", async () => {
-        const [tail] = await defaultStrategyContract.getGroupsTail();
+        const [tail] = await defaultStrategyContract.getActiveGroupsTail();
         await manager
           .connect(stakedCeloSigner)
           .transfer(depositor.address, depositor2.address, specificGroupStrategyDeposit);
@@ -1666,7 +1666,7 @@ describe("Manager", () => {
           differentSpecificGroupStrategyDeposit
         );
 
-        const [tail] = await defaultStrategyContract.getGroupsTail();
+        const [tail] = await defaultStrategyContract.getActiveGroupsTail();
 
         await manager
           .connect(stakedCeloSigner)
@@ -1702,7 +1702,7 @@ describe("Manager", () => {
           differentSpecificGroupStrategyDeposit
         );
 
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
 
         await manager
           .connect(stakedCeloSigner)
@@ -1731,7 +1731,7 @@ describe("Manager", () => {
     beforeEach(async () => {
       specificGroupStrategyAddress = groupAddresses[2];
       for (let i = 0; i < 2; i++) {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
       }
@@ -1826,7 +1826,7 @@ describe("Manager", () => {
       });
 
       it("should schedule transfers when changing to default strategy", async () => {
-        const [tail] = await defaultStrategyContract.getGroupsTail();
+        const [tail] = await defaultStrategyContract.getActiveGroupsTail();
         await manager.changeStrategy(ADDRESS_ZERO);
         const [
           lastTransferFromGroups,
@@ -1868,7 +1868,7 @@ describe("Manager", () => {
       });
 
       it("should schedule transfers when changing to specific strategy", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.changeStrategy(specificGroupStrategyAddress);
         const [
@@ -1894,7 +1894,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
@@ -1919,7 +1919,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
@@ -1965,7 +1965,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
@@ -2044,7 +2044,7 @@ describe("Manager", () => {
 
         // activating first 2 groups, third is used as specific group
         for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           if (i < 2) {
             await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           } else {
@@ -2203,7 +2203,7 @@ describe("Manager", () => {
         describe("When having same active groups and strategies get disallowed", () => {
           beforeEach(async () => {
             for (let i = 0; i < 2; i++) {
-              const [head] = await defaultStrategyContract.getGroupsHead();
+              const [head] = await defaultStrategyContract.getActiveGroupsHead();
               await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
             await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
@@ -2241,7 +2241,7 @@ describe("Manager", () => {
         describe("When having different active groups", () => {
           beforeEach(async () => {
             for (let i = 2; i < 4; i++) {
-              const [head] = await defaultStrategyContract.getGroupsHead();
+              const [head] = await defaultStrategyContract.getActiveGroupsHead();
               await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
           });
@@ -2331,8 +2331,8 @@ describe("Manager", () => {
 
         await manager.deposit({ value: 100 });
         specificGroupAddress = groupAddresses[7];
-        [currentHead] = await defaultStrategyContract.getGroupsHead();
-        [currentTail] = await defaultStrategyContract.getGroupsTail();
+        [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
+        [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
       });
 
       it("should schedule votes from default -> specific", async () => {
@@ -2401,7 +2401,7 @@ describe("Manager", () => {
         const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
         for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
 
           await lockedGold.lock().sendAndWaitForReceipt({

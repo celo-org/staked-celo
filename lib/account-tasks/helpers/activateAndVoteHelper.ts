@@ -52,14 +52,14 @@ export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Si
 export async function getDefaultGroupsSafe(
   defaultStrategy: Contract
 ) : Promise<string[]> {
-  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
-  let [key] = await defaultStrategy.getGroupsHead();
+  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsLength();
+  let [key] = await defaultStrategy.getActiveGroupsHead();
 
   const activeGroups = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
     activeGroups.push(key);
-    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+    [key] = await defaultStrategy.getActiveGroupPreviousAndNext(key);
   }
 
   return activeGroups

@@ -454,7 +454,7 @@ describe("SpecificGroupStrategy", () => {
       beforeEach(async () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
@@ -535,7 +535,7 @@ describe("SpecificGroupStrategy", () => {
     beforeEach(async () => {
       deprecatedGroup = groups[1];
       for (let i = 0; i < 3; i++) {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
       }
 
@@ -622,7 +622,7 @@ describe("SpecificGroupStrategy", () => {
           }
         }
         await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(
           validatorGroupWithThreeValidators.address,
           ADDRESS_ZERO,
@@ -673,7 +673,7 @@ describe("SpecificGroupStrategy", () => {
 
       // activating first 2 groups, third is used as specific group
       for (let i = 2; i >= 0; i--) {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         if (i < 2) {
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         } else {

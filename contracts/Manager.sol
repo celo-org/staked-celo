@@ -401,7 +401,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function rebalance(address fromGroup, address toGroup) public {
         if (
-            !defaultStrategy.groupsContain(toGroup) &&
+            !defaultStrategy.activeGroupsContain(toGroup) &&
             !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
         ) {
             // rebalancing to deprecated/non-existent group is not allowed
@@ -446,7 +446,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalanceOverflow(address fromGroup, address toGroup) public {
-        if (!defaultStrategy.groupsContain(toGroup)) {
+        if (!defaultStrategy.activeGroupsContain(toGroup)) {
             revert InvalidToGroup(toGroup);
         }
 
@@ -529,7 +529,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
         bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
-        bool isActiveGroup = defaultStrategy.groupsContain(group);
+        bool isActiveGroup = defaultStrategy.activeGroupsContain(group);
         actualCelo = account.getCeloForGroup(group);
 
         uint256 stCELOFromSpecificStrategy;

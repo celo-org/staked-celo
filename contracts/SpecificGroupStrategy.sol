@@ -204,7 +204,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      */
     function allowStrategy(address group) external onlyOwner {
         if (
-            (defaultStrategy.getGroupsLength() + specificGroupStrategies.length()) >=
+            (defaultStrategy.getActiveGroupsLength() + specificGroupStrategies.length()) >=
             getElection().maxNumGroupsVotedFor() &&
             !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
         ) {
@@ -519,7 +519,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function _blockStrategy(address group) private {
-        if (defaultStrategy.getGroupsLength() == 0) {
+        if (defaultStrategy.getActiveGroupsLength() == 0) {
             revert NoActiveGroups();
         }
 

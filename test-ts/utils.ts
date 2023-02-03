@@ -484,14 +484,14 @@ export async function setGovernanceConcurrentProposals(count: number) {
 }
 
 export async function getDefaultGroupsSafe(defaultStrategy: DefaultGroupContract) {
-  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
-  let [key] = await defaultStrategy.getGroupsHead();
+  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsLength();
+  let [key] = await defaultStrategy.getActiveGroupsHead();
 
   const activeGroups = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
     activeGroups.push(key);
-    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+    [key] = await defaultStrategy.getActiveGroupPreviousAndNext(key);
   }
 
   return activeGroups;
@@ -701,11 +701,11 @@ export async function getOrderedActiveGroups(
   defaultStrategyContract: MockDefaultStrategy,
   account?: Account
 ): Promise<OrderedGroup[]> {
-  let [head] = await defaultStrategyContract.getGroupsHead();
+  let [head] = await defaultStrategyContract.getActiveGroupsHead();
   const groupsForLog = [];
 
-  for (let i = 0; i < (await defaultStrategyContract.getGroupsLength()).toNumber(); i++) {
-    const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
+  for (let i = 0; i < (await defaultStrategyContract.getActiveGroupsLength()).toNumber(); i++) {
+    const [prev] = await defaultStrategyContract.getActiveGroupPreviousAndNext(head);
     const stCelo = await defaultStrategyContract.stCELOInGroup(head);
     const realCelo = await account?.getCeloForGroup(head);
     groupsForLog.unshift({

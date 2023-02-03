@@ -391,7 +391,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Returns the length of active groups.
      * @return The length of active groups.
      */
-    function getGroupsLength() external view returns (uint256) {
+    function getActiveGroupsLength() external view returns (uint256) {
         return activeGroups.getNumElements();
     }
 
@@ -401,7 +401,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @return previousAddress The previous address.
      * @return nextAddress The next address.
      */
-    function getGroupPreviousAndNext(address key)
+    function getActiveGroupPreviousAndNext(address key)
         external
         view
         returns (address previousAddress, address nextAddress)
@@ -414,7 +414,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @return head The head of groups.
      * @return previousAddress The previous address.
      */
-    function getGroupsHead() external view returns (address head, address previousAddress) {
+    function getActiveGroupsHead() external view returns (address head, address previousAddress) {
         head = activeGroups.getHead();
         (, previousAddress, ) = activeGroups.get(head);
     }
@@ -424,7 +424,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @return head The tail of groups.
      * @return nextAddress The previous address.
      */
-    function getGroupsTail() external view returns (address head, address nextAddress) {
+    function getActiveGroupsTail() external view returns (address head, address nextAddress) {
         head = activeGroups.getTail();
         (, nextAddress, ) = activeGroups.get(head);
     }
@@ -433,7 +433,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Returns whether active groups contain group.
      * @return Whether or not is active group.
      */
-    function groupsContain(address group) external view returns (bool) {
+    function activeGroupsContain(address group) external view returns (bool) {
         return activeGroups.contains(group);
     }
 

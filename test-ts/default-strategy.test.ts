@@ -253,8 +253,8 @@ describe("DefaultStrategy", () => {
     it("adds a group", async () => {
       await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
       const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-      const activeGroupsLength = await defaultStrategyContract.getGroupsLength();
-      const [firstActiveGroup] = await defaultStrategyContract.getGroupsHead();
+      const activeGroupsLength = await defaultStrategyContract.getActiveGroupsLength();
+      const [firstActiveGroup] = await defaultStrategyContract.getActiveGroupsHead();
       expect(activeGroups).to.deep.eq([groupAddresses[0]]);
       expect(activeGroupsLength).to.eq(1);
       expect(firstActiveGroup).to.eq(groupAddresses[0]);
@@ -383,27 +383,27 @@ describe("DefaultStrategy", () => {
     describe("when some groups are already added", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
       it("adds another group", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(groupAddresses[3], ADDRESS_ZERO, head);
         const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 4));
       });
 
       it("emits a GroupActivated event", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await expect(defaultStrategyContract.activateGroup(groupAddresses[3], ADDRESS_ZERO, head))
           .to.emit(defaultStrategyContract, "GroupActivated")
           .withArgs(groupAddresses[3]);
       });
 
       it("reverts when trying to add an existing group", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await expect(
           defaultStrategyContract.activateGroup(groupAddresses[1], ADDRESS_ZERO, head)
         ).revertedWith(`GroupAlreadyAdded("${groupAddresses[1]}")`);
@@ -418,13 +418,13 @@ describe("DefaultStrategy", () => {
         await electGroup(additionalGroup.address, someone);
 
         for (let i = 0; i < 10; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
       it("cannot add another group", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await expect(
           defaultStrategyContract.activateGroup(additionalGroup.address, ADDRESS_ZERO, head)
         ).revertedWith("MaxGroupsVotedForReached()");
@@ -456,7 +456,7 @@ describe("DefaultStrategy", () => {
           from: accountAddress,
         });
 
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await expect(
           defaultStrategyContract.activateGroup(additionalGroup.address, ADDRESS_ZERO, head)
         )
@@ -475,7 +475,7 @@ describe("DefaultStrategy", () => {
         });
 
         it("cannot add another group", async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await expect(
             defaultStrategyContract.activateGroup(additionalGroup.address, ADDRESS_ZERO, head)
           ).revertedWith("MaxGroupsVotedForReached()");
@@ -484,7 +484,7 @@ describe("DefaultStrategy", () => {
         it("reactivates a deprecated group", async () => {
           await defaultStrategyContract.deprecateGroup(groupAddresses[2]);
           await defaultStrategyContract.deprecateGroup(groupAddresses[7]);
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[2], ADDRESS_ZERO, head);
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
           expect(activeGroups[8]).to.equal(groupAddresses[2]);
@@ -493,7 +493,7 @@ describe("DefaultStrategy", () => {
         it("emits a GroupActivated event", async () => {
           await defaultStrategyContract.deprecateGroup(groupAddresses[2]);
           await defaultStrategyContract.deprecateGroup(groupAddresses[7]);
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await expect(defaultStrategyContract.activateGroup(groupAddresses[2], ADDRESS_ZERO, head))
             .to.emit(defaultStrategyContract, "GroupActivated")
             .withArgs(groupAddresses[2]);
@@ -509,7 +509,7 @@ describe("DefaultStrategy", () => {
       beforeEach(async () => {
         deprecatedGroup = groups[1];
         for (let i = 0; i < 3; i++) {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
@@ -546,7 +546,7 @@ describe("DefaultStrategy", () => {
         });
 
         it("should schedule transfer to tail of default strategy", async () => {
-          const [tail] = await defaultStrategyContract.getGroupsTail();
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await defaultStrategyContract.deprecateGroup(deprecatedGroup.address);
 
           const [
@@ -635,12 +635,12 @@ describe("DefaultStrategy", () => {
     describe("When deposited", () => {
       let originalTail: string;
       beforeEach(async () => {
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
         await manager.deposit({ value: 100 });
       });
 
       it("should return more real stCelo in original tail / current head", async () => {
-        const [currentHead] = await defaultStrategyContract.getGroupsHead();
+        const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
         expect(currentHead).to.eq(originalTail);
 
         const [expected, actual] = await defaultStrategyContract.getExpectedAndActualStCeloForGroup(
@@ -693,7 +693,7 @@ describe("DefaultStrategy", () => {
       beforeEach(async () => {
         await manager.deposit({ value: 49 });
         await manager.deposit({ value: 51 });
-        [currentHead] = await defaultStrategyContract.getGroupsHead();
+        [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
       });
 
       async function expectCorrectOrder() {
@@ -817,7 +817,7 @@ describe("DefaultStrategy", () => {
       let originalTail: string;
       beforeEach(async () => {
         await defaultStrategyContract.setSortingParams(3, 3, 0);
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
         for (let i = 0; i < 3; i++) {
           await manager.deposit({ value: (i + 1) * 100 });
         }
@@ -834,17 +834,17 @@ describe("DefaultStrategy", () => {
 
       describe("When updateActiveGroupOrder called", () => {
         beforeEach(async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
         });
 
         it("should change the head", async () => {
-          const [currentHead] = await defaultStrategyContract.getGroupsHead();
+          const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
           expect(currentHead).to.eq(originalTail);
         });
 
         it("should change the tail", async () => {
-          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
           expect(currentTail).to.not.eq(originalTail);
         });
 
@@ -863,7 +863,7 @@ describe("DefaultStrategy", () => {
       let originalTail: string;
       beforeEach(async () => {
         await defaultStrategyContract.setSortingParams(3, 3, 1);
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
         for (let i = 0; i < 3; i++) {
           await manager.deposit({ value: (i + 1) * 100 });
         }
@@ -880,17 +880,17 @@ describe("DefaultStrategy", () => {
 
       describe("When updateActiveGroupOrder called", () => {
         beforeEach(async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
         });
 
         it("should change the head", async () => {
-          const [currentHead] = await defaultStrategyContract.getGroupsHead();
+          const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
           expect(currentHead).to.eq(originalTail);
         });
 
         it("should change the tail", async () => {
-          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
           expect(currentTail).to.not.eq(originalTail);
         });
 
@@ -911,7 +911,7 @@ describe("DefaultStrategy", () => {
 
       beforeEach(async () => {
         await defaultStrategyContract.setSortingParams(3, 3, 0);
-        [originalTail] = await defaultStrategyContract.getGroupsTail();
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
 
         // For more info regarding these numbers, check comment above
         const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
@@ -947,7 +947,7 @@ describe("DefaultStrategy", () => {
 
       describe("When updateActiveGroupOrder called", () => {
         beforeEach(async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
           await defaultStrategyContract.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
           await defaultStrategyContract.updateActiveGroupOrder(
             originalOrderedGroups[1].group,
@@ -957,12 +957,12 @@ describe("DefaultStrategy", () => {
         });
 
         it("should change the head", async () => {
-          const [currentHead] = await defaultStrategyContract.getGroupsHead();
+          const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
           expect(currentHead).to.eq(originalTail);
         });
 
         it("should change the tail", async () => {
-          const [currentTail] = await defaultStrategyContract.getGroupsTail();
+          const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
           expect(currentTail).to.not.eq(originalTail);
         });
 
@@ -1015,7 +1015,7 @@ describe("DefaultStrategy", () => {
         for (let i = 0; i < 3; i++) {
           await manager.deposit({ value: (i + 1) * 100 });
         }
-        [originalHead] = await defaultStrategyContract.getGroupsHead();
+        [originalHead] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.setSortingParams(3, 3, 0);
         expect(await defaultStrategyContract.sorted()).to.be.true;
       });
@@ -1036,17 +1036,17 @@ describe("DefaultStrategy", () => {
 
         describe("When updateActiveGroupOrder called", () => {
           beforeEach(async () => {
-            const [tail] = await defaultStrategyContract.getGroupsTail();
+            const [tail] = await defaultStrategyContract.getActiveGroupsTail();
             await defaultStrategyContract.updateActiveGroupOrder(originalHead, ADDRESS_ZERO, tail);
           });
 
           it("should change the tail", async () => {
-            const [currentTail] = await defaultStrategyContract.getGroupsTail();
+            const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
             expect(currentTail).to.eq(originalHead);
           });
 
           it("should change the head", async () => {
-            const [currentHead] = await defaultStrategyContract.getGroupsHead();
+            const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
             expect(currentHead).to.not.eq(originalHead);
           });
 
@@ -1082,7 +1082,7 @@ describe("DefaultStrategy", () => {
 
         describe("When updateActiveGroupOrder called", () => {
           beforeEach(async () => {
-            const [tail] = await defaultStrategyContract.getGroupsTail();
+            const [tail] = await defaultStrategyContract.getActiveGroupsTail();
             await defaultStrategyContract.updateActiveGroupOrder(
               originalOrderedGroups[originalOrderedGroups.length - 2].group,
               ADDRESS_ZERO,
@@ -1096,12 +1096,12 @@ describe("DefaultStrategy", () => {
           });
 
           it("should change the tail", async () => {
-            const [currentTail] = await defaultStrategyContract.getGroupsTail();
+            const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
             expect(currentTail).to.eq(originalHead);
           });
 
           it("should change the head", async () => {
-            const [currentHead] = await defaultStrategyContract.getGroupsHead();
+            const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
             expect(currentHead).to.not.eq(originalHead);
           });
 
@@ -1144,7 +1144,7 @@ describe("DefaultStrategy", () => {
     beforeEach(async () => {
       deprecatedGroup = groups[1];
       for (let i = 0; i < 3; i++) {
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
       }
     });
@@ -1225,7 +1225,7 @@ describe("DefaultStrategy", () => {
           }
         }
         await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
-        const [head] = await defaultStrategyContract.getGroupsHead();
+        const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await defaultStrategyContract.activateGroup(
           validatorGroupWithThreeValidators.address,
           ADDRESS_ZERO,
