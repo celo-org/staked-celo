@@ -1121,7 +1121,9 @@ describe("DefaultStrategy", () => {
   describe("#generateVoteDistribution", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).generateVoteDistribution(10, false, ADDRESS_ZERO)
+        defaultStrategyContract
+          .connect(nonManager)
+          .generateVoteDistribution(10, false, ADDRESS_ZERO)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });
@@ -1258,6 +1260,30 @@ describe("DefaultStrategy", () => {
           .to.emit(defaultStrategyContract, "GroupDeprecated")
           .withArgs(groupAddresses[1]);
       });
+    });
+  });
+
+  describe("V1 -> V2 migration test", () => {
+    const votes = [parseUnits("95824"), parseUnits("0"), parseUnits("95664")];
+
+    beforeEach(async () => {
+      for (let i = 0; i < 3; i++) {
+        await account.setCeloForGroup(groupAddresses[i], votes[i]);
+      }
+    });
+
+    it("should set correct accounting for group[0]", async () => {
+      await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
+
+      const stCeloInDefault = await defaultStrategyContract.stCELOInGroup(groupAddresses[0]);
+      expect(stCeloInDefault).to.deep.eq(votes[0]);
+    });
+
+    it("should set correct accounting for group that has 0 celo locked", async () => {
+      await defaultStrategyContract.activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+
+      const stCeloInDefault = await defaultStrategyContract.stCELOInGroup(groupAddresses[1]);
+      expect(stCeloInDefault).to.deep.eq(BigNumber.from("0"));
     });
   });
 });

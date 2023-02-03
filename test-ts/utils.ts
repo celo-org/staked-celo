@@ -576,7 +576,6 @@ async function rebalanceInternal(
   let firstIndex = 0;
   let lastIndex = sortedUnbalancedDesc.length - 1;
 
-
   while (firstIndex < lastIndex) {
     await rebalanceContract.rebalance(
       sortedUnbalancedDesc[firstIndex].group,

@@ -137,7 +137,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error FromGroupNotOverflowing(address group);
-    
+
     /**
      * @notice Used when trying to overflow rebalance to group that is overflowing.
      * @param group The group's address.
@@ -446,7 +446,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalanceOverflow(address fromGroup, address toGroup) public {
-        // TODO: add tests
         if (!defaultStrategy.groupsContain(toGroup)) {
             revert InvalidToGroup(toGroup);
         }
@@ -457,7 +456,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         uint256 fromScheduledVotes = account.scheduledVotesForGroup(fromGroup);
-        if (fromScheduledVotes != 0) {
+        if (fromScheduledVotes == 0) {
             revert FromGroupNotOverflowing(fromGroup);
         }
 
@@ -607,10 +606,20 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group that can receive votes
      */
     function getReceivableVotesForGroup(address group) public view returns (uint256) {
-        return
-            getElection().getNumVotesReceivable(group) -
-            getElection().getTotalVotesForGroup(group) -
-            account.scheduledVotesForGroup(group);
+        uint256 receivable = getElection().getNumVotesReceivable(group);
+        uint256 totalVotes = getElection().getTotalVotesForGroup(group);
+
+        if (receivable < totalVotes) {
+            return 0;
+        }
+        uint256 assignedVotes = receivable - totalVotes;
+
+        uint256 scheduledVotes = account.scheduledVotesForGroup(group);
+        if (assignedVotes < scheduledVotes) {
+            return 0;
+        }
+
+        return assignedVotes - scheduledVotes;
     }
 
     /**

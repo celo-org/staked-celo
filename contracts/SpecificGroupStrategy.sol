@@ -459,23 +459,17 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Updates overflow stCELO amount of strategy.
-     * @param strategy The strategy that is overflowing.
-     * @param stCeloAmount The stCELO amount.
-     * @param add Whether to add or subtract stCELO amount.
+     * @notice Returns the specific group total stCELO
+     * @return total The total stCELO amount.
+     * @return overflow The stCELO amount that is overflown to default strategy.
      */
-    function updateOverflowGroup(
-        address strategy,
-        uint256 stCeloAmount,
-        bool add
-    ) private {
-        if (add) {
-            stCeloInStrategyOverflown[strategy] += stCeloAmount;
-            totalStCeloOverflow += stCeloAmount;
-        } else {
-            stCeloInStrategyOverflown[strategy] -= stCeloAmount;
-            totalStCeloOverflow -= stCeloAmount;
-        }
+    function getStCeloInStrategy(address strategy)
+        public
+        view
+        returns (uint256 total, uint256 overflow)
+    {
+        total = stCeloInStrategy[strategy];
+        overflow = stCeloInStrategyOverflown[strategy];
     }
 
     /**
@@ -500,17 +494,23 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the specific group total stCELO
-     * @return total The total stCELO amount.
-     * @return overflow The stCELO amount that is overflown to default strategy.
+     * @notice Updates overflow stCELO amount of strategy.
+     * @param strategy The strategy that is overflowing.
+     * @param stCeloAmount The stCELO amount.
+     * @param add Whether to add or subtract stCELO amount.
      */
-    function getStCeloInStrategy(address strategy)
-        public
-        view
-        returns (uint256 total, uint256 overflow)
-    {
-        total = stCeloInStrategy[strategy];
-        overflow = stCeloInStrategyOverflown[strategy];
+    function updateOverflowGroup(
+        address strategy,
+        uint256 stCeloAmount,
+        bool add
+    ) private {
+        if (add) {
+            stCeloInStrategyOverflown[strategy] += stCeloAmount;
+            totalStCeloOverflow += stCeloAmount;
+        } else {
+            stCeloInStrategyOverflown[strategy] -= stCeloAmount;
+            totalStCeloOverflow -= stCeloAmount;
+        }
     }
 
     /**
