@@ -421,12 +421,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Returns tail and next address of tail.
-     * @return head The tail of groups.
+     * @return tail The tail of groups.
      * @return nextAddress The previous address.
      */
-    function getActiveGroupsTail() external view returns (address head, address nextAddress) {
-        head = activeGroups.getTail();
-        (, nextAddress, ) = activeGroups.get(head);
+    function getActiveGroupsTail() external view returns (address tail, address nextAddress) {
+        tail = activeGroups.getTail();
+        (, nextAddress, ) = activeGroups.get(tail);
     }
 
     /**

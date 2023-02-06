@@ -11,7 +11,6 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
-import "hardhat/console.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
@@ -288,7 +287,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
 
         uint256 votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
-        console.log("stCeloAmount %s", stCeloAmount);
 
         votes -= votesToBeScheduledForSpecificStrategy;
         if (votes > 0) {
@@ -407,7 +405,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             updateOverflowGroup(strategy, stCeloToBeMoved, false);
             celoWitdrawalAmount -= celoToBeMovedFromOverflow;
             if (celoWitdrawalAmount > 0) {
-                console.log("here1");
                 groups = new address[](overflowGroups.length + 1);
                 votes = new uint256[](overflowGroups.length + 1);
                 for (uint256 i = 0; i < overflowGroups.length; i++) {
@@ -417,12 +414,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                 groups[overflowGroups.length] = strategy;
                 votes[overflowGroups.length] = celoWitdrawalAmount;
             } else {
-                console.log("here2");
                 groups = overflowGroups;
                 votes = overflowVotes;
             }
         } else {
-            console.log("here3");
             groups = new address[](1);
             votes = new uint256[](1);
             groups[0] = strategy;
@@ -445,14 +440,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         }
 
         uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
-        console.log("receivableVotes %s", receivableVotes);
         if (receivableVotes == 0) {
             revert GroupStillOverflowing(strategy);
         }
 
         uint256 receivableStCelo = IManager(manager).toStakedCelo(receivableVotes);
         uint256 toMove = Math.min(receivableStCelo, overflowingStCelo);
-        console.log("toMove %s", toMove);
         updateGroupStCelo(strategy, toMove, false);
         IManager(manager).transferBetweenStrategies(address(0), strategy, toMove);
         updateOverflowGroup(strategy, toMove, false);

@@ -704,7 +704,7 @@ describe("SpecificGroupStrategy", () => {
         await manager.connect(depositor).deposit({ value: deposit });
         const [scheduledGroups, scheduledVotes] = await account.getLastScheduledVotes();
         for (let i = 0; i < scheduledGroups.length; i++) {
-          await account.setScheduledVotes(scheduledGroups[i], scheduledVotes[i]);
+          await account.setCeloForGroup(scheduledGroups[i], scheduledVotes[i]);
         }
       });
 

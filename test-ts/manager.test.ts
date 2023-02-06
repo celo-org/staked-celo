@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import BigNumberJs from "bignumber.js";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
@@ -430,9 +430,9 @@ describe("Manager", () => {
         const thirdGroupScheduled = parseUnits("170");
 
         beforeEach(async () => {
-          await account.setScheduledVotes(groupAddresses[0], firstGroupScheduled);
-          await account.setScheduledVotes(groupAddresses[1], secondGroupScheduled);
-          await account.setScheduledVotes(groupAddresses[2], thirdGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[0], firstGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[1], secondGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[2], thirdGroupScheduled);
         });
 
         it("Deposit to only one group if within capacity", async () => {
@@ -2058,6 +2058,10 @@ describe("Manager", () => {
         }
 
         for (let i = 0; i < 3; i++) {
+          console.log(
+            "can receive votes",
+            formatEther(await manager.getReceivableVotesForGroup(groupAddresses[i]))
+          );
           const voteTx = await election.vote(
             groupAddresses[i],
             new BigNumberJs(votes[i].toString())
@@ -2428,7 +2432,7 @@ describe("Manager", () => {
         let scheduledVotes: BigNumber;
         beforeEach(async () => {
           scheduledVotes = parseUnits("2");
-          await account.setScheduledVotes(groupAddresses[0], scheduledVotes);
+          await account.setCeloForGroup(groupAddresses[0], scheduledVotes);
         });
 
         it("should return correct amount", async () => {

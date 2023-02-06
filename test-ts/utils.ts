@@ -9,6 +9,7 @@ import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
+  ACCOUNT_REVOKE,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
@@ -192,7 +193,8 @@ export async function activateValidators(
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  let nextGroup = ADDRESS_ZERO;
+  let [nextGroup] = await defaultStrategyContract.getActiveGroupsTail();
+  console.log("tail", nextGroup);
   for (let i = 0; i < 3; i++) {
     const isValidGroup = await groupHealthContract.isValidGroup(groupAddresses[i]);
     if (!isValidGroup) {
@@ -463,6 +465,17 @@ export async function waitForEvent(
 export async function activateAndVoteTest(deployerAccountName = "deployer") {
   try {
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Activate and vote failed! ${JSON.stringify(error)}`);
+  }
+}
+
+export async function revokeTest(deployerAccountName = "deployer") {
+  try {
+    await hre.run(ACCOUNT_REVOKE, {
       account: deployerAccountName,
       useNodeAccount: true,
     });

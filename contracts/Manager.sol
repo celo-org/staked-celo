@@ -465,7 +465,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert ToGroupOverflowing(toGroup);
         }
 
-        uint256 toMove = Math.min(fromScheduledVotes, toReceivableVotes);
+        uint256 fromActualReceivable = getActualReceivableVotes(fromGroup);
+
+        uint256 toMove = Math.min(fromScheduledVotes - fromActualReceivable, toReceivableVotes);
         scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
     }
 
@@ -602,24 +604,29 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * Returns votes count that can be received by group.
+     * Returns votes count that can be received by group through stCELO protocol.
      * @param group The group that can receive votes
      */
     function getReceivableVotesForGroup(address group) public view returns (uint256) {
-        uint256 receivable = getElection().getNumVotesReceivable(group);
-        uint256 totalVotes = getElection().getTotalVotesForGroup(group);
+        uint256 receivableVotes = getActualReceivableVotes(group);
 
-        if (receivable < totalVotes) {
-            return 0;
-        }
-        uint256 assignedVotes = receivable - totalVotes;
-
-        uint256 scheduledVotes = account.scheduledVotesForGroup(group);
-        if (assignedVotes < scheduledVotes) {
+        if (receivableVotes == 0) {
             return 0;
         }
 
-        return assignedVotes - scheduledVotes;
+        uint256 totalVotesForGroupByAccount = getElection().getTotalVotesForGroupByAccount(
+            group,
+            address(account)
+        );
+        uint256 votesForGroupByAccountInProtocol = account.getCeloForGroup(group);
+
+        receivableVotes += totalVotesForGroupByAccount;
+
+        if (receivableVotes < votesForGroupByAccountInProtocol) {
+            return 0;
+        }
+
+        return receivableVotes - votesForGroupByAccountInProtocol;
     }
 
     /**
@@ -773,6 +780,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         fromVotes[0] = votes;
         toGroups[0] = toGroup;
         toVotes[0] = fromVotes[0];
+
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * Returns votes count that can be received by group directly in Election contract.
+     * @param group The group that can receive votes
+     */
+    function getActualReceivableVotes(address group) private view returns (uint256) {
+        uint256 receivable = getElection().getNumVotesReceivable(group);
+        uint256 totalVotes = getElection().getTotalVotesForGroup(group);
+
+        if (receivable < totalVotes) {
+            return 0;
+        }
+
+        return receivable - totalVotes;
     }
 }
