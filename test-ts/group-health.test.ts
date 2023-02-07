@@ -114,9 +114,9 @@ describe("GroupHealth", () => {
     await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe("#isValidGroup()", () => {
+  describe("#isGroupValid()", () => {
     it("should return invalid when not updated", async () => {
-      const valid = await groupHealthContract.isValidGroup(nonManager.address);
+      const valid = await groupHealthContract.isGroupValid(nonManager.address);
       expect(false).to.eq(valid);
     });
 
@@ -130,7 +130,7 @@ describe("GroupHealth", () => {
       });
 
       it("should return invalid", async () => {
-        const valid = await groupHealthContract.isValidGroup(nonManager.address);
+        const valid = await groupHealthContract.isGroupValid(nonManager.address);
         expect(false).to.eq(valid);
       });
 
@@ -144,7 +144,7 @@ describe("GroupHealth", () => {
         });
 
         it("should be valid", async () => {
-          const valid = await groupHealthContract.isValidGroup(activatedGroupAddresses[0]);
+          const valid = await groupHealthContract.isGroupValid(activatedGroupAddresses[0]);
           expect(true).to.eq(valid);
         });
 
@@ -161,7 +161,7 @@ describe("GroupHealth", () => {
             });
 
             it("should return valid", async () => {
-              const valid = await groupHealthContract.isValidGroup(activatedGroupAddresses[0]);
+              const valid = await groupHealthContract.isGroupValid(activatedGroupAddresses[0]);
               expect(true).to.eq(valid);
             });
           });
@@ -176,7 +176,7 @@ describe("GroupHealth", () => {
             });
 
             it("should return invalid", async () => {
-              const valid = await groupHealthContract.isValidGroup(activatedGroupAddresses[0]);
+              const valid = await groupHealthContract.isGroupValid(activatedGroupAddresses[0]);
               expect(false).to.eq(valid);
             });
           });

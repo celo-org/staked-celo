@@ -161,8 +161,8 @@ export async function allowStrategies(
   const values: string[] = [];
 
   for (let i = 0; i < strategyAddresses.length; i++) {
-    const isValidGroup = await groupHealthContract.isValidGroup(strategyAddresses[i]);
-    if (!isValidGroup) {
+    const isGroupValid = await groupHealthContract.isGroupValid(strategyAddresses[i]);
+    if (!isGroupValid) {
       throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
     }
     destinations.push(specificGroupStrategyContract.address);
@@ -188,8 +188,8 @@ export async function activateValidators(
   const values: string[] = [];
 
   for (let i = 0; i < 3; i++) {
-    const isValidGroup = await groupHealthContract.isValidGroup(groupAddresses[i]);
-    if (!isValidGroup) {
+    const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
+    if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
     destinations.push(defaultStrategyContract.address);
@@ -476,7 +476,7 @@ export async function getGroupsOfAllStrategies(
   specificGroupStrategy: SpecificGroupStrategy
 ) {
   const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
+  const getSpecificGroupStrategiesNumber = specificGroupStrategy.getSpecificGroupStrategiesNumber();
 
   const activeGroupsPromises = [];
   const specificGroupsPromises = [];
@@ -485,7 +485,7 @@ export async function getGroupsOfAllStrategies(
     activeGroupsPromises.push(defaultStrategy.getGroup(i));
   }
 
-  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+  for (let i = 0; i < (await getSpecificGroupStrategiesNumber).toNumber(); i++) {
     specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
   }
 

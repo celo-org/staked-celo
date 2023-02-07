@@ -433,7 +433,7 @@ describe("Manager", () => {
       const specificGroupStrategy =
         await specificGroupStrategyContract.getSpecificGroupStrategies();
       const specificGroupStrategyLength =
-        await specificGroupStrategyContract.getSpecificGroupStrategiesLength();
+        await specificGroupStrategyContract.getSpecificGroupStrategiesNumber();
       const firstSpecificGroupStrategy =
         await specificGroupStrategyContract.getSpecificGroupStrategy(0);
       expect(specificGroupStrategy).to.deep.eq([groupAddresses[0]]);

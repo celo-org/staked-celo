@@ -27,12 +27,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice stCELO that was cast for specific group strategies,
      * strategy => stCELO amount
      */
-    mapping(address => uint256) private specificGroupStrategyTotalStCeloVotes;
+    mapping(address => uint256) public specificGroupStrategyTotalStCeloVotes;
 
     /**
      * @notice Total stCELO that was voted with on specific group strategies
      */
-    uint256 private totalStCeloInSpecificGroupStrategies;
+    uint256 public totalStCeloInSpecificGroupStrategies;
 
     /**
      * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
@@ -165,11 +165,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Marks a group as specific group strategy for voting.
+     * It is necessary to call `updateGroupHealth` in GroupHealth smart contract first.
      * @param group The address of the group to add to the set of specific group
      * strategies.
      */
     function allowStrategy(address group) external onlyOwner {
-        if (!groupHealth.isValidGroup(group)) {
+        if (!groupHealth.isGroupValid(group)) {
             revert StrategyNotEligible(group);
         }
 
@@ -198,7 +199,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyAlreadyBlocked(strategy);
         }
 
-        uint256 strategyTotalStCeloVotes = getTotalStCeloVotesForStrategy(strategy);
+        uint256 strategyTotalStCeloVotes = specificGroupStrategyTotalStCeloVotes[strategy];
 
         if (strategyTotalStCeloVotes != 0) {
             IManager(manager).transferBetweenStrategies(
@@ -218,7 +219,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     /**
      * @notice Used to withdraw CELO from the system from specific group strategy
      * that account voted for previously. It is expected that strategy will be balanced.
-     * For balancing use `rebalance` function
+     * For balancing use `rebalance` function.
      * @param strategy The validator group that we want to withdraw from.
      * @param withdrawal The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
@@ -275,7 +276,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns is strategy is specific group strategy.
+     * @notice Returns if strategy is specific group strategy.
      * @return Whether or not is specific group strategy.
      */
     function isSpecificGroupStrategy(address strategy) external view returns (bool) {
@@ -283,18 +284,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the total stCELO locked in specific groups.
-     * @return The total stCELO.
-     */
-    function getTotalStCeloInSpecificGroupStrategies() external view returns (uint256) {
-        return totalStCeloInSpecificGroupStrategies;
-    }
-
-    /**
      * @notice Returns the length of specific group strategies.
      * @return The length of active groups.
      */
-    function getSpecificGroupStrategiesLength() external view returns (uint256) {
+    function getSpecificGroupStrategiesNumber() external view returns (uint256) {
         return specificGroupStrategies.length();
     }
 
@@ -360,13 +353,5 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     ) public onlyManager {
         specificGroupStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
         totalStCeloInSpecificGroupStrategies -= stCeloAmount;
-    }
-
-    /**
-     * @notice Returns the specific group total stCELO
-     * @return The total stCELO amount.
-     */
-    function getTotalStCeloVotesForStrategy(address strategy) public view returns (uint256) {
-        return specificGroupStrategyTotalStCeloVotes[strategy];
     }
 }

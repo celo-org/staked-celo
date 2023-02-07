@@ -349,6 +349,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Marks a group as votable for default strategy.
+     * It is necessary to call `updateGroupHealth` in GroupHealth smart contract first.
      * @param group The address of the group to add to the set of votable
      * groups.
      * @dev Fails if the maximum number of groups are already being voted for by
@@ -356,7 +357,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * Election contract).
      */
     function activateGroup(address group) external onlyOwner {
-        if (!groupHealth.isValidGroup(group)) {
+        if (!groupHealth.isGroupValid(group)) {
             revert GroupNotEligible(group);
         }
 
@@ -383,9 +384,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
 
         // TODO: remove once migrated to v2
-        uint256 specificGroupTotalStCelo = specificGroupStrategy.getTotalStCeloVotesForStrategy(
-            group
-        );
+        uint256 specificGroupTotalStCelo = specificGroupStrategy
+            .specificGroupStrategyTotalStCeloVotes(group);
         uint256 stCeloForWholeGroup = IManager(manager).toStakedCelo(
             account.getCeloForGroup(group)
         );
@@ -415,7 +415,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateUnhealthyGroup(address group) external {
-        if (groupHealth.isValidGroup(group)) {
+        if (groupHealth.isGroupValid(group)) {
             revert HealthyGroup(group);
         }
         _deprecateGroup((group));
@@ -430,8 +430,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns the length of active groups.
-     * @return The length of active groups.
+     * @notice Returns the length of allowed groups.
+     * @return The length of allowed groups.
      */
     function getGroupsLength() external view returns (uint256) {
         return activeGroups.length();

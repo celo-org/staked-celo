@@ -57,7 +57,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ISpecificGroupStrategy public specificGroupStrategy;
 
     /**
-     * @notice An instance of the DefaultGroupStrategy contract for the StakedCelo protocol.
+     * @notice An instance of the DefaultStrategy contract for the StakedCelo protocol.
      */
     IDefaultStrategy public defaultStrategy;
 
@@ -65,9 +65,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice address -> strategy used by an address
      * strategy: address(0) = default strategy
      * strategy: !address(0) = vote for the group at that address if allowed
-     * by GroupHealth.isValidGroup, otherwise vote according to the default strategy
+     * by GroupHealth.isGroupValid, otherwise vote according to the default strategy
      */
-    mapping(address => address) private strategies;
+    mapping(address => address) public strategies;
 
     /**
      * @notice Emitted when the vote contract is initially set or later modified.
@@ -265,7 +265,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
-            if (!groupHealth.isValidGroup(strategy)) {
+            if (!groupHealth.isGroupValid(strategy)) {
                 // if invalid group vote for default strategy
                 strategies[msg.sender] = address(0);
                 strategy = address(0);
@@ -356,7 +356,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (
             newStrategy != address(0) &&
             (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
-                !groupHealth.isValidGroup(newStrategy))
+                !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
         }
@@ -475,9 +475,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCELOFromSpecificStrategy;
 
         if (isSpecificGroupStrategy) {
-            stCELOFromSpecificStrategy = specificGroupStrategy.getTotalStCeloVotesForStrategy(
-                group
-            );
+            stCELOFromSpecificStrategy = specificGroupStrategy
+                .specificGroupStrategyTotalStCeloVotes(group);
         }
 
         if (isActiveGroup) {

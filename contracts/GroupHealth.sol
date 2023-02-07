@@ -16,7 +16,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Mapping that stores health state of groups.
      */
-    mapping(address => bool) public groupsHealth;
+    mapping(address => bool) public isGroupValid;
 
     /**
      * @notice Used as helper varible during call to `areGroupMembersElected`.
@@ -86,7 +86,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         IValidators validators = getValidators();
 
         if (!validators.isValidatorGroup(group)) {
-            groupsHealth[group] = false;
+            isGroupValid[group] = false;
             emit GroupHealthUpdated(group, false);
             return false;
         }
@@ -95,36 +95,27 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             .getValidatorGroup(group);
         // check if group has no members
         if (members.length == 0) {
-            groupsHealth[group] = false;
+            isGroupValid[group] = false;
             emit GroupHealthUpdated(group, false);
             return false;
         }
         // check for recent slash
         if (slashMultiplier < 10**24) {
-            groupsHealth[group] = false;
+            isGroupValid[group] = false;
             emit GroupHealthUpdated(group, false);
             return false;
         }
 
         // check that at least one member is elected.
         if (areGroupMembersElected(members)) {
-            groupsHealth[group] = true;
+            isGroupValid[group] = true;
             emit GroupHealthUpdated(group, true);
             return true;
         }
 
-        groupsHealth[group] = false;
+        isGroupValid[group] = false;
         emit GroupHealthUpdated(group, false);
         return false;
-    }
-
-    /**
-     * @notice Returns the health state of a validator group.
-     * @param group The group to check for.
-     * @return Whether or not the group is valid.
-     */
-    function isValidGroup(address group) public view returns (bool) {
-        return groupsHealth[group];
     }
 
     /**
