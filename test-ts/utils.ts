@@ -554,9 +554,11 @@ export async function electMockValidatorGroupsAndUpdate(
   validators: ValidatorsWrapper,
   groupHealthContract: MockGroupHealth,
   validatorGroups: string[],
-  revoke = false
-) {
+  revoke = false,
+  update = true
+): Promise<number[]> {
   let validatorsProcessed = 0;
+  const mockedIndexes: number[] = [];
 
   for (let j = 0; j < validatorGroups.length; j++) {
     const validatorGroup = validatorGroups[j];
@@ -570,11 +572,14 @@ export async function electMockValidatorGroupsAndUpdate(
           mockIndex,
           revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
         );
+        mockedIndexes.push(mockIndex);
       }
     }
-
-    await groupHealthContract.updateGroupHealth(validatorGroup);
+    if (update) {
+      await groupHealthContract.updateGroupHealth(validatorGroup);
+    }
   }
+  return mockedIndexes;
 }
 
 export async function revokeElectionOnMockValidatorGroupsAndUpdate(

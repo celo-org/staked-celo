@@ -48,6 +48,12 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error AddressZeroNotAllowed();
 
     /**
+     * @notice Used when calling `markGroupHealthy` on already healthy group.
+     * @param group The group's address.
+     */
+    error GroupHealthy(address group);
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the CELO Registry.
      * @param _owner The address of the contract owner.
@@ -85,32 +91,63 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function updateGroupHealth(address group) public returns (bool) {
         IValidators validators = getValidators();
 
-        if (!validators.isValidatorGroup(group)) {
-            isGroupValid[group] = false;
-            emit GroupHealthUpdated(group, false);
+        (bool valid, address[] memory members) = _updateGroupHealth(validators, group);
+        if (valid) {
+            // check that at least one member is elected.
+            if (areGroupMembersElected(members)) {
+                isGroupValid[group] = true;
+                emit GroupHealthUpdated(group, true);
+                return true;
+            }
+        }
+
+        isGroupValid[group] = false;
+        emit GroupHealthUpdated(group, false);
+        return false;
+    }
+
+    /**
+     * @notice Updates validator group to healthy if eligible.
+     * @param group The group to check for.
+     * @param membersElectedIndex The indexes of elected members.
+     * This array needs to have same length as all (even not elected) members of validator group.
+     * Index of not elected member can be any uint256 number.
+     * @return Whether or not the group is valid.
+     */
+    function markGroupHealthy(address group, uint256[] calldata membersElectedIndex)
+        public
+        returns (bool)
+    {
+        if (isGroupValid[group] == true) {
+            revert GroupHealthy(group);
+        }
+
+        IValidators validators = getValidators();
+
+        (bool valid, address[] memory members) = _updateGroupHealth(validators, group);
+
+        if (!valid) {
             return false;
         }
 
-        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
-            .getValidatorGroup(group);
-        // check if group has no members
-        if (members.length == 0) {
-            isGroupValid[group] = false;
-            emit GroupHealthUpdated(group, false);
-            return false;
-        }
-        // check for recent slash
-        if (slashMultiplier < 10**24) {
-            isGroupValid[group] = false;
-            emit GroupHealthUpdated(group, false);
-            return false;
+        if (membersElectedIndex.length != members.length) {
+            revert MembersLengthMismatch();
         }
 
+        uint256 currentNumberOfElectedValidators = numberValidatorsInCurrentSet();
         // check that at least one member is elected.
-        if (areGroupMembersElected(members)) {
-            isGroupValid[group] = true;
-            emit GroupHealthUpdated(group, true);
-            return true;
+        for (uint256 i = 0; i < members.length; i++) {
+            if (
+                isGroupMemberElected(
+                    members[i],
+                    membersElectedIndex[i],
+                    currentNumberOfElectedValidators
+                )
+            ) {
+                isGroupValid[group] = true;
+                emit GroupHealthUpdated(group, true);
+                return true;
+            }
         }
 
         isGroupValid[group] = false;
@@ -141,6 +178,24 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @param index The index of elected validator in current set.
+     * @param currentNumberOfElectedValidators The count of currently elected validators.
+     * @return Whether or not the group member is elected.
+     */
+    function isGroupMemberElected(
+        address groupMember,
+        uint256 index,
+        uint256 currentNumberOfElectedValidators
+    ) internal view returns (bool) {
+        if (index > currentNumberOfElectedValidators) {
+            return false;
+        }
+        return validatorSignerAddressFromCurrentSet(index) == groupMember;
+    }
+
+    /**
      * @notice Checks if any of group members are elected.
      * @param members All group members of checked validator group.
      * @return Whether or not any of the group members are elected.
@@ -165,5 +220,40 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             membersMappingHelper[members[j]] = false;
         }
         return result;
+    }
+
+    /**
+     * Checks group validator status, members and slashing multiplier.
+     * @param validators Validators contract.
+     * @param group The group to check.
+     * @return Whether the group passed checks.
+     * @return members The members of the validator group.
+     */
+    function _updateGroupHealth(IValidators validators, address group)
+        private
+        returns (bool, address[] memory members)
+    {
+        if (!validators.isValidatorGroup(group)) {
+            isGroupValid[group] = false;
+            emit GroupHealthUpdated(group, false);
+            return (false, members);
+        }
+
+        uint256 slashMultiplier;
+        (members, , , , , slashMultiplier, ) = validators.getValidatorGroup(group);
+        // check if group has no members
+        if (members.length == 0) {
+            isGroupValid[group] = false;
+            emit GroupHealthUpdated(group, false);
+            return (false, members);
+        }
+        // check for recent slash
+        if (slashMultiplier < 10**24) {
+            isGroupValid[group] = false;
+            emit GroupHealthUpdated(group, false);
+            return (false, members);
+        }
+
+        return (true, members);
     }
 }
