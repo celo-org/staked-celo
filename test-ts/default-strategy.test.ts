@@ -527,12 +527,6 @@ describe("DefaultStrategy", () => {
           expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[2]]);
         });
 
-        it("emits a GroupDeprecated event", async () => {
-          await expect(defaultStrategyContract.deprecateGroup(deprecatedGroup.address))
-            .to.emit(defaultStrategyContract, "GroupDeprecated")
-            .withArgs(deprecatedGroup.address);
-        });
-
         it("reverts when deprecating a non active group", async () => {
           await expect(defaultStrategyContract.deprecateGroup(groupAddresses[3])).revertedWith(
             `GroupNotActive("${groupAddresses[3]}")`
@@ -569,12 +563,6 @@ describe("DefaultStrategy", () => {
           await defaultStrategyContract.deprecateGroup(deprecatedGroup.address);
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
-        });
-
-        it("emits a GroupDeprecated event", async () => {
-          await expect(defaultStrategyContract.deprecateGroup(deprecatedGroup.address))
-            .to.emit(defaultStrategyContract, "GroupDeprecated")
-            .withArgs(deprecatedGroup.address);
         });
 
         it("emits a GroupRemoved event", async () => {
@@ -1161,9 +1149,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(groupAddresses[1]))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(groupAddresses[1]);
       });
     });
@@ -1177,9 +1165,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(deprecatedGroup.address);
       });
     });
@@ -1194,9 +1182,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(deprecatedGroup.address);
       });
     });
@@ -1253,9 +1241,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(groupAddresses[1]);
       });
     });

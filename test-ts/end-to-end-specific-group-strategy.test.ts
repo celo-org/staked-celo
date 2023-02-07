@@ -14,7 +14,6 @@ import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
   activateValidators,
-  allowStrategies,
   distributeEpochRewards,
   electMockValidatorGroupsAndUpdate,
   getGroupsOfAllStrategies,
@@ -151,8 +150,6 @@ describe("e2e specific group strategy voting", () => {
   it("deposit, rebalance, transfer and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("1"));
 
-    await allowStrategy(specificGroupStrategyDifferentFromActive.address);
-    await allowStrategy(specificGroupStrategySameAsActive.address);
     await managerContract
       .connect(depositor1)
       .changeStrategy(specificGroupStrategyDifferentFromActive.address);
@@ -316,18 +313,6 @@ describe("e2e specific group strategy voting", () => {
       depositor4AfterWithdrawalBalance.sub(depositor4BeforeWithdrawalBalance)
     );
   });
-
-  async function allowStrategy(strategy: string) {
-    await expect(managerContract.connect(depositor1).changeStrategy(strategy)).revertedWith(
-      `GroupNotEligible("${strategy}")`
-    );
-    await allowStrategies(
-      specificGroupStrategyContract,
-      groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
-      [strategy]
-    );
-  }
 
   async function rebalanceAllAndActivate() {
     await rebalanceDefaultGroups(defaultStrategy);
