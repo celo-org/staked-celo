@@ -228,7 +228,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Revokes votes on already voted proposal.
-     * @param proposalId The ID of the proposal to vote on.
+     * @param proposalId The ID of the proposal to revoke from.
      * @param index The index of the proposal ID in `dequeued`.
      */
     function revokeVotes(uint256 proposalId, uint256 index) external {
