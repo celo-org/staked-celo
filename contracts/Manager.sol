@@ -143,7 +143,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @dev Throws if called by any address other than strategy contracts.
+     * @dev Throws if called by any address other than one of the strategy contracts.
      */
     modifier onlyStrategy() {
         if (
@@ -228,7 +228,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Revokes votes on already voted proposal.
-     * @param proposalId The ID of the proposal to vote on.
+     * @param proposalId The ID of the proposal to revoke from.
      * @param index The index of the proposal ID in `dequeued`.
      */
     function revokeVotes(uint256 proposalId, uint256 index) external {
@@ -380,7 +380,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
-     * FromGroup is required to have more CELO than it should and ToGroup needs
+     * `fromGroup` is required to have more CELO than it should and `toGroup` needs
      * to have less CELO than it should.
      * @param fromGroup The from group.
      * @param toGroup The to group.
@@ -607,7 +607,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Checks if strategy was deprecated. Deprecated strategy is reverted to default.
-     * Updates the strategies.
+     * Updates the strategy.
      * @param accountAddress The account.
      * @param strategy The strategy.
      * @return Up to date strategy
