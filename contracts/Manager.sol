@@ -143,7 +143,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @dev Throws if called by any address other than strategy contracts.
+     * @dev Throws if called by any address other than one of the strategy contracts.
      */
     modifier onlyStrategy() {
         if (
