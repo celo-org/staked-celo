@@ -27,7 +27,7 @@ async function getSigner(
 ): Promise<Signer> {
   let signer: Signer;
   if (useLedger) {
-    signer = new LedgerSigner(hre.ethers.provider);
+    signer = new LedgerSigner(hre.ethers.provider,"m/44'/52752'/0'");
   } else {
     if (account === undefined) {
       throw "Account is required when not using Ledger device.";
