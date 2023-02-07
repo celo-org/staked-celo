@@ -380,7 +380,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
-     * FromGroup is required to have more CELO than it should and ToGroup needs
+     * `fromGroup` is required to have more CELO than it should and `toGroup` needs
      * to have less CELO than it should.
      * @param fromGroup The from group.
      * @param toGroup The to group.
