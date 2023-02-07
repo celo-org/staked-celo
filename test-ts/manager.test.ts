@@ -29,6 +29,7 @@ import {
   deregisterValidatorGroup,
   electGroup,
   electMockValidatorGroupsAndUpdate,
+  getBlockedSpecificGroupStrategies,
   getImpersonatedSigner,
   impersonateAccount,
   mineToNextEpoch,
@@ -427,143 +428,6 @@ describe("Manager", () => {
     });
   });
 
-  describe("#allowStrategy()", () => {
-    it("adds a strategy", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
-      const specificGroupStrategy =
-        await specificGroupStrategyContract.getSpecificGroupStrategies();
-      const specificGroupStrategyLength =
-        await specificGroupStrategyContract.getSpecificGroupStrategiesNumber();
-      const firstSpecificGroupStrategy =
-        await specificGroupStrategyContract.getSpecificGroupStrategy(0);
-      expect(specificGroupStrategy).to.deep.eq([groupAddresses[0]]);
-      expect(specificGroupStrategyLength).to.eq(1);
-      expect(firstSpecificGroupStrategy).to.eq(groupAddresses[0]);
-    });
-
-    it("emits a StrategyAllowed event", async () => {
-      await expect(specificGroupStrategyContract.allowStrategy(groupAddresses[0]))
-        .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-        .withArgs(groupAddresses[0]);
-    });
-
-    it("cannot be called by a non owner", async () => {
-      await expect(
-        specificGroupStrategyContract.connect(nonOwner).allowStrategy(groupAddresses[0])
-      ).revertedWith("Ownable: caller is not the owner");
-    });
-
-    describe("when strategy is not registered", () => {
-      it("reverts when trying to add an unregistered group", async () => {
-        const [unregisteredGroup] = await randomSigner(parseUnits("100"));
-
-        await expect(
-          specificGroupStrategyContract.allowStrategy(unregisteredGroup.address)
-        ).revertedWith(`StrategyNotEligible("${unregisteredGroup.address}")`);
-      });
-    });
-
-    describe("when group has no members", () => {
-      let noMemberedGroup: SignerWithAddress;
-      beforeEach(async () => {
-        [noMemberedGroup] = await randomSigner(parseUnits("21000"));
-        await registerValidatorGroup(noMemberedGroup);
-        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidatorAndOnlyAffiliateToGroup(noMemberedGroup, validator, validatorWallet);
-      });
-
-      it("reverts when trying to add a strategy with no members", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(noMemberedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${noMemberedGroup.address}")`);
-      });
-    });
-
-    describe("when group is not elected", () => {
-      it("reverts when trying to add non elected group", async () => {
-        const nonElectedGroup = groups[10];
-        await mineToNextEpoch(hre.web3);
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          groups[10].address,
-        ]);
-        await expect(
-          specificGroupStrategyContract.allowStrategy(nonElectedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${nonElectedGroup.address}")`);
-      });
-    });
-
-    describe("when group has 3 validators, but only 1 is elected.", () => {
-      let validatorGroupWithThreeValidators: SignerWithAddress;
-      beforeEach(async () => {
-        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
-        const memberCount = 3;
-        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
-
-        const electedValidatorIndex = 0;
-
-        for (let i = 0; i < memberCount; i++) {
-          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-          await registerValidatorAndAddToGroupMembers(
-            validatorGroupWithThreeValidators,
-            validator,
-            validatorWallet
-          );
-
-          if (i === memberCount - 1) {
-            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
-          }
-        }
-        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
-        await defaultStrategyContract.activateGroup(validatorGroupWithThreeValidators.address);
-      });
-
-      it("emits a StrategyAllowed event", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(validatorGroupWithThreeValidators.address)
-        )
-          .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-          .withArgs(validatorGroupWithThreeValidators.address);
-      });
-    });
-
-    describe("when group has low slash multiplier", () => {
-      let slashedGroup: SignerWithAddress;
-      beforeEach(async () => {
-        [slashedGroup] = await randomSigner(parseUnits("21000"));
-        await registerValidatorGroup(slashedGroup);
-        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidatorAndAddToGroupMembers(slashedGroup, validator, validatorWallet);
-        await electGroup(slashedGroup.address, someone);
-
-        await updateGroupSlashingMultiplier(
-          registryContract,
-          lockedGoldContract,
-          validatorsContract,
-          slashedGroup,
-          mockSlasher
-        );
-      });
-
-      it("reverts when trying to add slashed group", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(slashedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${slashedGroup.address}")`);
-      });
-    });
-    describe("when maxNumGroupsVotedFor have been voted for", async () => {
-      let additionalGroup: SignerWithAddress;
-
-      beforeEach(async () => {
-        additionalGroup = groups[10];
-        await electGroup(additionalGroup.address, someone);
-
-        for (let i = 0; i < 10; i++) {
-          await defaultStrategyContract.activateGroup(groups[i].address);
-        }
-      });
-    });
-  });
-
   describe("#deprecateGroup()", () => {
     let deprecatedGroup: SignerWithAddress;
 
@@ -653,7 +517,6 @@ describe("Manager", () => {
 
   describe("#blockStrategy()", () => {
     it("reverts when no active groups", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[3]);
       await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
         `NoActiveGroups()`
       );
@@ -677,7 +540,6 @@ describe("Manager", () => {
             specificGroupStrategy.address,
             specificGroupStrategyDeposit
           );
-          await specificGroupStrategyContract.allowStrategy(specificGroupStrategy.address);
           await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
           await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
         });
@@ -715,7 +577,16 @@ describe("Manager", () => {
             .withArgs(specificGroupStrategy.address);
         });
 
+        it("should add blocked strategy to blocked strategies", async () => {
+          await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
+          const blockedStrategies = await getBlockedSpecificGroupStrategies(
+            specificGroupStrategyContract
+          );
+          expect(blockedStrategies).to.have.deep.members([specificGroupStrategy.address]);
+        });
+
         it("reverts when blocking already blocked strategy", async () => {
+          await specificGroupStrategyContract.blockStrategy(groupAddresses[3]);
           await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
             `StrategyAlreadyBlocked("${groupAddresses[3]}")`
           );
@@ -747,6 +618,54 @@ describe("Manager", () => {
             specificGroupStrategyDeposit
           );
         });
+      });
+    });
+  });
+
+  describe("#unblockStrategy", () => {
+    it("should revert when unhealthy group", async () => {
+      await deregisterValidatorGroup(groups[0]);
+      await groupHealthContract.updateGroupHealth(groupAddresses[0]);
+      await expect(specificGroupStrategyContract.unblockStrategy(groupAddresses[0])).revertedWith(
+        `StrategyNotEligible("${groupAddresses[0]}")`
+      );
+    });
+
+    it("should revert when not blocked strategy", async () => {
+      await expect(specificGroupStrategyContract.unblockStrategy(groupAddresses[0])).revertedWith(
+        `FailedToUnBlockStrategy("${groupAddresses[0]}")`
+      );
+    });
+
+    describe("when the group is blocked", () => {
+      let specificGroupStrategy: SignerWithAddress;
+      let specificGroupStrategyDeposit: BigNumber;
+      beforeEach(async () => {
+        specificGroupStrategy = groups[2];
+        for (let i = 0; i < 2; i++) {
+          await defaultStrategyContract.activateGroup(groups[i].address);
+        }
+
+        specificGroupStrategyDeposit = parseUnits("1");
+        await account.setCeloForGroup(specificGroupStrategy.address, specificGroupStrategyDeposit);
+        await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
+        await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
+        await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
+      });
+
+      it("should have blocked strategy", async () => {
+        const blockedGroups = await getBlockedSpecificGroupStrategies(
+          specificGroupStrategyContract
+        );
+        expect(blockedGroups).to.have.deep.members([specificGroupStrategy.address]);
+      });
+
+      it("should allow to unblock strategy", async () => {
+        await specificGroupStrategyContract.unblockStrategy(specificGroupStrategy.address);
+        const blockedGroups = await getBlockedSpecificGroupStrategies(
+          specificGroupStrategyContract
+        );
+        expect(blockedGroups).to.have.deep.members([]);
       });
     });
   });
@@ -1215,7 +1134,6 @@ describe("Manager", () => {
 
     describe("When voted for allowed validator group", () => {
       beforeEach(async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: 100 });
       });
@@ -1253,7 +1171,6 @@ describe("Manager", () => {
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
 
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[4]);
         await manager.connect(depositor).changeStrategy(groupAddresses[4]);
         await account.setCeloForGroup(groupAddresses[4], 100);
         await updateGroupSlashingMultiplier(
@@ -1281,7 +1198,7 @@ describe("Manager", () => {
           .getSpecificGroupStrategies();
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 3));
         expect(deprecatedGroups).to.deep.eq([]);
-        expect(allowedStrategies).to.deep.eq([groupAddresses[4]]);
+        expect(allowedStrategies).to.deep.eq([]);
       });
 
       it("should schedule votes for default groups", async () => {
@@ -1328,7 +1245,6 @@ describe("Manager", () => {
           }
           specificGroupStrategyAddress = groupAddresses[2];
 
-          await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
           await manager.changeStrategy(specificGroupStrategyAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupStrategyAddress, depositedValue);
@@ -1357,7 +1273,6 @@ describe("Manager", () => {
           }
           specificGroupStrategyAddress = groupAddresses[0];
 
-          await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
           await manager.changeStrategy(specificGroupStrategyAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupStrategyAddress, depositedValue);
@@ -1385,7 +1300,6 @@ describe("Manager", () => {
 
       describe("When voted for allowed validator group which is not in active groups", () => {
         beforeEach(async () => {
-          await specificGroupStrategyContract.allowStrategy(groupAddresses[2]);
           await manager.connect(depositor).changeStrategy(groupAddresses[2]);
           await manager.connect(depositor).deposit({ value: 100 });
         });
@@ -1419,7 +1333,6 @@ describe("Manager", () => {
         let specificGroupStrategyAddress: string;
         beforeEach(async () => {
           specificGroupStrategyAddress = groupAddresses[0];
-          await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
           await manager.connect(depositor).changeStrategy(specificGroupStrategyAddress);
           await manager.connect(depositor).deposit({ value: 100 });
         });
@@ -1558,7 +1471,6 @@ describe("Manager", () => {
           100 + specificGroupStrategyWithdrawal
         );
 
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategy.address);
         await manager.connect(depositor2).changeStrategy(specificGroupStrategy.address);
         await manager.connect(depositor2).deposit({ value: specificGroupStrategyWithdrawal });
 
@@ -1929,7 +1841,6 @@ describe("Manager", () => {
 
     describe("When voted for allowed validator group - no active groups", () => {
       beforeEach(async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: 100 });
         await account.setCeloForGroup(groupAddresses[0], 100);
@@ -1972,7 +1883,6 @@ describe("Manager", () => {
           specificGroupStrategyWithdrawal
         );
 
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategy.address);
         await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
         await manager.connect(depositor).deposit({ value: specificGroupStrategyWithdrawal });
       });
@@ -2089,7 +1999,6 @@ describe("Manager", () => {
           withdrawals[1] + specificGroupStrategyWithdrawal
         );
 
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
         await manager.connect(depositor).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor).deposit({ value: specificGroupStrategyWithdrawal });
       });
@@ -2411,7 +2320,6 @@ describe("Manager", () => {
         const specificGroupStrategyDeposit = 10;
         const specificGroupStrategyAddress = groupAddresses[2];
 
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
         await manager.connect(depositor2).deposit({ value: specificGroupStrategyDeposit });
 
@@ -2457,7 +2365,6 @@ describe("Manager", () => {
         specificGroupStrategyDeposit = BigNumber.from(100);
         await account.setCeloForGroup(specificGroupStrategyAddress, specificGroupStrategyDeposit);
 
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.connect(depositor).changeStrategy(specificGroupStrategyAddress);
         await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
       });
@@ -2505,7 +2412,6 @@ describe("Manager", () => {
       it("should schedule transfers if specific strategy => different specific strategy", async () => {
         const differentSpecificGroupStrategyDeposit = parseUnits("1");
         await account.setCeloForGroup(groupAddresses[0], differentSpecificGroupStrategyDeposit);
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
 
@@ -2531,7 +2437,6 @@ describe("Manager", () => {
         const differentSpecificGroupStrategyDeposit = BigNumber.from(100);
         const differentSpecificGroupStrategyAddress = groupAddresses[0];
         await specificGroupStrategyContract.blockStrategy(specificGroupStrategyAddress);
-        await specificGroupStrategyContract.allowStrategy(differentSpecificGroupStrategyAddress);
         await manager.connect(depositor2).changeStrategy(differentSpecificGroupStrategyAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
         await account.setCeloForGroup(
@@ -2563,7 +2468,6 @@ describe("Manager", () => {
       it("should schedule transfers from default if specific strategy was blocked", async () => {
         const differentSpecificGroupStrategyDeposit = BigNumber.from(1000);
         const differentSpecificGroupStrategyAddress = groupAddresses[0];
-        await specificGroupStrategyContract.allowStrategy(differentSpecificGroupStrategyAddress);
         await manager.connect(depositor2).changeStrategy(differentSpecificGroupStrategyAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
         await account.setCeloForGroup(
@@ -2623,7 +2527,6 @@ describe("Manager", () => {
 
     it("should revert when not valid group", async () => {
       const slashedGroup = groups[0];
-      await specificGroupStrategyContract.allowStrategy(slashedGroup.address);
       await updateGroupSlashingMultiplier(
         registryContract,
         lockedGoldContract,
@@ -2640,19 +2543,13 @@ describe("Manager", () => {
       );
     });
 
-    it("should revert when not allowed group", async () => {
-      await expect(manager.changeStrategy(groupAddresses[0])).revertedWith(
-        `GroupNotEligible("${groupAddresses[0]}")`
-      );
-    });
-
     describe("When changing with no previous stCelo", () => {
       beforeEach(async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
       });
 
       it("should add group to allowed strategies", async () => {
+        await manager.connect(depositor).deposit({ value: 100 });
         const allowedStrategies = await specificGroupStrategyContract
           .connect(depositor)
           .getSpecificGroupStrategies();
@@ -2670,7 +2567,6 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         specificGroupStrategyDeposit = parseUnits("2");
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.changeStrategy(specificGroupStrategyAddress);
         await manager.deposit({ value: specificGroupStrategyDeposit });
         await account.setCeloForGroup(specificGroupStrategyAddress, specificGroupStrategyDeposit);
@@ -2694,7 +2590,6 @@ describe("Manager", () => {
       it("should schedule transfers when changing to different specific strategy", async () => {
         const differentSpecificGroupStrategy = groupAddresses[0];
 
-        await specificGroupStrategyContract.allowStrategy(differentSpecificGroupStrategy);
         await manager.changeStrategy(differentSpecificGroupStrategy);
         const [
           lastTransferFromGroups,
@@ -2754,7 +2649,6 @@ describe("Manager", () => {
       });
 
       it("should schedule transfers when changing to specific strategy", async () => {
-        await specificGroupStrategyContract.allowStrategy(specificGroupStrategyAddress);
         await manager.changeStrategy(specificGroupStrategyAddress);
         const [
           lastTransferFromGroups,
@@ -2784,7 +2678,6 @@ describe("Manager", () => {
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[2]);
         await manager.changeStrategy(groupAddresses[2]);
         await manager.deposit({ value: depositedValue });
         await account.setCeloForGroup(groupAddresses[2], depositedValue);
@@ -2822,7 +2715,6 @@ describe("Manager", () => {
     describe("When group is only in allowed", () => {
       const depositedValue = 100;
       beforeEach(async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.changeStrategy(groupAddresses[0]);
         await manager.deposit({ value: depositedValue });
       });
@@ -2884,7 +2776,6 @@ describe("Manager", () => {
         const specificGroupStrategyDepositedValue = 100;
 
         beforeEach(async () => {
-          await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
           await manager.connect(depositor).deposit({ value: defaultDepositedValue });
           await manager.connect(depositor2).changeStrategy(groupAddresses[0]);
           await manager.connect(depositor2).deposit({ value: specificGroupStrategyDepositedValue });
@@ -2920,7 +2811,6 @@ describe("Manager", () => {
     const toGroupDepositedValue = 77;
 
     it("should revert when trying to balance some and 0x0 group", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
@@ -2938,11 +2828,9 @@ describe("Manager", () => {
     });
 
     it("should revert when fromGroup has less Celo than it should", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
       await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
       await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
 
@@ -2955,11 +2843,9 @@ describe("Manager", () => {
     });
 
     it("should revert when fromGroup has same Celo as it should", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
       await manager.changeStrategy(groupAddresses[0]);
       await manager.deposit({ value: fromGroupDepositedValue });
 
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
       await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
       await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
 
@@ -2973,14 +2859,12 @@ describe("Manager", () => {
       const toGroupDepositedValue = 77;
 
       beforeEach(async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
         await manager.changeStrategy(groupAddresses[0]);
         await manager.deposit({ value: fromGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[0], fromGroupDepositedValue + 1);
       });
 
       it("should revert when toGroup has more Celo than it should", async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue + 1);
@@ -2993,7 +2877,6 @@ describe("Manager", () => {
       });
 
       it("should revert when toGroup has same Celo as it should", async () => {
-        await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
         await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
         await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
         await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
@@ -3005,7 +2888,6 @@ describe("Manager", () => {
 
       describe("When toGroup has valid properties", () => {
         beforeEach(async () => {
-          await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
           await manager.connect(depositor2).changeStrategy(groupAddresses[1]);
           await manager.connect(depositor2).deposit({ value: toGroupDepositedValue });
           await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue - 1);

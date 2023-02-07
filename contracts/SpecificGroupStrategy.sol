@@ -10,6 +10,7 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
+import "hardhat/console.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
@@ -22,6 +23,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice Specific groups strategies (validator groups) that can be chosen to be voted on.
      */
     EnumerableSet.AddressSet private specificGroupStrategies;
+
+    /**
+     * @notice Specific groups strategies that were blocked from voting.
+     */
+    EnumerableSet.AddressSet private blockedStrategies;
 
     /**
      * @notice stCELO that was cast for specific group strategies,
@@ -50,10 +56,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     IAccount public account;
 
     /**
-     * @notice Emitted when a new group is specific group for voting.
+     * @notice Emitted when a strategy was unlbocked.
      * @param group The group's address.
      */
-    event StrategyAllowed(address indexed group);
+    event StrategyUnblocked(address indexed group);
 
     /**
      * @notice Emmited when strategy is blocked.
@@ -62,7 +68,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     event StrategyBlocked(address group);
 
     /**
-     * @notice Used when attempting to disallow a strategy that is not allowed.
+     * @notice Used when attempting to block a strategy that is not allowed.
      * @param group The group's address.
      */
     error StrategyAlreadyBlocked(address group);
@@ -75,10 +81,16 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error FailedToAddSpecificGroupStrategy(address group);
 
     /**
-     * @notice Used when attempting to disallow a strategy failed.
+     * @notice Used when attempting to block a strategy failed.
      * @param group The group's address.
      */
     error FailedToBlockStrategy(address group);
+
+    /**
+     * @notice Used when attempting to unblock a strategy that is not blocked.
+     * @param group The group's address.
+     */
+    error FailedToUnBlockStrategy(address group);
 
     /**
      * @notice Used when attempting to allow strategy that is already allowed.
@@ -164,25 +176,19 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Marks a group as specific group strategy for voting.
-     * It is necessary to call `updateGroupHealth` in GroupHealth smart contract first.
+     * @notice Unblocks previously blocked Strategy
      * @param group The address of the group to add to the set of specific group
      * strategies.
      */
-    function allowStrategy(address group) external onlyOwner {
+    function unblockStrategy(address group) external onlyOwner {
         if (!groupHealth.isGroupValid(group)) {
             revert StrategyNotEligible(group);
         }
 
-        if (specificGroupStrategies.contains(group)) {
-            revert StrategyAlreadyAdded(group);
+        if (!blockedStrategies.remove(group)) {
+            revert FailedToUnBlockStrategy(group);
         }
-
-        if (!specificGroupStrategies.add(group)) {
-            revert FailedToAddSpecificGroupStrategy(group);
-        }
-
-        emit StrategyAllowed(group);
+        emit StrategyUnblocked(group);
     }
 
     /**
@@ -195,7 +201,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert NoActiveGroups();
         }
 
-        if (!specificGroupStrategies.contains(strategy)) {
+        if (blockedStrategies.contains(strategy)) {
             revert StrategyAlreadyBlocked(strategy);
         }
 
@@ -209,9 +215,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             );
         }
 
-        if (!specificGroupStrategies.remove(strategy)) {
-            revert FailedToBlockStrategy(strategy);
-        }
+        specificGroupStrategies.remove(strategy);
+        blockedStrategies.add(strategy);
 
         emit StrategyBlocked(strategy);
     }
@@ -263,6 +268,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 votes,
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
+        specificGroupStrategies.add(strategy);
         uint256 scheduledVotes = account.scheduledVotesForGroup(strategy);
         if (!getElection().canReceiveVotes(strategy, votes + scheduledVotes)) {
             revert StrategyCannotReceiveVote(strategy);
@@ -281,6 +287,30 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      */
     function isSpecificGroupStrategy(address strategy) external view returns (bool) {
         return specificGroupStrategies.contains(strategy);
+    }
+
+    /**
+     * @notice Returns if strategy is blocked.
+     * @return Whether or not is blocked specific group strategy.
+     */
+    function isBlockedSpecificGroupStrategy(address strategy) external view returns (bool) {
+        return blockedStrategies.contains(strategy);
+    }
+
+    /**
+     * @notice Returns the length of blocked group strategies.
+     * @return The length of blocked groups.
+     */
+    function getBlockedStrategiesNumber() external view returns (uint256) {
+        return blockedStrategies.length();
+    }
+
+    /**
+     * @notice Returns the blocked group strategy at index.
+     * @return The blocked group.
+     */
+    function getBlockedStrategy(uint256 index) external view returns (address) {
+        return blockedStrategies.at(index);
     }
 
     /**

@@ -150,33 +150,6 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
   ).sendAndWaitForReceipt({ from: group.address });
 }
 
-export async function allowStrategies(
-  specificGroupStrategyContract: SpecificGroupStrategy,
-  groupHealthContract: GroupHealth,
-  multisigOwner: string,
-  strategyAddresses: string[]
-) {
-  const payloads: string[] = [];
-  const destinations: string[] = [];
-  const values: string[] = [];
-
-  for (let i = 0; i < strategyAddresses.length; i++) {
-    const isGroupValid = await groupHealthContract.isGroupValid(strategyAddresses[i]);
-    if (!isGroupValid) {
-      throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
-    }
-    destinations.push(specificGroupStrategyContract.address);
-    values.push("0");
-    payloads.push(
-      specificGroupStrategyContract.interface.encodeFunctionData("allowStrategy", [
-        strategyAddresses[i],
-      ])
-    );
-  }
-
-  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
-}
-
 export async function activateValidators(
   defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
@@ -493,6 +466,18 @@ export async function getGroupsOfAllStrategies(
   const allGroupsSet = new Set(allGroups);
 
   return [...allGroupsSet];
+}
+
+export async function getBlockedSpecificGroupStrategies(
+  specificGroupStrategy: SpecificGroupStrategy
+) {
+  const blockedStrategiesLength = await specificGroupStrategy.getBlockedStrategiesNumber();
+  const promises: Promise<string>[] = [];
+  for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
+    promises.push(specificGroupStrategy.getBlockedStrategy(i));
+  }
+
+  return await Promise.all(promises);
 }
 
 export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {

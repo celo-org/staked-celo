@@ -355,7 +355,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
+            (specificGroupStrategy.isBlockedSpecificGroupStrategy(newStrategy) ||
                 !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
@@ -526,7 +526,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && !specificGroupStrategy.isSpecificGroupStrategy(strategy)) {
+        if (
+            strategy != address(0) && specificGroupStrategy.isBlockedSpecificGroupStrategy(strategy)
+        ) {
             // strategy not allowed revert to default strategy
             return address(0);
         }

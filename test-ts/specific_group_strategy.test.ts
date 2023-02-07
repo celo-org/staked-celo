@@ -135,14 +135,6 @@ describe("SpecificGroupStrategy", () => {
     });
   });
 
-  describe("#allowStrategy", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract.connect(nonManager).allowStrategy(nonVote.address)
-      ).revertedWith(`Ownable: caller is not the owner`);
-    });
-  });
-
   describe("#blockStrategy", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(

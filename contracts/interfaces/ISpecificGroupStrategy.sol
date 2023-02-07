@@ -13,8 +13,6 @@ interface ISpecificGroupStrategy {
     function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
         external;
 
-    function allowStrategy(address group) external;
-
     function blockStrategy(address group) external returns (uint256);
 
     function generateGroupVotesToDistributeTo(
@@ -24,6 +22,8 @@ interface ISpecificGroupStrategy {
     ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
     function isSpecificGroupStrategy(address strategy) external view returns (bool);
+
+    function isBlockedSpecificGroupStrategy(address strategy) external view returns (bool);
 
     function specificGroupStrategyTotalStCeloVotes(address strategy)
         external
