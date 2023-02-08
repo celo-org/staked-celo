@@ -38,18 +38,19 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Total stCELO that was voted with on specific group strategies (including overflows).
-     * To get actuall stCelo in specific strategy it is necessary to subtract `totalStCeloOverflow`.
+     * To get the actual stCelo in specific strategy
+     * it is necessary to subtract `totalStCeloOverflow`.
      */
     uint256 public totalStCeloLocked;
 
     /**
      * @notice stCELO that was cast for specific group strategies and overflown to defautl strategy,
-     * strategy => stCELO amount
+     * strategy => stCELO amount.
      */
     mapping(address => uint256) private stCeloInStrategyOverflown;
 
     /**
-     * @notice Total stCelo that was overflown to default strategy
+     * @notice Total stCelo that was overflown to default strategy.
      */
     uint256 public totalStCeloOverflow;
 
@@ -537,10 +538,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyAlreadyBlocked(group);
         }
 
-        (uint256 stCeloInStrategy, uint256 overflownStCelo) = getStCeloInStrategy(group);
+        (uint256 stCeloInSpecificStrategy, uint256 overflownStCelo) = getStCeloInStrategy(group);
 
-        if (stCeloInStrategy - overflownStCelo != 0) {
-            IManager(manager).transferBetweenStrategies(group, address(0), stCeloInStrategy);
+        if (stCeloInSpecificStrategy - overflownStCelo != 0) {
+            IManager(manager).transferBetweenStrategies(
+                group,
+                address(0),
+                stCeloInSpecificStrategy
+            );
         }
 
         specificGroupStrategies.remove(group);

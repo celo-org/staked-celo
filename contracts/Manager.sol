@@ -139,7 +139,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error FromGroupNotOverflowing(address group);
 
     /**
-     * @notice Used when trying to overflow rebalance to group that is overflowing.
+     * @notice Used when trying to rebalance group that has no scheduled votes.
+     * @param group The group's address.
+     */
+    error NoScheduledVotes(address group);
+
+    /**
+     * @notice Used when trying to rebalance to a group that is overflowing.
      * @param group The group's address.
      */
     error ToGroupOverflowing(address group);
@@ -457,7 +463,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 fromScheduledVotes = account.scheduledVotesForGroup(fromGroup);
         if (fromScheduledVotes == 0) {
-            revert FromGroupNotOverflowing(fromGroup);
+            revert NoScheduledVotes(fromGroup);
         }
 
         uint256 toReceivableVotes = getReceivableVotesForGroup(toGroup);
@@ -606,6 +612,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * Returns votes count that can be received by group through stCELO protocol.
      * @param group The group that can receive votes
+     * @return The amount of CELLO that can be received by group though stCELO protocol.
      */
     function getReceivableVotesForGroup(address group) public view returns (uint256) {
         uint256 receivableVotes = getActualReceivableVotes(group);

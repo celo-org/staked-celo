@@ -197,7 +197,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error CallerNotManagerNorStrategy(address caller);
 
     /**
-     * @notice Checks that only the multisig contract can execute a function.
+     * @notice Checks that only the manager or strategy contract can execute a function.
      */
     modifier managerOrStrategy() {
         if (manager != msg.sender && address(specificGroupStrategy) != msg.sender) {
@@ -412,7 +412,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Returns tail and next address of tail.
      * @return tail The tail of groups.
-     * @return nextAddress The previous address.
+     * @return nextAddress The next address.
      */
     function getActiveGroupsTail() external view returns (address tail, address nextAddress) {
         tail = activeGroups.getTail();
@@ -613,7 +613,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * group should either receive of should be subtracted from.
      * @param celoAmount The amount of votes to distribute.
      * @param withdraw Generation for either desposit or withdrawal.
-     * @param depostiGroupToIgnore The group that will not be used for deposit
+     * @param depositGroupToIgnore The group that will not be used for deposit
      * (Only used when this group is already overflowing).
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
@@ -621,7 +621,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     function _generateVoteDistribution(
         uint256 celoAmount,
         bool withdraw,
-        address depostiGroupToIgnore
+        address depositGroupToIgnore
     ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (activeGroups.getNumElements() == 0) {
             revert NoActiveGroups();
@@ -640,7 +640,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         uint256 groupVotes;
 
         while (groupsIndex < maxGroupCount) {
-            if (!withdraw && votedGroup == depostiGroupToIgnore) {
+            if (!withdraw && votedGroup == depositGroupToIgnore) {
                 // this scenario happens when overflow is being utilized and
                 // we want to ignore the groups that is overflowing
                 (, , votedGroup) = activeGroups.get(votedGroup);
