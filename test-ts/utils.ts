@@ -25,6 +25,7 @@ import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import electionContractData from "./code/abi/electionAbi.json";
 import {
   DefaultGroupContract,
   ExpectVsReal,
@@ -471,7 +472,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
 }
 
 export async function getDefaultGroupsSafe(defaultStrategy: DefaultGroupContract) {
-  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsLength();
+  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsNumber();
   let [key] = await defaultStrategy.getActiveGroupsHead();
 
   const activeGroups = [];
@@ -708,7 +709,7 @@ export async function getOrderedActiveGroups(
   let [head] = await defaultStrategyContract.getActiveGroupsHead();
   const groupsForLog = [];
 
-  for (let i = 0; i < (await defaultStrategyContract.getActiveGroupsLength()).toNumber(); i++) {
+  for (let i = 0; i < (await defaultStrategyContract.getActiveGroupsNumber()).toNumber(); i++) {
     const [prev] = await defaultStrategyContract.getActiveGroupPreviousAndNext(head);
     const stCelo = await defaultStrategyContract.stCELOInGroup(head);
     const realCelo = await account?.getCeloForGroup(head);
@@ -773,4 +774,35 @@ export async function prepareOverflow(
     const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
     await voteTx.sendAndWaitForReceipt({ from: voter.address });
   }
+}
+
+export async function updateMaxNumberOfGroups(
+  accountAddress: string,
+  election: ElectionWrapper,
+  signerWithCelo: SignerWithAddress,
+  updateValue: boolean
+) {
+  const sendFundsTx = await signerWithCelo.sendTransaction({
+    value: parseUnits("1"),
+    to: accountAddress,
+  });
+  await sendFundsTx.wait();
+  await impersonateAccount(accountAddress);
+
+  const accountsContract = await hre.kit.contracts.getAccounts();
+  const createAccountTxObject = accountsContract.createAccount();
+  await createAccountTxObject.send({
+    from: accountAddress,
+  });
+  // TODO: once contractkit updated - use just election contract from contractkit
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionContractData.abi as any,
+    election.address
+  );
+  const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+    electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(updateValue);
+  await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+    from: accountAddress,
+  });
 }

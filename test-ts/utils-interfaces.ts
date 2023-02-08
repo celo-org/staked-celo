@@ -24,7 +24,7 @@ export interface ExpectVsReal {
 }
 
 export interface DefaultGroupContract extends BaseContract {
-  getActiveGroupsLength(overrides?: CallOverrides): Promise<EthersBigNumber>;
+  getActiveGroupsNumber(overrides?: CallOverrides): Promise<EthersBigNumber>;
   getActiveGroupsHead(
     overrides?: CallOverrides
   ): Promise<[string, string] & { head: string; previousAddress: string }>;

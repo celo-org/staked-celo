@@ -376,13 +376,13 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: parseUnits("150") });
 
         const [votedGroups, votes] = await account.getLastScheduledVotes();
-        expect(votedGroups).to.deep.equal([
+        expect(votedGroups).to.have.deep.members([
           groupAddresses[0],
           groupAddresses[1],
           groupAddresses[2],
         ]);
 
-        expect(votes).to.deep.equal([
+        expect(votes).to.have.deep.members([
           firstGroupCapacity,
           secondGroupCapacity,
           parseUnits("150").sub(firstGroupCapacity).sub(secondGroupCapacity),

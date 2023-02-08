@@ -22,7 +22,6 @@ import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
@@ -32,7 +31,6 @@ import {
   getImpersonatedSigner,
   getOrderedActiveGroups,
   getUnsortedGroups,
-  impersonateAccount,
   mineToNextEpoch,
   prepareOverflow,
   randomSigner,
@@ -44,6 +42,7 @@ import {
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupSlashingMultiplier,
+  updateMaxNumberOfGroups,
 } from "./utils";
 import { OrderedGroup } from "./utils-interfaces";
 
@@ -253,7 +252,7 @@ describe("DefaultStrategy", () => {
     it("adds a group", async () => {
       await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
       const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-      const activeGroupsLength = await defaultStrategyContract.getActiveGroupsLength();
+      const activeGroupsLength = await defaultStrategyContract.getActiveGroupsNumber();
       const [firstActiveGroup] = await defaultStrategyContract.getActiveGroupsHead();
       expect(activeGroups).to.deep.eq([groupAddresses[0]]);
       expect(activeGroupsLength).to.eq(1);
@@ -431,30 +430,7 @@ describe("DefaultStrategy", () => {
       });
 
       it("can add another group when enabled in Election contract", async () => {
-        const accountAddress = account.address;
-        const sendFundsTx = await nonOwner.sendTransaction({
-          value: parseUnits("1"),
-          to: accountAddress,
-        });
-        await sendFundsTx.wait();
-        await impersonateAccount(accountAddress);
-
-        const accountsContract = await hre.kit.contracts.getAccounts();
-        const createAccountTxObject = accountsContract.createAccount();
-        await createAccountTxObject.send({
-          from: accountAddress,
-        });
-        // TODO: once contractkit updated - use just election contract from contractkit
-        const electionContract = new hre.kit.web3.eth.Contract(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          electionContractData.abi as any,
-          election.address
-        );
-        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
-          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
-        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
-          from: accountAddress,
-        });
+        await updateMaxNumberOfGroups(account.address, election, nonOwner, true);
 
         const [head] = await defaultStrategyContract.getActiveGroupsHead();
         await expect(

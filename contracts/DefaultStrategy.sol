@@ -378,10 +378,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns the length of active groups.
-     * @return The length of active groups.
+     * @notice Returns the number of active groups.
+     * @return The number of active groups.
      */
-    function getActiveGroupsLength() external view returns (uint256) {
+    function getActiveGroupsNumber() external view returns (uint256) {
         return activeGroups.getNumElements();
     }
 

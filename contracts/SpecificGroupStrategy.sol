@@ -284,9 +284,22 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 votes,
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
-        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
         specificGroupStrategies.add(strategy);
-        uint256 votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
+
+        uint256 votesToBeScheduledForSpecificStrategy;
+
+        if (
+            (specificGroupStrategies.length() + defaultStrategy.getActiveGroupsNumber()) >=
+            getElection().maxNumGroupsVotedFor() &&
+            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
+        ) {
+            // if voting for more groups than allowed
+            // we will overflow everything to default strategy
+            votesToBeScheduledForSpecificStrategy = 0;
+        } else {
+            uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
+            votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
+        }
 
         votes -= votesToBeScheduledForSpecificStrategy;
         if (votes > 0) {
@@ -530,7 +543,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function _blockStrategy(address group) private {
-        if (defaultStrategy.getActiveGroupsLength() == 0) {
+        if (defaultStrategy.getActiveGroupsNumber() == 0) {
             revert NoActiveGroups();
         }
 

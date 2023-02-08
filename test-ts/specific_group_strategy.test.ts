@@ -40,6 +40,7 @@ import {
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupSlashingMultiplier,
+  updateMaxNumberOfGroups,
 } from "./utils";
 
 after(() => {
@@ -620,6 +621,102 @@ describe("SpecificGroupStrategy", () => {
 
           expect(lastTransferToGroups).to.have.deep.members([groupAddresses[2]]);
           expect(lastTransferToVotes).to.have.deep.members([originalOverflow]);
+        });
+      });
+    });
+  });
+
+  describe("#generateGroupVotesToDistributeTo()", () => {
+    describe("When voted for more than maxNumGroupsVotedFor", () => {
+      const deposited = 200;
+      const depositedPreviousGroup = 111;
+      let originalTail: string;
+      beforeEach(async () => {
+        for (let i = 0; i < 9; i++) {
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        }
+        await manager.connect(voter).changeStrategy(groupAddresses[9]);
+        await manager.connect(voter).deposit({ value: depositedPreviousGroup });
+
+        [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
+        await manager.connect(depositor).changeStrategy(groupAddresses[10]);
+        await manager.connect(depositor).deposit({ value: deposited });
+      });
+
+      it("should deposit correctly for previous group", async () => {
+        const [stCelo, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+          groupAddresses[9]
+        );
+        expect(stCelo).to.deep.eq(depositedPreviousGroup);
+        expect(overflow).to.deep.eq(depositedPreviousGroup);
+      });
+
+      it("should move the whole deposit to overflow", async () => {
+        const [stCelo, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+          groupAddresses[10]
+        );
+        expect(stCelo).to.deep.eq(deposited);
+        expect(overflow).to.deep.eq(deposited);
+      });
+
+      it("should schedule votes correctly", async () => {
+        const [votedGroups, votes] = await account.getLastScheduledVotes();
+        expect(votedGroups).to.have.deep.members([originalTail, groupAddresses[10]]);
+
+        expect(votes).to.have.deep.members([BigNumber.from(deposited), BigNumber.from(0)]);
+      });
+
+      describe("When maxNumGroupsVotedFor lifted", () => {
+        beforeEach(async () => {
+          await updateMaxNumberOfGroups(account.address, election, depositor, true);
+          await manager.connect(depositor).deposit({ value: deposited });
+        });
+
+        it("should deposit all into specific strategy", async () => {
+          const [stCelo, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+            groupAddresses[10]
+          );
+          expect(stCelo).to.deep.eq(deposited * 2);
+          expect(overflow).to.deep.eq(deposited);
+        });
+
+        it("should schedule votes correctly", async () => {
+          const [votedGroups, votes] = await account.getLastScheduledVotes();
+          expect(votedGroups).to.have.deep.members([groupAddresses[10]]);
+
+          expect(votes).to.have.deep.members([BigNumber.from(deposited)]);
+        });
+
+        describe("should rebalance correctly", async () => {
+          let originalHead: string;
+          beforeEach(async () => {
+            [originalHead] = await defaultStrategyContract.getActiveGroupsHead();
+            await specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[10]);
+          });
+
+          it("should rebalanced everything from overflow", async () => {
+            const [stCelo, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              groupAddresses[10]
+            );
+            expect(stCelo).to.deep.eq(deposited * 2);
+            expect(overflow).to.deep.eq(0);
+          });
+
+          it("should schedule transfer correctly", async () => {
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.have.deep.members([originalHead]);
+            expect(lastTransferFromVotes).to.have.deep.members([BigNumber.from(deposited)]);
+
+            expect(lastTransferToGroups).to.have.deep.members([groupAddresses[10]]);
+            expect(lastTransferToVotes).to.have.deep.members([BigNumber.from(deposited)]);
+          });
         });
       });
     });
