@@ -741,6 +741,9 @@ export async function prepareOverflow(
   groupAddresses: string[],
   activateGroups = true
 ) {
+  if (groupAddresses.length < 3) {
+    throw Error("It is necessary to provide at least 3 groups");
+  }
   // These numbers are derived from a system of linear equations such that
   // given 12 validators registered and elected, as above, we have the following
   // limits for the first three groups:

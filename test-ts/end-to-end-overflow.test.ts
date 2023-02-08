@@ -16,6 +16,7 @@ import {
   activateAndVoteTest,
   activateValidators,
   electMockValidatorGroupsAndUpdate,
+  prepareOverflow,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
@@ -139,7 +140,14 @@ describe("e2e overflow test", () => {
       `specificGroupStrategyDifferentFromActive ${specificGroupStrategyDifferentFromActive.address}`
     );
 
-    await prepareToOverflow();
+    await prepareOverflow(
+      defaultStrategy,
+      election,
+      lockedGold,
+      voter,
+      activatedGroupAddresses,
+      false
+    );
 
     await expectCeloForGroup(groups[0].address, BigNumber.from(0));
     await expectCeloForGroup(groups[1].address, BigNumber.from(0));
@@ -275,36 +283,6 @@ describe("e2e overflow test", () => {
       BigNumber.from(0)
     );
   });
-
-  async function prepareToOverflow() {
-    // These numbers are derived from a system of linear equations such that
-    // given 12 validators registered and elected, as above, we have the following
-    // limits for the first three groups:
-    // group[0] and group[2]: 95864 Locked CELO
-    // group[1]: 143797 Locked CELO
-    // and the remaining receivable votes are [40, 100, 200] (in CELO) for
-    // the three groups, respectively.
-    const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-    for (let i = 2; i >= 0; i--) {
-      await lockedGold.lock().sendAndWaitForReceipt({
-        from: voter.address,
-        value: votes[i].toString(),
-      });
-    }
-
-    // We have to do this in a separate loop because the voting limits
-    // depend on total locked CELO. The votes we want to cast are very close
-    // to the final limit we'll arrive at, so we first lock all CELO, then
-    // cast it as votes.
-    for (let i = 0; i < 3; i++) {
-      const voteTx = await election.vote(
-        activatedGroupAddresses[i],
-        new BigNumberJs(votes[i].toString())
-      );
-      await voteTx.sendAndWaitForReceipt({ from: voter.address });
-    }
-  }
 
   async function expectAccountVotes(
     group: string,

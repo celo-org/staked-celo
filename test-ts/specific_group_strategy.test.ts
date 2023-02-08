@@ -31,6 +31,7 @@ import {
   getDefaultGroupsSafe,
   getImpersonatedSigner,
   mineToNextEpoch,
+  prepareOverflow,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
@@ -547,27 +548,9 @@ describe("SpecificGroupStrategy", () => {
     const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
     beforeEach(async () => {
-      // For more info about these numbers check comment in manager test
-      const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-      // activating first 2 groups, third is used as specific group
-      for (let i = 2; i >= 0; i--) {
-        const [head] = await defaultStrategyContract.getActiveGroupsHead();
-        if (i < 2) {
-          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
-        }
-
-        await lockedGold.lock().sendAndWaitForReceipt({
-          from: voter.address,
-          value: votes[i].toString(),
-        });
-      }
-
-      for (let i = 0; i < 3; i++) {
-        const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
-        await voteTx.sendAndWaitForReceipt({ from: voter.address });
-      }
+      await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
     });
+
     it("should revert when from group is not overflowing", async () => {
       await expect(
         specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[0])

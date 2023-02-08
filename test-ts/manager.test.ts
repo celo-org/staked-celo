@@ -2,10 +2,9 @@ import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import BigNumberJs from "bignumber.js";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { formatEther, parseUnits } from "ethers/lib/utils";
+import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
 import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
@@ -1096,25 +1095,7 @@ describe("Manager", () => {
 
       beforeEach(async () => {
         // For more info about these numbers check comment above
-        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-        for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getActiveGroupsHead();
-          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
-
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: votes[i].toString(),
-          });
-        }
-
-        for (let i = 0; i < 3; i++) {
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
-        }
+        await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
 
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: depositAmount });
@@ -1982,32 +1963,17 @@ describe("Manager", () => {
       const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
       beforeEach(async () => {
-        // For more info about these numbers check comment above
-        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-        // activating first 2 groups, third is used as specific group
-        for (let i = 2; i >= 0; i--) {
+        await prepareOverflow(
+          defaultStrategyContract,
+          election,
+          lockedGold,
+          voter,
+          groupAddresses.slice(0, 3),
+          false
+        );
+        for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getActiveGroupsHead();
-          if (i < 2) {
-            await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
-          }
-
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: votes[i].toString(),
-          });
-        }
-
-        for (let i = 0; i < 3; i++) {
-          console.log(
-            "can receive votes",
-            formatEther(await manager.getReceivableVotesForGroup(groupAddresses[i]))
-          );
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
@@ -2332,26 +2298,7 @@ describe("Manager", () => {
       const firstGroupCapacity = parseUnits("40.166666666666666666");
 
       beforeEach(async () => {
-        // For more info about these numbers check comment above
-        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-        for (let i = 2; i >= 0; i--) {
-          const [head] = await defaultStrategyContract.getActiveGroupsHead();
-          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
-
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: votes[i].toString(),
-          });
-        }
-
-        for (let i = 0; i < 3; i++) {
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
-        }
+        await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
       });
 
       it("should return correct amount of receivable votes", async () => {
