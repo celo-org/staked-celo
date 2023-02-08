@@ -676,17 +676,18 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         view
         returns (address previous, address next)
     {
-        uint256 loopLimit = sortingLoopLimit + 1;
+        uint256 loopLimit = sortingLoopLimit;
         address originalKeyPrevious;
         previous = originalKey;
         (, originalKeyPrevious, next) = activeGroups.get(originalKey);
 
-        while (next != address(0) && loopLimit-- > 1) {
+        while (next != address(0) && loopLimit != 0) {
             if (newValue <= activeGroups.getValue(next)) {
                 break;
             }
             previous = next;
             (, , next) = activeGroups.get(previous);
+            loopLimit--;
         }
 
         if (loopLimit == 0) {
@@ -701,18 +702,18 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         view
         returns (address previous, address next)
     {
-        uint256 loopLimit = sortingLoopLimit + 1;
+        uint256 loopLimit = sortingLoopLimit;
         address originalKeyNext;
         next = originalKey;
         (, previous, originalKeyNext) = activeGroups.get(originalKey);
-        while (previous != address(0) && loopLimit-- > 1) {
+        while (previous != address(0) && loopLimit != 0) {
             if (newValue >= activeGroups.getValue(previous)) {
                 break;
             }
             next = previous;
             (, previous, ) = activeGroups.get(next);
+            loopLimit--;
         }
-
         if (loopLimit == 0) {
             return (address(0), address(0));
         }

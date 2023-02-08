@@ -1,5 +1,6 @@
 import { CeloTxReceipt } from "@celo/connect";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
@@ -717,4 +718,43 @@ export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStra
     unsortedGroupsPromises.push(defaultStrategyContract.getUnsortedGroupAt(i));
   }
   return await Promise.all(unsortedGroupsPromises);
+}
+
+export async function prepareOverflow(
+  defaultStrategyContract: DefaultGroupContract,
+  election: ElectionWrapper,
+  lockedGold: LockedGoldWrapper,
+  voter: SignerWithAddress,
+  groupAddresses: string[],
+  activateGroups = true
+) {
+  // These numbers are derived from a system of linear equations such that
+  // given 12 validators registered and elected, as above, we have the following
+  // limits for the first three groups:
+  // group[0] and group[2]: 95864 Locked CELO
+  // group[1]: 143797 Locked CELO
+  // and the remaining receivable votes are [40, 100, 200] (in CELO) for
+  // the three groups, respectively.
+  const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+  for (let i = 2; i >= 0; i--) {
+    const [head] = await defaultStrategyContract.getGroupsHead();
+    if (activateGroups) {
+      await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+    }
+
+    await lockedGold.lock().sendAndWaitForReceipt({
+      from: voter.address,
+      value: votes[i].toString(),
+    });
+  }
+
+  // We have to do this in a separate loop because the voting limits
+  // depend on total locked CELO. The votes we want to cast are very close
+  // to the final limit we'll arrive at, so we first lock all CELO, then
+  // cast it as votes.
+  for (let i = 0; i < 3; i++) {
+    const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
+    await voteTx.sendAndWaitForReceipt({ from: voter.address });
+  }
 }

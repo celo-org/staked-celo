@@ -32,6 +32,12 @@ export interface DefaultGroupContract extends BaseContract {
     key: string,
     overrides?: CallOverrides
   ): Promise<[string, string] & { previousAddress: string; nextAddress: string }>;
+  activateGroup(
+    group: string,
+    lesser: string,
+    greater: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
 }
 
 export interface OrderedGroup {

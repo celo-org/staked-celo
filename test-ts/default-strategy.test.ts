@@ -2,7 +2,6 @@ import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import BigNumberJs from "bignumber.js";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
@@ -35,6 +34,7 @@ import {
   getUnsortedGroups,
   impersonateAccount,
   mineToNextEpoch,
+  prepareOverflow,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorAndOnlyAffiliateToGroup,
@@ -901,23 +901,14 @@ describe("DefaultStrategy", () => {
         await defaultStrategyContract.setSortingParams(3, 3, 0);
         [originalTail] = await defaultStrategyContract.getGroupsTail();
 
-        // For more info regarding these numbers, check comment above
-        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-        for (let i = 2; i >= 0; i--) {
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: votes[i].toString(),
-          });
-        }
-
-        for (let i = 0; i < 3; i++) {
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
-        }
+        await prepareOverflow(
+          defaultStrategyContract,
+          election,
+          lockedGold,
+          voter,
+          groupAddresses,
+          false
+        );
         originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
         await manager.deposit({ value: parseUnits("250") });
       });
