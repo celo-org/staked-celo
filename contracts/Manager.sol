@@ -473,6 +473,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 fromActualReceivable = getActualReceivableVotes(fromGroup);
 
+        if (fromActualReceivable >= fromScheduledVotes) {
+            revert FromGroupNotOverflowing(fromGroup);
+        }
+
         uint256 toMove = Math.min(fromScheduledVotes - fromActualReceivable, toReceivableVotes);
         scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
     }

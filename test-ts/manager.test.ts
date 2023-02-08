@@ -2320,4 +2320,88 @@ describe("Manager", () => {
       });
     });
   });
+
+  describe("#rebalanceOverflow()", () => {
+    it("should revert when to group not active", async () => {
+      await expect(manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])).revertedWith(
+        `InvalidToGroup("${groupAddresses[1]}")`
+      );
+    });
+
+    describe("When active groups", () => {
+      beforeEach(async () => {
+        await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
+      });
+
+      it("should revert when from group not overflowing", async () => {
+        await expect(manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])).revertedWith(
+          `FromGroupNotOverflowing("${groupAddresses[0]}")`
+        );
+      });
+
+      describe("When from group overflowing", () => {
+        const firstGroupCapacity = parseUnits("40.166666666666666666");
+        beforeEach(async () => {
+          await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity.mul(2));
+          // const [tail] = await defaultStrategyContract.getActiveGroupsTail()
+          // expect(tail).to.eq(groupAddresses[0])
+          // await manager.connect(depositor).deposit({value: firstGroupCapacity})
+        });
+
+        it("should revert when from group has no scheduled votes", async () => {
+          await expect(
+            manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])
+          ).revertedWith(`NoScheduledVotes("${groupAddresses[0]}")`);
+        });
+
+        describe("When scheduled votes are still receivable", () => {
+          beforeEach(async () => {
+            await account.setScheduledVotes(groupAddresses[0], firstGroupCapacity);
+          });
+
+          it("should revert when from group has no scheduled votes", async () => {
+            await expect(
+              manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])
+            ).revertedWith(`FromGroupNotOverflowing("${groupAddresses[0]}")`);
+          });
+        });
+
+        describe("When to group is overflowing", () => {
+          const secondGroupCapacity = parseUnits("99.25");
+          beforeEach(async () => {
+            await account.setScheduledVotes(groupAddresses[0], firstGroupCapacity.mul(2));
+            await account.setCeloForGroup(groupAddresses[1], secondGroupCapacity.mul(2));
+          });
+
+          it("should revert", async () => {
+            await expect(
+              manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])
+            ).revertedWith(`ToGroupOverflowing("${groupAddresses[1]}")`);
+          });
+        });
+
+        describe("When scheduled votes that are still receivable", () => {
+          beforeEach(async () => {
+            await account.setScheduledVotes(groupAddresses[0], firstGroupCapacity.mul(2));
+            await manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1]);
+          });
+
+          it("should schedule transfer", async () => {
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.have.deep.members([groupAddresses[0]]);
+            expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity]);
+
+            expect(lastTransferToGroups).to.have.deep.members([groupAddresses[1]]);
+            expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity]);
+          });
+        });
+      });
+    });
+  });
 });
