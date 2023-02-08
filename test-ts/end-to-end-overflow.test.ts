@@ -15,7 +15,6 @@ import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy"
 import {
   activateAndVoteTest,
   activateValidators,
-  allowStrategies,
   electMockValidatorGroupsAndUpdate,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
@@ -126,9 +125,6 @@ describe("e2e overflow test", () => {
       multisigOwner0.address,
       activatedGroupAddresses
     );
-
-    await allowStrategy(specificGroupStrategyDifferentFromActive.address);
-    await allowStrategy(specificGroupStrategySameAsActive.address);
   });
 
   const firstGroupCapacity = parseUnits("40.166666666666666666");
@@ -355,17 +351,5 @@ describe("e2e overflow test", () => {
     if (overflow != undefined) {
       expect(overflowActual).to.deep.eq(overflow);
     }
-  }
-
-  async function allowStrategy(strategy: string) {
-    await expect(managerContract.connect(depositor1).changeStrategy(strategy)).revertedWith(
-      `GroupNotEligible("${strategy}")`
-    );
-    await allowStrategies(
-      specificGroupStrategyContract,
-      groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
-      [strategy]
-    );
   }
 });

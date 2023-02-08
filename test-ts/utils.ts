@@ -1,5 +1,6 @@
 import { CeloTxReceipt } from "@celo/connect";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
@@ -160,33 +161,6 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
   ).sendAndWaitForReceipt({ from: group.address });
 }
 
-export async function allowStrategies(
-  specificGroupStrategyContract: SpecificGroupStrategy,
-  groupHealthContract: GroupHealth,
-  multisigOwner: string,
-  strategyAddresses: string[]
-) {
-  const payloads: string[] = [];
-  const destinations: string[] = [];
-  const values: string[] = [];
-
-  for (let i = 0; i < strategyAddresses.length; i++) {
-    const isValidGroup = await groupHealthContract.isValidGroup(strategyAddresses[i]);
-    if (!isValidGroup) {
-      throw new Error(`Group ${strategyAddresses[i]} is not valid group!`);
-    }
-    destinations.push(specificGroupStrategyContract.address);
-    values.push("0");
-    payloads.push(
-      specificGroupStrategyContract.interface.encodeFunctionData("allowStrategy", [
-        strategyAddresses[i],
-      ])
-    );
-  }
-
-  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
-}
-
 export async function activateValidators(
   defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
@@ -196,8 +170,8 @@ export async function activateValidators(
   let [nextGroup] = await defaultStrategyContract.getActiveGroupsTail();
   console.log("tail", nextGroup);
   for (let i = 0; i < 3; i++) {
-    const isValidGroup = await groupHealthContract.isValidGroup(groupAddresses[i]);
-    if (!isValidGroup) {
+    const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
+    if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
     await submitAndExecuteProposal(
@@ -511,7 +485,7 @@ export async function getDefaultGroupsSafe(defaultStrategy: DefaultGroupContract
 }
 
 export async function getSpecificGroupsSafe(specificGroupStrategy: SpecificGroupStrategy) {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesLength();
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesNumber();
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
@@ -532,6 +506,18 @@ export async function getGroupsOfAllStrategies(
   const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
 
   return [...allGroupsSet];
+}
+
+export async function getBlockedSpecificGroupStrategies(
+  specificGroupStrategy: SpecificGroupStrategy
+) {
+  const blockedStrategiesLength = await specificGroupStrategy.getBlockedStrategiesNumber();
+  const promises: Promise<string>[] = [];
+  for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
+    promises.push(specificGroupStrategy.getBlockedStrategy(i));
+  }
+
+  return await Promise.all(promises);
 }
 
 export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {
@@ -627,9 +613,11 @@ export async function electMockValidatorGroupsAndUpdate(
   validators: ValidatorsWrapper,
   groupHealthContract: MockGroupHealth,
   validatorGroups: string[],
-  revoke = false
-) {
+  revoke = false,
+  update = true
+): Promise<number[]> {
   let validatorsProcessed = 0;
+  const mockedIndexes: number[] = [];
 
   for (let j = 0; j < validatorGroups.length; j++) {
     const validatorGroup = validatorGroups[j];
@@ -643,11 +631,14 @@ export async function electMockValidatorGroupsAndUpdate(
           mockIndex,
           revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
         );
+        mockedIndexes.push(mockIndex);
       }
     }
-
-    await groupHealthContract.updateGroupHealth(validatorGroup);
+    if (update) {
+      await groupHealthContract.updateGroupHealth(validatorGroup);
+    }
   }
+  return mockedIndexes;
 }
 
 export async function revokeElectionOnMockValidatorGroupsAndUpdate(
@@ -740,4 +731,43 @@ export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStra
     unsortedGroupsPromises.push(defaultStrategyContract.getUnsortedGroupAt(i));
   }
   return await Promise.all(unsortedGroupsPromises);
+}
+
+export async function prepareOverflow(
+  defaultStrategyContract: DefaultGroupContract,
+  election: ElectionWrapper,
+  lockedGold: LockedGoldWrapper,
+  voter: SignerWithAddress,
+  groupAddresses: string[],
+  activateGroups = true
+) {
+  // These numbers are derived from a system of linear equations such that
+  // given 12 validators registered and elected, as above, we have the following
+  // limits for the first three groups:
+  // group[0] and group[2]: 95864 Locked CELO
+  // group[1]: 143797 Locked CELO
+  // and the remaining receivable votes are [40, 100, 200] (in CELO) for
+  // the three groups, respectively.
+  const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+  for (let i = 2; i >= 0; i--) {
+    const [head] = await defaultStrategyContract.getActiveGroupsHead();
+    if (activateGroups) {
+      await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+    }
+
+    await lockedGold.lock().sendAndWaitForReceipt({
+      from: voter.address,
+      value: votes[i].toString(),
+    });
+  }
+
+  // We have to do this in a separate loop because the voting limits
+  // depend on total locked CELO. The votes we want to cast are very close
+  // to the final limit we'll arrive at, so we first lock all CELO, then
+  // cast it as votes.
+  for (let i = 0; i < 3; i++) {
+    const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
+    await voteTx.sendAndWaitForReceipt({ from: voter.address });
+  }
 }

@@ -2,5 +2,5 @@
 pragma solidity 0.8.11;
 
 interface IGroupHealth {
-    function isValidGroup(address group) external view returns (bool);
+    function isGroupValid(address group) external view returns (bool);
 }

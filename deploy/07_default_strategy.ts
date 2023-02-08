@@ -40,7 +40,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   let nextGroup = ADDRESS_ZERO;
   for (let i = 0; i < validatorGroups.length; i++) {
-    await defaultStrategy.activateGroup(validatorGroups[i], ADDRESS_ZERO, nextGroup);
+    const activateTx = await defaultStrategy.activateGroup(
+      validatorGroups[i],
+      ADDRESS_ZERO,
+      nextGroup
+    );
+    await activateTx.wait();
     nextGroup = validatorGroups[i];
   }
 };

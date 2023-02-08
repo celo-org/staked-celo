@@ -23,19 +23,16 @@ import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
-  electGroup,
   electMockValidatorGroupsAndUpdate,
+  getBlockedSpecificGroupStrategies,
   getDefaultGroupsSafe,
   getImpersonatedSigner,
-  impersonateAccount,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
-  registerValidatorAndOnlyAffiliateToGroup,
   registerValidatorGroup,
   REGISTRY_ADDRESS,
   removeMembersFromGroup,
@@ -263,187 +260,8 @@ describe("SpecificGroupStrategy", () => {
     });
   });
 
-  describe("#allowStrategy()", () => {
-    it("adds a strategy", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[0]);
-      const specificGroupStrategy =
-        await specificGroupStrategyContract.getSpecificGroupStrategies();
-      const specificGroupStrategyLength =
-        await specificGroupStrategyContract.getSpecificGroupStrategiesLength();
-      const firstSpecificGroupStrategy =
-        await specificGroupStrategyContract.getSpecificGroupStrategy(0);
-      expect(specificGroupStrategy).to.deep.eq([groupAddresses[0]]);
-      expect(specificGroupStrategyLength).to.eq(1);
-      expect(firstSpecificGroupStrategy).to.eq(groupAddresses[0]);
-    });
-
-    it("emits a StrategyAllowed event", async () => {
-      await expect(specificGroupStrategyContract.allowStrategy(groupAddresses[0]))
-        .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-        .withArgs(groupAddresses[0]);
-    });
-
-    it("cannot be called by a non owner", async () => {
-      await expect(
-        specificGroupStrategyContract.connect(nonOwner).allowStrategy(groupAddresses[0])
-      ).revertedWith("Ownable: caller is not the owner");
-    });
-
-    describe("when strategy is not registered", () => {
-      it("reverts when trying to add an unregistered group", async () => {
-        const [unregisteredGroup] = await randomSigner(parseUnits("100"));
-
-        await expect(
-          specificGroupStrategyContract.allowStrategy(unregisteredGroup.address)
-        ).revertedWith(`StrategyNotEligible("${unregisteredGroup.address}")`);
-      });
-    });
-
-    describe("when group has no members", () => {
-      let noMemberedGroup: SignerWithAddress;
-      beforeEach(async () => {
-        [noMemberedGroup] = await randomSigner(parseUnits("21000"));
-        await registerValidatorGroup(noMemberedGroup);
-        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidatorAndOnlyAffiliateToGroup(noMemberedGroup, validator, validatorWallet);
-      });
-
-      it("reverts when trying to add a strategy with no members", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(noMemberedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${noMemberedGroup.address}")`);
-      });
-    });
-
-    describe("when group is not elected", () => {
-      it("reverts when trying to add non elected group", async () => {
-        const nonElectedGroup = groups[10];
-        await mineToNextEpoch(hre.web3);
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          groups[10].address,
-        ]);
-        await expect(
-          specificGroupStrategyContract.allowStrategy(nonElectedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${nonElectedGroup.address}")`);
-      });
-    });
-
-    describe("when group has 3 validators, but only 1 is elected.", () => {
-      let validatorGroupWithThreeValidators: SignerWithAddress;
-      beforeEach(async () => {
-        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
-        const memberCount = 3;
-        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
-
-        const electedValidatorIndex = 0;
-
-        for (let i = 0; i < memberCount; i++) {
-          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-          await registerValidatorAndAddToGroupMembers(
-            validatorGroupWithThreeValidators,
-            validator,
-            validatorWallet
-          );
-
-          if (i === memberCount - 1) {
-            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
-          }
-        }
-        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
-        await defaultStrategyContract.activateGroup(
-          validatorGroupWithThreeValidators.address,
-          ADDRESS_ZERO,
-          ADDRESS_ZERO
-        );
-      });
-
-      it("emits a StrategyAllowed event", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(validatorGroupWithThreeValidators.address)
-        )
-          .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-          .withArgs(validatorGroupWithThreeValidators.address);
-      });
-    });
-
-    describe("when group has low slash multiplier", () => {
-      let slashedGroup: SignerWithAddress;
-      beforeEach(async () => {
-        [slashedGroup] = await randomSigner(parseUnits("21000"));
-        await registerValidatorGroup(slashedGroup);
-        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-        await registerValidatorAndAddToGroupMembers(slashedGroup, validator, validatorWallet);
-        await electGroup(slashedGroup.address, someone);
-
-        await updateGroupSlashingMultiplier(
-          registryContract,
-          lockedGoldContract,
-          validatorsContract,
-          slashedGroup,
-          mockSlasher
-        );
-      });
-
-      it("reverts when trying to add slashed group", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(slashedGroup.address)
-        ).revertedWith(`StrategyNotEligible("${slashedGroup.address}")`);
-      });
-    });
-    describe("when maxNumGroupsVotedFor have been voted for", async () => {
-      let additionalGroup: SignerWithAddress;
-
-      beforeEach(async () => {
-        additionalGroup = groups[10];
-        await electGroup(additionalGroup.address, someone);
-
-        for (let i = 0; i < 10; i++) {
-          await specificGroupStrategyContract.allowStrategy(groups[i].address);
-        }
-      });
-
-      it("cannot add another group", async () => {
-        await expect(
-          specificGroupStrategyContract.allowStrategy(additionalGroup.address)
-        ).revertedWith("MaxGroupsVotedForReached()");
-      });
-
-      it("can add another group when enabled in Election contract", async () => {
-        const accountAddress = account.address;
-        const sendFundsTx = await nonOwner.sendTransaction({
-          value: parseUnits("1"),
-          to: accountAddress,
-        });
-        await sendFundsTx.wait();
-        await impersonateAccount(accountAddress);
-
-        const accountsContract = await hre.kit.contracts.getAccounts();
-        const createAccountTxObject = accountsContract.createAccount();
-        await createAccountTxObject.send({
-          from: accountAddress,
-        });
-        // TODO: once contractkit updated - use just election contract from contractkit
-        const electionContract = new hre.kit.web3.eth.Contract(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          electionContractData.abi as any,
-          election.address
-        );
-        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
-          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
-        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
-          from: accountAddress,
-        });
-
-        await expect(specificGroupStrategyContract.allowStrategy(additionalGroup.address))
-          .to.emit(specificGroupStrategyContract, "StrategyAllowed")
-          .withArgs(additionalGroup.address);
-      });
-    });
-  });
-
   describe("#blockStrategy()", () => {
     it("reverts when no active groups", async () => {
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[3]);
       await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
         `NoActiveGroups()`
       );
@@ -455,7 +273,7 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getActiveGroupsHead();
-          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
         }
       });
 
@@ -463,9 +281,11 @@ describe("SpecificGroupStrategy", () => {
         let specificGroupStrategyDeposit: BigNumber;
 
         beforeEach(async () => {
-          await account.setCeloForGroup(specificGroupStrategy.address, 100);
           specificGroupStrategyDeposit = parseUnits("1");
-          await specificGroupStrategyContract.allowStrategy(specificGroupStrategy.address);
+          await account.setCeloForGroup(
+            specificGroupStrategy.address,
+            specificGroupStrategyDeposit
+          );
           await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
           await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
         });
@@ -495,7 +315,16 @@ describe("SpecificGroupStrategy", () => {
             .withArgs(specificGroupStrategy.address);
         });
 
+        it("should add blocked strategy to blocked strategies", async () => {
+          await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
+          const blockedStrategies = await getBlockedSpecificGroupStrategies(
+            specificGroupStrategyContract
+          );
+          expect(blockedStrategies).to.have.deep.members([specificGroupStrategy.address]);
+        });
+
         it("reverts when blocking already blocked strategy", async () => {
+          await specificGroupStrategyContract.blockStrategy(groupAddresses[3]);
           await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
             `StrategyAlreadyBlocked("${groupAddresses[3]}")`
           );
@@ -510,6 +339,7 @@ describe("SpecificGroupStrategy", () => {
         });
 
         it("should schedule transfers to default strategy", async () => {
+          const [tail] = await defaultStrategyContract.getActiveGroupsTail();
           await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
           const [
             lastTransferFromGroups,
@@ -521,10 +351,58 @@ describe("SpecificGroupStrategy", () => {
           expect(lastTransferFromGroups).to.deep.eq([specificGroupStrategy.address]);
           expect(lastTransferFromVotes).to.deep.eq([specificGroupStrategyDeposit]);
 
-          expect(lastTransferToGroups).to.deep.eq([groupAddresses[1]]);
-          expect(lastTransferToVotes.length).to.eq(1);
-          expect(lastTransferToVotes[0]).to.deep.eq(specificGroupStrategyDeposit);
+          expect(lastTransferToGroups).to.deep.eq([tail]);
+          expect(lastTransferToVotes).to.have.deep.members([specificGroupStrategyDeposit]);
         });
+      });
+    });
+  });
+
+  describe("#unblockStrategy", () => {
+    it("should revert when unhealthy group", async () => {
+      await deregisterValidatorGroup(groups[0]);
+      await groupHealthContract.updateGroupHealth(groupAddresses[0]);
+      await expect(specificGroupStrategyContract.unblockStrategy(groupAddresses[0])).revertedWith(
+        `StrategyNotEligible("${groupAddresses[0]}")`
+      );
+    });
+
+    it("should revert when not blocked strategy", async () => {
+      await expect(specificGroupStrategyContract.unblockStrategy(groupAddresses[0])).revertedWith(
+        `FailedToUnBlockStrategy("${groupAddresses[0]}")`
+      );
+    });
+
+    describe("when the group is blocked", () => {
+      let specificGroupStrategy: SignerWithAddress;
+      let specificGroupStrategyDeposit: BigNumber;
+      beforeEach(async () => {
+        specificGroupStrategy = groups[2];
+        for (let i = 0; i < 2; i++) {
+          const [head] = await defaultStrategyContract.getActiveGroupsHead();
+          await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
+        }
+
+        specificGroupStrategyDeposit = parseUnits("1");
+        await account.setCeloForGroup(specificGroupStrategy.address, specificGroupStrategyDeposit);
+        await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
+        await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
+        await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
+      });
+
+      it("should have blocked strategy", async () => {
+        const blockedGroups = await getBlockedSpecificGroupStrategies(
+          specificGroupStrategyContract
+        );
+        expect(blockedGroups).to.have.deep.members([specificGroupStrategy.address]);
+      });
+
+      it("should allow to unblock strategy", async () => {
+        await specificGroupStrategyContract.unblockStrategy(specificGroupStrategy.address);
+        const blockedGroups = await getBlockedSpecificGroupStrategies(
+          specificGroupStrategyContract
+        );
+        expect(blockedGroups).to.have.deep.members([]);
       });
     });
   });
@@ -539,7 +417,8 @@ describe("SpecificGroupStrategy", () => {
         await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
       }
 
-      await specificGroupStrategyContract.allowStrategy(groupAddresses[1]);
+      await manager.connect(depositor).changeStrategy(groupAddresses[1]);
+      await manager.connect(depositor).deposit({ value: 100 });
     });
 
     it("should revert when group is healthy", async () => {
@@ -676,8 +555,6 @@ describe("SpecificGroupStrategy", () => {
         const [head] = await defaultStrategyContract.getActiveGroupsHead();
         if (i < 2) {
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
-        } else {
-          await specificGroupStrategyContract.allowStrategy(groupAddresses[i]);
         }
 
         await lockedGold.lock().sendAndWaitForReceipt({

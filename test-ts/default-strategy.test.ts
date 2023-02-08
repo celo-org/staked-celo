@@ -2,7 +2,6 @@ import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import BigNumberJs from "bignumber.js";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
@@ -35,6 +34,7 @@ import {
   getUnsortedGroups,
   impersonateAccount,
   mineToNextEpoch,
+  prepareOverflow,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorAndOnlyAffiliateToGroup,
@@ -527,12 +527,6 @@ describe("DefaultStrategy", () => {
           expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[2]]);
         });
 
-        it("emits a GroupDeprecated event", async () => {
-          await expect(defaultStrategyContract.deprecateGroup(deprecatedGroup.address))
-            .to.emit(defaultStrategyContract, "GroupDeprecated")
-            .withArgs(deprecatedGroup.address);
-        });
-
         it("reverts when deprecating a non active group", async () => {
           await expect(defaultStrategyContract.deprecateGroup(groupAddresses[3])).revertedWith(
             `GroupNotActive("${groupAddresses[3]}")`
@@ -569,12 +563,6 @@ describe("DefaultStrategy", () => {
           await defaultStrategyContract.deprecateGroup(deprecatedGroup.address);
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
-        });
-
-        it("emits a GroupDeprecated event", async () => {
-          await expect(defaultStrategyContract.deprecateGroup(deprecatedGroup.address))
-            .to.emit(defaultStrategyContract, "GroupDeprecated")
-            .withArgs(deprecatedGroup.address);
         });
 
         it("emits a GroupRemoved event", async () => {
@@ -913,23 +901,14 @@ describe("DefaultStrategy", () => {
         await defaultStrategyContract.setSortingParams(3, 3, 0);
         [originalTail] = await defaultStrategyContract.getActiveGroupsTail();
 
-        // For more info regarding these numbers, check comment above
-        const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
-
-        for (let i = 2; i >= 0; i--) {
-          await lockedGold.lock().sendAndWaitForReceipt({
-            from: voter.address,
-            value: votes[i].toString(),
-          });
-        }
-
-        for (let i = 0; i < 3; i++) {
-          const voteTx = await election.vote(
-            groupAddresses[i],
-            new BigNumberJs(votes[i].toString())
-          );
-          await voteTx.sendAndWaitForReceipt({ from: voter.address });
-        }
+        await prepareOverflow(
+          defaultStrategyContract,
+          election,
+          lockedGold,
+          voter,
+          groupAddresses,
+          false
+        );
         originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
         await manager.deposit({ value: parseUnits("250") });
       });
@@ -1116,6 +1095,114 @@ describe("DefaultStrategy", () => {
         });
       });
     });
+
+    describe("when withdrawing with 1 sorting loop limit", () => {
+      let originalHead: string;
+      beforeEach(async () => {
+        for (let i = 0; i < 3; i++) {
+          await manager.deposit({ value: (i + 1) * 100 });
+        }
+        [originalHead] = await defaultStrategyContract.getActiveGroupsHead();
+        await defaultStrategyContract.setSortingParams(3, 3, 1);
+        expect(await defaultStrategyContract.sorted()).to.be.true;
+      });
+
+      describe("when withdrawing from 1 group", () => {
+        beforeEach(async () => {
+          await manager.withdraw(250);
+        });
+
+        it("should have sorted flag set to false", async () => {
+          expect(await defaultStrategyContract.sorted()).to.be.false;
+        });
+
+        it("should have head in unsorted groups", async () => {
+          const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+          expect(unsortedGroups).to.have.deep.members([originalHead]);
+        });
+
+        describe("When updateActiveGroupOrder called", () => {
+          beforeEach(async () => {
+            const [tail] = await defaultStrategyContract.getActiveGroupsTail();
+            await defaultStrategyContract.updateActiveGroupOrder(originalHead, ADDRESS_ZERO, tail);
+          });
+
+          it("should change the tail", async () => {
+            const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
+            expect(currentTail).to.eq(originalHead);
+          });
+
+          it("should change the head", async () => {
+            const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
+            expect(currentHead).to.not.eq(originalHead);
+          });
+
+          it("should empty unsorted groups", async () => {
+            const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+            expect(unsortedGroups).to.have.deep.members([]);
+          });
+
+          it("should have sorted flag set to true", async () => {
+            expect(await defaultStrategyContract.sorted()).to.be.true;
+          });
+        });
+      });
+
+      describe("when withdrawing from more groups", () => {
+        let originalOrderedGroups: OrderedGroup[];
+
+        beforeEach(async () => {
+          originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await manager.withdraw(450);
+        });
+
+        it("should have sorted flag set to false", async () => {
+          expect(await defaultStrategyContract.sorted()).to.be.false;
+        });
+
+        it("should have head groups in unsorted groups", async () => {
+          const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+          expect(unsortedGroups).to.have.deep.members(
+            originalOrderedGroups.slice(originalOrderedGroups.length - 2).map((k) => k.group)
+          );
+        });
+
+        describe("When updateActiveGroupOrder called", () => {
+          beforeEach(async () => {
+            const [tail] = await defaultStrategyContract.getActiveGroupsTail();
+            await defaultStrategyContract.updateActiveGroupOrder(
+              originalOrderedGroups[originalOrderedGroups.length - 2].group,
+              ADDRESS_ZERO,
+              tail
+            );
+            await defaultStrategyContract.updateActiveGroupOrder(
+              originalOrderedGroups[originalOrderedGroups.length - 1].group,
+              ADDRESS_ZERO,
+              tail
+            );
+          });
+
+          it("should change the tail", async () => {
+            const [currentTail] = await defaultStrategyContract.getActiveGroupsTail();
+            expect(currentTail).to.eq(originalHead);
+          });
+
+          it("should change the head", async () => {
+            const [currentHead] = await defaultStrategyContract.getActiveGroupsHead();
+            expect(currentHead).to.not.eq(originalHead);
+          });
+
+          it("should empty unsorted groups", async () => {
+            const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+            expect(unsortedGroups).to.have.deep.members([]);
+          });
+
+          it("should have sorted flag set to true", async () => {
+            expect(await defaultStrategyContract.sorted()).to.be.true;
+          });
+        });
+      });
+    });
   });
 
   describe("#generateVoteDistribution", () => {
@@ -1163,9 +1250,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(groupAddresses[1]))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(groupAddresses[1]);
       });
     });
@@ -1179,9 +1266,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(deprecatedGroup.address);
       });
     });
@@ -1196,9 +1283,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(deprecatedGroup.address);
       });
     });
@@ -1255,9 +1342,9 @@ describe("DefaultStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should remove group", async () => {
         await expect(await defaultStrategyContract.deprecateUnhealthyGroup(deprecatedGroup.address))
-          .to.emit(defaultStrategyContract, "GroupDeprecated")
+          .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(groupAddresses[1]);
       });
     });

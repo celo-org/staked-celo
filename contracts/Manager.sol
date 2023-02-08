@@ -57,7 +57,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ISpecificGroupStrategy public specificGroupStrategy;
 
     /**
-     * @notice An instance of the DefaultGroupStrategy contract for the StakedCelo protocol.
+     * @notice An instance of the DefaultStrategy contract for the StakedCelo protocol.
      */
     IDefaultStrategy public defaultStrategy;
 
@@ -65,9 +65,9 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @notice address -> strategy used by an address
      * strategy: address(0) = default strategy
      * strategy: !address(0) = vote for the group at that address if allowed
-     * by GroupHealth.isValidGroup, otherwise vote according to the default strategy
+     * by GroupHealth.isGroupValid, otherwise vote according to the default strategy
      */
-    mapping(address => address) private strategies;
+    mapping(address => address) public strategies;
 
     /**
      * @notice Emitted when the vote contract is initially set or later modified.
@@ -155,7 +155,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @dev Throws if called by any address other than strategy contracts.
+     * @dev Throws if called by any address other than one of the strategy contracts.
      */
     modifier onlyStrategy() {
         if (
@@ -240,7 +240,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Revokes votes on already voted proposal.
-     * @param proposalId The ID of the proposal to vote on.
+     * @param proposalId The ID of the proposal to revoke from.
      * @param index The index of the proposal ID in `dequeued`.
      */
     function revokeVotes(uint256 proposalId, uint256 index) external {
@@ -277,7 +277,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
-            if (!groupHealth.isValidGroup(strategy)) {
+            if (!groupHealth.isGroupValid(strategy)) {
                 // if invalid group vote for default strategy
                 strategies[msg.sender] = address(0);
                 strategy = address(0);
@@ -369,8 +369,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (!specificGroupStrategy.isSpecificGroupStrategy(newStrategy) ||
-                !groupHealth.isValidGroup(newStrategy))
+            (specificGroupStrategy.isBlockedSpecificGroupStrategy(newStrategy) ||
+                !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
         }
@@ -394,7 +394,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Rebalances CELO between groups that have incorrect CELO-stCELO ratio.
-     * FromGroup is required to have more CELO than it should and ToGroup needs
+     * `fromGroup` is required to have more CELO than it should and `toGroup` needs
      * to have less CELO than it should.
      * @param fromGroup The from group.
      * @param toGroup The to group.
@@ -594,7 +594,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function checkStrategy(address strategy) public view returns (address) {
         if (
-            strategy != address(0) && !specificGroupStrategy.isValidSpecificGroupStrategy(strategy)
+            strategy != address(0) && specificGroupStrategy.isBlockedSpecificGroupStrategy(strategy)
         ) {
             // strategy not allowed revert to default strategy
             return address(0);

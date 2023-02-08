@@ -149,14 +149,6 @@ library AddressSortedLinkedList {
     return headN(list, list.list.numElements);
   }
 
-  function toBytes(address a) public pure returns (bytes32) {
-    return bytes32(uint256(uint160(a)) << 96);
-  }
-
-  function toAddress(bytes32 b) public pure returns (address) {
-    return address(uint160(uint256(b) >> 96));
-  }
-
   /**
    * @notice Returns the number of elements in the list.
    * @param list A storage pointer to the underlying list.
@@ -184,22 +176,34 @@ library AddressSortedLinkedList {
     return toAddress(list.list.tail);
   }
 
-  function getLesserAndGreaterOfActiveGroupsDeposit(SortedLinkedList.List storage list, address originalKey, uint256 newValue, uint256 loopLimit)
+  /**
+   * @notice Gets lesser and greater for key that has increased it's value;
+   * @param list A storage pointer to the underlying list.
+   * @param originalKey The original key.
+   * @param newValue New value that has to be bigger or equal than the previous one.
+   * @param loopLimit The max limit of loops that will be executed.
+   */
+  function getLesserAndGreaterOfIncreasedKey(
+      SortedLinkedList.List storage list,
+      address originalKey,
+      uint256 newValue,
+      uint256 loopLimit
+    )
         public
         view
         returns (address previous, address next)
     {
-        loopLimit++;
         address originalKeyPrevious;
         previous = originalKey;
         (, originalKeyPrevious, next) = get(list, originalKey);
 
-        while (next != address(0) && loopLimit-- > 1) {
+        while (next != address(0) && loopLimit != 0) {
             if (newValue <= getValue(list, next)) {
                 break;
             }
             previous = next;
             (, , next) = get(list, previous);
+            loopLimit--;
         }
 
         if (loopLimit == 0) {
@@ -209,29 +213,48 @@ library AddressSortedLinkedList {
         previous = previous == originalKey ? originalKeyPrevious : previous;
     }
 
-    function getLesserAndGreaterOfActiveGroupsWithdrawal(SortedLinkedList.List storage list, address originalKey, uint256 newValue, uint256 loopLimit)
+   /**
+   * @notice Gets lesser and greater for key that has decreased it's value;
+   * @param list A storage pointer to the underlying list.
+   * @param originalKey The original key.
+   * @param newValue New value that has to be smaller or equal than the previous one.
+   * @param loopLimit The max limit of loops that will be executed.
+   */
+    function getLesserAndGreaterOfDecreasedKey(
+      SortedLinkedList.List storage list,
+      address originalKey,
+      uint256 newValue,
+      uint256 loopLimit
+    )
         public
         view
         returns (address previous, address next)
     {
-        loopLimit++;
         address originalKeyNext;
         next = originalKey;
         (, previous, originalKeyNext) = get(list, originalKey);
-        while (previous != address(0) && loopLimit-- > 1) {
+        while (previous != address(0) && loopLimit != 0) {
             if (newValue >= getValue(list, previous)) {
                 break;
             }
             next = previous;
             (, previous, ) = get(list, next);
+            loopLimit--;
         }
-
         if (loopLimit == 0) {
             return (address(0), address(0));
         }
 
         next = next == originalKey ? originalKeyNext : next;
     }
+
+  function toBytes(address a) public pure returns (bytes32) {
+    return bytes32(uint256(uint160(a)) << 96);
+  }
+
+  function toAddress(bytes32 b) public pure returns (address) {
+    return address(uint160(uint256(b) >> 96));
+  }
 
   /**
    * @notice Returns Element based on key.
