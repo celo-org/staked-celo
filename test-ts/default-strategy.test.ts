@@ -1095,6 +1095,114 @@ describe("DefaultStrategy", () => {
         });
       });
     });
+
+    describe("when withdrawing with 1 sorting loop limit", () => {
+      let originalHead: string;
+      beforeEach(async () => {
+        for (let i = 0; i < 3; i++) {
+          await manager.deposit({ value: (i + 1) * 100 });
+        }
+        [originalHead] = await defaultStrategyContract.getGroupsHead();
+        await defaultStrategyContract.setSortingParams(3, 3, 1);
+        expect(await defaultStrategyContract.sorted()).to.be.true;
+      });
+
+      describe("when withdrawing from 1 group", () => {
+        beforeEach(async () => {
+          await manager.withdraw(250);
+        });
+
+        it("should have sorted flag set to false", async () => {
+          expect(await defaultStrategyContract.sorted()).to.be.false;
+        });
+
+        it("should have head in unsorted groups", async () => {
+          const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+          expect(unsortedGroups).to.have.deep.members([originalHead]);
+        });
+
+        describe("When updateActiveGroupOrder called", () => {
+          beforeEach(async () => {
+            const [tail] = await defaultStrategyContract.getGroupsTail();
+            await defaultStrategyContract.updateActiveGroupOrder(originalHead, ADDRESS_ZERO, tail);
+          });
+
+          it("should change the tail", async () => {
+            const [currentTail] = await defaultStrategyContract.getGroupsTail();
+            expect(currentTail).to.eq(originalHead);
+          });
+
+          it("should change the head", async () => {
+            const [currentHead] = await defaultStrategyContract.getGroupsHead();
+            expect(currentHead).to.not.eq(originalHead);
+          });
+
+          it("should empty unsorted groups", async () => {
+            const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+            expect(unsortedGroups).to.have.deep.members([]);
+          });
+
+          it("should have sorted flag set to true", async () => {
+            expect(await defaultStrategyContract.sorted()).to.be.true;
+          });
+        });
+      });
+
+      describe("when withdrawing from more groups", () => {
+        let originalOrderedGroups: OrderedGroup[];
+
+        beforeEach(async () => {
+          originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await manager.withdraw(450);
+        });
+
+        it("should have sorted flag set to false", async () => {
+          expect(await defaultStrategyContract.sorted()).to.be.false;
+        });
+
+        it("should have head groups in unsorted groups", async () => {
+          const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+          expect(unsortedGroups).to.have.deep.members(
+            originalOrderedGroups.slice(originalOrderedGroups.length - 2).map((k) => k.group)
+          );
+        });
+
+        describe("When updateActiveGroupOrder called", () => {
+          beforeEach(async () => {
+            const [tail] = await defaultStrategyContract.getGroupsTail();
+            await defaultStrategyContract.updateActiveGroupOrder(
+              originalOrderedGroups[originalOrderedGroups.length - 2].group,
+              ADDRESS_ZERO,
+              tail
+            );
+            await defaultStrategyContract.updateActiveGroupOrder(
+              originalOrderedGroups[originalOrderedGroups.length - 1].group,
+              ADDRESS_ZERO,
+              tail
+            );
+          });
+
+          it("should change the tail", async () => {
+            const [currentTail] = await defaultStrategyContract.getGroupsTail();
+            expect(currentTail).to.eq(originalHead);
+          });
+
+          it("should change the head", async () => {
+            const [currentHead] = await defaultStrategyContract.getGroupsHead();
+            expect(currentHead).to.not.eq(originalHead);
+          });
+
+          it("should empty unsorted groups", async () => {
+            const unsortedGroups = await getUnsortedGroups(defaultStrategyContract);
+            expect(unsortedGroups).to.have.deep.members([]);
+          });
+
+          it("should have sorted flag set to true", async () => {
+            expect(await defaultStrategyContract.sorted()).to.be.true;
+          });
+        });
+      });
+    });
   });
 
   describe("#generateVoteDistribution", () => {
