@@ -797,7 +797,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * Returns votes count that can be received by group directly in Election contract.
-     * @param group The group that can receive votes
+     * @param group The group that can receive votes.
      */
     function getActualReceivableVotes(address group) private view returns (uint256) {
         uint256 receivable = getElection().getNumVotesReceivable(group);
