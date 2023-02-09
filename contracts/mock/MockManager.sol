@@ -38,10 +38,6 @@ contract MockManager is IManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function removeDeprecatedGroup(address group) external returns (bool) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
         address[] calldata toGroups,

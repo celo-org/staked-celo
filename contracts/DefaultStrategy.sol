@@ -90,8 +90,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     EnumerableSet.AddressSet private unsortedGroups;
 
     /**
-     * @notice Emitted when a deprecated group is no longer being voted for and
-     * the contract forgets about it entirely.
+     * @notice Emitted when a group is deactivated.
      * @param group The group's address.
      */
     event GroupRemoved(address indexed group);
@@ -128,13 +127,13 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error MaxGroupsVotedForReached();
 
     /**
-     * @notice Used when attempting to deprecate a group that is not active.
+     * @notice Used when attempting to deactivate a group that is not active.
      * @param group The group's address.
      */
     error GroupNotActive(address group);
 
     /**
-     * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
+     * @notice Used when attempting to deactivate a healthy group using deactivateUnhealthyGroup().
      * @param group The group's address.
      */
     error HealthyGroup(address group);
@@ -314,38 +313,42 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             revert MaxGroupsVotedForReached();
         }
 
-        activeGroups.insert(group, 0, lesser, greater);
-
-        // TODO: remove once migrated to v2
-        uint256 specificGroupTotalStCelo = specificGroupStrategy.stCeloInGroup(group);
+        // For migration purposes between V1 and V2. It can be removed once migrated to V2.
+        uint256 currentStCelo = 0;
         uint256 stCeloForWholeGroup = IManager(manager).toStakedCelo(
             account.getCeloForGroup(group)
         );
-        uint256 currentStCelo = stCeloForWholeGroup -
-            Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
 
-        updateGroupStCelo(group, currentStCelo, true);
+        if (stCeloForWholeGroup != 0) {
+            uint256 specificGroupTotalStCelo = specificGroupStrategy.stCeloInGroup(group);
+            currentStCelo =
+                stCeloForWholeGroup -
+                Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
+            updateGroupStCelo(group, currentStCelo, true);
+        }
+
+        activeGroups.insert(group, currentStCelo, lesser, greater);
 
         emit GroupActivated(group);
     }
 
     /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
+     * @notice Deactivates group.
+     * @param group The group to deactivated.
      */
-    function deprecateGroup(address group) external onlyOwner {
-        _deprecateGroup(group);
+    function deactivateGroup(address group) external onlyOwner {
+        _deactivateGroup(group);
     }
 
     /**
-     * @notice Marks an unhealthy group as deprecated.
-     * @param group The group to deprecate if unhealthy.
+     * @notice Deactivates an unhealthy group.
+     * @param group The group to deactivate if unhealthy.
      */
-    function deprecateUnhealthyGroup(address group) external {
+    function deactivateUnhealthyGroup(address group) external {
         if (groupHealth.isGroupValid(group)) {
             revert HealthyGroup(group);
         }
-        _deprecateGroup((group));
+        _deactivateGroup((group));
     }
 
     /**
@@ -526,31 +529,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
     }
 
-    function getLesserAndGreaterOfActiveGroups(
-        address originalKey,
-        uint256 newValue,
-        bool withdrawal
-    ) internal view returns (address previous, address next) {
-        if (withdrawal) {
-            (previous, next) = activeGroups.getLesserAndGreaterOfDecreasedKey(
-                originalKey,
-                newValue,
-                sortingLoopLimit
-            );
-        } else {
-            (previous, next) = activeGroups.getLesserAndGreaterOfIncreasedKey(
-                originalKey,
-                newValue,
-                sortingLoopLimit
-            );
-        }
-    }
-
     /**
-     * @notice Marks a group as deprecated.
-     * @param group The group to deprecate.
+     * @notice Deactivates group.
+     * @param group The group to deactivated.
      */
-    function _deprecateGroup(address group) private {
+    function _deactivateGroup(address group) private {
         if (!activeGroups.contains(group)) {
             revert GroupNotActive(group);
         }
@@ -582,9 +565,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Distributes votes by computing the number of votes each active
-     * group should either receive of should be subtracted from.
-     * @param votesAmount The amount of votes to distribute.
-     * @return finalGroups The groups that were chosen for distribution.
+     * group should  be subtracted from.
+     * @param votesAmount The amount of votes to subtract.
+     * @return finalGroups The groups that were chosen for subtraction.
      * @return finalVotes The votes of chosen finalGroups.
      */
     function _generateWithdrawalVoteDistribution(uint256 votesAmount)
@@ -613,15 +596,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 votesAmount
             );
             groups[groupsIndex] = votedGroup;
-
             votesAmount -= votes[groupsIndex];
-
             updateGroupStCelo(
                 votedGroup,
                 IManager(manager).toStakedCelo(votes[groupsIndex]),
                 false
             );
-
             trySort(votedGroup, stCeloInGroup[votedGroup], false);
 
             if (sorted) {
@@ -646,7 +626,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Distributes votes by computing the number of votes each active
-     * group should either receive of should be subtracted from.
+     * group should receive.
      * @param votesAmount The amount of votes to distribute.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
@@ -677,11 +657,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 votesAmount
             );
             groups[groupsIndex] = votedGroup;
-
             votesAmount -= votes[groupsIndex];
-
             updateGroupStCelo(votedGroup, IManager(manager).toStakedCelo(votes[groupsIndex]), true);
-
             trySort(votedGroup, stCeloInGroup[votedGroup], true);
 
             if (sorted) {
@@ -720,8 +697,16 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         }
 
         (address lesserKey, address greaterKey) = valueIncreased
-            ? activeGroups.getLesserAndGreaterOfIncreasedKey(group, newValue, sortingLoopLimit)
-            : activeGroups.getLesserAndGreaterOfDecreasedKey(group, newValue, sortingLoopLimit);
+            ? activeGroups.getLesserAndGreaterOfAddressThatIncreasedValue(
+                group,
+                newValue,
+                sortingLoopLimit
+            )
+            : activeGroups.getLesserAndGreaterOfAddressThatDecreasedValue(
+                group,
+                newValue,
+                sortingLoopLimit
+            );
         if (lesserKey != greaterKey || activeGroups.getNumElements() == 1) {
             activeGroups.update(group, newValue, lesserKey, greaterKey);
         } else {

@@ -11,7 +11,7 @@ export async function revoke(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
   const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
-  // Use deprecated and active groups to get the full list of groups with potential withdrawals.
+  // Use active groups to get the full list of groups with potential withdrawals.
   const activeGroups = await getDefaultGroupsSafe(defaultStrategy)
   const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategy)
   const groupList = new Set(

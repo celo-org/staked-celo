@@ -389,7 +389,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function rebalance(address fromGroup, address toGroup) public {
         if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
-            // rebalancing to deprecated/non-existent group is not allowed
+            // rebalancing to deactivated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
 

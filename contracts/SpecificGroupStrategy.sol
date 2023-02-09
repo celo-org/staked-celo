@@ -361,7 +361,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @return votes The amount to withdraw from each group.
      */
     function calculateAndUpdateForWithdrawalTransfer(
-        // TODO: add tests
         address group,
         uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount

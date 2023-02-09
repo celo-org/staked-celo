@@ -177,13 +177,13 @@ library AddressSortedLinkedList {
   }
 
   /**
-   * @notice Gets lesser and greater for key that has increased it's value.
+   * @notice Gets lesser and greater for address that has increased it's value.
    * @param list A storage pointer to the underlying list.
-   * @param group The original key.
+   * @param group The original address.
    * @param newValue New value that has to be bigger or equal than the previous one.
    * @param loopLimit The max limit of loops that will be executed.
    */
-  function getLesserAndGreaterOfIncreasedKey(
+  function getLesserAndGreaterOfAddressThatIncreasedValue(
     SortedLinkedList.List storage list,
     address group,
     uint256 newValue,
@@ -207,13 +207,13 @@ library AddressSortedLinkedList {
   }
 
    /**
-   * @notice Gets lesser and greater for key that has decreased it's value.
+   * @notice Gets lesser and greater for address that has decreased it's value.
    * @param list A storage pointer to the underlying list.
-   * @param group The original key.
+   * @param group The original address.
    * @param newValue New value that has to be smaller or equal than the previous one.
    * @param loopLimit The max limit of loops that will be executed.
    */
-  function getLesserAndGreaterOfDecreasedKey(
+  function getLesserAndGreaterOfAddressThatDecreasedValue(
     SortedLinkedList.List storage list,
     address group,
     uint256 newValue,

@@ -401,10 +401,10 @@ describe("SpecificGroupStrategy", () => {
   });
 
   describe("#blockUnhealthyStrategy()", () => {
-    let deprecatedGroup: SignerWithAddress;
+    let deactivatedGroup: SignerWithAddress;
 
     beforeEach(async () => {
-      deprecatedGroup = groups[1];
+      deactivatedGroup = groups[1];
       for (let i = 0; i < 3; i++) {
         const [head] = await defaultStrategyContract.getGroupsHead();
         await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
@@ -428,7 +428,7 @@ describe("SpecificGroupStrategy", () => {
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should deactivate group", async () => {
         await expect(await specificGroupStrategyContract.blockUnhealthyStrategy(groupAddresses[1]))
           .to.emit(specificGroupStrategyContract, "StrategyBlocked")
           .withArgs(groupAddresses[1]);
@@ -437,38 +437,38 @@ describe("SpecificGroupStrategy", () => {
 
     describe("when the group is not registered", () => {
       beforeEach(async () => {
-        await deregisterValidatorGroup(deprecatedGroup);
+        await deregisterValidatorGroup(deactivatedGroup);
         await mineToNextEpoch(hre.web3);
         await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deprecatedGroup.address,
+          deactivatedGroup.address,
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should deactivate group", async () => {
         await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deprecatedGroup.address)
+          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
         )
           .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(deprecatedGroup.address);
+          .withArgs(deactivatedGroup.address);
       });
     });
 
     describe("when the group has no members", () => {
       // if voting for a group that has no members, I get no rewards.
       beforeEach(async () => {
-        await removeMembersFromGroup(deprecatedGroup);
+        await removeMembersFromGroup(deactivatedGroup);
         await mineToNextEpoch(hre.web3);
         await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deprecatedGroup.address,
+          deactivatedGroup.address,
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should deactivate group", async () => {
         await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deprecatedGroup.address)
+          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
         )
           .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(deprecatedGroup.address);
+          .withArgs(deactivatedGroup.address);
       });
     });
 
@@ -517,18 +517,18 @@ describe("SpecificGroupStrategy", () => {
           registryContract,
           lockedGoldContract,
           validatorsContract,
-          deprecatedGroup,
+          deactivatedGroup,
           mockSlasher
         );
         await mineToNextEpoch(hre.web3);
         await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deprecatedGroup.address,
+          deactivatedGroup.address,
         ]);
       });
 
-      it("should deprecate group", async () => {
+      it("should deactivate group", async () => {
         await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deprecatedGroup.address)
+          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
         )
           .to.emit(specificGroupStrategyContract, "StrategyBlocked")
           .withArgs(groupAddresses[1]);

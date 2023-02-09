@@ -247,10 +247,10 @@ describe("Manager", () => {
         });
       });
 
-      describe("when tail group is deprecated", () => {
+      describe("when tail group is deactivated", () => {
         beforeEach(async () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
-          await defaultStrategyContract.deprecateGroup(tail);
+          await defaultStrategyContract.deactivateGroup(tail);
         });
 
         it("distributes votes to new tail", async () => {
@@ -543,7 +543,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When voted for deprecated group", () => {
+    describe("When voted for deactivated group", () => {
       const depositedValue = 1000;
       let specificGroupStrategyAddress: string;
 
@@ -666,7 +666,7 @@ describe("Manager", () => {
   });
 
   describe("#withdraw()", () => {
-    it("reverts when there are no active or deprecated groups", async () => {
+    it("reverts when there are no active or deactivated groups", async () => {
       await expect(manager.connect(depositor).withdraw(100)).revertedWith("NoActiveGroups()");
     });
 
@@ -1688,7 +1688,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When group is deprecated", () => {
+    describe("When group is deactivated", () => {
       const withdrawals = [50, 50];
       const depositedValue = 100;
 
@@ -1700,7 +1700,7 @@ describe("Manager", () => {
         }
 
         await manager.deposit({ value: depositedValue });
-        await defaultStrategyContract.deprecateGroup(groupAddresses[0]);
+        await defaultStrategyContract.deactivateGroup(groupAddresses[0]);
       });
 
       it("should return correct amount for real and expected", async () => {
@@ -1924,8 +1924,8 @@ describe("Manager", () => {
             await specificGroupStrategyContract.blockStrategy(groupAddresses[1]);
           });
 
-          it("should schedule transfer from deprecated group", async () => {
-            await defaultStrategyContract.deprecateGroup(groupAddresses[0]);
+          it("should schedule transfer from deactivated group", async () => {
+            await defaultStrategyContract.deactivateGroup(groupAddresses[0]);
             const exRe0 = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
             await manager.rebalance(groupAddresses[0], groupAddresses[1]);
 
@@ -1942,8 +1942,8 @@ describe("Manager", () => {
             expect(lastTransferToVotes).to.deep.eq([BigNumber.from(exRe0[1].sub(exRe0[0]))]);
           });
 
-          it("should revert when rebalance to deprecated group", async () => {
-            await defaultStrategyContract.deprecateGroup(groupAddresses[1]);
+          it("should revert when rebalance to deactivated group", async () => {
+            await defaultStrategyContract.deactivateGroup(groupAddresses[1]);
             await expect(manager.rebalance(groupAddresses[0], groupAddresses[1])).revertedWith(
               `InvalidToGroup("${groupAddresses[1]}")`
             );
