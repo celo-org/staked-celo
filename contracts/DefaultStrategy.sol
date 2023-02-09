@@ -156,7 +156,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error NoUnsortedGroup();
 
     /**
-     * @notice Used when rebalancing to not active.
+     * @notice Used when rebalancing to a non-active group.
      * @param group The group's address.
      */
     error InvalidToGroup(address group);
