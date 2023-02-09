@@ -13,9 +13,9 @@ export async function revoke(hre: HardhatRuntimeEnvironment, signer: Signer) {
 
   // Use deprecated and active groups to get the full list of groups with potential withdrawals.
   const activeGroups = await getDefaultGroupsSafe(defaultStrategy)
-  const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
+  const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategy)
   const groupList = new Set(
-    activeGroups.concat(allowedStrategies)
+    activeGroups.concat(specificStrategies)
   ).values();
   taskLogger.debug("groupList:", groupList);
 
@@ -134,7 +134,7 @@ async function findAddressIndex(
 export async function getDefaultGroupsSafe(
   defaultStrategy: Contract
 ) : Promise<string[]> {
-  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
   let [key] = await defaultStrategy.getGroupsHead();
 
   const activeGroups = [];
@@ -145,4 +145,15 @@ export async function getDefaultGroupsSafe(
   }
 
   return activeGroups
+}
+
+export async function getSpecificGroupsSafe(specificGroupStrategy: Contract): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const specificGroupsPromises = [];
+
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+  }
+
+  return Promise.all(specificGroupsPromises);
 }

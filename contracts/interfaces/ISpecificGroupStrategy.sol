@@ -14,11 +14,6 @@ interface ISpecificGroupStrategy {
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 
-    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value) external;
-
-    function subtractFromSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 value)
-        external;
-
     function blockStrategy(address group) external returns (uint256);
 
     function generateGroupVotesToDistributeTo(
@@ -27,16 +22,11 @@ interface ISpecificGroupStrategy {
         uint256 stCeloAmount
     ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
-    function isSpecificGroupStrategy(address strategy) external view returns (bool);
+    function isStrategy(address strategy) external view returns (bool);
 
-    function isBlockedSpecificGroupStrategy(address strategy) external view returns (bool);
+    function isBlockedStrategy(address strategy) external view returns (bool);
 
-    function specificGroupStrategyTotalStCeloVotes(address strategy)
-        external
-        view
-        returns (uint256);
+    function stCeloInGroup(address strategy) external view returns (uint256);
 
-    function totalStCeloInSpecificGroupStrategies() external view returns (uint256);
-
-    function getSpecificGroupStrategiesNumber() external view returns (uint256);
+    function getNumberOfStrategies() external view returns (uint256);
 }

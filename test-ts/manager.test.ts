@@ -27,6 +27,7 @@ import {
   electMockValidatorGroupsAndUpdate,
   getDefaultGroupsSafe,
   getImpersonatedSigner,
+  getSpecificGroupsSafe,
   mineToNextEpoch,
   prepareOverflow,
   randomSigner,
@@ -462,12 +463,10 @@ describe("Manager", () => {
 
       it("should add group to allowed strategies", async () => {
         const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
         expect(activeGroups.length).to.eq(0);
-        expect(allowedStrategies.length).to.eq(1);
-        expect(allowedStrategies[0]).to.eq(groupAddresses[0]);
+        expect(specificStrategies.length).to.eq(1);
+        expect(specificStrategies[0]).to.eq(groupAddresses[0]);
       });
 
       it("should schedule votes for allowed group", async () => {
@@ -511,11 +510,9 @@ describe("Manager", () => {
 
       it("should not add group to allowed strategies", async () => {
         const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
         expect(activeGroups).to.have.deep.members(groupAddresses.slice(0, 3));
-        expect(allowedStrategies).to.deep.eq([]);
+        expect(specificStrategies).to.deep.eq([]);
       });
 
       it("should schedule votes for default groups", async () => {
@@ -622,11 +619,9 @@ describe("Manager", () => {
 
         it("should add group to allowed strategies", async () => {
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const allowedStrategies = await specificGroupStrategyContract
-            .connect(depositor)
-            .getSpecificGroupStrategies();
+          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
-          expect(allowedStrategies).to.deep.eq([groupAddresses[2]]);
+          expect(specificStrategies).to.deep.eq([groupAddresses[2]]);
         });
 
         it("should schedule votes for allowed group", async () => {
@@ -651,11 +646,9 @@ describe("Manager", () => {
 
         it("should add group to allowed strategies", async () => {
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const allowedStrategies = await specificGroupStrategyContract
-            .connect(depositor)
-            .getSpecificGroupStrategies();
+          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
-          expect(allowedStrategies).to.deep.eq([specificGroupStrategyAddress]);
+          expect(specificStrategies).to.deep.eq([specificGroupStrategyAddress]);
         });
 
         it("should schedule votes for allowed group", async () => {
@@ -710,7 +703,7 @@ describe("Manager", () => {
 
         it("should update totalStCELO in Default strategy", async () => {
           const totalStCeloInDefault = (
-            await defaultStrategyContract.totalStCeloInDefaultStrategy()
+            await defaultStrategyContract.totalStCeloInStrategy()
           ).toNumber();
           expect(totalStCeloInDefault).to.eq(223);
         });
@@ -737,7 +730,7 @@ describe("Manager", () => {
 
           it("should update totalStCELO in Default strategy", async () => {
             const totalStCeloInDefault = (
-              await defaultStrategyContract.totalStCeloInDefaultStrategy()
+              await defaultStrategyContract.totalStCeloInStrategy()
             ).toNumber();
             expect(totalStCeloInDefault).to.eq(146);
           });
@@ -941,11 +934,9 @@ describe("Manager", () => {
 
       it("added group to allowed strategies", async () => {
         const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
         expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
-        expect(allowedStrategies).to.deep.eq([specificGroupStrategy.address]);
+        expect(specificStrategies).to.deep.eq([specificGroupStrategy.address]);
       });
 
       it("should withdraw less than originally deposited from allowed group", async () => {
@@ -953,10 +944,8 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([specificGroupStrategy.address]);
         expect(withdrawals).to.deep.equal([BigNumber.from("60")]);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
-        expect(allowedStrategies).to.deep.eq([specificGroupStrategy.address]);
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+        expect(specificStrategies).to.deep.eq([specificGroupStrategy.address]);
       });
 
       it("should withdraw same amount as originally deposited from allowed group", async () => {
@@ -964,10 +953,8 @@ describe("Manager", () => {
         const [withdrawnGroups, withdrawals] = await account.getLastScheduledWithdrawals();
         expect([specificGroupStrategy.address]).to.deep.equal(withdrawnGroups);
         expect([BigNumber.from("100")]).to.deep.equal(withdrawals);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
-        expect([specificGroupStrategy.address]).to.deep.eq(allowedStrategies);
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+        expect([specificGroupStrategy.address]).to.deep.eq(specificStrategies);
       });
 
       it("should withdraw same amount as originally deposited from active groups after strategy is disallowed", async () => {
@@ -984,10 +971,8 @@ describe("Manager", () => {
         const [withdrawnGroups, groupWithdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupHead]);
         expect(groupWithdrawals).to.deep.equal([BigNumber.from("100")]);
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
-        expect(allowedStrategies).to.deep.eq([]);
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+        expect(specificStrategies).to.deep.eq([]);
       });
 
       it("should revert when withdraw more amount than originally deposited from allowed group", async () => {
@@ -1565,10 +1550,8 @@ describe("Manager", () => {
 
       it("should add group to allowed strategies", async () => {
         await manager.connect(depositor).deposit({ value: 100 });
-        const allowedStrategies = await specificGroupStrategyContract
-          .connect(depositor)
-          .getSpecificGroupStrategies();
-        expect([groupAddresses[0]]).to.deep.eq(allowedStrategies);
+        const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+        expect([groupAddresses[0]]).to.deep.eq(specificStrategies);
       });
 
       it("should change account strategy ", async () => {

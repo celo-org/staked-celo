@@ -253,7 +253,7 @@ describe("DefaultStrategy", () => {
     it("adds a group", async () => {
       await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
       const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-      const activeGroupsLength = await defaultStrategyContract.getGroupsLength();
+      const activeGroupsLength = await defaultStrategyContract.getNumberOfGroups();
       const [firstActiveGroup] = await defaultStrategyContract.getGroupsHead();
       expect(activeGroups).to.deep.eq([groupAddresses[0]]);
       expect(activeGroupsLength).to.eq(1);
@@ -694,16 +694,16 @@ describe("DefaultStrategy", () => {
       }
 
       it("should have stCelo only in two groups", async () => {
-        expect(await defaultStrategyContract.stCELOInGroup(currentHead)).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(currentHead)).to.deep.eq(
           BigNumber.from(51)
         );
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[0])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[0])).to.deep.eq(
           BigNumber.from(0)
         );
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[1])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[1])).to.deep.eq(
           BigNumber.from(51)
         );
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[2])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[2])).to.deep.eq(
           BigNumber.from(49)
         );
         await expectCorrectOrder();
@@ -716,17 +716,17 @@ describe("DefaultStrategy", () => {
         await defaultStrategyContract.rebalance(groupAddresses[2], groupAddresses[0]);
         await expectCorrectOrder();
 
-        expect(await defaultStrategyContract.stCELOInGroup(currentHead)).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(currentHead)).to.deep.eq(
           BigNumber.from(34)
         );
 
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[0])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[0])).to.deep.eq(
           BigNumber.from(32)
         );
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[1])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[1])).to.deep.eq(
           BigNumber.from(34)
         );
-        expect(await defaultStrategyContract.stCELOInGroup(groupAddresses[2])).to.deep.eq(
+        expect(await defaultStrategyContract.stCeloInGroup(groupAddresses[2])).to.deep.eq(
           BigNumber.from(34)
         );
 
@@ -1220,6 +1220,68 @@ describe("DefaultStrategy", () => {
           .connect(nonManager)
           .activateGroup(nonVote.address, ADDRESS_ZERO, ADDRESS_ZERO)
       ).revertedWith(`Ownable: caller is not the owner`);
+    });
+  });
+
+  describe("#getGroupsHead()", () => {
+    it("returns empty when no active groups", async () => {
+      const [head, previous] = await defaultStrategyContract.getGroupsHead();
+      expect(head).to.eq(ADDRESS_ZERO);
+      expect(previous).to.eq(ADDRESS_ZERO);
+    });
+
+    describe("When active groups", () => {
+      beforeEach(async () => {
+        let nextGroup = ADDRESS_ZERO;
+        for (let i = 0; i < 3; i++) {
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          nextGroup = groupAddresses[i];
+        }
+
+        await manager.deposit({ value: 100 });
+        await manager.deposit({ value: 50 });
+      });
+
+      it("should return head correctly", async () => {
+        const allGroups = await getOrderedActiveGroups(defaultStrategyContract);
+        const [head, previous] = await defaultStrategyContract.getGroupsHead();
+        const sortedGroups = allGroups.sort((a, b) =>
+          parseUnits(a.stCelo).lt(parseUnits(b.stCelo)) ? -1 : 1
+        );
+        expect(sortedGroups[sortedGroups.length - 1].group).to.eq(head);
+        expect(sortedGroups[sortedGroups.length - 2].group).to.eq(previous);
+      });
+    });
+  });
+
+  describe("#getGroupsTail()", () => {
+    it("returns empty when no active groups", async () => {
+      const [tail, next] = await defaultStrategyContract.getGroupsTail();
+      expect(tail).to.eq(ADDRESS_ZERO);
+      expect(next).to.eq(ADDRESS_ZERO);
+    });
+
+    describe("When active groups", () => {
+      beforeEach(async () => {
+        let nextGroup = ADDRESS_ZERO;
+        for (let i = 0; i < 3; i++) {
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          nextGroup = groupAddresses[i];
+        }
+
+        await manager.deposit({ value: 100 });
+        await manager.deposit({ value: 50 });
+      });
+
+      it("should return tail correctly", async () => {
+        const allGroups = await getOrderedActiveGroups(defaultStrategyContract);
+        const [tail, next] = await defaultStrategyContract.getGroupsTail();
+        const sortedGroups = allGroups.sort((a, b) =>
+          parseUnits(a.stCelo).lt(parseUnits(b.stCelo)) ? -1 : 1
+        );
+        expect(sortedGroups[0].group).to.eq(tail);
+        expect(sortedGroups[1].group).to.eq(next);
+      });
     });
   });
 

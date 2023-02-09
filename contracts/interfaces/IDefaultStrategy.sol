@@ -14,7 +14,7 @@ interface IDefaultStrategy {
 
     function groupsContain(address group) external view returns (bool);
 
-    function getGroupsLength() external view returns (uint256);
+    function getNumberOfGroups() external view returns (uint256);
 
-    function stCELOInGroup(address group) external view returns (uint256);
+    function stCeloInGroup(address group) external view returns (uint256);
 }

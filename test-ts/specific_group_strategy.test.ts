@@ -28,6 +28,7 @@ import {
   getBlockedSpecificGroupStrategies,
   getDefaultGroupsSafe,
   getImpersonatedSigner,
+  getSpecificGroupsSafe,
   mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
@@ -256,26 +257,6 @@ describe("SpecificGroupStrategy", () => {
     });
   });
 
-  describe("#addToSpecificGroupStrategyTotalStCeloVotes", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract
-          .connect(nonManager)
-          .addToSpecificGroupStrategyTotalStCeloVotes(nonVote.address, 10)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-  });
-
-  describe("#subtractFromSpecificGroupStrategyTotalStCeloVotes", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract
-          .connect(nonManager)
-          .subtractFromSpecificGroupStrategyTotalStCeloVotes(nonVote.address, 10)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-  });
-
   describe("#blockStrategy()", () => {
     it("reverts when no active groups", async () => {
       await expect(specificGroupStrategyContract.blockStrategy(groupAddresses[3])).revertedWith(
@@ -308,21 +289,17 @@ describe("SpecificGroupStrategy", () => {
 
         it("added group to allowed strategies", async () => {
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const allowedStrategies = await specificGroupStrategyContract
-            .connect(depositor)
-            .getSpecificGroupStrategies();
+          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
-          expect(allowedStrategies).to.deep.eq([specificGroupStrategy.address]);
+          expect(specificStrategies).to.deep.eq([specificGroupStrategy.address]);
         });
 
         it("removes the group from the groups array", async () => {
           await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
           const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const allowedStrategies = await specificGroupStrategyContract
-            .connect(depositor)
-            .getSpecificGroupStrategies();
+          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
           expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
-          expect(allowedStrategies).to.deep.eq([]);
+          expect(specificStrategies).to.deep.eq([]);
         });
 
         it("emits a StrategyBlocked event", async () => {

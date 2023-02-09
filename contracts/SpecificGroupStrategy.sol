@@ -33,12 +33,12 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice stCELO that was cast for specific group strategies,
      * strategy => stCELO amount
      */
-    mapping(address => uint256) public specificGroupStrategyTotalStCeloVotes;
+    mapping(address => uint256) public stCeloInGroup;
 
     /**
-     * @notice Total stCELO that was voted with on specific group strategies
+     * @notice Total stCELO that was voted with on specific group strategies.
      */
-    uint256 public totalStCeloInSpecificGroupStrategies;
+    uint256 public totalStCeloInStrategy;
 
     /**
      * @notice An instance of the GroupHealth contract for the StakedCelo protocol.
@@ -272,7 +272,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         finalGroups[0] = strategy;
         finalVotes[0] = votes;
 
-        addToSpecificGroupStrategyTotalStCeloVotes(strategy, stCeloAmount);
+        addToStCeloInGroup(strategy, stCeloAmount);
     }
 
     /**
@@ -280,7 +280,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group.
      * @return Whether or not is specific group strategy.
      */
-    function isSpecificGroupStrategy(address strategy) external view returns (bool) {
+    function isStrategy(address strategy) external view returns (bool) {
         return specificGroupStrategies.contains(strategy);
     }
 
@@ -289,15 +289,15 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group.
      * @return Whether or not is blocked specific group strategy.
      */
-    function isBlockedSpecificGroupStrategy(address strategy) external view returns (bool) {
+    function isBlockedStrategy(address strategy) external view returns (bool) {
         return blockedStrategies.contains(strategy);
     }
 
     /**
-     * @notice Returns the length of blocked group strategies.
+     * @notice Returns the number of blocked group strategies.
      * @return The length of blocked groups.
      */
-    function getBlockedStrategiesNumber() external view returns (uint256) {
+    function getNumberOfBlockedStrategies() external view returns (uint256) {
         return blockedStrategies.length();
     }
 
@@ -310,10 +310,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the length of specific group strategies.
+     * @notice Returns the number of specific group strategies.
      * @return The length of active groups.
      */
-    function getSpecificGroupStrategiesNumber() external view returns (uint256) {
+    function getNumberOfStrategies() external view returns (uint256) {
         return specificGroupStrategies.length();
     }
 
@@ -321,16 +321,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice Returns the specific group strategy at index.
      * @return The specific group.
      */
-    function getSpecificGroupStrategy(uint256 index) external view returns (address) {
+    function getStrategy(uint256 index) external view returns (address) {
         return specificGroupStrategies.at(index);
-    }
-
-    /**
-     * @notice Returns the specific group strategies
-     * @return The specific group strategies.
-     */
-    function getSpecificGroupStrategies() external view returns (address[] memory) {
-        return specificGroupStrategies.values();
     }
 
     /**
@@ -377,11 +369,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         groups[0] = group;
         votes[0] = withdrawal;
 
-        if (stCeloWithdrawalAmount > specificGroupStrategyTotalStCeloVotes[group]) {
+        if (stCeloWithdrawalAmount > stCeloInGroup[group]) {
             revert CantWithdrawAccordingToStrategy(group);
         }
 
-        subtractFromSpecificGroupStrategyTotalStCeloVotes(group, stCeloWithdrawalAmount);
+        subtractFromStCeloInGroup(group, stCeloWithdrawalAmount);
     }
 
     /**
@@ -390,12 +382,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group that we are adding to.
      * @param stCeloAmount The added amount of stCELO.
      */
-    function addToSpecificGroupStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount)
-        public
-        onlyManager
-    {
-        specificGroupStrategyTotalStCeloVotes[strategy] += stCeloAmount;
-        totalStCeloInSpecificGroupStrategies += stCeloAmount;
+    function addToStCeloInGroup(address strategy, uint256 stCeloAmount) public onlyManager {
+        stCeloInGroup[strategy] += stCeloAmount;
+        totalStCeloInStrategy += stCeloAmount;
     }
 
     /**
@@ -404,12 +393,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group that we are adding to.
      * @param stCeloAmount The subtracted amount of stCELO.
      */
-    function subtractFromSpecificGroupStrategyTotalStCeloVotes(
-        address strategy,
-        uint256 stCeloAmount
-    ) public onlyManager {
-        specificGroupStrategyTotalStCeloVotes[strategy] -= stCeloAmount;
-        totalStCeloInSpecificGroupStrategies -= stCeloAmount;
+    function subtractFromStCeloInGroup(address strategy, uint256 stCeloAmount) public onlyManager {
+        stCeloInGroup[strategy] -= stCeloAmount;
+        totalStCeloInStrategy -= stCeloAmount;
     }
 
     /**
@@ -418,7 +404,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function _blockStrategy(address group) private {
-        if (defaultStrategy.getGroupsLength() == 0) {
+        if (defaultStrategy.getNumberOfGroups() == 0) {
             revert NoActiveGroups();
         }
 
@@ -426,7 +412,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyAlreadyBlocked(group);
         }
 
-        uint256 strategyTotalStCeloVotes = specificGroupStrategyTotalStCeloVotes[group];
+        uint256 strategyTotalStCeloVotes = stCeloInGroup[group];
 
         if (strategyTotalStCeloVotes != 0) {
             IManager(manager).transferBetweenStrategies(

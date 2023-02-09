@@ -357,7 +357,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (specificGroupStrategy.isBlockedSpecificGroupStrategy(newStrategy) ||
+            (specificGroupStrategy.isBlockedStrategy(newStrategy) ||
                 !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
@@ -388,10 +388,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
-        if (
-            !defaultStrategy.groupsContain(toGroup) &&
-            !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
-        ) {
+        if (!defaultStrategy.groupsContain(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
             // rebalancing to deprecated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
@@ -477,7 +474,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
+        bool isSpecificGroupStrategy = specificGroupStrategy.isStrategy(group);
         bool isActiveGroup = defaultStrategy.groupsContain(group);
         actualCelo = account.getCeloForGroup(group);
 
@@ -485,12 +482,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCELOFromDefaultStrategy;
 
         if (isSpecificGroupStrategy) {
-            stCELOFromSpecificStrategy = specificGroupStrategy
-                .specificGroupStrategyTotalStCeloVotes(group);
+            stCELOFromSpecificStrategy = specificGroupStrategy.stCeloInGroup(group);
         }
 
         if (isActiveGroup) {
-            stCELOFromDefaultStrategy = defaultStrategy.stCELOInGroup(group);
+            stCELOFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
 
         expectedCelo = toCelo(stCELOFromSpecificStrategy + stCELOFromDefaultStrategy);
@@ -536,9 +532,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (
-            strategy != address(0) && specificGroupStrategy.isBlockedSpecificGroupStrategy(strategy)
-        ) {
+        if (strategy != address(0) && specificGroupStrategy.isBlockedStrategy(strategy)) {
             // strategy not allowed revert to default strategy
             return address(0);
         }
