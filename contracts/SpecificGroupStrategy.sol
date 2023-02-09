@@ -461,7 +461,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice When there is function that is overflowing and
      * in meantime there are votes that freed up. This function
      * makes sure to reschedule votes correctly for overflowing group.
-     * @param strategy The group address
+     * @param strategy The group address.
      */
     function rebalanceOverflownGroup(address strategy) public {
         uint256 overflowingStCelo = stCeloInStrategyOverflown[strategy];
