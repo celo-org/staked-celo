@@ -441,7 +441,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Rebalance according to CElO overflow rather than stCELO ratio.
+     * @notice Rebalance according to CELO overflow rather than stCELO ratio.
      * If one of the groups is overflowing and there are still some votes that
      * are scheduled for the group, this function allows to transfer these
      * votes to any active group in protocol that is not overflowing yet.
