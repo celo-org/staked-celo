@@ -243,7 +243,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Distributes votes by computing the number of votes each active
      * group should either receive or have withdrawn.
      * @param votes The amount of votes to distribute.
-     * @param withdraw Generation for either desposit or withdrawal.
+     * @param withdraw Whether to withdraw or deposit.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
