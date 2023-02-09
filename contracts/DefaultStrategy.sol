@@ -390,7 +390,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Returns whether active groups contain group.
-     * @return Whether or not is active group.
+     * @return Whether or not the given group is active.
      */
     function groupsContain(address group) external view returns (bool) {
         return activeGroups.contains(group);
