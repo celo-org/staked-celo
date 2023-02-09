@@ -615,7 +615,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * Returns votes count that can be received by group through stCELO protocol.
-     * @param group The group that can receive votes
+     * @param group The group that can receive votes.
      * @return The amount of CELO that can be received by group though stCELO protocol.
      */
     function getReceivableVotesForGroup(address group) public view returns (uint256) {
