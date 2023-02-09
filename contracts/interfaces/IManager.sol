@@ -28,4 +28,6 @@ interface IManager {
     function toCelo(uint256 stCeloAmount) external view returns (uint256);
 
     function toStakedCelo(uint256 celoAmount) external view returns (uint256);
+
+    function getReceivableVotesForGroup(address group) external view returns (uint256);
 }

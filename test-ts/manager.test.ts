@@ -402,9 +402,9 @@ describe("Manager", () => {
         const thirdGroupScheduled = parseUnits("170");
 
         beforeEach(async () => {
-          await account.setScheduledVotes(groupAddresses[0], firstGroupScheduled);
-          await account.setScheduledVotes(groupAddresses[1], secondGroupScheduled);
-          await account.setScheduledVotes(groupAddresses[2], thirdGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[0], firstGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[1], secondGroupScheduled);
+          await account.setCeloForGroup(groupAddresses[2], thirdGroupScheduled);
         });
 
         it("Deposit to only one group if within capacity", async () => {

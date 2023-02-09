@@ -252,7 +252,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         onlyManager
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        (finalGroups, finalVotes) = _generateVoteDistribution(votes, withdraw);
+        (finalGroups, finalVotes) = withdraw
+            ? _generateWithdrawalVoteDistribution(votes)
+            : _generateDepositVoteDistribution(votes);
     }
 
     /**
@@ -563,10 +565,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             uint256[] memory fromVotes = new uint256[](1);
             fromGroups[0] = group;
             fromVotes[0] = IManager(manager).toCelo(groupTotalStCeloVotes);
-            (address[] memory toGroups, uint256[] memory toVotes) = _generateVoteDistribution(
-                IManager(manager).toCelo(groupTotalStCeloVotes),
-                false
-            );
+            (
+                address[] memory toGroups,
+                uint256[] memory toVotes
+            ) = _generateDepositVoteDistribution(IManager(manager).toCelo(groupTotalStCeloVotes));
             IManager(manager).scheduleTransferWithinStrategy(
                 fromGroups,
                 toGroups,
@@ -578,15 +580,93 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         emit GroupRemoved(group);
     }
 
+    // /**
+    //  * @notice Distributes votes by computing the number of votes each active
+    //  * group should either receive of should be subtracted from.
+    //  * @param votesAmount The amount of votes to distribute.
+    //  * @param withdraw Generation for either desposit or withdrawal.
+    //  * @return finalGroups The groups that were chosen for distribution.
+    //  * @return finalVotes The votes of chosen finalGroups.
+    //  */
+    // function _generateVoteDistribution(uint256 votesAmount, bool withdraw)
+    //     private
+    //     returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    // {
+    //     if (activeGroups.getNumElements() == 0) {
+    //         revert NoActiveGroups();
+    //     }
+
+    //     uint256 maxGroupCount = Math.min(
+    //         withdraw ? maxGroupsToWithdrawFrom : maxGroupsToDistributeTo,
+    //         activeGroups.getNumElements()
+    //     );
+
+    //     address[] memory groups = new address[](maxGroupCount);
+    //     uint256[] memory votes = new uint256[](maxGroupCount);
+
+    //     address votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+    //     uint256 groupsIndex;
+    //     uint256 groupVotes;
+
+    //     for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
+    //         if (votesAmount == 0 || votedGroup == address(0)) {
+    //             break;
+    //         }
+
+    //         if (withdraw) {
+    //             groupVotes = IManager(manager).toCelo(stCeloInGroup[votedGroup]);
+    //         } else {
+    //             groupVotes =
+    //                 getElection().getNumVotesReceivable(votedGroup) -
+    //                 getElection().getTotalVotesForGroup(votedGroup) -
+    //                 account.scheduledVotesForGroup(votedGroup);
+    //         }
+
+    //         votes[groupsIndex] = Math.min(groupVotes, votesAmount);
+    //         groups[groupsIndex] = votedGroup;
+
+    //         votesAmount -= votes[groupsIndex];
+
+    //         updateGroupStCelo(
+    //             votedGroup,
+    //             IManager(manager).toStakedCelo(votes[groupsIndex]),
+    //             !withdraw
+    //         );
+
+    //         trySort(votedGroup, stCeloInGroup[votedGroup], !withdraw);
+
+    //         if (sorted) {
+    //             votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+    //         } else {
+    //             if (withdraw) {
+    //                 (, votedGroup, ) = activeGroups.get(votedGroup);
+    //             } else {
+    //                 (, , votedGroup) = activeGroups.get(votedGroup);
+    //             }
+    //         }
+    //     }
+
+    //     if (votesAmount != 0) {
+    //         revert NotAbleToDistributeVotes();
+    //     }
+
+    //     finalGroups = new address[](groupsIndex);
+    //     finalVotes = new uint256[](groupsIndex);
+
+    //     for (uint256 i = 0; i < groupsIndex; i++) {
+    //         finalGroups[i] = groups[i];
+    //         finalVotes[i] = votes[i];
+    //     }
+    // }
+
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should either receive of should be subtracted from.
      * @param votesAmount The amount of votes to distribute.
-     * @param withdraw Generation for either desposit or withdrawal.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function _generateVoteDistribution(uint256 votesAmount, bool withdraw)
+    function _generateWithdrawalVoteDistribution(uint256 votesAmount)
         private
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
@@ -594,33 +674,23 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             revert NoActiveGroups();
         }
 
-        uint256 maxGroupCount = Math.min(
-            withdraw ? maxGroupsToWithdrawFrom : maxGroupsToDistributeTo,
-            activeGroups.getNumElements()
-        );
+        uint256 maxGroupCount = Math.min(maxGroupsToWithdrawFrom, activeGroups.getNumElements());
 
         address[] memory groups = new address[](maxGroupCount);
         uint256[] memory votes = new uint256[](maxGroupCount);
 
-        address votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+        address votedGroup = activeGroups.getHead();
         uint256 groupsIndex;
-        uint256 groupVotes;
 
         for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
             if (votesAmount == 0 || votedGroup == address(0)) {
                 break;
             }
 
-            if (withdraw) {
-                groupVotes = IManager(manager).toCelo(stCeloInGroup[votedGroup]);
-            } else {
-                groupVotes =
-                    getElection().getNumVotesReceivable(votedGroup) -
-                    getElection().getTotalVotesForGroup(votedGroup) -
-                    account.scheduledVotesForGroup(votedGroup);
-            }
-
-            votes[groupsIndex] = Math.min(groupVotes, votesAmount);
+            votes[groupsIndex] = Math.min(
+                IManager(manager).toCelo(stCeloInGroup[votedGroup]),
+                votesAmount
+            );
             groups[groupsIndex] = votedGroup;
 
             votesAmount -= votes[groupsIndex];
@@ -628,19 +698,75 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             updateGroupStCelo(
                 votedGroup,
                 IManager(manager).toStakedCelo(votes[groupsIndex]),
-                !withdraw
+                false
             );
 
-            trySort(votedGroup, stCeloInGroup[votedGroup], !withdraw);
+            trySort(votedGroup, stCeloInGroup[votedGroup], false);
 
             if (sorted) {
-                votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
+                votedGroup = activeGroups.getHead();
             } else {
-                if (withdraw) {
-                    (, votedGroup, ) = activeGroups.get(votedGroup);
-                } else {
-                    (, , votedGroup) = activeGroups.get(votedGroup);
-                }
+                (, votedGroup, ) = activeGroups.get(votedGroup);
+            }
+        }
+
+        if (votesAmount != 0) {
+            revert NotAbleToDistributeVotes();
+        }
+
+        finalGroups = new address[](groupsIndex);
+        finalVotes = new uint256[](groupsIndex);
+
+        for (uint256 i = 0; i < groupsIndex; i++) {
+            finalGroups[i] = groups[i];
+            finalVotes[i] = votes[i];
+        }
+    }
+
+    /**
+     * @notice Distributes votes by computing the number of votes each active
+     * group should either receive of should be subtracted from.
+     * @param votesAmount The amount of votes to distribute.
+     * @return finalGroups The groups that were chosen for distribution.
+     * @return finalVotes The votes of chosen finalGroups.
+     */
+    function _generateDepositVoteDistribution(uint256 votesAmount)
+        private
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
+        if (activeGroups.getNumElements() == 0) {
+            revert NoActiveGroups();
+        }
+
+        uint256 maxGroupCount = Math.min(maxGroupsToDistributeTo, activeGroups.getNumElements());
+
+        address[] memory groups = new address[](maxGroupCount);
+        uint256[] memory votes = new uint256[](maxGroupCount);
+
+        address votedGroup = activeGroups.getTail();
+        uint256 groupsIndex;
+
+        for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
+            if (votesAmount == 0 || votedGroup == address(0)) {
+                break;
+            }
+
+            votes[groupsIndex] = Math.min(
+                IManager(manager).getReceivableVotesForGroup(votedGroup),
+                votesAmount
+            );
+            groups[groupsIndex] = votedGroup;
+
+            votesAmount -= votes[groupsIndex];
+
+            updateGroupStCelo(votedGroup, IManager(manager).toStakedCelo(votes[groupsIndex]), true);
+
+            trySort(votedGroup, stCeloInGroup[votedGroup], true);
+
+            if (sorted) {
+                votedGroup = activeGroups.getTail();
+            } else {
+                (, , votedGroup) = activeGroups.get(votedGroup);
             }
         }
 

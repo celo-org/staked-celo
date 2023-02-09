@@ -87,4 +87,8 @@ contract MockManager is IManager {
     function toStakedCelo(uint256 celoAmount) public view returns (uint256) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function getReceivableVotesForGroup(address group) public view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
