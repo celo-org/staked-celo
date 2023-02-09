@@ -714,7 +714,7 @@ export async function getOrderedActiveGroups(
 }
 
 export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
-  const length = await defaultStrategyContract.getUnsortedGroupsLength();
+  const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
 
   const unsortedGroupsPromises = [];
 

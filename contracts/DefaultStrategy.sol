@@ -348,7 +348,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Returns the number of active groups.
-     * @return The length of active groups.
+     * @return The number of active groups.
      */
     function getNumberOfGroups() external view returns (uint256) {
         return activeGroups.getNumElements();
@@ -356,22 +356,22 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Returns previous and next address of key.
-     * @param key The key of searched group.
+     * @param group The group address.
      * @return previousAddress The previous address.
      * @return nextAddress The next address.
      */
-    function getGroupPreviousAndNext(address key)
+    function getGroupPreviousAndNext(address group)
         external
         view
         returns (address previousAddress, address nextAddress)
     {
-        (, previousAddress, nextAddress) = activeGroups.get(key);
+        (, previousAddress, nextAddress) = activeGroups.get(group);
     }
 
     /**
      * @notice Returns head and previous address of head.
-     * @return head The head of groups.
-     * @return previousAddress The previous address.
+     * @return head The address of the sorted group with most votes.
+     * @return previousAddress The previous address from head.
      */
     function getGroupsHead() external view returns (address head, address previousAddress) {
         head = activeGroups.getHead();
@@ -380,8 +380,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Returns tail and next address of tail.
-     * @return tail The tail of groups.
-     * @return nextAddress The previous address.
+     * @return tail The address of the sorted group with least votes.
+     * @return nextAddress The next address after tail.
      */
     function getGroupsTail() external view returns (address tail, address nextAddress) {
         tail = activeGroups.getTail();
@@ -392,21 +392,21 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Returns whether active groups contain group.
      * @return Whether or not the given group is active.
      */
-    function groupsContain(address group) external view returns (bool) {
+    function isActive(address group) external view returns (bool) {
         return activeGroups.contains(group);
     }
 
     /**
-     * @notice Returns the length of unsorted groups.
-     * @return The length of unsorted groups.
+     * @notice Returns the number of unsorted groups.
+     * @return The number of unsorted groups.
      */
-    function getUnsortedGroupsLength() external view returns (uint256) {
+    function getNumberOfUnsortedGroups() external view returns (uint256) {
         return unsortedGroups.length();
     }
 
     /**
      * @notice Returns the unsorted group at index.
-     * @param index The index of the unsorted group.
+     * @param index The index to look up.
      * @return The group.
      */
     function getUnsortedGroupAt(uint256 index) external view returns (address) {
@@ -435,7 +435,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Rebalances CELO between groups that have an incorrect CELO-stCELO ratio.
-     * FromGroup is required to have more CELO than it should and ToGroup needs
+     * `fromGroup` is required to have more CELO than it should and `toGroup` needs
      * to have less CELO than it should.
      * @param fromGroup The from group.
      * @param toGroup The to group.
@@ -474,15 +474,18 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         updateGroupStCelo(fromGroup, toMove, false);
         updateGroupStCelo(toGroup, toMove, true);
         if (sorted) {
-            (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroupsWithdrawal(
-                fromGroup,
-                stCeloInGroup[fromGroup]
-            );
+            (address lesserKey, address greaterKey) = activeGroups
+                .getLesserAndGreaterOfDecreasedKey(
+                    fromGroup,
+                    stCeloInGroup[fromGroup],
+                    sortingLoopLimit
+                );
             if (lesserKey != greaterKey) {
                 activeGroups.update(fromGroup, stCeloInGroup[fromGroup], lesserKey, greaterKey);
-                (lesserKey, greaterKey) = getLesserAndGreaterOfActiveGroupsDeposit(
+                (lesserKey, greaterKey) = activeGroups.getLesserAndGreaterOfIncreasedKey(
                     toGroup,
-                    stCeloInGroup[toGroup]
+                    stCeloInGroup[toGroup],
+                    sortingLoopLimit
                 );
                 if (lesserKey != greaterKey) {
                     activeGroups.update(toGroup, stCeloInGroup[toGroup], lesserKey, greaterKey);
@@ -496,10 +499,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Returns expected stCELO vs actual stCELO for group.
+     * @notice Returns expected stCELO and actual stCELO for group.
      * @param group The group.
-     * @return expectedStCelo The stCELO which group should have.
-     * @return actualStCelo The stCELO which group has.
+     * @return expectedStCelo The amount of stCELO that group should have.
+     * (The total amount of stCELO in the default strategy divided by the number of active groups.)
+     * @return actualStCelo The amount of stCELO which is currently
+     * assigned to group in the strategy.
      */
     function getExpectedAndActualStCeloForGroup(address group)
         public
@@ -507,10 +512,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         returns (uint256 expectedStCelo, uint256 actualStCelo)
     {
         address head = activeGroups.getHead();
-        expectedStCelo = totalStCeloInStrategy / activeGroups.getNumElements();
+        uint256 numberOfActiveGroups = activeGroups.getNumElements();
+        expectedStCelo = totalStCeloInStrategy / numberOfActiveGroups;
         if (group == head) {
             uint256 divisionResidue = totalStCeloInStrategy -
-                (expectedStCelo * activeGroups.getNumElements());
+                (expectedStCelo * numberOfActiveGroups);
             expectedStCelo += divisionResidue;
         }
 
@@ -544,9 +550,17 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         bool withdrawal
     ) internal view returns (address previous, address next) {
         if (withdrawal) {
-            (previous, next) = getLesserAndGreaterOfActiveGroupsWithdrawal(originalKey, newValue);
+            (previous, next) = activeGroups.getLesserAndGreaterOfDecreasedKey(
+                originalKey,
+                newValue,
+                sortingLoopLimit
+            );
         } else {
-            (previous, next) = getLesserAndGreaterOfActiveGroupsDeposit(originalKey, newValue);
+            (previous, next) = activeGroups.getLesserAndGreaterOfIncreasedKey(
+                originalKey,
+                newValue,
+                sortingLoopLimit
+            );
         }
     }
 
@@ -667,55 +681,5 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             finalGroups[i] = groups[i];
             finalVotes[i] = votes[i];
         }
-    }
-
-    function getLesserAndGreaterOfActiveGroupsDeposit(address originalKey, uint256 newValue)
-        private
-        view
-        returns (address previous, address next)
-    {
-        uint256 loopLimit = sortingLoopLimit;
-        address originalKeyPrevious;
-        previous = originalKey;
-        (, originalKeyPrevious, next) = activeGroups.get(originalKey);
-
-        while (next != address(0) && loopLimit != 0) {
-            if (newValue <= activeGroups.getValue(next)) {
-                break;
-            }
-            previous = next;
-            (, , next) = activeGroups.get(previous);
-            loopLimit--;
-        }
-
-        if (loopLimit == 0) {
-            return (address(0), address(0));
-        }
-
-        previous = previous == originalKey ? originalKeyPrevious : previous;
-    }
-
-    function getLesserAndGreaterOfActiveGroupsWithdrawal(address originalKey, uint256 newValue)
-        private
-        view
-        returns (address previous, address next)
-    {
-        uint256 loopLimit = sortingLoopLimit;
-        address originalKeyNext;
-        next = originalKey;
-        (, previous, originalKeyNext) = activeGroups.get(originalKey);
-        while (previous != address(0) && loopLimit != 0) {
-            if (newValue >= activeGroups.getValue(previous)) {
-                break;
-            }
-            next = previous;
-            (, previous, ) = activeGroups.get(next);
-            loopLimit--;
-        }
-        if (loopLimit == 0) {
-            return (address(0), address(0));
-        }
-
-        next = next == originalKey ? originalKeyNext : next;
     }
 }

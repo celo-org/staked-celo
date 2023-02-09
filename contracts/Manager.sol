@@ -388,7 +388,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
-        if (!defaultStrategy.groupsContain(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
+        if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
             // rebalancing to deprecated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
@@ -475,7 +475,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
         bool isSpecificGroupStrategy = specificGroupStrategy.isStrategy(group);
-        bool isActiveGroup = defaultStrategy.groupsContain(group);
+        bool isActiveGroup = defaultStrategy.isActive(group);
         actualCelo = account.getCeloForGroup(group);
 
         uint256 stCELOFromSpecificStrategy;
@@ -582,7 +582,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Distributes withdrawals according to chosen strategy.
      * @param stCeloAmount The amount of stCELO to be withdrawn.
-     * @param strategy The strategy that will be used for withdrawal distribution
+     * @param strategy The strategy that will be used for withdrawal distribution.
      * @param isTransfer Whether or not withdrawal is calculated for transfer.
      * CELO.
      **/
