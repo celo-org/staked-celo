@@ -140,7 +140,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error HealthyGroup(address group);
 
     /**
-     * @notice Used when attempting to deposit when there are not active groups
+     * @notice Used when attempting to deposit when there are no active groups
      * to vote for.
      */
     error NoActiveGroups();
