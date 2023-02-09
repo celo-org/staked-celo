@@ -449,13 +449,6 @@ describe("DefaultStrategy", () => {
         }
       });
 
-      it("cannot add another group", async () => {
-        const [head] = await defaultStrategyContract.getGroupsHead();
-        await expect(
-          defaultStrategyContract.activateGroup(additionalGroup.address, ADDRESS_ZERO, head)
-        ).revertedWith("MaxGroupsVotedForReached()");
-      });
-
       it("can add another group when enabled in Election contract", async () => {
         const accountAddress = account.address;
         const sendFundsTx = await nonOwner.sendTransaction({
@@ -498,13 +491,6 @@ describe("DefaultStrategy", () => {
           }
 
           await account.setCeloForGroup(groupAddresses[7], 100);
-        });
-
-        it("cannot add another group", async () => {
-          const [head] = await defaultStrategyContract.getGroupsHead();
-          await expect(
-            defaultStrategyContract.activateGroup(additionalGroup.address, ADDRESS_ZERO, head)
-          ).revertedWith("MaxGroupsVotedForReached()");
         });
 
         it("reactivates a deactivated group", async () => {

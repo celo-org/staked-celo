@@ -120,13 +120,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error GroupNotEligible(address group);
 
     /**
-     * @notice Used when attempting to activate a group when the maximum number
-     * of groups voted (as allowed by the Election contract) is already being
-     * voted for.
-     */
-    error MaxGroupsVotedForReached();
-
-    /**
      * @notice Used when attempting to deactivate a group that is not active.
      * @param group The group's address.
      */
@@ -288,9 +281,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * or 0 if `group` has the fewest votes of any validator group.
      * @param greater The group receiving more votes (in default strategy) than `group`,
      *  or 0 if `group` has the most votes of any validator group.
-     * @dev Fails if the maximum number of groups are already being voted for by
-     * the Account smart contract (as per the `maxNumGroupsVotedFor` in the
-     * Election contract).
      */
     function activateGroup(
         address group,
@@ -303,14 +293,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
         if (activeGroups.contains(group)) {
             revert GroupAlreadyAdded(group);
-        }
-
-        if (
-            (specificGroupStrategy.getNumberOfStrategies() + activeGroups.getNumElements()) >=
-            getElection().maxNumGroupsVotedFor() &&
-            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
-        ) {
-            revert MaxGroupsVotedForReached();
         }
 
         // For migration purposes between V1 and V2. It can be removed once migrated to V2.
