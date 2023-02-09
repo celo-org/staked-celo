@@ -193,14 +193,9 @@ library AddressSortedLinkedList {
       view
       returns (address previous, address next)
   {
-      address originalKeyPrevious;
-      previous = group;
-      (, originalKeyPrevious, next) = get(list, group);
+      (, previous, next) = get(list, group);
 
-      while (next != address(0) && loopLimit != 0) {
-          if (newValue <= getValue(list, next)) {
-              break;
-          }
+      while (next != address(0) && loopLimit != 0 && newValue > getValue(list, next)) {
           previous = next;
           (, , next) = get(list, previous);
           loopLimit--;
@@ -209,8 +204,6 @@ library AddressSortedLinkedList {
       if (loopLimit == 0) {
           return (address(0), address(0));
       }
-
-      previous = previous == group ? originalKeyPrevious : previous;
   }
 
    /**
@@ -230,13 +223,8 @@ library AddressSortedLinkedList {
       view
       returns (address previous, address next)
   {
-      address originalKeyNext;
-      next = group;
-      (, previous, originalKeyNext) = get(list, group);
-      while (previous != address(0) && loopLimit != 0) {
-          if (newValue >= getValue(list, previous)) {
-              break;
-          }
+      (, previous, next) = get(list, group);
+      while (previous != address(0) && loopLimit != 0 && newValue < getValue(list, previous)) {
           next = previous;
           (, previous, ) = get(list, next);
           loopLimit--;
@@ -244,8 +232,6 @@ library AddressSortedLinkedList {
       if (loopLimit == 0) {
           return (address(0), address(0));
       }
-
-      next = next == group ? originalKeyNext : next;
   }
 
   function toBytes(address a) public pure returns (bytes32) {
