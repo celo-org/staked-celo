@@ -4,13 +4,13 @@ pragma solidity 0.8.11;
 interface ISpecificGroupStrategy {
     function calculateAndUpdateForWithdrawal(
         address strategy,
-        uint256 celoWitdrawalAmount,
+        uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 
     function calculateAndUpdateForWithdrawalTransfer(
         address strategy,
-        uint256 celoWitdrawalAmount,
+        uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external returns (address[] memory groups, uint256[] memory votes);
 

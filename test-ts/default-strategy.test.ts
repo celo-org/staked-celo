@@ -1198,7 +1198,7 @@ describe("DefaultStrategy", () => {
       await expect(
         defaultStrategyContract
           .connect(nonManager)
-          .generateVoteDistribution(10, false, ADDRESS_ZERO)
+          .generateVoteDistribution(false, 10, ADDRESS_ZERO)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });

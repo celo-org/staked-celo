@@ -291,24 +291,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
         uint256 votesToBeScheduledForSpecificStrategy;
 
-        if (
-            (specificGroupStrategies.length() + defaultStrategy.getNumberOfGroups()) >=
-            getElection().maxNumGroupsVotedFor() &&
-            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
-        ) {
-            // if voting for more groups than allowed
-            // we will overflow everything to default strategy
-            votesToBeScheduledForSpecificStrategy = 0;
-        } else {
-            uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
-            votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
-        }
+        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
+        votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
 
         votes -= votesToBeScheduledForSpecificStrategy;
         if (votes > 0) {
             // overflow
             (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
-                .generateVoteDistribution(votes, false, strategy);
+                .generateVoteDistribution(false, votes, strategy);
             updateOverflowGroup(strategy, votes, true);
             finalGroups = new address[](groups.length + 1);
             finalVotes = new uint256[](groups.length + 1);
@@ -403,14 +393,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function
      * @param strategy The validator group that we want to withdraw from.
-     * @param celoWitdrawalAmount The amount of stCELO to withdraw.
+     * @param celoWithdrawalAmount The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
     function calculateAndUpdateForWithdrawalTransfer(
         // TODO: add tests
         address strategy,
-        uint256 celoWitdrawalAmount,
+        uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
         if (specificGroupStrategies.length() == 0) {
@@ -424,13 +414,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 overflowingStCelo = stCeloInStrategyOverflown[strategy];
         if (overflowingStCelo > 0) {
             uint256 overflowingCelo = IManager(manager).toCelo(overflowingStCelo);
-            uint256 celoToBeMovedFromOverflow = Math.min(celoWitdrawalAmount, overflowingCelo);
+            uint256 celoToBeMovedFromOverflow = Math.min(celoWithdrawalAmount, overflowingCelo);
             (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
-                .generateVoteDistribution(celoToBeMovedFromOverflow, true, address(0));
+                .generateVoteDistribution(true, celoToBeMovedFromOverflow, address(0));
             uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(celoToBeMovedFromOverflow);
             updateOverflowGroup(strategy, stCeloToBeMoved, false);
-            celoWitdrawalAmount -= celoToBeMovedFromOverflow;
-            if (celoWitdrawalAmount > 0) {
+            celoWithdrawalAmount -= celoToBeMovedFromOverflow;
+            if (celoWithdrawalAmount > 0) {
                 groups = new address[](overflowGroups.length + 1);
                 votes = new uint256[](overflowGroups.length + 1);
                 for (uint256 i = 0; i < overflowGroups.length; i++) {
@@ -438,7 +428,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                     votes[i] = overflowVotes[i];
                 }
                 groups[overflowGroups.length] = strategy;
-                votes[overflowGroups.length] = celoWitdrawalAmount;
+                votes[overflowGroups.length] = celoWithdrawalAmount;
             } else {
                 groups = overflowGroups;
                 votes = overflowVotes;
@@ -447,7 +437,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             groups = new address[](1);
             votes = new uint256[](1);
             groups[0] = strategy;
-            votes[0] = celoWitdrawalAmount;
+            votes[0] = celoWithdrawalAmount;
         }
 
         updateGroupStCelo(strategy, stCeloWithdrawalAmount, false);

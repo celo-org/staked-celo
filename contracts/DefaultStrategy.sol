@@ -265,8 +265,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @return finalVotes The votes of chosen finalGroups.
      */
     function generateVoteDistribution(
-        uint256 celoAmount,
         bool withdraw,
+        uint256 celoAmount,
         address depositGroupToIgnore
     )
         external

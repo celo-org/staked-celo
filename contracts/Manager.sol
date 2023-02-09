@@ -654,8 +654,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             );
         } else {
             (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(
-                votes,
                 false,
+                votes,
                 address(0)
             );
         }
@@ -712,8 +712,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 );
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
-                celoAmount,
                 true,
+                celoAmount,
                 address(0)
             );
         }

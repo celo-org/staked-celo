@@ -169,7 +169,6 @@ export async function activateValidators(
   groupAddresses: string[]
 ) {
   let [nextGroup] = await defaultStrategyContract.getGroupsTail();
-  console.log("tail", nextGroup);
   for (let i = 0; i < 3; i++) {
     const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
     if (!isGroupValid) {
@@ -455,7 +454,7 @@ export async function revokeTest(deployerAccountName = "deployer") {
       useNodeAccount: true,
     });
   } catch (error) {
-    throw Error(`Activate and vote failed! ${JSON.stringify(error)}`);
+    throw Error(`Revoke failed! ${JSON.stringify(error)}`);
   }
 }
 

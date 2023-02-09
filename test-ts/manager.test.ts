@@ -1079,7 +1079,6 @@ describe("Manager", () => {
       let originalOverflow: BigNumber;
 
       beforeEach(async () => {
-        // For more info about these numbers check comment above
         await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
 
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
@@ -2325,9 +2324,6 @@ describe("Manager", () => {
         const firstGroupCapacity = parseUnits("40.166666666666666666");
         beforeEach(async () => {
           await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity.mul(2));
-          // const [tail] = await defaultStrategyContract.getGroupsTail()
-          // expect(tail).to.eq(groupAddresses[0])
-          // await manager.connect(depositor).deposit({value: firstGroupCapacity})
         });
 
         it("should revert when from group has no scheduled votes", async () => {
