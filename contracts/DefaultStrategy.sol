@@ -473,29 +473,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
         updateGroupStCelo(fromGroup, toMove, false);
         updateGroupStCelo(toGroup, toMove, true);
-        if (sorted) {
-            (address lesserKey, address greaterKey) = activeGroups
-                .getLesserAndGreaterOfDecreasedKey(
-                    fromGroup,
-                    stCeloInGroup[fromGroup],
-                    sortingLoopLimit
-                );
-            if (lesserKey != greaterKey) {
-                activeGroups.update(fromGroup, stCeloInGroup[fromGroup], lesserKey, greaterKey);
-                (lesserKey, greaterKey) = activeGroups.getLesserAndGreaterOfIncreasedKey(
-                    toGroup,
-                    stCeloInGroup[toGroup],
-                    sortingLoopLimit
-                );
-                if (lesserKey != greaterKey) {
-                    activeGroups.update(toGroup, stCeloInGroup[toGroup], lesserKey, greaterKey);
-                    return;
-                }
-            }
-            sorted = false;
-        }
-        unsortedGroups.add(toGroup);
-        unsortedGroups.add(fromGroup);
+
+        trySort(fromGroup, stCeloInGroup[fromGroup], false);
+        trySort(toGroup, stCeloInGroup[toGroup], true);
     }
 
     /**
@@ -651,17 +631,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
                 !withdraw
             );
 
-            (address lesserKey, address greaterKey) = getLesserAndGreaterOfActiveGroups(
-                votedGroup,
-                stCeloInGroup[votedGroup],
-                withdraw
-            );
-            if ((lesserKey != greaterKey || activeGroups.getNumElements() == 1) && sorted) {
-                activeGroups.update(votedGroup, stCeloInGroup[votedGroup], lesserKey, greaterKey);
+            trySort(votedGroup, stCeloInGroup[votedGroup], !withdraw);
+
+            if (sorted) {
                 votedGroup = withdraw ? activeGroups.getHead() : activeGroups.getTail();
             } else {
-                unsortedGroups.add(votedGroup);
-                sorted = false;
                 if (withdraw) {
                     (, votedGroup, ) = activeGroups.get(votedGroup);
                 } else {
@@ -680,6 +654,34 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         for (uint256 i = 0; i < groupsIndex; i++) {
             finalGroups[i] = groups[i];
             finalVotes[i] = votes[i];
+        }
+    }
+
+    /**
+     * Try to sort group in active groups based on new value.
+     * @param group The group address.
+     * @param newValue The new value of group.
+     * @param valueIncreased Whether value increased/decreased compared to original value.
+     */
+    function trySort(
+        address group,
+        uint256 newValue,
+        bool valueIncreased
+    ) private {
+        if (unsortedGroups.contains(group)) {
+            return;
+        }
+
+        (address lesserKey, address greaterKey) = valueIncreased
+            ? activeGroups.getLesserAndGreaterOfIncreasedKey(group, newValue, sortingLoopLimit)
+            : activeGroups.getLesserAndGreaterOfDecreasedKey(group, newValue, sortingLoopLimit);
+        if (lesserKey != greaterKey || activeGroups.getNumElements() == 1) {
+            activeGroups.update(group, newValue, lesserKey, greaterKey);
+        } else {
+            if (sorted) {
+                sorted = false;
+            }
+            unsortedGroups.add(group);
         }
     }
 }
