@@ -224,7 +224,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Set maximum number of group to distribute votes to.
+     * @notice Set distribution/withdrawal algorithm parameters.
      * @param distributeTo The distibute to value.
      * @param withdrawFrom The withdraw from value.
      * @param loopLimit The sorting loop limit while sorting on chain.
