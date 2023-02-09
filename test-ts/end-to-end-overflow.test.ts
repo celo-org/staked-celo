@@ -176,7 +176,7 @@ describe("e2e overflow test", () => {
       BigNumber.from("0")
     );
 
-    const [tail] = await defaultStrategy.getActiveGroupsTail();
+    const [tail] = await defaultStrategy.getGroupsTail();
     expect(tail).to.eq(groups[2].address);
 
     await managerContract.connect(depositor1).deposit({ value: firstGroupCapacity });
@@ -203,7 +203,7 @@ describe("e2e overflow test", () => {
     );
     await expectAccountVotes(groups[2].address, overflow, BigNumber.from(0), BigNumber.from(0));
 
-    const [head] = await defaultStrategy.getActiveGroupsHead();
+    const [head] = await defaultStrategy.getGroupsHead();
 
     await managerContract
       .connect(depositor1)
@@ -224,7 +224,7 @@ describe("e2e overflow test", () => {
     );
     await expectAccountVotes(head, BigNumber.from(0), BigNumber.from(0), BigNumber.from(0));
 
-    const [newTail] = await defaultStrategy.getActiveGroupsTail();
+    const [newTail] = await defaultStrategy.getGroupsTail();
     await managerContract
       .connect(depositor1)
       .changeStrategy(specificGroupStrategySameAsActive.address);

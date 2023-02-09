@@ -38,10 +38,6 @@ contract MockManager is IManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function removeDeprecatedGroup(address group) external returns (bool) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
         address[] calldata toGroups,
@@ -64,15 +60,7 @@ contract MockManager is IManager {
         return lockedStCelo;
     }
 
-    function getActiveGroupsLength() external view returns (uint256) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function toCelo(uint256 stCeloAmount) external view returns (uint256) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function activeGroupsContain(address group) external view returns (bool) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

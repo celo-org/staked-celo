@@ -11,11 +11,11 @@ export async function revoke(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
   const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
-  // Use deprecated and active groups to get the full list of groups with potential withdrawals.
+  // Use active groups to get the full list of groups with potential withdrawals.
   const activeGroups = await getDefaultGroupsSafe(defaultStrategy)
-  const allowedStrategies: [] = await specificGroupStrategy.getSpecificGroupStrategies();
+  const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategy)
   const groupList = new Set(
-    activeGroups.concat(allowedStrategies)
+    activeGroups.concat(specificStrategies)
   ).values();
   taskLogger.debug("groupList:", groupList);
 
@@ -134,15 +134,26 @@ async function findAddressIndex(
 export async function getDefaultGroupsSafe(
   defaultStrategy: Contract
 ) : Promise<string[]> {
-  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsLength();
-  let [key] = await defaultStrategy.getActiveGroupsHead();
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
+  let [key] = await defaultStrategy.getGroupsHead();
 
   const activeGroups = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
     activeGroups.push(key);
-    [key] = await defaultStrategy.getActiveGroupPreviousAndNext(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
   }
 
   return activeGroups
+}
+
+export async function getSpecificGroupsSafe(specificGroupStrategy: Contract): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const specificGroupsPromises = [];
+
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+  }
+
+  return Promise.all(specificGroupsPromises);
 }

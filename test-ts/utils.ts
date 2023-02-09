@@ -168,7 +168,7 @@ export async function activateValidators(
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  let [nextGroup] = await defaultStrategyContract.getActiveGroupsTail();
+  let [nextGroup] = await defaultStrategyContract.getGroupsTail();
   console.log("tail", nextGroup);
   for (let i = 0; i < 3; i++) {
     const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
@@ -471,26 +471,30 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getDefaultGroupsSafe(defaultStrategy: DefaultGroupContract) {
-  const activeGroupsLengthPromise = defaultStrategy.getActiveGroupsNumber();
-  let [key] = await defaultStrategy.getActiveGroupsHead();
+export async function getDefaultGroupsSafe(
+  defaultStrategy: DefaultGroupContract
+): Promise<string[]> {
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
+  let [key] = await defaultStrategy.getGroupsHead();
 
   const activeGroups = [];
 
   for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
     activeGroups.push(key);
-    [key] = await defaultStrategy.getActiveGroupPreviousAndNext(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
   }
 
   return activeGroups;
 }
 
-export async function getSpecificGroupsSafe(specificGroupStrategy: SpecificGroupStrategy) {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getSpecificGroupStrategiesNumber();
+export async function getSpecificGroupsSafe(
+  specificGroupStrategy: SpecificGroupStrategy
+): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
+    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
   }
 
   return Promise.all(specificGroupsPromises);
@@ -512,7 +516,7 @@ export async function getGroupsOfAllStrategies(
 export async function getBlockedSpecificGroupStrategies(
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const blockedStrategiesLength = await specificGroupStrategy.getBlockedStrategiesNumber();
+  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedStrategies();
   const promises: Promise<string>[] = [];
   for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
     promises.push(specificGroupStrategy.getBlockedStrategy(i));
@@ -706,12 +710,12 @@ export async function getOrderedActiveGroups(
   defaultStrategyContract: MockDefaultStrategy,
   account?: Account
 ): Promise<OrderedGroup[]> {
-  let [head] = await defaultStrategyContract.getActiveGroupsHead();
+  let [head] = await defaultStrategyContract.getGroupsHead();
   const groupsForLog = [];
 
-  for (let i = 0; i < (await defaultStrategyContract.getActiveGroupsNumber()).toNumber(); i++) {
-    const [prev] = await defaultStrategyContract.getActiveGroupPreviousAndNext(head);
-    const stCelo = await defaultStrategyContract.stCELOInGroup(head);
+  for (let i = 0; i < (await defaultStrategyContract.getNumberOfGroups()).toNumber(); i++) {
+    const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
+    const stCelo = await defaultStrategyContract.stCeloInGroup(head);
     const realCelo = await account?.getCeloForGroup(head);
     groupsForLog.unshift({
       group: head,
@@ -724,7 +728,7 @@ export async function getOrderedActiveGroups(
 }
 
 export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
-  const length = await defaultStrategyContract.getUnsortedGroupsLength();
+  const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
 
   const unsortedGroupsPromises = [];
 
@@ -755,7 +759,7 @@ export async function prepareOverflow(
   const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
 
   for (let i = 2; i >= 0; i--) {
-    const [head] = await defaultStrategyContract.getActiveGroupsHead();
+    const [head] = await defaultStrategyContract.getGroupsHead();
     if (activateGroups) {
       await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
     }

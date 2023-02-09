@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { formatEther, parseUnits } from "ethers/lib/utils";
+import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { ACCOUNT_REVOKE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
@@ -151,18 +151,6 @@ describe("e2e", () => {
       logLevel: "info",
     });
     await activateAndVoteTest();
-
-    const election = await hre.kit.contracts.getElection();
-    const eligableGroups = election.getEligibleValidatorGroupsVotes();
-    console.log("eligableGroups", JSON.stringify(eligableGroups));
-    console.log("group 0", groups[0].address);
-    for (let i = 0; i < 3; i++) {
-      const votesForGroupByAccount = await election.getTotalVotesForGroupByAccount(
-        groups[i].address,
-        accountContract.address
-      );
-      console.log("votesForGroupByAccount", i, formatEther(votesForGroupByAccount.toString()));
-    }
 
     await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(0);

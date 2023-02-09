@@ -249,25 +249,29 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function.
      * @param strategy The validator group that we want to withdraw from.
-     * @param celoWitdrawalAmount The amount of CELO to withdraw.
+     * @param celoWithdrawalAmount The amount of CELO to withdraw.
      * @param stCeloWithdrawalAmount The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
     function calculateAndUpdateForWithdrawal(
         address strategy,
-        uint256 celoWitdrawalAmount,
+        uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
         (groups, votes) = calculateAndUpdateForWithdrawalTransfer(
             strategy,
-            celoWitdrawalAmount,
+            celoWithdrawalAmount,
             stCeloWithdrawalAmount
         );
 
         uint256 votesRemaining = account.getCeloForGroup(strategy);
-        if (votesRemaining < celoWitdrawalAmount) {
-            revert GroupNotBalancedOrNotEnoughStCelo(strategy, celoWitdrawalAmount, votesRemaining);
+        if (votesRemaining < celoWithdrawalAmount) {
+            revert GroupNotBalancedOrNotEnoughStCelo(
+                strategy,
+                celoWithdrawalAmount,
+                votesRemaining
+            );
         }
     }
 
@@ -288,7 +292,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 votesToBeScheduledForSpecificStrategy;
 
         if (
-            (specificGroupStrategies.length() + defaultStrategy.getActiveGroupsNumber()) >=
+            (specificGroupStrategies.length() + defaultStrategy.getNumberOfGroups()) >=
             getElection().maxNumGroupsVotedFor() &&
             !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
         ) {
@@ -329,7 +333,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group.
      * @return Whether or not is specific group strategy.
      */
-    function isSpecificGroupStrategy(address strategy) external view returns (bool) {
+    function isStrategy(address strategy) external view returns (bool) {
         return specificGroupStrategies.contains(strategy);
     }
 
@@ -338,15 +342,15 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @param strategy The validator group.
      * @return Whether or not is blocked specific group strategy.
      */
-    function isBlockedSpecificGroupStrategy(address strategy) external view returns (bool) {
+    function isBlockedStrategy(address strategy) external view returns (bool) {
         return blockedStrategies.contains(strategy);
     }
 
     /**
-     * @notice Returns the length of blocked group strategies.
+     * @notice Returns the number of blocked group strategies.
      * @return The length of blocked groups.
      */
-    function getBlockedStrategiesNumber() external view returns (uint256) {
+    function getNumberOfBlockedStrategies() external view returns (uint256) {
         return blockedStrategies.length();
     }
 
@@ -359,10 +363,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the length of specific group strategies.
+     * @notice Returns the number of specific group strategies.
      * @return The length of active groups.
      */
-    function getSpecificGroupStrategiesNumber() external view returns (uint256) {
+    function getNumberOfStrategies() external view returns (uint256) {
         return specificGroupStrategies.length();
     }
 
@@ -370,16 +374,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @notice Returns the specific group strategy at index.
      * @return The specific group.
      */
-    function getSpecificGroupStrategy(uint256 index) external view returns (address) {
+    function getStrategy(uint256 index) external view returns (address) {
         return specificGroupStrategies.at(index);
-    }
-
-    /**
-     * @notice Returns the specific group strategies
-     * @return The specific group strategies.
-     */
-    function getSpecificGroupStrategies() external view returns (address[] memory) {
-        return specificGroupStrategies.values();
     }
 
     /**
@@ -542,7 +538,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function _blockStrategy(address group) private {
-        if (defaultStrategy.getActiveGroupsNumber() == 0) {
+        if (defaultStrategy.getNumberOfGroups() == 0) {
             revert NoActiveGroups();
         }
 
