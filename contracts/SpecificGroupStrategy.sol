@@ -482,7 +482,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Returns the specific group total stCELO
+     * @notice Returns the specific group total stCELO.
      * @return total The total stCELO amount.
      * @return overflow The stCELO amount that is overflown to default strategy.
      */
