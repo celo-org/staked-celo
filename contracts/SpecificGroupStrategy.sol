@@ -404,7 +404,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Marks a group as not specific group strategy for voting.
+     * @notice Blocks a group from being added as specific group strategy for voting.
      * @param group The address of the group to remove from the set of specific group
      * strategies.
      */
