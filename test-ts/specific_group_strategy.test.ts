@@ -1,4 +1,3 @@
-import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -6,19 +5,13 @@ import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { MockAccount__factory } from "../typechain-types/factories/MockAccount__factory";
-import { MockLockedGold__factory } from "../typechain-types/factories/MockLockedGold__factory";
-import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
 import { MockStakedCelo__factory } from "../typechain-types/factories/MockStakedCelo__factory";
-import { MockValidators__factory } from "../typechain-types/factories/MockValidators__factory";
 import { MockVote__factory } from "../typechain-types/factories/MockVote__factory";
 import { Manager } from "../typechain-types/Manager";
 import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
-import { MockLockedGold } from "../typechain-types/MockLockedGold";
-import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
-import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import {
@@ -29,15 +22,10 @@ import {
   getDefaultGroupsSafe,
   getImpersonatedSigner,
   getSpecificGroupsSafe,
-  mineToNextEpoch,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
-  REGISTRY_ADDRESS,
-  removeMembersFromGroup,
   resetNetwork,
-  revokeElectionOnMockValidatorGroupsAndUpdate,
-  updateGroupSlashingMultiplier,
 } from "./utils";
 
 after(() => {
@@ -57,11 +45,6 @@ describe("SpecificGroupStrategy", () => {
   let someone: SignerWithAddress;
   let validators: ValidatorsWrapper;
   let owner: SignerWithAddress;
-  let registryContract: MockRegistry;
-  let lockedGoldContract: MockLockedGold;
-  let validatorsContract: MockValidators;
-  let lockedGold: LockedGoldWrapper;
-  let mockSlasher: SignerWithAddress;
   let stakedCelo: MockStakedCelo;
   let voteContract: MockVote;
   let groupHealthContract: MockGroupHealth;
@@ -86,7 +69,6 @@ describe("SpecificGroupStrategy", () => {
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
       defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
       validators = await hre.kit.contracts.getValidators();
-      lockedGold = await hre.kit.contracts.getLockedGold();
 
       [owner] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
@@ -96,23 +78,7 @@ describe("SpecificGroupStrategy", () => {
       [nonManager] = await randomSigner(parseUnits("100"));
       [voter] = await randomSigner(parseUnits("10000000000"));
       [someone] = await randomSigner(parseUnits("100"));
-      [mockSlasher] = await randomSigner(parseUnits("100"));
       [depositor] = await randomSigner(parseUnits("500"));
-
-      const registryFactory: MockRegistry__factory = (
-        await hre.ethers.getContractFactory("MockRegistry")
-      ).connect(owner) as MockRegistry__factory;
-      registryContract = registryFactory.attach(REGISTRY_ADDRESS);
-
-      const lockedGoldFactory: MockLockedGold__factory = (
-        await hre.ethers.getContractFactory("MockLockedGold")
-      ).connect(owner) as MockLockedGold__factory;
-      lockedGoldContract = lockedGoldFactory.attach(lockedGold.address);
-
-      const validatorsFactory: MockValidators__factory = (
-        await hre.ethers.getContractFactory("MockValidators")
-      ).connect(owner) as MockValidators__factory;
-      validatorsContract = validatorsFactory.attach(validators.address);
 
       const stakedCeloFactory: MockStakedCelo__factory = (
         await hre.ethers.getContractFactory("MockStakedCelo")
@@ -396,142 +362,6 @@ describe("SpecificGroupStrategy", () => {
           specificGroupStrategyContract
         );
         expect(blockedGroups).to.have.deep.members([]);
-      });
-    });
-  });
-
-  describe("#blockUnhealthyStrategy()", () => {
-    let deactivatedGroup: SignerWithAddress;
-
-    beforeEach(async () => {
-      deactivatedGroup = groups[1];
-      for (let i = 0; i < 3; i++) {
-        const [head] = await defaultStrategyContract.getGroupsHead();
-        await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
-      }
-
-      await manager.connect(depositor).changeStrategy(groupAddresses[1]);
-      await manager.connect(depositor).deposit({ value: 100 });
-    });
-
-    it("should revert when group is healthy", async () => {
-      await expect(
-        specificGroupStrategyContract.blockUnhealthyStrategy(groupAddresses[1])
-      ).revertedWith(`HealthyGroup("${groupAddresses[1]}")`);
-    });
-
-    describe("when the group is not elected", () => {
-      beforeEach(async () => {
-        await mineToNextEpoch(hre.web3);
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          groupAddresses[1],
-        ]);
-      });
-
-      it("should deactivate group", async () => {
-        await expect(await specificGroupStrategyContract.blockUnhealthyStrategy(groupAddresses[1]))
-          .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(groupAddresses[1]);
-      });
-    });
-
-    describe("when the group is not registered", () => {
-      beforeEach(async () => {
-        await deregisterValidatorGroup(deactivatedGroup);
-        await mineToNextEpoch(hre.web3);
-        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deactivatedGroup.address,
-        ]);
-      });
-
-      it("should deactivate group", async () => {
-        await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
-        )
-          .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(deactivatedGroup.address);
-      });
-    });
-
-    describe("when the group has no members", () => {
-      // if voting for a group that has no members, I get no rewards.
-      beforeEach(async () => {
-        await removeMembersFromGroup(deactivatedGroup);
-        await mineToNextEpoch(hre.web3);
-        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deactivatedGroup.address,
-        ]);
-      });
-
-      it("should deactivate group", async () => {
-        await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
-        )
-          .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(deactivatedGroup.address);
-      });
-    });
-
-    describe("when group has 3 validators, but only 1 is elected.", () => {
-      let validatorGroupWithThreeValidators: SignerWithAddress;
-      beforeEach(async () => {
-        [validatorGroupWithThreeValidators] = await randomSigner(parseUnits("40000"));
-        const memberCount = 3;
-        await registerValidatorGroup(validatorGroupWithThreeValidators, memberCount);
-
-        const electedValidatorIndex = 0;
-
-        for (let i = 0; i < memberCount; i++) {
-          const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-          await registerValidatorAndAddToGroupMembers(
-            validatorGroupWithThreeValidators,
-            validator,
-            validatorWallet
-          );
-
-          if (i === memberCount - 1) {
-            await groupHealthContract.setElectedValidator(electedValidatorIndex, validator.address);
-          }
-        }
-        await groupHealthContract.updateGroupHealth(validatorGroupWithThreeValidators.address);
-        const [head] = await defaultStrategyContract.getGroupsHead();
-        await defaultStrategyContract.activateGroup(
-          validatorGroupWithThreeValidators.address,
-          ADDRESS_ZERO,
-          head
-        );
-      });
-
-      it("should revert with Healthy group message", async () => {
-        await expect(
-          specificGroupStrategyContract.blockUnhealthyStrategy(
-            validatorGroupWithThreeValidators.address
-          )
-        ).revertedWith(`HealthyGroup("${validatorGroupWithThreeValidators.address}")`);
-      });
-    });
-
-    describe("when the group is slashed", () => {
-      beforeEach(async () => {
-        await updateGroupSlashingMultiplier(
-          registryContract,
-          lockedGoldContract,
-          validatorsContract,
-          deactivatedGroup,
-          mockSlasher
-        );
-        await mineToNextEpoch(hre.web3);
-        await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          deactivatedGroup.address,
-        ]);
-      });
-
-      it("should deactivate group", async () => {
-        await expect(
-          await specificGroupStrategyContract.blockUnhealthyStrategy(deactivatedGroup.address)
-        )
-          .to.emit(specificGroupStrategyContract, "StrategyBlocked")
-          .withArgs(groupAddresses[1]);
       });
     });
   });

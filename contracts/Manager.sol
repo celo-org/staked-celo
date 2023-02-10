@@ -610,7 +610,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param stCeloAmount The amount of stCELO to be withdrawn.
      * @param strategy The strategy that will be used for withdrawal distribution.
      * @param isTransfer Whether or not withdrawal is calculated for transfer.
-     * CELO.
      **/
     function distributeWithdrawals(
         uint256 stCeloAmount,

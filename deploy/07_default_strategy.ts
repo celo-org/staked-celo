@@ -15,7 +15,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
   const libInstance = await lib.deploy();
   await libInstance.deployed();
-  console.log("Library Address--->" + libInstance.address);
 
   const isDefaultStrategyAlreadyDeployed = await hre.deployments.getOrNull("DefaultStrategy");
 

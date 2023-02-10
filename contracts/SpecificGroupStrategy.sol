@@ -140,12 +140,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error NoGroups();
 
     /**
-     * @notice Used when attempting to block a healthy group using `blockUnhealthyStrategy`.
-     * @param group The group's address.
-     */
-    error HealthyGroup(address group);
-
-    /**
      * @notice Used when attempting to allow a strategy when the maximum number
      * of groups voted (as allowed by the Election contract) is already being
      * voted for.
@@ -210,17 +204,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function blockStrategy(address group) external onlyOwner {
-        _blockStrategy(group);
-    }
-
-    /**
-     * @notice Blocks unhealthy group.
-     * @param group The group to block if unhealthy.
-     */
-    function blockUnhealthyStrategy(address group) external {
-        if (groupHealth.isGroupValid(group)) {
-            revert HealthyGroup(group);
-        }
         _blockStrategy(group);
     }
 
