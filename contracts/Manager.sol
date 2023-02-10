@@ -446,7 +446,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * are scheduled for the group, this function allows to transfer these
      * votes to any active group in protocol that is not overflowing yet.
      * @param fromGroup The group to unschedule votes from.
-     * @param toGroup The to group.
+     * @param toGroup The group to schedule votes to.
      */
     function rebalanceOverflow(address fromGroup, address toGroup) public {
         if (!defaultStrategy.isActive(toGroup)) {
