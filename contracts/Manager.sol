@@ -105,7 +105,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error CallerNotStrategy(address caller);
 
     /**
-     * @notice Used when rebalancing to not active nor specific group.
+     * @notice Used when rebalancing to non-active nor specific group.
      * @param group The group's address.
      */
     error InvalidToGroup(address group);
