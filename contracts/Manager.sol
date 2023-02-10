@@ -105,7 +105,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error CallerNotStrategy(address caller);
 
     /**
-     * @notice Used when rebalancing to not active nor specific group.
+     * @notice Used when rebalancing to non-active nor specific group.
      * @param group The group's address.
      */
     error InvalidToGroup(address group);
@@ -480,13 +480,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Allows strategy to initiate transfer without any checks.
-     * This method is supopsed to be used for transfers between groups
+     * This method is supposed to be used for transfers between groups
      * only within strategy
      * @param fromGroups The groups the deposited CELO is intended to be revoked from.
      * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
      * @param toGroups The groups the transferred CELO is intended to vote for.
-     * @param toVotes The amount of CELO to schedule for each respective group
-     * from `toGroups`.
+     * @param toVotes The amount of CELO to schedule for each respective `toGroups`.
      */
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
@@ -683,7 +682,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param stCeloAmount The amount of stCELO to be withdrawn.
      * @param strategy The strategy that will be used for withdrawal distribution.
      * @param isTransfer Whether or not withdrawal is calculated for transfer.
-     * CELO.
      **/
     function distributeWithdrawals(
         uint256 stCeloAmount,

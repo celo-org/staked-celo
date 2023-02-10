@@ -37,7 +37,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Total stCELO that was voted with on specific group strategies (including overflows).
-     * To get the actual stCelo in specific strategy
+     * @dev To get the actual stCelo in specific strategy
      * it is necessary to subtract `totalStCeloOverflow`.
      */
     uint256 public totalStCeloLocked;
@@ -147,12 +147,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error NoGroups();
 
     /**
-     * @notice Used when attempting to block a healthy group using `blockUnhealthyStrategy`.
-     * @param group The group's address.
-     */
-    error HealthyGroup(address group);
-
-    /**
      * @notice Used when attempting to allow a strategy when the maximum number
      * of groups voted (as allowed by the Election contract) is already being
      * voted for.
@@ -230,17 +224,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * strategies.
      */
     function blockStrategy(address group) external onlyOwner {
-        _blockStrategy(group);
-    }
-
-    /**
-     * @notice Blocks unhealthy group.
-     * @param group The group to block if unhealthy.
-     */
-    function blockUnhealthyStrategy(address group) external {
-        if (groupHealth.isGroupValid(group)) {
-            revert HealthyGroup(group);
-        }
         _blockStrategy(group);
     }
 
@@ -523,7 +506,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Marks a group as not specific group strategy for voting.
+     * @notice Blocks a group from being added as specific group strategy for voting.
      * @param group The address of the group to remove from the set of specific group
      * strategies.
      */
