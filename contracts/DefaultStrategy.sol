@@ -645,7 +645,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
      * @notice Distributes votes by computing the number of votes each active
      * group should receive.
      * @param celoAmount The amount of votes to distribute.
-     * @param depositGroupToIgnore The group that will not be used for deposit
+     * @param depositGroupToIgnore The group that will not be used for deposit.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
