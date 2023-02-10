@@ -422,8 +422,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param fromGroups The groups the deposited CELO is intended to be revoked from.
      * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
      * @param toGroups The groups the transferred CELO is intended to vote for.
-     * @param toVotes The amount of CELO to schedule for each respective group
-     * from `toGroups`.
+     * @param toVotes The amount of CELO to schedule for each respective `toGroups`.
      */
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
