@@ -103,7 +103,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * Emmited when sorted status of active groups was changed
-     * @param update The new value
+     * @param update The new value.
      */
     event SortedFlagUpdated(bool update);
 
