@@ -276,10 +276,28 @@ describe("Manager", () => {
           await account.setTotalCelo(0);
         });
 
-        it("mints CELO 1:1 with stCELO", async () => {
-          await manager.connect(depositor).deposit({ value: 100 });
-          const stCelo = await stakedCelo.balanceOf(depositor.address);
-          expect(stCelo).to.eq(100);
+        describe("When it mints CELO 1:1 with stCELO", () => {
+          let tail: string;
+          beforeEach(async () => {
+            [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager.connect(depositor).deposit({ value: 100 });
+          });
+
+          it("should have correct stCELO balance", async () => {
+            const stCelo = await stakedCelo.balanceOf(depositor.address);
+            expect(stCelo).to.eq(100);
+          });
+
+          it("should have correct stCELO in defaultStrategy", async () => {
+            const stCelo = await defaultStrategyContract.totalStCeloInStrategy();
+            expect(stCelo).to.eq(100);
+          });
+
+          it("should have correct votes scheduled", async () => {
+            const [votedGroups, votes] = await account.getLastScheduledVotes();
+            expect(votedGroups).to.have.deep.members([tail]);
+            expect(votes).to.have.deep.members([BigNumber.from(100)]);
+          });
         });
 
         it("calculates CELO 1:1 with stCELO for a different amount", async () => {
@@ -295,10 +313,28 @@ describe("Manager", () => {
           await stakedCelo.mint(someone.address, 100);
         });
 
-        it("calculates CELO 1:1 with stCELO", async () => {
-          await manager.connect(depositor).deposit({ value: 100 });
-          const stCelo = await stakedCelo.balanceOf(depositor.address);
-          expect(stCelo).to.eq(100);
+        describe("When it mints CELO 1:1 with stCELO", () => {
+          let tail: string;
+          beforeEach(async () => {
+            [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager.connect(depositor).deposit({ value: 100 });
+          });
+
+          it("should have correct stCELO balance", async () => {
+            const stCelo = await stakedCelo.balanceOf(depositor.address);
+            expect(stCelo).to.eq(100);
+          });
+
+          it("should have correct stCELO in defaultStrategy", async () => {
+            const stCelo = await defaultStrategyContract.totalStCeloInStrategy();
+            expect(stCelo).to.eq(100);
+          });
+
+          it("should have correct votes scheduled", async () => {
+            const [votedGroups, votes] = await account.getLastScheduledVotes();
+            expect(votedGroups).to.have.deep.members([tail]);
+            expect(votes).to.have.deep.members([BigNumber.from(100)]);
+          });
         });
 
         it("calculates CELO 1:1 with stCELO for a different amount", async () => {
@@ -314,10 +350,28 @@ describe("Manager", () => {
           await stakedCelo.mint(someone.address, 100);
         });
 
-        it("calculates less stCELO than the input CELO", async () => {
-          await manager.connect(depositor).deposit({ value: 100 });
-          const stCelo = await stakedCelo.balanceOf(depositor.address);
-          expect(stCelo).to.eq(50);
+        describe("When it calculates less stCELO than the input CELO", () => {
+          let tail: string;
+          beforeEach(async () => {
+            [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager.connect(depositor).deposit({ value: 100 });
+          });
+
+          it("should have correct stCELO balance", async () => {
+            const stCelo = await stakedCelo.balanceOf(depositor.address);
+            expect(stCelo).to.eq(50);
+          });
+
+          it("should have correct stCELO in defaultStrategy", async () => {
+            const stCelo = await defaultStrategyContract.totalStCeloInStrategy();
+            expect(stCelo).to.eq(50);
+          });
+
+          it("should have correct votes scheduled", async () => {
+            const [votedGroups, votes] = await account.getLastScheduledVotes();
+            expect(votedGroups).to.have.deep.members([tail]);
+            expect(votes).to.have.deep.members([BigNumber.from(100)]);
+          });
         });
 
         it("calculates less stCELO than the input CELO for a different amount", async () => {
@@ -333,10 +387,28 @@ describe("Manager", () => {
           await stakedCelo.mint(someone.address, 200);
         });
 
-        it("calculates more stCELO than the input CELO", async () => {
-          await manager.connect(depositor).deposit({ value: 100 });
-          const stCelo = await stakedCelo.balanceOf(depositor.address);
-          expect(stCelo).to.eq(200);
+        describe("When it calculates more stCELO than the input CELO", () => {
+          let tail: string;
+          beforeEach(async () => {
+            [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager.connect(depositor).deposit({ value: 100 });
+          });
+
+          it("should have correct stCELO balance", async () => {
+            const stCelo = await stakedCelo.balanceOf(depositor.address);
+            expect(stCelo).to.eq(200);
+          });
+
+          it("should have correct stCELO in defaultStrategy", async () => {
+            const stCelo = await defaultStrategyContract.totalStCeloInStrategy();
+            expect(stCelo).to.eq(200);
+          });
+
+          it("should have correct votes scheduled", async () => {
+            const [votedGroups, votes] = await account.getLastScheduledVotes();
+            expect(votedGroups).to.have.deep.members([tail]);
+            expect(votes).to.have.deep.members([BigNumber.from(100)]);
+          });
         });
 
         it("calculates more stCELO than the input CELO for a different amount", async () => {
@@ -455,36 +527,113 @@ describe("Manager", () => {
       });
 
       describe("When voting for specific strategy with overflow", () => {
-        const depositAmount = parseUnits("50");
+        const depositAmount = parseUnits("100");
 
         beforeEach(async () => {
           await manager.connect(depositor).changeStrategy(groupAddresses[0]);
-          await manager.connect(depositor).deposit({ value: depositAmount });
         });
 
-        it("should overflow to default strategy", async () => {
-          const [stCeloInStrategy, overflowAmount] =
-            await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
-          expect(stCeloInStrategy).to.eq(depositAmount);
-          expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity));
-        });
+        describe("When different ratios of CELO vs stCELO", () => {
+          describe("When 1:1", () => {
+            beforeEach(async () => {
+              await manager.connect(depositor).deposit({ value: depositAmount });
+            });
 
-        it("should schedule the overflow to default strategy", async () => {
-          const [votedGroups, votes] = await account.getLastScheduledVotes();
-          expect(votedGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
+            it("should overflow to default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount);
+              expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity));
+            });
 
-          expect(votes).to.have.deep.members([
-            firstGroupCapacity,
-            depositAmount.sub(firstGroupCapacity),
-          ]);
-        });
+            it("should schedule the overflow to default strategy", async () => {
+              const [votedGroups, votes] = await account.getLastScheduledVotes();
+              expect(votedGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
 
-        it("should not change total stCelo of default strategy", async () => {
-          const currentDefaultStrategyStCeloBalance =
-            await defaultStrategyContract.totalStCeloInStrategy();
-          expect(currentDefaultStrategyStCeloBalance).to.deep.eq(
-            depositAmount.sub(firstGroupCapacity)
-          );
+              expect(votes).to.have.deep.members([
+                firstGroupCapacity,
+                depositAmount.sub(firstGroupCapacity),
+              ]);
+            });
+
+            it("should not change total stCelo of default strategy", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(
+                depositAmount.sub(firstGroupCapacity)
+              );
+            });
+          });
+
+          describe("When there is more CELO than stCELO", () => {
+            let firstGroupCapacityInStCelo: BigNumber;
+            beforeEach(async () => {
+              await account.setTotalCelo(parseUnits("200"));
+              await stakedCelo.mint(someone.address, parseUnits("100"));
+              firstGroupCapacityInStCelo = await manager.toStakedCelo(firstGroupCapacity);
+              await manager.connect(depositor).deposit({ value: depositAmount });
+            });
+
+            it("should overflow to default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount.div(2));
+              expect(overflowAmount).to.eq(depositAmount.div(2).sub(firstGroupCapacityInStCelo));
+            });
+
+            it("should schedule the overflow to default strategy", async () => {
+              const [votedGroups, votes] = await account.getLastScheduledVotes();
+              expect(votedGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
+
+              expect(votes).to.have.deep.members([
+                firstGroupCapacity,
+                depositAmount.sub(firstGroupCapacity),
+              ]);
+            });
+
+            it("should not change total stCelo of default strategy", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(
+                depositAmount.div(2).sub(firstGroupCapacityInStCelo)
+              );
+            });
+          });
+
+          describe("When there is less CELO than stCELO", () => {
+            let firstGroupCapacityInStCelo: BigNumber;
+            beforeEach(async () => {
+              await account.setTotalCelo(parseUnits("50"));
+              await stakedCelo.mint(someone.address, parseUnits("100"));
+              firstGroupCapacityInStCelo = await manager.toStakedCelo(firstGroupCapacity);
+              await manager.connect(depositor).deposit({ value: depositAmount });
+            });
+
+            it("should overflow to default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount.mul(2));
+              expect(overflowAmount).to.eq(depositAmount.mul(2).sub(firstGroupCapacityInStCelo));
+            });
+
+            it("should schedule the overflow to default strategy", async () => {
+              const [votedGroups, votes] = await account.getLastScheduledVotes();
+              expect(votedGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
+
+              expect(votes).to.have.deep.members([
+                firstGroupCapacity,
+                depositAmount.sub(firstGroupCapacity),
+              ]);
+            });
+
+            it("should not change total stCelo of default strategy", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(
+                depositAmount.mul(2).sub(firstGroupCapacityInStCelo)
+              );
+            });
+          });
         });
       });
     });
@@ -840,7 +989,7 @@ describe("Manager", () => {
           expect(celo).to.eq(10);
         });
 
-        it("burns the stCELO", async () => {
+        it("burns the stCELO for a different amount", async () => {
           await manager.connect(depositor).withdraw(10);
           const stCelo = await stakedCelo.balanceOf(depositor.address);
           expect(stCelo).to.eq(90);
@@ -849,8 +998,6 @@ describe("Manager", () => {
 
       describe("when there is more CELO than stCELO in the system", () => {
         beforeEach(async () => {
-          // await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic()
-
           await account.setTotalCelo(200);
         });
 
@@ -1100,7 +1247,7 @@ describe("Manager", () => {
           await manager.connect(depositor).withdraw(toWithdraw);
         });
 
-        it("should overflow to default strategy", async () => {
+        it("should remove overflow from default strategy", async () => {
           const [stCeloInStrategy, overflowAmount] =
             await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
           expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
@@ -1130,42 +1277,128 @@ describe("Manager", () => {
       describe("When withdrawing amount over overflow", () => {
         const toWithdraw = parseUnits("20");
 
-        beforeEach(async () => {
-          await manager.connect(depositor).withdraw(toWithdraw);
-        });
+        describe("When different ratio of CELO vs stCELO", () => {
+          describe("When 1:1", () => {
+            beforeEach(async () => {
+              await manager.connect(depositor).withdraw(toWithdraw);
+            });
 
-        it("should overflow to default strategy", async () => {
-          const [stCeloInStrategy, overflowAmount] =
-            await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
-          expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
-          expect(overflowAmount).to.eq(0);
-        });
+            it("should remove overflow from default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
+              expect(overflowAmount).to.eq(0);
+            });
 
-        it("should schedule withdraw from default specific strategy", async () => {
-          const [groups, votes] = await account.getLastScheduledWithdrawals();
+            it("should schedule withdraw from default and specific strategy", async () => {
+              const [groups, votes] = await account.getLastScheduledWithdrawals();
 
-          const originalOverflow = depositAmount.sub(firstGroupCapacity);
-          expect(groups).to.have.deep.members([
-            groupAddresses[0],
-            groupAddresses[1],
-            groupAddresses[2],
-            groupAddresses[0],
-          ]);
-          expect(votes).to.have.deep.members([
-            originalOverflow.div(3),
-            originalOverflow.div(3),
-            originalOverflow.div(3),
-            toWithdraw.sub(originalOverflow),
-          ]);
-        });
+              const originalOverflow = depositAmount.sub(firstGroupCapacity);
+              expect(groups).to.have.deep.members([
+                groupAddresses[0],
+                groupAddresses[1],
+                groupAddresses[2],
+                groupAddresses[0],
+              ]);
+              expect(votes).to.have.deep.members([
+                originalOverflow.div(3),
+                originalOverflow.div(3),
+                originalOverflow.div(3),
+                toWithdraw.sub(originalOverflow),
+              ]);
+            });
 
-        it("should add overflow to default strategy stCelo balance", async () => {
-          const currentDefaultStrategyStCeloBalance =
-            await defaultStrategyContract.totalStCeloInStrategy();
-          const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
-            groupAddresses[0]
-          );
-          expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
+            it("should add overflow to default strategy stCelo balance", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+                groupAddresses[0]
+              );
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
+            });
+          });
+
+          describe("When there is more CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(depositAmount.mul(2));
+              await manager.connect(depositor).withdraw(toWithdraw);
+            });
+
+            it("should remove overflow from default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
+              expect(overflowAmount).to.eq(0);
+            });
+
+            it("should schedule withdraw from default and specific strategy", async () => {
+              const [groups, votes] = await account.getLastScheduledWithdrawals();
+
+              const originalOverflow = depositAmount.sub(firstGroupCapacity);
+              expect(groups).to.have.deep.members([
+                groupAddresses[0],
+                groupAddresses[1],
+                groupAddresses[2],
+                groupAddresses[0],
+              ]);
+              expect(votes).to.have.deep.members([
+                originalOverflow.div(3).mul(2),
+                originalOverflow.div(3).mul(2),
+                originalOverflow.div(3).mul(2),
+                toWithdraw.sub(originalOverflow).mul(2),
+              ]);
+            });
+
+            it("should add overflow to default strategy stCelo balance", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+                groupAddresses[0]
+              );
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
+            });
+          });
+
+          describe("When there is less CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(depositAmount.div(2));
+              await manager.connect(depositor).withdraw(toWithdraw);
+            });
+
+            it("should remove overflow from default strategy", async () => {
+              const [stCeloInStrategy, overflowAmount] =
+                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+              expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
+              expect(overflowAmount).to.eq(0);
+            });
+
+            it("should schedule withdraw from default and specific strategy", async () => {
+              const [groups, votes] = await account.getLastScheduledWithdrawals();
+
+              const originalOverflow = depositAmount.sub(firstGroupCapacity);
+              expect(groups).to.have.deep.members([
+                groupAddresses[0],
+                groupAddresses[1],
+                groupAddresses[2],
+                groupAddresses[0],
+              ]);
+              expect(votes).to.have.deep.members([
+                originalOverflow.div(3).div(2),
+                originalOverflow.div(3).div(2),
+                originalOverflow.div(3).div(2),
+                toWithdraw.sub(originalOverflow).div(2),
+              ]);
+            });
+
+            it("should add overflow to default strategy stCelo balance", async () => {
+              const currentDefaultStrategyStCeloBalance =
+                await defaultStrategyContract.totalStCeloInStrategy();
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+                groupAddresses[0]
+              );
+              expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
+            });
+          });
         });
       });
     });
@@ -1426,7 +1659,7 @@ describe("Manager", () => {
             withdrawals[i]
           );
         }
-        defaultGroupDeposit = parseUnits("1");
+        defaultGroupDeposit = BigNumber.from(1000); //parseUnits("1");
         await manager.connect(depositor).deposit({ value: defaultGroupDeposit });
       });
 
@@ -1463,30 +1696,88 @@ describe("Manager", () => {
         expect(lastTransferToVotes.length).to.eq(0);
       });
 
-      it("should schedule transfers if default strategy => specific strategy", async () => {
-        const specificGroupStrategyDeposit = 10;
-        const specificGroupStrategyAddress = groupAddresses[2];
+      describe("When changing strategy from default -> specific", () => {
+        const specificGroupStrategyDeposit = 100;
+        let specificGroupStrategyAddress: string;
+        beforeEach(async () => {
+          specificGroupStrategyAddress = groupAddresses[2];
+          await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
+          await manager.connect(depositor2).deposit({ value: specificGroupStrategyDeposit });
+        });
 
-        await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
-        await manager.connect(depositor2).deposit({ value: specificGroupStrategyDeposit });
+        describe("When different ratio of CELO vs stCELO", () => {
+          describe("When there is more CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(2200);
+            });
 
-        await manager
-          .connect(stakedCeloSigner)
-          .transfer(depositor.address, depositor2.address, defaultGroupDeposit);
-        const [
-          lastTransferFromGroups,
-          lastTransferFromVotes,
-          lastTransferToGroups,
-          lastTransferToVotes,
-        ] = await account.getLastTransferValues();
+            it("should schedule transfers if default strategy => specific strategy", async () => {
+              await manager
+                .connect(stakedCeloSigner)
+                .transfer(depositor.address, depositor2.address, defaultGroupDeposit);
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
 
-        const [head] = await defaultStrategyContract.getGroupsHead();
+              const [head] = await defaultStrategyContract.getGroupsHead();
 
-        expect(lastTransferFromGroups).to.deep.eq([head]);
-        expect(lastTransferFromVotes).to.deep.eq([defaultGroupDeposit]);
+              expect(lastTransferFromGroups).to.deep.eq([head]);
+              expect(lastTransferFromVotes).to.deep.eq([defaultGroupDeposit.mul(2)]);
 
-        expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
-        expect(lastTransferToVotes).to.deep.eq([defaultGroupDeposit]);
+              expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
+              expect(lastTransferToVotes).to.deep.eq([defaultGroupDeposit.mul(2)]);
+            });
+          });
+
+          describe("When there is less CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(550);
+            });
+
+            it("should schedule transfers if default strategy => specific strategy", async () => {
+              await manager
+                .connect(stakedCeloSigner)
+                .transfer(depositor.address, depositor2.address, defaultGroupDeposit);
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              const [head] = await defaultStrategyContract.getGroupsHead();
+
+              expect(lastTransferFromGroups).to.deep.eq([head]);
+              expect(lastTransferFromVotes).to.deep.eq([defaultGroupDeposit.div(2)]);
+
+              expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
+              expect(lastTransferToVotes).to.deep.eq([defaultGroupDeposit.div(2)]);
+            });
+          });
+        });
+
+        it("should schedule transfers if default strategy => specific strategy", async () => {
+          await manager
+            .connect(stakedCeloSigner)
+            .transfer(depositor.address, depositor2.address, defaultGroupDeposit);
+          const [
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes,
+          ] = await account.getLastTransferValues();
+
+          const [head] = await defaultStrategyContract.getGroupsHead();
+
+          expect(lastTransferFromGroups).to.deep.eq([head]);
+          expect(lastTransferFromVotes).to.deep.eq([defaultGroupDeposit]);
+
+          expect(lastTransferToGroups).to.deep.eq([specificGroupStrategyAddress]);
+          expect(lastTransferToVotes).to.deep.eq([defaultGroupDeposit]);
+        });
       });
     });
 
@@ -1531,6 +1822,58 @@ describe("Manager", () => {
         expect(lastTransferFromVotes.length).to.eq(0);
         expect(lastTransferToGroups.length).to.eq(0);
         expect(lastTransferToVotes.length).to.eq(0);
+      });
+
+      describe("When different ration between CELO and stCELO", () => {
+        describe("When there is more CELO than stCELO", () => {
+          beforeEach(async () => {
+            await account.setTotalCelo(200);
+          });
+
+          it("should schedule transfers if specific strategy => default strategy", async () => {
+            const [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager
+              .connect(stakedCeloSigner)
+              .transfer(depositor.address, depositor2.address, specificGroupStrategyDeposit);
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.deep.eq([specificGroupStrategyAddress]);
+            expect(lastTransferFromVotes).to.deep.eq([specificGroupStrategyDeposit.mul(2)]);
+
+            expect(lastTransferToGroups).to.deep.eq([tail]);
+            expect(lastTransferToVotes).to.deep.eq([specificGroupStrategyDeposit.mul(2)]);
+          });
+        });
+
+        describe("When there is less CELO than stCELO", () => {
+          beforeEach(async () => {
+            await account.setTotalCelo(50);
+          });
+
+          it("should schedule transfers if specific strategy => default strategy", async () => {
+            const [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager
+              .connect(stakedCeloSigner)
+              .transfer(depositor.address, depositor2.address, specificGroupStrategyDeposit);
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.deep.eq([specificGroupStrategyAddress]);
+            expect(lastTransferFromVotes).to.deep.eq([specificGroupStrategyDeposit.div(2)]);
+
+            expect(lastTransferToGroups).to.deep.eq([tail]);
+            expect(lastTransferToVotes).to.deep.eq([specificGroupStrategyDeposit.div(2)]);
+          });
+        });
       });
 
       it("should schedule transfers if specific strategy => default strategy", async () => {
@@ -1937,6 +2280,46 @@ describe("Manager", () => {
           );
           expect(expected).to.eq(defaultDepositedValue / 2 + specificGroupStrategyDepositedValue);
           expect(real).to.eq(celoForGroup);
+        });
+
+        describe("When having different ratio of CELO vs stCELO", () => {
+          describe("When there is more CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(400);
+            });
+
+            it("should return different amount for real and expected", async () => {
+              const celoForGroup = 50;
+              await account.setCeloForGroup(groupAddresses[0], celoForGroup);
+
+              const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
+                groupAddresses[0]
+              );
+              expect(expected).to.eq(
+                (defaultDepositedValue / 2 + specificGroupStrategyDepositedValue) * 2
+              );
+              expect(real).to.eq(celoForGroup);
+            });
+          });
+
+          describe("When there is less CELO than stCELO", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(100);
+            });
+
+            it("should return different amount for real and expected", async () => {
+              const celoForGroup = 50;
+              await account.setCeloForGroup(groupAddresses[0], celoForGroup);
+
+              const [expected, real] = await manager.getExpectedAndActualCeloForGroup(
+                groupAddresses[0]
+              );
+              expect(expected).to.eq(
+                (defaultDepositedValue / 2 + specificGroupStrategyDepositedValue) / 2
+              );
+              expect(real).to.eq(celoForGroup);
+            });
+          });
         });
       });
     });

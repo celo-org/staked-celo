@@ -527,6 +527,56 @@ describe("DefaultStrategy", () => {
           ).revertedWith("Ownable: caller is not the owner");
         });
 
+        describe("When different ratios of CELO vs stCELO", () => {
+          describe("when there is more CELO than stCELO in the system", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(600);
+            });
+
+            it("should schedule transfer to tail of default strategy", async () => {
+              const [tail] = await defaultStrategyContract.getGroupsTail();
+              await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
+
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              expect(lastTransferFromGroups).to.have.deep.members([deactivatedGroup.address]);
+              expect(lastTransferFromVotes).to.deep.eq([BigNumber.from("200")]);
+
+              expect(lastTransferToGroups).to.have.deep.members([tail]);
+              expect(lastTransferToVotes).to.deep.eq([BigNumber.from("200")]);
+            });
+          });
+
+          describe("when there is less CELO than stCELO in the system", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(150);
+            });
+
+            it("should schedule transfer to tail of default strategy", async () => {
+              const [tail] = await defaultStrategyContract.getGroupsTail();
+              await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
+
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              expect(lastTransferFromGroups).to.have.deep.members([deactivatedGroup.address]);
+              expect(lastTransferFromVotes).to.deep.eq([BigNumber.from("50")]);
+
+              expect(lastTransferToGroups).to.have.deep.members([tail]);
+              expect(lastTransferToVotes).to.deep.eq([BigNumber.from("50")]);
+            });
+          });
+        });
+
         it("should schedule transfer to tail of default strategy", async () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
           await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);

@@ -293,7 +293,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 }
             }
         }
-
         address[] memory finalGroups;
         uint256[] memory finalVotes;
         (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy);
@@ -568,7 +567,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function toStakedCelo(uint256 celoAmount) public view returns (uint256) {
         uint256 stCeloSupply = stakedCelo.totalSupply();
         uint256 celoBalance = account.getTotalCelo();
-
         if (stCeloSupply == 0 || celoBalance == 0) {
             return celoAmount;
         }

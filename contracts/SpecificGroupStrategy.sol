@@ -261,28 +261,26 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     /**
      * @notice Generates groups and votes to distribute votes to.
      * @param strategy The validator group that we want to deposit to or transfer from.
-     * @param votes The amount of votes.
+     * @param celoAmount The amount of CELO.
+     * @param stCeloAmount The amount of stCELO.
      * @return finalGroups The groups to withdraw from.
      * @return finalVotes The amount to withdraw from each group.
      */
     function generateGroupVotesToDistributeTo(
         address strategy,
-        uint256 votes,
+        uint256 celoAmount,
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         specificGroupStrategies.add(strategy);
-
-        uint256 votesToBeScheduledForSpecificStrategy;
-
         uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
-        votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, votes);
+        uint256 votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, celoAmount);
 
-        votes -= votesToBeScheduledForSpecificStrategy;
-        if (votes > 0) {
+        celoAmount -= votesToBeScheduledForSpecificStrategy;
+        if (celoAmount > 0) {
             // overflow
             (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
-                .generateVoteDistribution(false, votes, strategy);
-            updateOverflowGroup(strategy, votes, true);
+                .generateVoteDistribution(false, celoAmount, strategy);
+            updateOverflowGroup(strategy, IManager(manager).toStakedCelo(celoAmount), true);
             finalGroups = new address[](groups.length + 1);
             finalVotes = new uint256[](groups.length + 1);
             for (uint256 i = 0; i < groups.length; i++) {
@@ -381,7 +379,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @return votes The amount to withdraw from each group.
      */
     function calculateAndUpdateForWithdrawalTransfer(
-        // TODO: add tests
         address strategy,
         uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
