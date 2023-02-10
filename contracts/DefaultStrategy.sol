@@ -546,8 +546,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Distributes votes by computing the number of votes each active
-     * group should  be subtracted from.
+     * @notice Distributes votes by computing the number of votes to be substracted
+     * from each active group.
      * @param votesAmount The amount of votes to subtract.
      * @return finalGroups The groups that were chosen for subtraction.
      * @return finalVotes The votes of chosen finalGroups.
