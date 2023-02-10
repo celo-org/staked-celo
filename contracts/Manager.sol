@@ -417,7 +417,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
     /**
      * @notice Allows strategy to initiate transfer without any checks.
-     * This method is supopsed to be used for transfers between groups
+     * This method is supposed to be used for transfers between groups
      * only within strategy
      * @param fromGroups The groups the deposited CELO is intended to be revoked from.
      * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
