@@ -133,13 +133,6 @@ describe("e2e overflow test", () => {
   const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
   it("deposit, transfer and activate", async () => {
-    for (let i = 0; i < 3; i++) {
-      console.log(`group[${i}] ${groups[i].address}`);
-    }
-    console.log(
-      `specificGroupStrategyDifferentFromActive ${specificGroupStrategyDifferentFromActive.address}`
-    );
-
     await prepareOverflow(
       defaultStrategy,
       election,
