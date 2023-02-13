@@ -1,5 +1,5 @@
 import { task, types } from "hardhat/config";
-import { TransactionArguments } from "../helpers/interfaceHelper";
+import { setLocalNodeDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
   LOG_LEVEL,
   LOG_LEVEL_DESCRIPTION,
@@ -16,6 +16,7 @@ task(MULTISIG_IS_FULLY_CONFIRMED, MULTISIG_IS_FULLY_CONFIRMED_TASK_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     taskLogger.setLogLevel(args.logLevel);
     try {
+      await setLocalNodeDeploymentPath(hre);
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const fullyConfirmed = await multiSigContract.isFullyConfirmed(args.proposalId);
       taskLogger.log("is proposal fully confirmed: ", fullyConfirmed);

@@ -266,13 +266,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
             if (!groupHealth.isGroupValid(strategy)) {
-                // if invalid group vote for default strategy
-                strategies[msg.sender] = address(0);
-                strategy = address(0);
-                uint256 stCeloBalance = stakedCelo.balanceOf(msg.sender);
+                uint256 stCeloBalance = specificGroupStrategy.stCeloInGroup(strategy);
                 if (stCeloBalance != 0) {
-                    _transfer(strategy, address(0), stCeloBalance);
+                    _transferWithoutChecks(strategy, address(0), stCeloBalance);
                 }
+                strategy = address(0);
             }
         }
 
