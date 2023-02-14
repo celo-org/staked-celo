@@ -43,6 +43,29 @@ Alfajores :
 ```
 yarn verify --network alfajores
 ```
+
+## Verify on CeloScan
+1. Get CeloScan api key
+1. Update api key in hardhat.config.ts (etherscan.apiKey)
+1. Get constructor arguments of deployed smart contract
+  * Find contract in `deployments/[network]` (example deployments/mainnet/MultiSig_Proxy.json)
+  * In root level there are constructur arguments in `args`
+4. Save constructor arguments into js file
+```
+module.exports = [
+    "0xb78AB3f89C97C0291B747C3Ba8814b5AA47AEcF1",
+    "4814d6b8a8394fe8b363a892b6618b21",
+  ];
+```
+5. Verify smart contract
+```
+yarn hardhat verify --network [network] --constructor-args [path_to_js_file] [contract_address]
+```
+example
+```
+yarn hardhat verify --network celo --constructor-args arguments.js 0x78daa21fce4d30e74ff745da3204764a0ad40179
+```
+
 ## Deploying to local CELO node
 You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
 
