@@ -1,7 +1,6 @@
-import { lazyObject } from "hardhat/plugins";
-import { extendEnvironment } from "hardhat/config";
 import { ContractKit, newKitFromWeb3 } from "@celo/contractkit";
-import { CeloTx } from "@celo/connect";
+import { extendEnvironment } from "hardhat/config";
+import { lazyObject } from "hardhat/plugins";
 
 declare module "hardhat/types/runtime" {
   export interface HardhatRuntimeEnvironment {

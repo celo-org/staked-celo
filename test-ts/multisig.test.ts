@@ -1,10 +1,10 @@
-import hre, { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { MultiSig } from "../typechain-types/MultiSig";
 import { expect } from "chai";
-import { ADDRESS_ZERO, randomSigner, timeTravel, DAY } from "./utils";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
+import hre, { ethers } from "hardhat";
+import { MultiSig } from "../typechain-types/MultiSig";
+import { ADDRESS_ZERO, DAY, randomSigner, timeTravel } from "./utils";
 
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event
@@ -349,10 +349,18 @@ describe("MultiSig", () => {
       );
     });
 
-    it("should be able to execute a proposal once time lock period has passed", async () => {
+    it("an owner should be able to execute a proposal once time lock period has passed", async () => {
       await multiSig.connect(owner2).confirmProposal(proposalId);
       await timeTravel(delay);
       await multiSig.connect(owner2).executeProposal(proposalId);
+      expect(await multiSig.getTimestamp(proposalId)).to.be.equal(1);
+    });
+
+    it("any account should be able to execute a proposal once time lock period has passed", async () => {
+      const [randomAcc] = await randomSigner(parseUnits("100"));
+      await multiSig.connect(owner2).confirmProposal(proposalId);
+      await timeTravel(delay);
+      await multiSig.connect(randomAcc).executeProposal(proposalId);
       expect(await multiSig.getTimestamp(proposalId)).to.be.equal(1);
     });
 
@@ -563,7 +571,7 @@ describe("MultiSig", () => {
       txData = multiSig.interface.encodeFunctionData("removeOwner", [owner1.address]);
       await expect(
         executeMultisigProposal(multiSig, destinations, values, [txData], delay, owner1, owner2)
-      ).revertedWith(`OwnerDoesNotExist("${owner2.address}")`);
+      ).revertedWith(`ExecutionFailed()`);
     });
   });
 

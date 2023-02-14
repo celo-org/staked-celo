@@ -19,6 +19,7 @@ typechain-types
 # decrypted environment configs
 .env.staging
 .env.alfajores
+.env.local
 .env
 
 #devchain

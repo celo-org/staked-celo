@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { task, types } from "hardhat/config";
 import { STAKED_CELO_DEPLOY } from "./tasksNames";
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
@@ -30,10 +31,9 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
   )
   .setAction(async (taskArgs, hre) => {
     try {
-      console.log("Starting stakedCelo:deploy task...");
+      console.log(chalk.blue("Starting stakedCelo:deploy task..."));
       const networks = hre.config.networks;
       const targetNetwork = hre.network.name;
-      let hostUrl;
 
       if (targetNetwork !== "hardhat") {
         const deployer = { [targetNetwork]: DEPLOYER };
@@ -97,7 +97,7 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       }
 
       //@ts-ignore Property 'url' does not exist on type 'NetworkConfig'.
-      hostUrl = String(networks[targetNetwork].url);
+      const hostUrl = String(networks[targetNetwork].url);
       // If deploying via remote host, then deployment will use private key from .env automatically.
       if (hostUrl.includes("https")) {
         networks[targetNetwork].accounts = [`0x${privateKey}`];
@@ -106,17 +106,10 @@ task(STAKED_CELO_DEPLOY, "Deploys contracts with custom hardhat config options."
       // User can optionally specify using a private key irrespective of deploying to remote network or not.
       if (taskArgs["usePrivateKey"]) {
         networks[targetNetwork].accounts = [`0x${privateKey}`];
-        console.log(targetNetwork, taskArgs["usePrivateKey"], networks[targetNetwork].accounts, [
-          `0x${privateKey}`,
-        ]);
       }
 
       hre.config.networks = networks;
-      console.log(
-        "Deploying with the following network settings...",
-        hre.config.networks[targetNetwork],
-        hre.config.namedAccounts
-      );
+      console.log("Deploying with the following network settings...", hre.config.namedAccounts);
       return await hre.run("deploy", taskArgs);
     } catch (error) {
       console.log(error);

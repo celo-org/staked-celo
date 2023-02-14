@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Mocha Tests",
+            "type": "pwa-node",
+            "request": "attach",
+            "port": 9229,
+            "continueOnAttach": true,
+            "autoAttachChildProcesses": false,
+            "resolveSourceMapLocations": [
+              "!**/node_modules/**",
+              "!**/.vscode/extensions/hbenl.vscode-mocha-test-adapter-*/**"
+            ],
+            "skipFiles": [
+              "<node_internals>/**"
+            ]
+          }
+    ]
+}

@@ -122,4 +122,8 @@ interface IElection {
     ) external;
 
     function maxNumGroupsVotedFor() external view returns (uint256);
+
+    function allowedToVoteOverMaxNumberOfGroups(address) external returns (bool);
+
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external;
 }

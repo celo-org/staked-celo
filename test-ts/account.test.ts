@@ -1,19 +1,22 @@
-import hre, { ethers } from "hardhat";
-import { Account } from "../typechain-types/Account";
-import { Account__factory } from "../typechain-types/factories/Account__factory";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
+import hre from "hardhat";
+import { Account } from "../typechain-types/Account";
+import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
+import { MockGovernance } from "../typechain-types/MockGovernance";
+import { MockRegistry } from "../typechain-types/MockRegistry";
+import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
+  getImpersonatedSigner,
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
-  registerValidator,
+  registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
@@ -28,6 +31,8 @@ describe("Account", () => {
   let accountsInstance: AccountsWrapper;
   let lockedGold: LockedGoldWrapper;
   let election: ElectionWrapper;
+  let governance: MockGovernance;
+  let registryContract: MockRegistry;
 
   let account: Account;
 
@@ -50,6 +55,11 @@ describe("Account", () => {
     [otherBeneficiary] = await randomSigner(parseUnits("100"));
     [nonBeneficiary] = await randomSigner(parseUnits("100"));
 
+    const registryFactory: MockRegistry__factory = (
+      await hre.ethers.getContractFactory("MockRegistry")
+    ).connect(manager) as MockRegistry__factory;
+    registryContract = registryFactory.attach(REGISTRY_ADDRESS);
+
     groups = [];
     groupAddresses = [];
     validators = [];
@@ -63,7 +73,7 @@ describe("Account", () => {
       validatorAddresses.push(validators[i].address);
 
       await registerValidatorGroup(groups[i]);
-      await registerValidator(groups[i], validators[i], validatorWallet);
+      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
 
     accountsInstance = await hre.kit.contracts.getAccounts();
@@ -76,6 +86,7 @@ describe("Account", () => {
     const owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
+    governance = await hre.ethers.getContract("MockGovernance");
   });
 
   it("should create an account on the core Accounts contract", async () => {
@@ -1045,6 +1056,88 @@ describe("Account", () => {
           expect(votes).to.eq(40);
         });
       });
+    });
+  });
+
+  describe("#setAllowedToVoteOverMaxNumberOfGroups()", () => {
+    let owner: SignerWithAddress;
+
+    beforeEach(async () => {
+      const ownerAddress = await account.owner();
+      owner = await getImpersonatedSigner(ownerAddress);
+    });
+    it("reverts when not called by owner", async () => {
+      expect(account.setAllowedToVoteOverMaxNumberOfGroups(true)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    it("sets allowedToVoteOverMaxNumberOfGroups correctly", async () => {
+      // TODO: once contractkit updated - use just election contract from contractkit
+      const electionContract = new hre.kit.web3.eth.Contract(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        electionContractData.abi as any,
+        election.address
+      );
+      const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+        electionContract.methods.allowedToVoteOverMaxNumberOfGroups(account.address);
+
+      const isAllowedToVoteOverMaxNumberOfGroupsFalse =
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.call();
+      expect(
+        isAllowedToVoteOverMaxNumberOfGroupsFalse,
+        "allowedToVoteOverMaxNumberOfGroups not set correctly"
+      ).to.be.false;
+
+      const setAllowedToVoteOverMaxNumberOfGroupsTx = await account
+        .connect(owner)
+        .setAllowedToVoteOverMaxNumberOfGroups(true);
+      await setAllowedToVoteOverMaxNumberOfGroupsTx.wait();
+
+      const isAllowedToVoteOverMaxNumberOfGroupsTrue =
+        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.call();
+      expect(
+        isAllowedToVoteOverMaxNumberOfGroupsTrue,
+        "allowedToVoteOverMaxNumberOfGroups not set correctly"
+      ).to.be.true;
+    });
+  });
+
+  describe("#voteProposal", () => {
+    it("should should revert when not called by manager", async () => {
+      const proposalId = 3;
+      const index = 4;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      await expect(
+        account.connect(nonManager).votePartially(proposalId, index, yes, no, abstain)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+
+    it("should pass correct values to governance contract", async () => {
+      const registryOwner = await registryContract.owner();
+      const registryOwnerSigner = await getImpersonatedSigner(registryOwner);
+
+      const setAddressTx = await registryContract
+        .connect(registryOwnerSigner)
+        .setAddressFor("Governance", governance.address);
+      await setAddressTx.wait();
+
+      const proposalId = 1;
+      const index = 0;
+      const yes = 5;
+      const no = 6;
+      const abstain = 7;
+
+      await account.connect(manager).votePartially(proposalId, index, yes, no, abstain);
+
+      expect(await governance.proposalId()).to.eq(proposalId);
+      expect(await governance.index()).to.eq(index);
+      expect(await governance.yesVotes()).to.eq(yes);
+      expect(await governance.noVotes()).to.eq(no);
+      expect(await governance.abstainVotes()).to.eq(abstain);
     });
   });
 });

@@ -8,6 +8,8 @@ import "../interfaces/IElection.sol";
 import "../interfaces/IGoldToken.sol";
 import "../interfaces/ILockedGold.sol";
 import "../interfaces/IRegistry.sol";
+import "../interfaces/IGovernance.sol";
+import "../interfaces/IValidators.sol";
 
 /**
  * @title A helper for getting Celo core contracts from the Registry.
@@ -43,6 +45,12 @@ abstract contract UsingRegistryUpgradeable is Initializable {
     /// @notice The registry ID for the LockedGold contract.
     bytes32 private constant LOCKED_GOLD_REGISTRY_ID = keccak256(abi.encodePacked("LockedGold"));
 
+    /// @notice The registry ID for the Governance contract.
+    bytes32 private constant GOVERNANCE_REGISTRY_ID = keccak256(abi.encodePacked("Governance"));
+
+    /// @notice The registry ID for the Validator contract.
+    bytes32 private constant VALIDATORS_REGISTRY_ID = keccak256(abi.encodePacked("Validators"));
+
     /// @notice The Registry.
     IRegistry public registry;
 
@@ -76,5 +84,21 @@ abstract contract UsingRegistryUpgradeable is Initializable {
      */
     function getLockedGold() internal view returns (ILockedGold) {
         return ILockedGold(registry.getAddressForOrDie(LOCKED_GOLD_REGISTRY_ID));
+    }
+
+    /**
+     * @notice Gets the Governance contract from the Registry.
+     * @return The Governance contract from the Registry.
+     */
+    function getGovernance() internal view returns (IGovernance) {
+        return IGovernance(registry.getAddressForOrDie(GOVERNANCE_REGISTRY_ID));
+    }
+
+    /**
+     * @notice Gets the validators contract from the Registry.
+     * @return The validators contract from the Registry.
+     */
+    function getValidators() internal view returns (IValidators) {
+        return IValidators(registry.getAddressForOrDie(VALIDATORS_REGISTRY_ID));
     }
 }

@@ -8,6 +8,7 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "./interfaces/IVote.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
@@ -49,6 +50,17 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * of because the Account contract is still voting for them.
      */
     EnumerableSet.AddressSet private deprecatedGroups;
+
+    /**
+     * @notice Contract used during Governance voting.
+     */
+    address public voteContract;
+
+    /**
+     * @notice Emitted when the vote contract is initially set or later modified.
+     * @param voteContract The new vote contract address.
+     */
+    event VoteContractSet(address indexed voteContract);
 
     /**
      * @notice Emitted when a new group is activated for voting.
@@ -132,6 +144,23 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error ZeroWithdrawal();
 
     /**
+     * @notice Used when a group does not meet the validator group health requirements.
+     * @param group The group's address.
+     */
+    error GroupNotEligible(address group);
+
+    /**
+     * @notice Used when attempting to deprecated a healthy group using deprecateUnhealthyGroup().
+     * @param group The group's address.
+     */
+    error HealthyGroup(address group);
+
+    /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -155,10 +184,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.
      * @param _account The address of the Account contract.
+     * @param _vote The address of the Vote contract.
      */
-    function setDependencies(address _stakedCelo, address _account) external onlyOwner {
+    function setDependencies(
+        address _stakedCelo,
+        address _account,
+        address _vote
+    ) external onlyOwner {
+        if (_stakedCelo == address(0) || _account == address(0) || _vote == address(0)) {
+            revert AddressZeroNotAllowed();
+        }
+
         stakedCelo = IStakedCelo(_stakedCelo);
         account = IAccount(_account);
+        voteContract = _vote;
+        emit VoteContractSet(_vote);
     }
 
     /**
@@ -170,6 +210,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * Election contract).
      */
     function activateGroup(address group) external onlyOwner {
+        if (!isValidGroup(group)) {
+            revert GroupNotEligible(group);
+        }
+
         if (activeGroups.contains(group)) {
             revert GroupAlreadyAdded(group);
         }
@@ -182,7 +226,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (
             activeGroups.length() + deprecatedGroups.length() >=
-            getElection().maxNumGroupsVotedFor()
+            getElection().maxNumGroupsVotedFor() &&
+            !getElection().allowedToVoteOverMaxNumberOfGroups(address(account))
         ) {
             revert MaxGroupsVotedForReached();
         }
@@ -209,19 +254,54 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * groups will be the first to have their votes withdrawn.
      */
     function deprecateGroup(address group) external onlyOwner {
-        if (!activeGroups.remove(group)) {
-            revert GroupNotActive(group);
+        _deprecateGroup(group);
+    }
+
+    /**
+     * @notice Checks if a group meets the validator group health requirements.
+     * @param group The group to check for.
+     * @return Whether or not the group is valid.
+     */
+    function isValidGroup(address group) public view returns (bool) {
+        IValidators validators = getValidators();
+
+        // add check if group is !registered
+        if (!validators.isValidatorGroup(group)) {
+            return false;
         }
 
-        emit GroupDeprecated(group);
+        (address[] memory members, , , , , uint256 slashMultiplier, ) = validators
+            .getValidatorGroup(group);
 
-        if (account.getCeloForGroup(group) > 0) {
-            if (!deprecatedGroups.add(group)) {
-                revert FailedToAddDeprecatedGroup(group);
+        // check if group has no members
+        if (members.length == 0) {
+            return false;
+        }
+        // check for recent slash
+        if (slashMultiplier < 10**24) {
+            return false;
+        }
+        // check that at least one member is elected.
+        for (uint256 i = 0; i < members.length; i++) {
+            if (isGroupMemberElected(members[i])) {
+                return true;
             }
-        } else {
-            emit GroupRemoved(group);
         }
+        return false;
+    }
+
+    /**
+     * @notice Marks an unhealthy group as deprecated.
+     * @param group The group to deprecate if unhealthy.
+     * @dev A deprecated group will remain in the `deprecatedGroups` array as
+     * long as it is still being voted for by the Account contract. Deprecated
+     * groups will be the first to have their votes withdrawn.
+     */
+    function deprecateUnhealthyGroup(address group) external {
+        if (isValidGroup(group)) {
+            revert HealthyGroup(group);
+        }
+        _deprecateGroup((group));
     }
 
     /**
@@ -616,5 +696,128 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 j--;
             }
         }
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function voteProposal(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        IVote vote = IVote(voteContract);
+
+        (
+            uint256 stCeloUsedForVoting,
+            uint256 totalYesVotes,
+            uint256 totalNoVotes,
+            uint256 totalAbstainVotes
+        ) = vote.voteProposal(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
+
+        stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    /**
+     * @notice Revokes votes on already voted proposal.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     */
+    function revokeVotes(uint256 proposalId, uint256 index) external {
+        IVote vote = IVote(voteContract);
+
+        (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
+            msg.sender,
+            proposalId
+        );
+
+        account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    /**
+     * @notice Unlock balance of vote stCelo and update beneficiary vote history.
+     * @param beneficiary The account to be unlocked.
+     */
+    function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
+        external
+        returns (uint256)
+    {
+        IVote vote = IVote(voteContract);
+        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
+    }
+
+    /**
+     * @notice Unlock vote balance of stCelo.
+     * @param accountAddress The account to be unlocked.
+     */
+    function unlockBalance(address accountAddress) public {
+        stakedCelo.unlockVoteBalance(accountAddress);
+    }
+
+    /**
+     * @notice Marks a group as deprecated.
+     * @param group The group to deprecate.
+     */
+    function _deprecateGroup(address group) private {
+        if (!activeGroups.remove(group)) {
+            revert GroupNotActive(group);
+        }
+
+        emit GroupDeprecated(group);
+
+        if (account.getCeloForGroup(group) > 0) {
+            if (!deprecatedGroups.add(group)) {
+                revert FailedToAddDeprecatedGroup(group);
+            }
+        } else {
+            emit GroupRemoved(group);
+        }
+    }
+
+    /**
+     * @notice Checks if a group member is elected.
+     * @param groupMember The member of the group to check election status for.
+     * @return Whether or not the group member is elected.
+     */
+    function isGroupMemberElected(address groupMember) private view returns (bool) {
+        IElection election = getElection();
+
+        address[] memory electedValidatorSigners = election.electValidatorSigners();
+
+        for (uint256 i = 0; i < electedValidatorSigners.length; i++) {
+            if (electedValidatorSigners[i] == groupMember) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 2, 0, 1);
     }
 }
