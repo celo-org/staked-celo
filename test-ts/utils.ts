@@ -169,7 +169,7 @@ export async function activateValidators(
   groupAddresses: string[]
 ) {
   let [nextGroup] = await defaultStrategyContract.getGroupsTail();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < groupAddresses.length; i++) {
     const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
     if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
@@ -728,6 +728,7 @@ export async function getOrderedActiveGroups(
 
 export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
   const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
+  console.log("unsorted groups length", length.toString());
 
   const unsortedGroupsPromises = [];
 
@@ -808,4 +809,51 @@ export async function updateMaxNumberOfGroups(
   await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
     from: accountAddress,
   });
+}
+
+export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  return await Promise.all(
+    activeGroups.map(async (ag) => {
+      const stCelo = await defaultStrategy.stCeloInGroup(ag);
+      return {
+        group: ag,
+        stCelo,
+      };
+    })
+  );
+}
+
+export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
+  const unsortedGroups = await getUnsortedGroups(defaultStrategy as any);
+  let defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  const defaultGroupsWithStCeloRecord = defaultGroupsWithStCelo.reduce(
+    (prev, current) => ({ ...prev, [current.group]: current.stCelo }),
+    {} as Record<string, EthersBigNumber>
+  );
+
+  while (unsortedGroups.length > 0) {
+    const uGroup = unsortedGroups.pop();
+    let prev = ADDRESS_ZERO;
+    let next = ADDRESS_ZERO;
+    let i = 0;
+    while (i++ < defaultGroupsWithStCelo.length) {
+      prev = next;
+      next = defaultGroupsWithStCelo?.[i]?.group ?? ADDRESS_ZERO;
+
+      if (
+        defaultGroupsWithStCelo[i] == null ||
+        defaultGroupsWithStCelo[i].stCelo.gt(defaultGroupsWithStCeloRecord[uGroup!])
+      ) {
+        break;
+      }
+
+      if (defaultGroupsWithStCelo[i].group == uGroup) {
+        next = defaultGroupsWithStCelo?.[i - 1].group ?? ADDRESS_ZERO;
+        continue;
+      }
+    }
+    await defaultStrategy.updateActiveGroupOrder(uGroup!, prev, next);
+    defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  }
 }
