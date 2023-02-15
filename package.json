@@ -56,6 +56,7 @@
     "test:ci": "./scripts/run-tests.ci.sh",
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
     "devchain": "yarn run celo-devchain --port 7545 --file ./devChain/devchain.tar.gz",
+    "devchain:stCeloV1": "yarn run celo-devchain --port 7545 --file ./devChain/stakedCeloDevchainV1.tar.gz",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "eslint:ts": "yarn run eslint ./",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
