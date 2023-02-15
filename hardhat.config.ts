@@ -57,40 +57,13 @@ module.exports = {
     },
   },
   networks: {
-    local: {
-      url: "http://localhost:8545",
-      gas: 13000000,
-      gasPrice: 100000000000,
-    },
-    devchain: {
-      url: "http://localhost:7545",
-      // Having to set a default value for gas, as the provider does not estimate
-      // gas properly when signing using ledger HW, resulting in an error.
-      gas: 2100000,
-      gasPrice: 8000000000,
-    },
     hardhat: {
+      chainId: 42220,
       forking: {
         // Local ganache
-        url: "http://localhost:7545",
-        blockNumber: 399,
+        url: "https://celo-mainnet.infura.io/v3/8778434b8aab43b29430bc46ecc5ae69"
       },
-    },
-    alfajores: {
-      url: `https://alfajores-forno.celo-testnet.org/`,
-      gas: 13000000,
-      gasPrice: 100000000000,
-    },
-    staging: {
-      url: `https://staging-forno.celo-networks-dev.org/`,
-      gas: 13000000,
-      gasPrice: 100000000000,
-    },
-    mainnet: {
-      url: `https://forno.celo.org/`,
-      gas: 13000000,
-      gasPrice: 20000000000,
-    },
+    }
   },
   solidity: {
     compilers: [
