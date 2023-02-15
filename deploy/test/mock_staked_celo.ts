@@ -1,0 +1,17 @@
+import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const { deploy } = hre.deployments;
+
+  const { deployer } = await hre.getNamedAccounts();
+  await deploy("MockStakedCelo", {
+    from: deployer,
+    log: true,
+  });
+};
+
+func.id = "deploy_test_mock_staked_celo";
+func.tags = ["TestMockStakedCelo"];
+func.dependencies = [];
+export default func;
