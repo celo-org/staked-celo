@@ -5,7 +5,6 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-etherscan";
-import "hardhat-deploy";
 import "@celo/staked-celo-hardhat-deploy";
 import "./lib/contractkit.plugin";
 import minimist from "minimist";
@@ -88,11 +87,6 @@ module.exports = {
       gas: 13000000,
       gasPrice: 100000000000,
     },
-    mainnet: {
-      url: `https://forno.celo.org/`,
-      gas: 13000000,
-      gasPrice: 20000000000,
-    },
     celo: {
       url: `https://forno.celo.org/`,
       gas: 13000000,
@@ -102,7 +96,7 @@ module.exports = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://celoscan.io
-    apiKey: "[API_KEY]",
+    apiKey: process.env.CELO_SCAN_API_KEY,
     customChains: [
       {
         network: "celo",

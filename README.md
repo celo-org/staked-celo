@@ -56,7 +56,7 @@ yarn verify:deploy --network alfajores
 1. Get CeloScan api key
 1. Update api key in hardhat.config.ts (etherscan.apiKey)
 1. Get constructor arguments of deployed smart contract
-  * Find contract in `deployments/[network]` (example deployments/mainnet/MultiSig_Proxy.json)
+  * Find contract in `deployments/[network]` (example deployments/celo/MultiSig_Proxy.json)
   * In root level there are constructur arguments in `args`
 4. Save constructor arguments into js file
 ```
