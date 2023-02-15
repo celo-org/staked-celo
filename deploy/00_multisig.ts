@@ -1,6 +1,6 @@
-import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { DeployFunction, DeployResult } from "@celo/staked-celo-hardhat-deploy/types";
+import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { catchNotOwnerForProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
-  await catchNotOwnerForProxy(
+  await catchUpgradeErrorInMultisig(
     deploy("MultiSig", {
       from: deployer,
       log: true,
@@ -44,3 +44,26 @@ func.id = "deploy_multisig";
 func.tags = ["MultiSig", "core", "proxy"];
 func.dependencies = [];
 export default func;
+
+async function catchUpgradeErrorInMultisig(
+  action: Promise<DeployResult> | (() => Promise<DeployResult>)
+) {
+  try {
+    if (action instanceof Promise) {
+      await action;
+    } else {
+      await action();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    if (e?.data?.stack?.indexOf("VM Exception while processing transaction: revert")) {
+      console.log(
+        chalk.red(
+          "Transaction was reverted. Most probably it was because caller is not an owner. Please make sure to update the proxy implementation manually."
+        )
+      );
+    } else {
+      throw e;
+    }
+  }
+}
