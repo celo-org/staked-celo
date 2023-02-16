@@ -1,9 +1,14 @@
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import chalk from "chalk";
+import { BigNumber } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { executeAndWait } from "../lib/deploy-utils";
 import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../lib/tasksNames";
+import { ADDRESS_ZERO } from "../test-ts/utils";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+
+const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
+  validatorGroupsString ? validatorGroupsString.split(",") : [];
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
@@ -20,10 +25,40 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         specificGroupStrategy.address
       )
     );
+
+    const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
+    if (validatorGroups.length == 0) {
+      return;
+    }
+
+    const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+    const accountContract = await hre.ethers.getContract("Account");
+
+    const validatorGroupsWithCelo = await Promise.all(
+      validatorGroups.map(async (validatorGroup) => ({
+        group: validatorGroup,
+        celo: (await accountContract.getCeloForGroup(validatorGroup)) as BigNumber,
+      }))
+    );
+
+    const validatorGroupsSortedDesc = validatorGroupsWithCelo.sort((a, b) =>
+      a.celo.lt(b.celo) ? 1 : -1
+    );
+
+    let nextGroup = ADDRESS_ZERO;
+    for (let i = 0; i < validatorGroupsSortedDesc.length; i++) {
+      const activateTx = await defaultStrategyContract.activateGroup(
+        validatorGroupsSortedDesc[i].group,
+        ADDRESS_ZERO,
+        nextGroup
+      );
+      await activateTx.wait();
+      nextGroup = validatorGroupsSortedDesc[i].group;
+    }
   } else {
     console.log(
       chalk.red(
-        `DefaultStrategy is already owned by multisig run task ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} to set dependencies address in DefaultStrategy contract!`
+        `DefaultStrategy is already owned by multisig run task ${MULTISIG_ENCODE_PROPOSAL_PAYLOAD} to set dependencies addresses and possibly activate groups in DefaultStrategy contract!`
       )
     );
   }
