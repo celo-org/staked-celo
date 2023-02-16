@@ -41,6 +41,7 @@ import {
   removeMembersFromGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
+  updateGroupCeloBasedOnProtocolStCelo,
   updateGroupSlashingMultiplier,
   updateMaxNumberOfGroups,
 } from "./utils";
@@ -1005,7 +1006,12 @@ describe("DefaultStrategy", () => {
           await manager.deposit({ value: toDeposit });
           totalDeposited += toDeposit;
         }
-
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
         await manager.withdraw(withdrawn);
       });
 
@@ -1039,6 +1045,12 @@ describe("DefaultStrategy", () => {
 
       describe("when withdrawing from 1 group", () => {
         beforeEach(async () => {
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(250);
         });
 
@@ -1083,6 +1095,12 @@ describe("DefaultStrategy", () => {
 
         beforeEach(async () => {
           originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(450);
         });
 
@@ -1147,6 +1165,12 @@ describe("DefaultStrategy", () => {
 
       describe("when withdrawing from 1 group", () => {
         beforeEach(async () => {
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(250);
         });
 
@@ -1191,6 +1215,12 @@ describe("DefaultStrategy", () => {
 
         beforeEach(async () => {
           originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(450);
         });
 

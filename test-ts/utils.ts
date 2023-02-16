@@ -19,6 +19,7 @@ import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
@@ -728,7 +729,6 @@ export async function getOrderedActiveGroups(
 
 export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
   const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
-  console.log("unsorted groups length", length.toString());
 
   const unsortedGroupsPromises = [];
 
@@ -825,6 +825,7 @@ export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrateg
 }
 
 export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const unsortedGroups = await getUnsortedGroups(defaultStrategy as any);
   let defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
   const defaultGroupsWithStCeloRecord = defaultGroupsWithStCelo.reduce(
@@ -855,5 +856,33 @@ export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
     }
     await defaultStrategy.updateActiveGroupOrder(uGroup!, prev, next);
     defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  }
+}
+
+export async function updateGroupCeloBasedOnProtocolStCelo(
+  defaultStrategy: MockDefaultStrategy,
+  specificStrategy: SpecificGroupStrategy,
+  account: MockAccount,
+  manager: Manager
+) {
+  const defaultGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const specificGroups = await getSpecificGroupsSafe(specificStrategy);
+
+  const groups: Record<string, EthersBigNumber> = {};
+
+  for (let i = 0; i < defaultGroups.length; i++) {
+    groups[defaultGroups[i]] = await defaultStrategy.stCeloInGroup(defaultGroups[i]);
+  }
+
+  for (let i = 0; i < specificGroups.length; i++) {
+    const stCeloInSpecificGroup = await specificStrategy.stCeloInStrategy(specificGroups[i]);
+    groups[specificGroups[i]] = (groups[specificGroups[i]] ?? EthersBigNumber.from(0)).add(
+      stCeloInSpecificGroup
+    );
+  }
+
+  for (const key of Object.keys(groups)) {
+    const celoInGroup = await manager.toCelo(groups[key].toString());
+    await account.setCeloForGroup(key, celoInGroup);
   }
 }

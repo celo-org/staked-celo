@@ -2,13 +2,7 @@
 pragma solidity 0.8.11;
 
 interface IAccount {
-    function getTotalCelo() external view returns (uint256);
-
-    function getCeloForGroup(address) external view returns (uint256);
-
     function scheduleVotes(address[] calldata group, uint256[] calldata votes) external payable;
-
-    function scheduledVotesForGroup(address group) external view returns (uint256);
 
     function scheduleTransfer(
         address[] calldata fromGroups,
@@ -30,4 +24,14 @@ interface IAccount {
         uint256 noVotes,
         uint256 abstainVotes
     ) external;
+
+    function getTotalCelo() external view returns (uint256);
+
+    function getCeloForGroup(address) external view returns (uint256);
+
+    function scheduledVotesForGroup(address group) external view returns (uint256);
+
+    function scheduledRevokeForGroup(address group) external view returns (uint256);
+
+    function scheduledWithdrawalsForGroup(address group) external view returns (uint256);
 }

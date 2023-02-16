@@ -182,7 +182,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error RebalanceEnoughStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
-     *  @notice Used when an `managerOrStrategy` function is called
+     *  @notice Used when a `managerOrStrategy` function is called
      *  by a non-manager or non-strategy.
      *  @param caller `msg.sender` that called the function.
      */
@@ -258,8 +258,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should either receive or have withdrawn.
-     * @param celoAmount The amount of votes to distribute.
      * @param withdraw Whether to withdraw or deposit.
+     * @param celoAmount The amount of votes to distribute.
      * @param depositGroupToIgnore The group that will not be used for deposit
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
@@ -579,7 +579,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Distributes votes by computing the number of votes to be substracted
+     * @notice Distributes votes by computing the number of votes to be subtracted
      * from each active group.
      * @param celoAmount The amount of votes to subtract.
      * @return finalGroups The groups that were chosen for subtraction.
@@ -601,15 +601,15 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         address votedGroup = activeGroups.getHead();
         uint256 groupsIndex;
 
-        while (groupsIndex < maxGroupCount) {
-            if (celoAmount == 0 || votedGroup == address(0)) {
-                break;
-            }
-
+        while (groupsIndex < maxGroupCount && celoAmount != 0 && votedGroup != address(0)) {
             votes[groupsIndex] = Math.min(
-                IManager(manager).toCelo(stCeloInGroup[votedGroup]),
+                Math.min(
+                    account.getCeloForGroup(votedGroup),
+                    IManager(manager).toCelo(stCeloInGroup[votedGroup])
+                ),
                 celoAmount
             );
+
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
             updateGroupStCelo(
@@ -665,21 +665,14 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         address votedGroup = activeGroups.getTail();
         uint256 groupsIndex;
 
-        for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
-            if (votedGroup == depositGroupToIgnore) {
-                // this scenario happens when overflow is being utilized and
-                // we want to ignore the groups that is overflowing
+        while (groupsIndex < maxGroupCount && celoAmount != 0 && votedGroup != address(0)) {
+            uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(votedGroup);
+            if (votedGroup == depositGroupToIgnore || receivableVotes == 0) {
                 (, , votedGroup) = activeGroups.get(votedGroup);
+                continue;
             }
 
-            if (celoAmount == 0 || votedGroup == address(0)) {
-                break;
-            }
-
-            votes[groupsIndex] = Math.min(
-                IManager(manager).getReceivableVotesForGroup(votedGroup),
-                celoAmount
-            );
+            votes[groupsIndex] = Math.min(receivableVotes, celoAmount);
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
             updateGroupStCelo(votedGroup, IManager(manager).toStakedCelo(votes[groupsIndex]), true);
@@ -690,6 +683,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             } else {
                 (, , votedGroup) = activeGroups.get(votedGroup);
             }
+            groupsIndex++;
         }
 
         if (celoAmount != 0) {

@@ -30,6 +30,7 @@ import {
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
+  updateGroupCeloBasedOnProtocolStCelo,
 } from "./utils";
 
 after(() => {
@@ -374,7 +375,7 @@ describe("SpecificGroupStrategy", () => {
     });
   });
 
-  describe("#rebalanceOverflownGroup()", () => {
+  describe("#rebalanceOverflowedGroup()", () => {
     const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
     beforeEach(async () => {
@@ -383,7 +384,7 @@ describe("SpecificGroupStrategy", () => {
 
     it("should revert when from group is not overflowing", async () => {
       await expect(
-        specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[0])
+        specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[0])
       ).revertedWith(`GroupNotOverflowing("${groupAddresses[0]}")`);
     });
 
@@ -400,13 +401,14 @@ describe("SpecificGroupStrategy", () => {
 
       it("should revert when group is overflowing and no capacity was freed", async () => {
         await expect(
-          specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2])
+          specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[2])
         ).revertedWith(`GroupStillOverflowing("${groupAddresses[2]}")`);
       });
 
       describe("When some capacity was freed and rebalanced", () => {
         let originalOverflow: BigNumber;
         beforeEach(async () => {
+          // await account.setTotalCelo(deposit.mul(2));
           const revokeTx = await election.revokePending(
             voter.address,
             groupAddresses[2],
@@ -421,7 +423,7 @@ describe("SpecificGroupStrategy", () => {
         describe("When different ratio of CELO vs stCELO", () => {
           describe("When 1:1", () => {
             beforeEach(async () => {
-              await specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2]);
+              await specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[2]);
             });
 
             it("should return 0 overflow", async () => {
@@ -461,7 +463,14 @@ describe("SpecificGroupStrategy", () => {
           describe("When there is more CELO than stCELO", () => {
             beforeEach(async () => {
               await account.setTotalCelo(deposit.mul(2));
-              await specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2]);
+              await updateGroupCeloBasedOnProtocolStCelo(
+                defaultStrategyContract,
+                specificGroupStrategyContract,
+                account,
+                manager
+              );
+              await account.setCeloForGroup(groupAddresses[2], BigNumber.from("0"));
+              await specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[2]);
             });
 
             it("should return 0 overflow", async () => {
@@ -508,7 +517,7 @@ describe("SpecificGroupStrategy", () => {
           describe("When there is less CELO than stCELO", () => {
             beforeEach(async () => {
               await account.setTotalCelo(deposit.div(2));
-              await specificGroupStrategyContract.rebalanceOverflownGroup(groupAddresses[2]);
+              await specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[2]);
             });
 
             it("should return 0 overflow", async () => {
