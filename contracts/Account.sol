@@ -463,7 +463,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         // Lock up the unlockedCeloForGroup in LockedGold, which increments the
         // non-voting LockedGold balance for this contract.
-        if (toLock != 0) {
+        if (toLock > 0) {
             getLockedGold().lock{value: toLock}();
         }
 

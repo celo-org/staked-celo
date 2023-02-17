@@ -43,13 +43,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     uint256 public totalStCeloLocked;
 
     /**
-     * @notice stCELO that was cast for specific group strategies and overflown to defautl strategy,
-     * strategy => stCELO amount.
+     * @notice stCELO that was cast for specific group strategies and overflowed
+     * to default strategy: strategy => stCELO amount.
      */
-    mapping(address => uint256) private stCeloInStrategyOverflown;
+    mapping(address => uint256) private stCeloInStrategyOverflowed;
 
     /**
-     * @notice Total stCelo that was overflown to default strategy.
+     * @notice Total stCelo that was overflowed to default strategy.
      */
     uint256 public totalStCeloOverflow;
 
@@ -154,14 +154,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     error MaxGroupsVotedForReached();
 
     /**
-     * Used when trying to `rebalanceOverflownGroup` when the group is not overflowing.
+     * Used when trying to `rebalanceOverflowedGroup` when the group is not overflowing.
      * @param group The group address.
      */
     error GroupNotOverflowing(address group);
 
     /**
-     * Used when trying to `rebalanceOverflownGroup` when the overflowing group cannot
-     * be rebalanced since it has not receivable votes.
+     * Used when trying to `rebalanceOverflowedGroup` when the overflowing group cannot
+     * be rebalanced since it has no receivable votes.
      * @param group The group address.
      */
     error GroupStillOverflowing(address group);
@@ -242,13 +242,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
+        uint256 votesRemaining = account.getCeloForGroup(strategy);
         (groups, votes) = calculateAndUpdateForWithdrawalTransfer(
             strategy,
             celoWithdrawalAmount,
             stCeloWithdrawalAmount
         );
 
-        uint256 votesRemaining = account.getCeloForGroup(strategy);
         if (votesRemaining < celoWithdrawalAmount) {
             revert GroupNotBalancedOrNotEnoughStCelo(
                 strategy,
@@ -391,7 +391,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert CantWithdrawAccordingToStrategy(strategy);
         }
 
-        uint256 overflowingStCelo = stCeloInStrategyOverflown[strategy];
+        uint256 overflowingStCelo = stCeloInStrategyOverflowed[strategy];
         if (overflowingStCelo > 0) {
             uint256 overflowingCelo = IManager(manager).toCelo(overflowingStCelo);
             uint256 celoToBeMovedFromOverflow = Math.min(celoWithdrawalAmount, overflowingCelo);
@@ -429,8 +429,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * makes sure to reschedule votes correctly for overflowing group.
      * @param strategy The group address.
      */
-    function rebalanceOverflownGroup(address strategy) public {
-        uint256 overflowingStCelo = stCeloInStrategyOverflown[strategy];
+    function rebalanceOverflowedGroup(address strategy) public {
+        uint256 overflowingStCelo = stCeloInStrategyOverflowed[strategy];
         if (overflowingStCelo == 0) {
             revert GroupNotOverflowing(strategy);
         }
@@ -450,7 +450,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     /**
      * @notice Returns the specific group total stCELO.
      * @return total The total stCELO amount.
-     * @return overflow The stCELO amount that is overflown to default strategy.
+     * @return overflow The stCELO amount that is overflowed to default strategy.
      */
     function getStCeloInStrategy(address strategy)
         public
@@ -458,7 +458,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         returns (uint256 total, uint256 overflow)
     {
         total = stCeloInStrategy[strategy];
-        overflow = stCeloInStrategyOverflown[strategy];
+        overflow = stCeloInStrategyOverflowed[strategy];
     }
 
     /**
@@ -494,10 +494,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         bool add
     ) private {
         if (add) {
-            stCeloInStrategyOverflown[strategy] += stCeloAmount;
+            stCeloInStrategyOverflowed[strategy] += stCeloAmount;
             totalStCeloOverflow += stCeloAmount;
         } else {
-            stCeloInStrategyOverflown[strategy] -= stCeloAmount;
+            stCeloInStrategyOverflowed[strategy] -= stCeloAmount;
             totalStCeloOverflow -= stCeloAmount;
         }
     }
@@ -516,9 +516,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert StrategyAlreadyBlocked(group);
         }
 
-        (uint256 stCeloInSpecificStrategy, uint256 overflownStCelo) = getStCeloInStrategy(group);
+        (uint256 stCeloInSpecificStrategy, uint256 overflowedStCelo) = getStCeloInStrategy(group);
 
-        if (stCeloInSpecificStrategy - overflownStCelo != 0) {
+        if (stCeloInSpecificStrategy - overflowedStCelo != 0) {
             IManager(manager).transferBetweenStrategies(
                 group,
                 address(0),

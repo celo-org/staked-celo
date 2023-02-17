@@ -450,14 +450,22 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert InvalidToGroup(toGroup);
         }
 
-        uint256 fromReceivableVotes = getReceivableVotesForGroup(fromGroup);
-        if (fromReceivableVotes != 0) {
-            revert FromGroupNotOverflowing(fromGroup);
-        }
+        uint256 fromReceivableVotesByElection = getElectionReceivableVotes(fromGroup);
 
-        uint256 fromScheduledVotes = account.scheduledVotesForGroup(fromGroup);
-        if (fromScheduledVotes == 0) {
-            revert NoScheduledVotes(fromGroup);
+        uint256 scheduledVotesToCancel = account.scheduledRevokeForGroup(fromGroup) +
+            account.scheduledWithdrawalsForGroup(fromGroup);
+        uint256 scheduledVotes = account.scheduledVotesForGroup(fromGroup);
+
+        uint256 protocolScheduledVotes = scheduledVotes > scheduledVotesToCancel
+            ? scheduledVotes - scheduledVotesToCancel
+            : 0;
+
+        uint256 overflowingCelo = protocolScheduledVotes > fromReceivableVotesByElection
+            ? protocolScheduledVotes - fromReceivableVotesByElection
+            : 0;
+
+        if (overflowingCelo == 0) {
+            revert FromGroupNotOverflowing(fromGroup);
         }
 
         uint256 toReceivableVotes = getReceivableVotesForGroup(toGroup);
@@ -465,13 +473,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             revert ToGroupOverflowing(toGroup);
         }
 
-        uint256 fromActualReceivable = getActualReceivableVotes(fromGroup);
-
-        if (fromActualReceivable >= fromScheduledVotes) {
-            revert FromGroupNotOverflowing(fromGroup);
-        }
-
-        uint256 toMove = Math.min(fromScheduledVotes - fromActualReceivable, toReceivableVotes);
+        uint256 toMove = Math.min(overflowingCelo, toReceivableVotes);
         scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
     }
 
@@ -537,23 +539,23 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         bool isActiveGroup = defaultStrategy.isActive(group);
         actualCelo = account.getCeloForGroup(group);
 
-        uint256 stCELOFromSpecificStrategy;
-        uint256 stCELOFromDefaultStrategy;
+        uint256 stCeloFromSpecificStrategy;
+        uint256 stCeloFromDefaultStrategy;
 
         if (isSpecificGroupStrategy) {
             uint256 overflow;
-            (stCELOFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
+            (stCeloFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
                 group
             );
 
-            stCELOFromSpecificStrategy -= overflow;
+            stCeloFromSpecificStrategy -= overflow;
         }
 
         if (isActiveGroup) {
-            stCELOFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
+            stCeloFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
 
-        expectedCelo = toCelo(stCELOFromSpecificStrategy + stCELOFromDefaultStrategy);
+        expectedCelo = toCelo(stCeloFromSpecificStrategy + stCeloFromDefaultStrategy);
     }
 
     /**
@@ -609,8 +611,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return The amount of CELO that can be received by group though stCELO protocol.
      */
     function getReceivableVotesForGroup(address group) public view returns (uint256) {
-        uint256 receivableVotes = getActualReceivableVotes(group);
-
+        uint256 receivableVotes = getElectionReceivableVotes(group);
         if (receivableVotes == 0) {
             return 0;
         }
@@ -788,7 +789,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * Returns votes count that can be received by group directly in Election contract.
      * @param group The group that can receive votes.
      */
-    function getActualReceivableVotes(address group) private view returns (uint256) {
+    function getElectionReceivableVotes(address group) private view returns (uint256) {
         uint256 receivable = getElection().getNumVotesReceivable(group);
         uint256 totalVotes = getElection().getTotalVotesForGroup(group);
 

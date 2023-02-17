@@ -36,6 +36,7 @@ import {
   registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
+  updateGroupCeloBasedOnProtocolStCelo,
   updateGroupSlashingMultiplier,
 } from "./utils";
 
@@ -862,6 +863,7 @@ describe("Manager", () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
           await defaultStrategyContract.activateGroup(groupAddresses[i], nextGroup, tail);
           nextGroup = groupAddresses[i];
+          await account.setCeloForGroup(groupAddresses[i], 100);
           await manager.connect(depositor2).deposit({ value: 100 });
         }
 
@@ -1102,6 +1104,7 @@ describe("Manager", () => {
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
           nextGroup = groupAddresses[i];
           await manager.connect(depositor2).deposit({ value: withdrawals[i] });
+          await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
         await account.setCeloForGroup(
@@ -1147,7 +1150,12 @@ describe("Manager", () => {
           groupHead,
           lastTransferToVotes[0]
         );
-
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
         await manager.connect(depositor).withdraw(100);
         const [withdrawnGroups, groupWithdrawals] = await account.getLastScheduledWithdrawals();
         expect(withdrawnGroups).to.deep.equal([groupHead]);
@@ -1169,6 +1177,12 @@ describe("Manager", () => {
 
         it('should withdraw correctly after "rebalance"', async () => {
           const [head] = await defaultStrategyContract.getGroupsHead();
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.connect(depositor).withdraw(specificGroupStrategyWithdrawal);
 
           const [withdrawnGroups, groupWithdrawals] = await account.getLastScheduledWithdrawals();
@@ -1230,12 +1244,17 @@ describe("Manager", () => {
 
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: depositAmount });
-        await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await rebalanceDefaultGroups(defaultStrategyContract as any);
         [originalDefaultHead] = await defaultStrategyContract.getGroupsHead();
         [previousOfHead] = await defaultStrategyContract.getGroupPreviousAndNext(
           originalDefaultHead
+        );
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
         );
         originalOverflow = await specificGroupStrategyContract.totalStCeloOverflow();
       });
@@ -1321,6 +1340,12 @@ describe("Manager", () => {
           describe("When there is more CELO than stCELO", () => {
             beforeEach(async () => {
               await account.setTotalCelo(depositAmount.mul(2));
+              await updateGroupCeloBasedOnProtocolStCelo(
+                defaultStrategyContract,
+                specificGroupStrategyContract,
+                account,
+                manager
+              );
               await manager.connect(depositor).withdraw(toWithdraw);
             });
 
@@ -1661,6 +1686,12 @@ describe("Manager", () => {
         }
         defaultGroupDeposit = BigNumber.from(1000); //parseUnits("1");
         await manager.connect(depositor).deposit({ value: defaultGroupDeposit });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
       });
 
       it("should not schedule any transfers if both account use default strategy", async () => {
@@ -1681,6 +1712,12 @@ describe("Manager", () => {
       it("should not schedule any transfers if both account use default strategy (depositor2 also deposited)", async () => {
         const defaultGroupDeposit = 150;
         await manager.connect(depositor2).deposit({ value: defaultGroupDeposit });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
 
         await manager.connect(stakedCeloSigner).transfer(depositor.address, depositor2.address, 10);
         const [
@@ -1703,12 +1740,24 @@ describe("Manager", () => {
           specificGroupStrategyAddress = groupAddresses[2];
           await manager.connect(depositor2).changeStrategy(specificGroupStrategyAddress);
           await manager.connect(depositor2).deposit({ value: specificGroupStrategyDeposit });
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
         });
 
         describe("When different ratio of CELO vs stCELO", () => {
           describe("When there is more CELO than stCELO", () => {
             beforeEach(async () => {
               await account.setTotalCelo(2200);
+              await updateGroupCeloBasedOnProtocolStCelo(
+                defaultStrategyContract,
+                specificGroupStrategyContract,
+                account,
+                manager
+              );
             });
 
             it("should schedule transfers if default strategy => specific strategy", async () => {
@@ -1960,6 +2009,12 @@ describe("Manager", () => {
           differentSpecificGroupStrategyAddress,
           differentSpecificGroupStrategyDeposit.add(withdrawals[0])
         );
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
         await specificGroupStrategyContract.blockStrategy(differentSpecificGroupStrategyAddress);
         await account.setCeloForGroup(
           differentSpecificGroupStrategyAddress,
@@ -1967,7 +2022,12 @@ describe("Manager", () => {
         );
 
         const [head] = await defaultStrategyContract.getGroupsHead();
-
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
         await manager
           .connect(stakedCeloSigner)
           .transfer(depositor2.address, depositor.address, differentSpecificGroupStrategyDeposit);
@@ -2102,6 +2162,12 @@ describe("Manager", () => {
       beforeEach(async () => {
         defaultGroupDeposit = parseUnits("2");
         await manager.deposit({ value: defaultGroupDeposit });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
       });
 
       it("should schedule nothing when changing to default strategy", async () => {
@@ -2599,6 +2665,12 @@ describe("Manager", () => {
         specificGroupAddress = groupAddresses[7];
         [currentHead] = await defaultStrategyContract.getGroupsHead();
         [currentTail] = await defaultStrategyContract.getGroupsTail();
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
       });
 
       it("should schedule votes from default -> specific", async () => {
@@ -2693,6 +2765,7 @@ describe("Manager", () => {
     });
 
     describe("When active groups", () => {
+      const firstGroupCapacity = parseUnits("40.166666666666666666");
       beforeEach(async () => {
         await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
       });
@@ -2703,28 +2776,21 @@ describe("Manager", () => {
         );
       });
 
-      describe("When from group overflowing", () => {
-        const firstGroupCapacity = parseUnits("40.166666666666666666");
+      describe("When scheduled votes are still receivable", () => {
         beforeEach(async () => {
-          await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity.mul(2));
+          await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity);
         });
 
         it("should revert when from group has no scheduled votes", async () => {
           await expect(
             manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])
-          ).revertedWith(`NoScheduledVotes("${groupAddresses[0]}")`);
+          ).revertedWith(`FromGroupNotOverflowing("${groupAddresses[0]}")`);
         });
+      });
 
-        describe("When scheduled votes are still receivable", () => {
-          beforeEach(async () => {
-            await account.setScheduledVotes(groupAddresses[0], firstGroupCapacity);
-          });
-
-          it("should revert when from group has no scheduled votes", async () => {
-            await expect(
-              manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1])
-            ).revertedWith(`FromGroupNotOverflowing("${groupAddresses[0]}")`);
-          });
+      describe("When from group overflowing", () => {
+        beforeEach(async () => {
+          await account.setCeloForGroup(groupAddresses[0], firstGroupCapacity.mul(2));
         });
 
         describe("When to group is overflowing", () => {
@@ -2744,6 +2810,8 @@ describe("Manager", () => {
         describe("When scheduled votes that are still receivable", () => {
           beforeEach(async () => {
             await account.setScheduledVotes(groupAddresses[0], firstGroupCapacity.mul(2));
+            await account.setScheduledRevokeForGroup(groupAddresses[0], parseUnits("1"));
+            await account.setScheduledWithdrawalsForGroup(groupAddresses[0], parseUnits("1"));
             await manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1]);
           });
 
@@ -2756,10 +2824,10 @@ describe("Manager", () => {
             ] = await account.getLastTransferValues();
 
             expect(lastTransferFromGroups).to.have.deep.members([groupAddresses[0]]);
-            expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity]);
+            expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity.sub(parseUnits("2"))]);
 
             expect(lastTransferToGroups).to.have.deep.members([groupAddresses[1]]);
-            expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity]);
+            expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity.sub(parseUnits("2"))]);
           });
         });
       });
