@@ -23,6 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await catchUpgradeErrorInMultisig(
     deploy("MultiSig", {
       from: deployer,
+      gasLimit: 3852749, // we need manual gas limit so upgradeTo transaction can fail (because of multisig ownership) during execution rather than during gas estimation
       log: true,
       // minDelay 4 Days, to protect against stakedCelo withdrawals
       args: [minDelay],
@@ -36,7 +37,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           },
         },
       },
-    })
+    }),
+    hre
   );
 };
 
@@ -46,7 +48,8 @@ func.dependencies = [];
 export default func;
 
 async function catchUpgradeErrorInMultisig(
-  action: Promise<DeployResult> | (() => Promise<DeployResult>)
+  action: Promise<DeployResult> | (() => Promise<DeployResult>),
+  hre: HardhatRuntimeEnvironment
 ) {
   try {
     if (action instanceof Promise) {
@@ -63,6 +66,23 @@ async function catchUpgradeErrorInMultisig(
         )
       );
     } else {
+      const multisigContract = await hre.ethers.getContractOrNull("MultiSig");
+
+      if (multisigContract != null && e.transaction != null) {
+        const parsedTx = multisigContract.interface.parseTransaction({
+          data: e.transaction.data,
+          value: e.transaction.value,
+        });
+        if (parsedTx.functionFragment.name === "upgradeTo") {
+          console.log(
+            chalk.red(
+              "Transaction was reverted. Most probably it was because caller is not an owner. Please make sure to update the proxy implementation manually."
+            )
+          );
+          return;
+        }
+      }
+      console.log(e);
       throw e;
     }
   }
