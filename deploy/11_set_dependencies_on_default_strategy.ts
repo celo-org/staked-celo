@@ -6,6 +6,7 @@ import { executeAndWait } from "../lib/deploy-utils";
 import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../lib/tasksNames";
 import { ADDRESS_ZERO } from "../test-ts/utils";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
   validatorGroupsString ? validatorGroupsString.split(",") : [];
@@ -13,6 +14,7 @@ const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const account = await hre.deployments.get("Account");
   const groupHealth = await hre.deployments.get("GroupHealth");
+  const groupHealthContract: GroupHealth = await hre.ethers.getContract("GroupHealth");
   const specificGroupStrategy = await hre.deployments.get("SpecificGroupStrategy");
   const defaultStrategy: DefaultStrategy = await hre.ethers.getContract("DefaultStrategy");
   const multisig = await hre.deployments.get("MultiSig");
@@ -47,6 +49,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     let nextGroup = ADDRESS_ZERO;
     for (let i = 0; i < validatorGroupsSortedDesc.length; i++) {
+      const healthy = await groupHealthContract.isGroupValid(validatorGroupsSortedDesc[i].group);
+      if (!healthy) {
+        console.log(
+          chalk.red(
+            `Group ${validatorGroupsSortedDesc[i].group} is not healthy - it cannot be activated!`
+          )
+        );
+        continue;
+      }
       const activateTx = await defaultStrategyContract.activateGroup(
         validatorGroupsSortedDesc[i].group,
         ADDRESS_ZERO,
