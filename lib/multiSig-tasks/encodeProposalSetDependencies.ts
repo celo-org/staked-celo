@@ -28,7 +28,8 @@ task(
           "Deployment abi differs from artifact abi. This can happen when updating proxy that is owned by multisig. In such case Hardhat deploy plugin will update only Manager_Implementation.json but Manager.json stays untouched. We will try to update deployment based on Manager artifact."
         )
       );
-      await hre.deployments.save("Manager", { ...artifact, address: managerAddress });
+      managerDeployment.abi = artifact.abi;
+      await hre.deployments.save("Manager", { ...managerDeployment});
     }
 
     await setLocalNodeDeploymentPath(hre);
