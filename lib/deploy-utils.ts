@@ -33,7 +33,6 @@ export async function catchNotOwnerForProxy(
       const encodedSenderMustBeMultisigWallet = web3.eth.abi.encodeFunctionSignature(
         "SenderMustBeMultisigWallet(address)"
       );
-      console.log("encodedSenderMustBeMultisigWallet", encodedSenderMustBeMultisigWallet);
       if (data.indexOf(encodedSenderMustBeMultisigWallet) == 0) {
         console.log(
           chalk.red(

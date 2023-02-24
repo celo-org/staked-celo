@@ -58,8 +58,8 @@ async function catchUpgradeErrorInMultisig(
       await action();
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    if (e?.data?.stack?.indexOf("VM Exception while processing transaction: revert")) {
+  } catch (err: any) {
+    if (err?.data?.stack?.indexOf("VM Exception while processing transaction: revert")) {
       console.log(
         chalk.red(
           "Transaction was reverted. Most probably it was because caller is not an owner. Please make sure to update the proxy implementation manually."
@@ -68,10 +68,10 @@ async function catchUpgradeErrorInMultisig(
     } else {
       const multisigContract = await hre.ethers.getContractOrNull("MultiSig");
 
-      if (multisigContract != null && e.transaction != null) {
+      if (multisigContract != null && err.transaction != null) {
         const parsedTx = multisigContract.interface.parseTransaction({
-          data: e.transaction.data,
-          value: e.transaction.value,
+          data: err.transaction.data,
+          value: err.transaction.value,
         });
         if (parsedTx.functionFragment.name === "upgradeTo") {
           console.log(
@@ -82,8 +82,7 @@ async function catchUpgradeErrorInMultisig(
           return;
         }
       }
-      console.log(e);
-      throw e;
+      throw err;
     }
   }
 }
