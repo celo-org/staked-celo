@@ -18,6 +18,7 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
+  rebalanceDefaultGroups,
   rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
@@ -123,15 +124,15 @@ describe("e2e", () => {
     );
   });
 
-  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("1"));
+  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("100"));
   const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("2"));
   const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("3.5"));
 
   it("deposit and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
+
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
 
     await activateAndVoteTest();
@@ -139,7 +140,7 @@ describe("e2e", () => {
     await activateAndVoteTest();
 
     await distributeAllRewards();
-
+    await rebalanceDefaultGroups(defaultStrategyContract);
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
     await hre.run(ACCOUNT_REVOKE, {
       account: deployerAccountName,
@@ -149,7 +150,6 @@ describe("e2e", () => {
     await activateAndVoteTest();
 
     await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
-
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(0);
 
     await hre.run(ACCOUNT_WITHDRAW, {
@@ -183,7 +183,7 @@ describe("e2e", () => {
   });
 
   async function distributeAllRewards() {
-    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup0.toString());
     await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
     await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
   }

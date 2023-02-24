@@ -6,9 +6,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, owner } = await hre.getNamedAccounts();
   const managerAddress = (await hre.deployments.get("Manager")).address;
 
+  const lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
+  const libInstance = await lib.deploy();
+  await libInstance.deployed();
+  console.log("Library Address--->" + libInstance.address)
+
+
   await deploy("MockDefaultStrategy", {
     from: deployer,
     log: true,
+    libraries: { AddressSortedLinkedList: libInstance.address },
     proxy: {
       proxyArgs: ["{implementation}", "{data}"],
       upgradeIndex: 0,

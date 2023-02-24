@@ -1,3 +1,4 @@
+import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, BigNumberish } from "ethers";
@@ -21,10 +22,12 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
+  rebalanceDefaultGroups,
   rebalanceGroups,
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
+  revokeElectionOnMockValidatorGroupsAndUpdate,
   timeTravel,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
@@ -37,6 +40,7 @@ describe("e2e specific group strategy voting", () => {
   let accountContract: Account;
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
+  let validatorsWrapper: ValidatorsWrapper;
   let specificGroupStrategyContract: SpecificGroupStrategy;
   let defaultStrategy: DefaultStrategy;
 
@@ -55,6 +59,8 @@ describe("e2e specific group strategy voting", () => {
   let depositor5: SignerWithAddress;
   // only deposits to strategy that is different from active groups
   let voter: SignerWithAddress;
+  // deposits to healthy group that gets unhealthy and again becomes healthy
+  let depositor6: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let activatedGroupAddresses: string[];
@@ -71,6 +77,7 @@ describe("e2e specific group strategy voting", () => {
 
   let specificGroupStrategyDifferentFromActive: SignerWithAddress;
   let specificGroupStrategySameAsActive: SignerWithAddress;
+  let specificGroupThatWillBeUnhealthy: SignerWithAddress;
 
   // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
@@ -91,6 +98,7 @@ describe("e2e specific group strategy voting", () => {
     [depositor3] = await randomSigner(parseUnits("300"));
     [depositor4] = await randomSigner(parseUnits("300"));
     [depositor5] = await randomSigner(parseUnits("300"));
+    [depositor6] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("300"));
     const accounts = await hre.kit.contracts.getAccounts();
     await accounts.createAccount().sendAndWaitForReceipt({
@@ -115,6 +123,7 @@ describe("e2e specific group strategy voting", () => {
     }
     specificGroupStrategyDifferentFromActive = groups[5];
     specificGroupStrategySameAsActive = groups[0];
+    specificGroupThatWillBeUnhealthy = groups[7];
   });
 
   beforeEach(async () => {
@@ -125,6 +134,7 @@ describe("e2e specific group strategy voting", () => {
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
     specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
     defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
+    validatorsWrapper = await hre.kit.contracts.getValidators();
 
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
 
@@ -132,10 +142,10 @@ describe("e2e specific group strategy voting", () => {
       multisigOwner0,
       groupHealthContract as unknown as GroupHealth
     );
-    const validatorWrapper = await hre.kit.contracts.getValidators();
-    await electMockValidatorGroupsAndUpdate(validatorWrapper, groupHealthContract, [
+    await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
       ...activatedGroupAddresses,
-      groups[5].address,
+      specificGroupStrategyDifferentFromActive.address,
+      specificGroupThatWillBeUnhealthy.address,
     ]);
 
     await activateValidators(
@@ -311,9 +321,40 @@ describe("e2e specific group strategy voting", () => {
       depositor4ExpectedCeloToBeWithdrawn,
       depositor4AfterWithdrawalBalance.sub(depositor4BeforeWithdrawalBalance)
     );
+
+    // healthy -> unhealthy -> healthy
+
+    await managerContract
+      .connect(depositor6)
+      .changeStrategy(specificGroupThatWillBeUnhealthy.address);
+    await managerContract.connect(depositor6).deposit({ value: amountOfCeloToDeposit });
+    expect(
+      await accountContract.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy.address)
+    ).to.deep.eq(amountOfCeloToDeposit);
+    await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+      specificGroupThatWillBeUnhealthy.address,
+    ]);
+    await managerContract.connect(depositor6).deposit({ value: amountOfCeloToDeposit });
+    expectBigNumberInRange(
+      await accountContract.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy.address),
+      BigNumber.from(0),
+      1
+    );
+    await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+      ...activatedGroupAddresses,
+      specificGroupStrategyDifferentFromActive.address,
+      specificGroupThatWillBeUnhealthy.address,
+    ]);
+    await managerContract.connect(depositor6).deposit({ value: amountOfCeloToDeposit });
+    expectBigNumberInRange(
+      await accountContract.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy.address),
+      amountOfCeloToDeposit,
+      1
+    );
   });
 
   async function rebalanceAllAndActivate() {
+    await rebalanceDefaultGroups(defaultStrategy);
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
     await hre.run(ACCOUNT_REVOKE, {
       account: deployerAccountName,

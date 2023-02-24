@@ -25,6 +25,8 @@ contract MockAccount {
     uint256 public getTotalCelo;
 
     mapping(address => uint256) public scheduledVotesForGroup;
+    mapping(address => uint256) public scheduledRevokeForGroup;
+    mapping(address => uint256) public scheduledWithdrawalsForGroup;
 
     uint256 public proposalIdVoted;
     uint256 public indexVoted;
@@ -32,13 +34,12 @@ contract MockAccount {
     uint256 public noVotesVoted;
     uint256 public abstainVoteVoted;
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function scheduleVotes(address[] calldata groups, uint256[] calldata votes) external payable {
         lastVotedGroups = groups;
         lastVotes = votes;
-    }
-
-    function getLastScheduledVotes() external view returns (address[] memory, uint256[] memory) {
-        return (lastVotedGroups, lastVotes);
     }
 
     function scheduleWithdrawals(
@@ -49,18 +50,6 @@ contract MockAccount {
         lastWithdrawnGroups = groups;
         lastWithdrawals = withdrawals;
         lastWithdrawalBeneficiary = beneficiary;
-    }
-
-    function getLastScheduledWithdrawals()
-        external
-        view
-        returns (
-            address[] memory,
-            uint256[] memory,
-            address
-        )
-    {
-        return (lastWithdrawnGroups, lastWithdrawals, lastWithdrawalBeneficiary);
     }
 
     function setCeloForGroup(address group, uint256 amount) external {
@@ -75,21 +64,12 @@ contract MockAccount {
         scheduledVotesForGroup[group] = amount;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    function setScheduledRevokeForGroup(address group, uint256 amount) external {
+        scheduledRevokeForGroup[group] = amount;
+    }
 
-    function votePartially(
-        uint256 proposalId,
-        uint256 index,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
-    ) public {
-        proposalIdVoted = proposalId;
-        indexVoted = index;
-        yesVotesVoted = yesVotes;
-        noVotesVoted = noVotes;
-        abstainVoteVoted = abstainVotes;
+    function setScheduledWithdrawalsForGroup(address group, uint256 amount) external {
+        scheduledWithdrawalsForGroup[group] = amount;
     }
 
     function scheduleTransfer(
@@ -102,6 +82,22 @@ contract MockAccount {
         lastTransferFromVotes = fromVotes;
         lastTransferToGroups = toGroups;
         lastTransferToVotes = toVotes;
+    }
+
+    function getLastScheduledVotes() external view returns (address[] memory, uint256[] memory) {
+        return (lastVotedGroups, lastVotes);
+    }
+
+    function getLastScheduledWithdrawals()
+        external
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            address
+        )
+    {
+        return (lastWithdrawnGroups, lastWithdrawals, lastWithdrawalBeneficiary);
     }
 
     function getLastTransferValues()
@@ -120,5 +116,19 @@ contract MockAccount {
             lastTransferToGroups,
             lastTransferToVotes
         );
+    }
+
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) public {
+        proposalIdVoted = proposalId;
+        indexVoted = index;
+        yesVotesVoted = yesVotes;
+        noVotesVoted = noVotes;
+        abstainVoteVoted = abstainVotes;
     }
 }

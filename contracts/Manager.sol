@@ -105,7 +105,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error CallerNotStrategy(address caller);
 
     /**
-     * @notice Used when rebalancing to not active nor allowed group.
+     * @notice Used when rebalancing to non-active nor specific group.
      * @param group The group's address.
      */
     error InvalidToGroup(address group);
@@ -131,6 +131,24 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param expectedCelo The expected CELO value.
      */
     error RebalanceEnoughCelo(address group, uint256 actualCelo, uint256 expectedCelo);
+
+    /**
+     * @notice Used when trying to overflow rebalance group that is not overflowing.
+     * @param group The group's address.
+     */
+    error FromGroupNotOverflowing(address group);
+
+    /**
+     * @notice Used when trying to rebalance group that has no scheduled votes.
+     * @param group The group's address.
+     */
+    error NoScheduledVotes(address group);
+
+    /**
+     * @notice Used when trying to rebalance to a group that is overflowing.
+     * @param group The group's address.
+     */
+    error ToGroupOverflowing(address group);
 
     /**
      * @dev Throws if called by any address other than StakedCelo.
@@ -261,34 +279,32 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * The CELO will be distributed based on address strategy.
      */
     function deposit() external payable {
-        address strategy = checkAndUpdateStrategy(msg.sender, strategies[msg.sender]);
+        address strategy = checkStrategy(strategies[msg.sender]);
 
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
-            if (strategy != address(0)) {
-                if (!groupHealth.isGroupValid(strategy)) {
-                    uint256 stCeloBalance = specificGroupStrategy
-                        .specificGroupStrategyTotalStCeloVotes(strategy);
-                    if (stCeloBalance != 0) {
-                        _transferWithoutChecks(strategy, address(0), stCeloBalance);
-                    }
-                    strategy = address(0);
+            if (!groupHealth.isGroupValid(strategy)) {
+                uint256 stCeloBalance = specificGroupStrategy.stCeloInStrategy(strategy);
+                if (stCeloBalance != 0) {
+                    _transferWithoutChecks(strategy, address(0), stCeloBalance);
                 }
+                strategy = address(0);
             }
         }
-
-        stakedCelo.mint(msg.sender, stCeloAmount);
-
         address[] memory finalGroups;
         uint256[] memory finalVotes;
         (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy);
+
+        stakedCelo.mint(msg.sender, stCeloAmount);
+
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
     }
 
     /**
      * @notice Returns which strategy an address is using
      * address(0) = default strategy
-     * !address(0) = voting for allowed validator group
+     * !address(0) = voting for specific validator group.
+     * Unhealthy and blocked strategies are reverted to default.
      * @param accountAddress The account address.
      * @return The strategy.
      */
@@ -330,7 +346,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) public onlyStakedCelo {
         address fromStrategy = strategies[from];
         address toStrategy = strategies[to];
-        _transfer(fromStrategy, toStrategy, stCeloAmount, from, to);
+        _transfer(fromStrategy, toStrategy, stCeloAmount);
     }
 
     /**
@@ -356,7 +372,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (specificGroupStrategy.isBlockedSpecificGroupStrategy(newStrategy) ||
+            (specificGroupStrategy.isBlockedStrategy(newStrategy) ||
                 !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
@@ -365,7 +381,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
         if (stCeloAmount != 0) {
             address currentStrategy = strategies[msg.sender];
-            _transfer(currentStrategy, newStrategy, stCeloAmount, msg.sender, msg.sender);
+            _transfer(currentStrategy, newStrategy, stCeloAmount);
         }
 
         strategies[msg.sender] = checkStrategy(newStrategy);
@@ -387,44 +403,95 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
-        uint256 expectedFromCelo;
-        uint256 actualFromCelo;
-
-        if (
-            !defaultStrategy.groupsContain(toGroup) &&
-            !specificGroupStrategy.isSpecificGroupStrategy(toGroup)
-        ) {
-            // rebalancing to deprecated/non-existent group is not allowed
+        if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
+            // rebalancing to deactivated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
 
-        (expectedFromCelo, actualFromCelo) = getExpectedAndActualCeloForGroup(fromGroup);
-
+        (uint256 expectedFromCelo, uint256 actualFromCelo) = getExpectedAndActualCeloForGroup(
+            fromGroup
+        );
         if (actualFromCelo <= expectedFromCelo) {
             // fromGroup needs to have more CELO than it should
             revert RebalanceNoExtraCelo(fromGroup, actualFromCelo, expectedFromCelo);
         }
 
-        uint256 expectedToCelo;
-        uint256 actualToCelo;
-
-        (expectedToCelo, actualToCelo) = getExpectedAndActualCeloForGroup(toGroup);
+        (uint256 expectedToCelo, uint256 actualToCelo) = getExpectedAndActualCeloForGroup(toGroup);
 
         if (actualToCelo >= expectedToCelo) {
             // toGroup needs to have less CELO than it should
             revert RebalanceEnoughCelo(toGroup, actualToCelo, expectedToCelo);
         }
 
-        address[] memory fromGroups = new address[](1);
-        address[] memory toGroups = new address[](1);
-        uint256[] memory fromVotes = new uint256[](1);
-        uint256[] memory toVotes = new uint256[](1);
+        uint256 receivableVotes = getReceivableVotesForGroup(toGroup);
 
-        fromGroups[0] = fromGroup;
-        fromVotes[0] = Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo);
+        if (receivableVotes == 0) {
+            revert ToGroupOverflowing(toGroup);
+        }
 
-        toGroups[0] = toGroup;
-        toVotes[0] = fromVotes[0];
+        uint256 toMove = Math.min(
+            Math.min(actualFromCelo - expectedFromCelo, expectedToCelo - actualToCelo),
+            receivableVotes
+        );
+
+        scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
+    }
+
+    /**
+     * @notice Rebalance according to CELO overflow rather than stCELO ratio.
+     * If one of the groups is overflowing and there are still some votes that
+     * are scheduled for the group, this function allows to transfer these
+     * votes to any active group in protocol that is not overflowing yet.
+     * @param fromGroup The group to unschedule votes from.
+     * @param toGroup The group to schedule votes to.
+     */
+    function rebalanceOverflow(address fromGroup, address toGroup) public {
+        if (!defaultStrategy.isActive(toGroup)) {
+            revert InvalidToGroup(toGroup);
+        }
+
+        uint256 fromReceivableVotesByElection = getElectionReceivableVotes(fromGroup);
+
+        uint256 scheduledVotesToCancel = account.scheduledRevokeForGroup(fromGroup) +
+            account.scheduledWithdrawalsForGroup(fromGroup);
+        uint256 scheduledVotes = account.scheduledVotesForGroup(fromGroup);
+
+        uint256 protocolScheduledVotes = scheduledVotes > scheduledVotesToCancel
+            ? scheduledVotes - scheduledVotesToCancel
+            : 0;
+
+        uint256 overflowingCelo = protocolScheduledVotes > fromReceivableVotesByElection
+            ? protocolScheduledVotes - fromReceivableVotesByElection
+            : 0;
+
+        if (overflowingCelo == 0) {
+            revert FromGroupNotOverflowing(fromGroup);
+        }
+
+        uint256 toReceivableVotes = getReceivableVotesForGroup(toGroup);
+        if (toReceivableVotes == 0) {
+            revert ToGroupOverflowing(toGroup);
+        }
+
+        uint256 toMove = Math.min(overflowingCelo, toReceivableVotes);
+        scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
+    }
+
+    /**
+     * @notice Allows strategy to initiate transfer without any checks.
+     * This method is supposed to be used for transfers between groups
+     * only within strategy
+     * @param fromGroups The groups the deposited CELO is intended to be revoked from.
+     * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
+     * @param toGroups The groups the transferred CELO is intended to vote for.
+     * @param toVotes The amount of CELO to schedule for each respective `toGroups`.
+     */
+    function scheduleTransferWithinStrategy(
+        address[] calldata fromGroups,
+        address[] calldata toGroups,
+        uint256[] calldata fromVotes,
+        uint256[] calldata toVotes
+    ) public onlyStrategy {
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }
 
@@ -468,23 +535,27 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        bool isSpecificGroupStrategy = specificGroupStrategy.isSpecificGroupStrategy(group);
-        bool isActiveGroup = defaultStrategy.groupsContain(group);
+        bool isSpecificGroupStrategy = specificGroupStrategy.isStrategy(group);
+        bool isActiveGroup = defaultStrategy.isActive(group);
         actualCelo = account.getCeloForGroup(group);
 
-        uint256 stCELOFromDefaultStrategy;
-        uint256 stCELOFromSpecificStrategy;
+        uint256 stCeloFromSpecificStrategy;
+        uint256 stCeloFromDefaultStrategy;
 
         if (isSpecificGroupStrategy) {
-            stCELOFromSpecificStrategy = specificGroupStrategy
-                .specificGroupStrategyTotalStCeloVotes(group);
+            uint256 overflow;
+            (stCeloFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
+                group
+            );
+
+            stCeloFromSpecificStrategy -= overflow;
         }
 
         if (isActiveGroup) {
-            stCELOFromDefaultStrategy = defaultStrategy.getTotalStCeloVotesForStrategy(group);
+            stCeloFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
 
-        expectedCelo = toCelo(stCELOFromSpecificStrategy + stCELOFromDefaultStrategy);
+        expectedCelo = toCelo(stCeloFromSpecificStrategy + stCeloFromDefaultStrategy);
     }
 
     /**
@@ -496,7 +567,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function toStakedCelo(uint256 celoAmount) public view returns (uint256) {
         uint256 stCeloSupply = stakedCelo.totalSupply();
         uint256 celoBalance = account.getTotalCelo();
-
         if (stCeloSupply == 0 || celoBalance == 0) {
             return celoAmount;
         }
@@ -527,14 +597,38 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (
-            strategy != address(0) && specificGroupStrategy.isBlockedSpecificGroupStrategy(strategy)
-        ) {
+        if (strategy != address(0) && specificGroupStrategy.isBlockedStrategy(strategy)) {
             // strategy not allowed revert to default strategy
             return address(0);
         }
 
         return strategy;
+    }
+
+    /**
+     * Returns votes count that can be received by group through stCELO protocol.
+     * @param group The group that can receive votes.
+     * @return The amount of CELO that can be received by group though stCELO protocol.
+     */
+    function getReceivableVotesForGroup(address group) public view returns (uint256) {
+        uint256 receivableVotes = getElectionReceivableVotes(group);
+        if (receivableVotes == 0) {
+            return 0;
+        }
+
+        uint256 totalVotesForGroupByAccount = getElection().getTotalVotesForGroupByAccount(
+            group,
+            address(account)
+        );
+        uint256 votesForGroupByAccountInProtocol = account.getCeloForGroup(group);
+
+        receivableVotes += totalVotesForGroupByAccount;
+
+        if (receivableVotes < votesForGroupByAccountInProtocol) {
+            return 0;
+        }
+
+        return receivableVotes - votesForGroupByAccountInProtocol;
     }
 
     /**
@@ -555,9 +649,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
                 stCeloAmount
             );
         } else {
-            (finalGroups, finalVotes) = defaultStrategy.generateGroupVotesToDistributeTo(
+            (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(
+                false,
                 votes,
-                stCeloAmount
+                address(0)
             );
         }
 
@@ -571,26 +666,27 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * CELO.
      **/
     function distributeAndScheduleWithdrawals(uint256 stCeloAmount, address beneficiary) private {
-        address strategy = checkAndUpdateStrategy(beneficiary, strategies[beneficiary]);
+        address strategy = checkStrategy(strategies[beneficiary]);
         (
             address[] memory groupsWithdrawn,
             uint256[] memory withdrawalsPerGroup
-        ) = distributeWithdrawals(stCeloAmount, strategy);
+        ) = distributeWithdrawals(stCeloAmount, strategy, false);
         account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
     }
 
     /**
      * @notice Distributes withdrawals according to chosen strategy.
      * @param stCeloAmount The amount of stCELO to be withdrawn.
-     * @param strategy The strategy that will be used for withdrawal distribution
-     * CELO.
+     * @param strategy The strategy that will be used for withdrawal distribution.
+     * @param isTransfer Whether or not withdrawal is calculated for transfer.
      **/
-    function distributeWithdrawals(uint256 stCeloAmount, address strategy)
-        private
-        returns (address[] memory, uint256[] memory)
-    {
-        uint256 withdrawal = toCelo(stCeloAmount);
-        if (withdrawal == 0) {
+    function distributeWithdrawals(
+        uint256 stCeloAmount,
+        address strategy,
+        bool isTransfer
+    ) private returns (address[] memory, uint256[] memory) {
+        uint256 celoAmount = toCelo(stCeloAmount);
+        if (celoAmount == 0) {
             revert ZeroWithdrawal();
         }
 
@@ -598,32 +694,26 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = specificGroupStrategy
-                .calculateAndUpdateForWithdrawal(strategy, withdrawal, stCeloAmount);
+            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
+                ? specificGroupStrategy.calculateAndUpdateForWithdrawalTransfer(
+                    strategy,
+                    celoAmount,
+                    stCeloAmount
+                )
+                : specificGroupStrategy.calculateAndUpdateForWithdrawal(
+                    strategy,
+                    celoAmount,
+                    stCeloAmount
+                );
         } else {
-            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
-                .calculateAndUpdateForWithdrawal(withdrawal);
+            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
+                true,
+                celoAmount,
+                address(0)
+            );
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);
-    }
-
-    /**
-     * @notice Checks if strategy was deprecated. Deprecated strategy is reverted to default.
-     * Updates the strategy.
-     * @param accountAddress The account.
-     * @param strategy The strategy.
-     * @return Up to date strategy
-     */
-    function checkAndUpdateStrategy(address accountAddress, address strategy)
-        private
-        returns (address)
-    {
-        address checkedStrategy = checkStrategy(strategy);
-        if (checkedStrategy != strategy) {
-            strategies[accountAddress] = checkedStrategy;
-        }
-        return checkedStrategy;
     }
 
     /**
@@ -631,18 +721,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param fromStrategy The from validator group.
      * @param toStrategy The to validator group.
      * @param stCeloAmount The stCELO amount.
-     * @param from The from address.
-     * @param to The to address.
      */
     function _transfer(
         address fromStrategy,
         address toStrategy,
-        uint256 stCeloAmount,
-        address from,
-        address to
+        uint256 stCeloAmount
     ) private {
-        fromStrategy = checkAndUpdateStrategy(from, fromStrategy);
-        toStrategy = checkAndUpdateStrategy(to, toStrategy);
+        fromStrategy = checkStrategy(fromStrategy);
+        toStrategy = checkStrategy(toStrategy);
 
         if (fromStrategy == toStrategy) {
             // either both addresses use default strategy
@@ -666,12 +752,51 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     ) private {
         address[] memory fromGroups;
         uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy);
+        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy, true);
 
         address[] memory toGroups;
         uint256[] memory toVotes;
         (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * @notice Schedules transfer between 2 groups.
+     * @param fromGroup The group the deposited CELO is intended to be revoked from.
+     * @param toGroup The group the transferred CELO is intended to vote for.
+     * @param votes The amount of CELO to be transfered.
+     */
+    function scheduleRebalanceTransfer(
+        address fromGroup,
+        address toGroup,
+        uint256 votes
+    ) private {
+        address[] memory fromGroups = new address[](1);
+        address[] memory toGroups = new address[](1);
+        uint256[] memory fromVotes = new uint256[](1);
+        uint256[] memory toVotes = new uint256[](1);
+
+        fromGroups[0] = fromGroup;
+        fromVotes[0] = votes;
+        toGroups[0] = toGroup;
+        toVotes[0] = fromVotes[0];
+
+        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * Returns votes count that can be received by group directly in Election contract.
+     * @param group The group that can receive votes.
+     */
+    function getElectionReceivableVotes(address group) private view returns (uint256) {
+        uint256 receivable = getElection().getNumVotesReceivable(group);
+        uint256 totalVotes = getElection().getTotalVotesForGroup(group);
+
+        if (receivable < totalVotes) {
+            return 0;
+        }
+
+        return receivable - totalVotes;
     }
 }

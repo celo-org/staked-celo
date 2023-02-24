@@ -1,25 +1,38 @@
 import { CeloTxReceipt } from "@celo/connect";
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
 import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
+  ACCOUNT_REVOKE,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockAccount } from "../typechain-types/MockAccount";
+import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import electionContractData from "./code/abi/electionAbi.json";
+import {
+  DefaultGroupContract,
+  ExpectVsReal,
+  OrderedGroup,
+  RebalanceContract,
+} from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -156,23 +169,26 @@ export async function activateValidators(
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  const payloads: string[] = [];
-  const destinations: string[] = [];
-  const values: string[] = [];
-
-  for (let i = 0; i < 3; i++) {
+  let [nextGroup] = await defaultStrategyContract.getGroupsTail();
+  for (let i = 0; i < groupAddresses.length; i++) {
     const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
     if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
-    destinations.push(defaultStrategyContract.address);
-    values.push("0");
-    payloads.push(
-      defaultStrategyContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+    await submitAndExecuteProposal(
+      multisigOwner,
+      [defaultStrategyContract.address],
+      ["0"],
+      [
+        defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
+          groupAddresses[i],
+          ADDRESS_ZERO,
+          nextGroup,
+        ]),
+      ]
     );
+    nextGroup = groupAddresses[i];
   }
-
-  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
@@ -432,6 +448,17 @@ export async function activateAndVoteTest(deployerAccountName = "deployer") {
   }
 }
 
+export async function revokeTest(deployerAccountName = "deployer") {
+  try {
+    await hre.run(ACCOUNT_REVOKE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Revoke failed! ${JSON.stringify(error)}`);
+  }
+}
+
 export async function setGovernanceConcurrentProposals(count: number) {
   const governanceWrapper = await hre.kit.contracts.getGovernance();
   const governanceContract = governanceWrapper["contract"];
@@ -444,26 +471,44 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
+export async function getDefaultGroupsSafe(
+  defaultStrategy: DefaultGroupContract
+): Promise<string[]> {
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
+  let [key] = await defaultStrategy.getGroupsHead();
+
+  const activeGroups = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroups.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+  }
+
+  return activeGroups;
+}
+
+export async function getSpecificGroupsSafe(
+  specificGroupStrategy: SpecificGroupStrategy
+): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const specificGroupsPromises = [];
+
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+  }
+
+  return Promise.all(specificGroupsPromises);
+}
+
 export async function getGroupsOfAllStrategies(
   defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const activeGroupsLengthPromise = defaultStrategy.getGroupsLength();
-  const getSpecificGroupStrategiesNumber = specificGroupStrategy.getSpecificGroupStrategiesNumber();
+  const activeGroups = getDefaultGroupsSafe(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroupsSafe(specificGroupStrategy);
 
-  const activeGroupsPromises = [];
-  const specificGroupsPromises = [];
-
-  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-    activeGroupsPromises.push(defaultStrategy.getGroup(i));
-  }
-
-  for (let i = 0; i < (await getSpecificGroupStrategiesNumber).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getSpecificGroupStrategy(i));
-  }
-
-  const allGroups = await Promise.all([...activeGroupsPromises, ...specificGroupsPromises]);
-  const allGroupsSet = new Set(allGroups);
+  const allGroups = await Promise.all([activeGroups, specificGroupsPromise]);
+  const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
 
   return [...allGroupsSet];
 }
@@ -471,7 +516,7 @@ export async function getGroupsOfAllStrategies(
 export async function getBlockedSpecificGroupStrategies(
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const blockedStrategiesLength = await specificGroupStrategy.getBlockedStrategiesNumber();
+  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedStrategies();
   const promises: Promise<string>[] = [];
   for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
     promises.push(specificGroupStrategy.getBlockedStrategy(i));
@@ -494,14 +539,37 @@ export async function getRealVsExpectedCeloForGroups(managerContract: Manager, g
   return await Promise.all(expectedVsRealPromises);
 }
 
-export async function rebalanceGroups(
-  managerContract: Manager,
-  specificGroupStrategy: SpecificGroupStrategy,
-  defaultStrategy: DefaultStrategy
+export async function getRealVsExpectedStCeloForGroupsDefaultStrategy(
+  defaultStrategyContract: DefaultStrategy,
+  groups: string[]
 ) {
-  const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
-  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+  const expectedVsRealPromises = groups.map(async (group) => {
+    const expectedVsReal = await defaultStrategyContract.getExpectedAndActualStCeloForGroup(group);
+    return {
+      group,
+      expected: expectedVsReal[0],
+      real: expectedVsReal[1],
+      diff: expectedVsReal[1].sub(expectedVsReal[0]),
+    };
+  });
 
+  return await Promise.all(expectedVsRealPromises);
+}
+
+export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const expectedVsReal = await getRealVsExpectedStCeloForGroupsDefaultStrategy(
+    defaultStrategy,
+    activeGroups
+  );
+
+  await rebalanceInternal(defaultStrategy, expectedVsReal);
+}
+
+async function rebalanceInternal(
+  rebalanceContract: RebalanceContract,
+  expectedVsReal: ExpectVsReal[]
+) {
   const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
   if (unbalanced.length == 0) {
     return;
@@ -513,7 +581,7 @@ export async function rebalanceGroups(
   let lastIndex = sortedUnbalancedDesc.length - 1;
 
   while (firstIndex < lastIndex) {
-    await managerContract.rebalance(
+    await rebalanceContract.rebalance(
       sortedUnbalancedDesc[firstIndex].group,
       sortedUnbalancedDesc[lastIndex].group
     );
@@ -533,6 +601,17 @@ export async function rebalanceGroups(
       lastIndex--;
     }
   }
+}
+
+export async function rebalanceGroups(
+  managerContract: Manager,
+  specificGroupStrategy: SpecificGroupStrategy,
+  defaultStrategy: DefaultStrategy
+) {
+  const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+
+  rebalanceInternal(managerContract, expectedVsReal);
 }
 
 export async function electMockValidatorGroupsAndUpdate(
@@ -610,4 +689,200 @@ export async function upgradeToMockGroupHealthE2E(
   );
 
   return mockGroupHealthFactory.attach(groupHealthContract.address);
+}
+
+export async function getIndexesOfElectedValidatorGroupMembers(
+  election: ElectionWrapper,
+  validators: ValidatorsWrapper,
+  validatorGroup: string
+) {
+  const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
+  const currentValidatorSigners = await election.getCurrentValidatorSigners();
+  const finalIndexes: number[] = [];
+  for (const member of validatorGroupDetail.members) {
+    const index = currentValidatorSigners.indexOf(member);
+    finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
+  }
+  return finalIndexes;
+}
+
+export async function getOrderedActiveGroups(
+  defaultStrategyContract: MockDefaultStrategy,
+  account?: Account
+): Promise<OrderedGroup[]> {
+  let [head] = await defaultStrategyContract.getGroupsHead();
+  const groupsForLog = [];
+
+  for (let i = 0; i < (await defaultStrategyContract.getNumberOfGroups()).toNumber(); i++) {
+    const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
+    const stCelo = await defaultStrategyContract.stCeloInGroup(head);
+    const realCelo = await account?.getCeloForGroup(head);
+    groupsForLog.unshift({
+      group: head,
+      stCelo: formatEther(stCelo),
+      realCelo: formatEther(realCelo ?? 0),
+    });
+    head = prev;
+  }
+  return groupsForLog;
+}
+
+export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
+  const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
+
+  const unsortedGroupsPromises = [];
+
+  for (let i = 0; i < length.toNumber(); i++) {
+    unsortedGroupsPromises.push(defaultStrategyContract.getUnsortedGroupAt(i));
+  }
+  return await Promise.all(unsortedGroupsPromises);
+}
+
+export async function prepareOverflow(
+  defaultStrategyContract: DefaultGroupContract,
+  election: ElectionWrapper,
+  lockedGold: LockedGoldWrapper,
+  voter: SignerWithAddress,
+  groupAddresses: string[],
+  activateGroups = true
+) {
+  if (groupAddresses.length < 3) {
+    throw Error("It is necessary to provide at least 3 groups");
+  }
+  // These numbers are derived from a system of linear equations such that
+  // given 12 validators registered and elected, as above, we have the following
+  // limits for the first three groups:
+  // group[0] and group[2]: 95864 Locked CELO
+  // group[1]: 143797 Locked CELO
+  // and the remaining receivable votes are [40, 100, 200] (in CELO) for
+  // the three groups, respectively.
+  const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+  for (let i = 2; i >= 0; i--) {
+    const [head] = await defaultStrategyContract.getGroupsHead();
+    if (activateGroups) {
+      await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+    }
+
+    await lockedGold.lock().sendAndWaitForReceipt({
+      from: voter.address,
+      value: votes[i].toString(),
+    });
+  }
+
+  // We have to do this in a separate loop because the voting limits
+  // depend on total locked CELO. The votes we want to cast are very close
+  // to the final limit we'll arrive at, so we first lock all CELO, then
+  // cast it as votes.
+  for (let i = 0; i < 3; i++) {
+    const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
+    await voteTx.sendAndWaitForReceipt({ from: voter.address });
+  }
+}
+
+export async function updateMaxNumberOfGroups(
+  accountAddress: string,
+  election: ElectionWrapper,
+  signerWithCelo: SignerWithAddress,
+  updateValue: boolean
+) {
+  const sendFundsTx = await signerWithCelo.sendTransaction({
+    value: parseUnits("1"),
+    to: accountAddress,
+  });
+  await sendFundsTx.wait();
+  await impersonateAccount(accountAddress);
+
+  const accountsContract = await hre.kit.contracts.getAccounts();
+  const createAccountTxObject = accountsContract.createAccount();
+  await createAccountTxObject.send({
+    from: accountAddress,
+  });
+  // TODO: once contractkit updated - use just election contract from contractkit
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionContractData.abi as any,
+    election.address
+  );
+  const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+    electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(updateValue);
+  await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+    from: accountAddress,
+  });
+}
+
+export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  return await Promise.all(
+    activeGroups.map(async (ag) => {
+      const stCelo = await defaultStrategy.stCeloInGroup(ag);
+      return {
+        group: ag,
+        stCelo,
+      };
+    })
+  );
+}
+
+export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unsortedGroups = await getUnsortedGroups(defaultStrategy as any);
+  let defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  const defaultGroupsWithStCeloRecord = defaultGroupsWithStCelo.reduce(
+    (prev, current) => ({ ...prev, [current.group]: current.stCelo }),
+    {} as Record<string, EthersBigNumber>
+  );
+
+  while (unsortedGroups.length > 0) {
+    const uGroup = unsortedGroups.pop();
+    let prev = ADDRESS_ZERO;
+    let next = ADDRESS_ZERO;
+    let i = 0;
+    while (i++ < defaultGroupsWithStCelo.length) {
+      prev = next;
+      next = defaultGroupsWithStCelo?.[i]?.group ?? ADDRESS_ZERO;
+
+      if (
+        defaultGroupsWithStCelo[i] == null ||
+        defaultGroupsWithStCelo[i].stCelo.gt(defaultGroupsWithStCeloRecord[uGroup!])
+      ) {
+        break;
+      }
+
+      if (defaultGroupsWithStCelo[i].group == uGroup) {
+        next = defaultGroupsWithStCelo?.[i - 1].group ?? ADDRESS_ZERO;
+        continue;
+      }
+    }
+    await defaultStrategy.updateActiveGroupOrder(uGroup!, prev, next);
+    defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  }
+}
+
+export async function updateGroupCeloBasedOnProtocolStCelo(
+  defaultStrategy: MockDefaultStrategy,
+  specificStrategy: SpecificGroupStrategy,
+  account: MockAccount,
+  manager: Manager
+) {
+  const defaultGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const specificGroups = await getSpecificGroupsSafe(specificStrategy);
+
+  const groups: Record<string, EthersBigNumber> = {};
+
+  for (let i = 0; i < defaultGroups.length; i++) {
+    groups[defaultGroups[i]] = await defaultStrategy.stCeloInGroup(defaultGroups[i]);
+  }
+
+  for (let i = 0; i < specificGroups.length; i++) {
+    const stCeloInSpecificGroup = await specificStrategy.stCeloInStrategy(specificGroups[i]);
+    groups[specificGroups[i]] = (groups[specificGroups[i]] ?? EthersBigNumber.from(0)).add(
+      stCeloInSpecificGroup
+    );
+  }
+
+  for (const key of Object.keys(groups)) {
+    const celoInGroup = await manager.toCelo(groups[key].toString());
+    await account.setCeloForGroup(key, celoInGroup);
+  }
 }
