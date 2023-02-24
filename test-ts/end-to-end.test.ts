@@ -130,9 +130,6 @@ describe("e2e", () => {
 
   it("deposit and withdraw", async () => {
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-    for (let i = 0; i < 3; i++) {
-      console.log(`group[${i}] ${groups[i].address}`);
-    }
     await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
 

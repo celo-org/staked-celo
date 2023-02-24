@@ -102,6 +102,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     event GroupActivated(address indexed group);
 
     /**
+     * Emmited when sorted status of active groups was changed
+     * @param update The new value.
+     */
+    event SortedFlagUpdated(bool update);
+
+    /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
      * to fulfill a withdrawal.
      */
@@ -176,6 +182,23 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error RebalanceEnoughStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
+     *  @notice Used when a `managerOrStrategy` function is called
+     *  by a non-manager or non-strategy.
+     *  @param caller `msg.sender` that called the function.
+     */
+    error CallerNotManagerNorStrategy(address caller);
+
+    /**
+     * @notice Checks that only the manager or strategy contract can execute a function.
+     */
+    modifier managerOrStrategy() {
+        if (manager != msg.sender && address(specificGroupStrategy) != msg.sender) {
+            revert CallerNotManagerNorStrategy(msg.sender);
+        }
+        _;
+    }
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
@@ -193,6 +216,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         maxGroupsToWithdrawFrom = 8;
         sortingLoopLimit = 10;
         sorted = true;
+        emit SortedFlagUpdated(sorted);
     }
 
     /**
@@ -234,19 +258,24 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should either receive or have withdrawn.
-     * @param votes The amount of votes to distribute.
      * @param withdraw Whether to withdraw or deposit.
+     * @param celoAmount The amount of votes to distribute.
+     * @param depositGroupToIgnore The group that will not be used for deposit
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function generateVoteDistribution(uint256 votes, bool withdraw)
+    function generateVoteDistribution(
+        bool withdraw,
+        uint256 celoAmount,
+        address depositGroupToIgnore
+    )
         external
-        onlyManager
+        managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
         (finalGroups, finalVotes) = withdraw
-            ? _generateWithdrawalVoteDistribution(votes)
-            : _generateDepositVoteDistribution(votes);
+            ? _generateWithdrawalVoteDistribution(celoAmount)
+            : _generateDepositVoteDistribution(celoAmount, depositGroupToIgnore);
     }
 
     /**
@@ -269,6 +298,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         unsortedGroups.remove(group);
         if (unsortedGroups.length() == 0) {
             sorted = true;
+            emit SortedFlagUpdated(sorted);
         }
     }
 
@@ -302,7 +332,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         );
 
         if (stCeloForWholeGroup != 0) {
-            uint256 specificGroupTotalStCelo = specificGroupStrategy.stCeloInGroup(group);
+            uint256 specificGroupTotalStCelo = specificGroupStrategy.stCeloInStrategy(group);
             currentStCelo =
                 stCeloForWholeGroup -
                 Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
@@ -533,7 +563,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             (
                 address[] memory toGroups,
                 uint256[] memory toVotes
-            ) = _generateDepositVoteDistribution(IManager(manager).toCelo(groupTotalStCeloVotes));
+            ) = _generateDepositVoteDistribution(
+                    IManager(manager).toCelo(groupTotalStCeloVotes),
+                    address(0)
+                );
             IManager(manager).scheduleTransferWithinStrategy(
                 fromGroups,
                 toGroups,
@@ -546,13 +579,13 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     }
 
     /**
-     * @notice Distributes votes by computing the number of votes to be substracted
+     * @notice Distributes votes by computing the number of votes to be subtracted
      * from each active group.
-     * @param votesAmount The amount of votes to subtract.
+     * @param celoAmount The amount of votes to subtract.
      * @return finalGroups The groups that were chosen for subtraction.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function _generateWithdrawalVoteDistribution(uint256 votesAmount)
+    function _generateWithdrawalVoteDistribution(uint256 celoAmount)
         private
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
@@ -568,17 +601,17 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         address votedGroup = activeGroups.getHead();
         uint256 groupsIndex;
 
-        for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
-            if (votesAmount == 0 || votedGroup == address(0)) {
-                break;
-            }
-
+        while (groupsIndex < maxGroupCount && celoAmount != 0 && votedGroup != address(0)) {
             votes[groupsIndex] = Math.min(
-                IManager(manager).toCelo(stCeloInGroup[votedGroup]),
-                votesAmount
+                Math.min(
+                    account.getCeloForGroup(votedGroup),
+                    IManager(manager).toCelo(stCeloInGroup[votedGroup])
+                ),
+                celoAmount
             );
+
             groups[groupsIndex] = votedGroup;
-            votesAmount -= votes[groupsIndex];
+            celoAmount -= votes[groupsIndex];
             updateGroupStCelo(
                 votedGroup,
                 IManager(manager).toStakedCelo(votes[groupsIndex]),
@@ -591,9 +624,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             } else {
                 (, votedGroup, ) = activeGroups.get(votedGroup);
             }
+
+            groupsIndex++;
         }
 
-        if (votesAmount != 0) {
+        if (celoAmount != 0) {
             revert NotAbleToDistributeVotes();
         }
 
@@ -609,11 +644,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     /**
      * @notice Distributes votes by computing the number of votes each active
      * group should receive.
-     * @param votesAmount The amount of votes to distribute.
+     * @param celoAmount The amount of votes to distribute.
+     * @param depositGroupToIgnore The group that will not be used for deposit.
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function _generateDepositVoteDistribution(uint256 votesAmount)
+    function _generateDepositVoteDistribution(uint256 celoAmount, address depositGroupToIgnore)
         private
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
@@ -629,17 +665,16 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         address votedGroup = activeGroups.getTail();
         uint256 groupsIndex;
 
-        for (groupsIndex = 0; groupsIndex < maxGroupCount; groupsIndex++) {
-            if (votesAmount == 0 || votedGroup == address(0)) {
-                break;
+        while (groupsIndex < maxGroupCount && celoAmount != 0 && votedGroup != address(0)) {
+            uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(votedGroup);
+            if (votedGroup == depositGroupToIgnore || receivableVotes == 0) {
+                (, , votedGroup) = activeGroups.get(votedGroup);
+                continue;
             }
 
-            votes[groupsIndex] = Math.min(
-                IManager(manager).getReceivableVotesForGroup(votedGroup),
-                votesAmount
-            );
+            votes[groupsIndex] = Math.min(receivableVotes, celoAmount);
             groups[groupsIndex] = votedGroup;
-            votesAmount -= votes[groupsIndex];
+            celoAmount -= votes[groupsIndex];
             updateGroupStCelo(votedGroup, IManager(manager).toStakedCelo(votes[groupsIndex]), true);
             trySort(votedGroup, stCeloInGroup[votedGroup], true);
 
@@ -648,9 +683,10 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
             } else {
                 (, , votedGroup) = activeGroups.get(votedGroup);
             }
+            groupsIndex++;
         }
 
-        if (votesAmount != 0) {
+        if (celoAmount != 0) {
             revert NotAbleToDistributeVotes();
         }
 

@@ -10,6 +10,7 @@ import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
+  ACCOUNT_REVOKE,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
@@ -18,12 +19,14 @@ import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import electionContractData from "./code/abi/electionAbi.json";
 import {
   DefaultGroupContract,
   ExpectVsReal,
@@ -166,8 +169,8 @@ export async function activateValidators(
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  let nextGroup = ADDRESS_ZERO;
-  for (let i = 0; i < 3; i++) {
+  let [nextGroup] = await defaultStrategyContract.getGroupsTail();
+  for (let i = 0; i < groupAddresses.length; i++) {
     const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
     if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
@@ -445,6 +448,17 @@ export async function activateAndVoteTest(deployerAccountName = "deployer") {
   }
 }
 
+export async function revokeTest(deployerAccountName = "deployer") {
+  try {
+    await hre.run(ACCOUNT_REVOKE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Revoke failed! ${JSON.stringify(error)}`);
+  }
+}
+
 export async function setGovernanceConcurrentProposals(count: number) {
   const governanceWrapper = await hre.kit.contracts.getGovernance();
   const governanceContract = governanceWrapper["contract"];
@@ -549,7 +563,7 @@ export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
     activeGroups
   );
 
-  rebalanceInternal(defaultStrategy, expectedVsReal);
+  await rebalanceInternal(defaultStrategy, expectedVsReal);
 }
 
 async function rebalanceInternal(
@@ -732,6 +746,9 @@ export async function prepareOverflow(
   groupAddresses: string[],
   activateGroups = true
 ) {
+  if (groupAddresses.length < 3) {
+    throw Error("It is necessary to provide at least 3 groups");
+  }
   // These numbers are derived from a system of linear equations such that
   // given 12 validators registered and elected, as above, we have the following
   // limits for the first three groups:
@@ -760,5 +777,112 @@ export async function prepareOverflow(
   for (let i = 0; i < 3; i++) {
     const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
     await voteTx.sendAndWaitForReceipt({ from: voter.address });
+  }
+}
+
+export async function updateMaxNumberOfGroups(
+  accountAddress: string,
+  election: ElectionWrapper,
+  signerWithCelo: SignerWithAddress,
+  updateValue: boolean
+) {
+  const sendFundsTx = await signerWithCelo.sendTransaction({
+    value: parseUnits("1"),
+    to: accountAddress,
+  });
+  await sendFundsTx.wait();
+  await impersonateAccount(accountAddress);
+
+  const accountsContract = await hre.kit.contracts.getAccounts();
+  const createAccountTxObject = accountsContract.createAccount();
+  await createAccountTxObject.send({
+    from: accountAddress,
+  });
+  // TODO: once contractkit updated - use just election contract from contractkit
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionContractData.abi as any,
+    election.address
+  );
+  const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+    electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(updateValue);
+  await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+    from: accountAddress,
+  });
+}
+
+export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  return await Promise.all(
+    activeGroups.map(async (ag) => {
+      const stCelo = await defaultStrategy.stCeloInGroup(ag);
+      return {
+        group: ag,
+        stCelo,
+      };
+    })
+  );
+}
+
+export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unsortedGroups = await getUnsortedGroups(defaultStrategy as any);
+  let defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  const defaultGroupsWithStCeloRecord = defaultGroupsWithStCelo.reduce(
+    (prev, current) => ({ ...prev, [current.group]: current.stCelo }),
+    {} as Record<string, EthersBigNumber>
+  );
+
+  while (unsortedGroups.length > 0) {
+    const uGroup = unsortedGroups.pop();
+    let prev = ADDRESS_ZERO;
+    let next = ADDRESS_ZERO;
+    let i = 0;
+    while (i++ < defaultGroupsWithStCelo.length) {
+      prev = next;
+      next = defaultGroupsWithStCelo?.[i]?.group ?? ADDRESS_ZERO;
+
+      if (
+        defaultGroupsWithStCelo[i] == null ||
+        defaultGroupsWithStCelo[i].stCelo.gt(defaultGroupsWithStCeloRecord[uGroup!])
+      ) {
+        break;
+      }
+
+      if (defaultGroupsWithStCelo[i].group == uGroup) {
+        next = defaultGroupsWithStCelo?.[i - 1].group ?? ADDRESS_ZERO;
+        continue;
+      }
+    }
+    await defaultStrategy.updateActiveGroupOrder(uGroup!, prev, next);
+    defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  }
+}
+
+export async function updateGroupCeloBasedOnProtocolStCelo(
+  defaultStrategy: MockDefaultStrategy,
+  specificStrategy: SpecificGroupStrategy,
+  account: MockAccount,
+  manager: Manager
+) {
+  const defaultGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const specificGroups = await getSpecificGroupsSafe(specificStrategy);
+
+  const groups: Record<string, EthersBigNumber> = {};
+
+  for (let i = 0; i < defaultGroups.length; i++) {
+    groups[defaultGroups[i]] = await defaultStrategy.stCeloInGroup(defaultGroups[i]);
+  }
+
+  for (let i = 0; i < specificGroups.length; i++) {
+    const stCeloInSpecificGroup = await specificStrategy.stCeloInStrategy(specificGroups[i]);
+    groups[specificGroups[i]] = (groups[specificGroups[i]] ?? EthersBigNumber.from(0)).add(
+      stCeloInSpecificGroup
+    );
+  }
+
+  for (const key of Object.keys(groups)) {
+    const celoInGroup = await manager.toCelo(groups[key].toString());
+    await account.setCeloForGroup(key, celoInGroup);
   }
 }

@@ -22,7 +22,6 @@ import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   deregisterValidatorGroup,
@@ -32,7 +31,6 @@ import {
   getImpersonatedSigner,
   getOrderedActiveGroups,
   getUnsortedGroups,
-  impersonateAccount,
   mineToNextEpoch,
   prepareOverflow,
   randomSigner,
@@ -43,7 +41,9 @@ import {
   removeMembersFromGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
+  updateGroupCeloBasedOnProtocolStCelo,
   updateGroupSlashingMultiplier,
+  updateMaxNumberOfGroups,
 } from "./utils";
 import { OrderedGroup } from "./utils-interfaces";
 
@@ -450,30 +450,7 @@ describe("DefaultStrategy", () => {
       });
 
       it("can add another group when enabled in Election contract", async () => {
-        const accountAddress = account.address;
-        const sendFundsTx = await nonOwner.sendTransaction({
-          value: parseUnits("1"),
-          to: accountAddress,
-        });
-        await sendFundsTx.wait();
-        await impersonateAccount(accountAddress);
-
-        const accountsContract = await hre.kit.contracts.getAccounts();
-        const createAccountTxObject = accountsContract.createAccount();
-        await createAccountTxObject.send({
-          from: accountAddress,
-        });
-        // TODO: once contractkit updated - use just election contract from contractkit
-        const electionContract = new hre.kit.web3.eth.Contract(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          electionContractData.abi as any,
-          election.address
-        );
-        const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
-          electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(true);
-        await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
-          from: accountAddress,
-        });
+        await updateMaxNumberOfGroups(account.address, election, nonOwner, true);
 
         const [head] = await defaultStrategyContract.getGroupsHead();
         await expect(
@@ -549,6 +526,56 @@ describe("DefaultStrategy", () => {
           await expect(
             defaultStrategyContract.connect(nonOwner).deactivateGroup(deactivatedGroup.address)
           ).revertedWith("Ownable: caller is not the owner");
+        });
+
+        describe("When different ratios of CELO vs stCELO", () => {
+          describe("when there is more CELO than stCELO in the system", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(600);
+            });
+
+            it("should schedule transfer to tail of default strategy", async () => {
+              const [tail] = await defaultStrategyContract.getGroupsTail();
+              await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
+
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              expect(lastTransferFromGroups).to.have.deep.members([deactivatedGroup.address]);
+              expect(lastTransferFromVotes).to.deep.eq([BigNumber.from("200")]);
+
+              expect(lastTransferToGroups).to.have.deep.members([tail]);
+              expect(lastTransferToVotes).to.deep.eq([BigNumber.from("200")]);
+            });
+          });
+
+          describe("when there is less CELO than stCELO in the system", () => {
+            beforeEach(async () => {
+              await account.setTotalCelo(150);
+            });
+
+            it("should schedule transfer to tail of default strategy", async () => {
+              const [tail] = await defaultStrategyContract.getGroupsTail();
+              await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
+
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              expect(lastTransferFromGroups).to.have.deep.members([deactivatedGroup.address]);
+              expect(lastTransferFromVotes).to.deep.eq([BigNumber.from("50")]);
+
+              expect(lastTransferToGroups).to.have.deep.members([tail]);
+              expect(lastTransferToVotes).to.deep.eq([BigNumber.from("50")]);
+            });
+          });
         });
 
         it("should schedule transfer to tail of default strategy", async () => {
@@ -979,7 +1006,12 @@ describe("DefaultStrategy", () => {
           await manager.deposit({ value: toDeposit });
           totalDeposited += toDeposit;
         }
-
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
         await manager.withdraw(withdrawn);
       });
 
@@ -1013,6 +1045,12 @@ describe("DefaultStrategy", () => {
 
       describe("when withdrawing from 1 group", () => {
         beforeEach(async () => {
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(250);
         });
 
@@ -1057,6 +1095,12 @@ describe("DefaultStrategy", () => {
 
         beforeEach(async () => {
           originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(450);
         });
 
@@ -1121,6 +1165,12 @@ describe("DefaultStrategy", () => {
 
       describe("when withdrawing from 1 group", () => {
         beforeEach(async () => {
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(250);
         });
 
@@ -1165,6 +1215,12 @@ describe("DefaultStrategy", () => {
 
         beforeEach(async () => {
           originalOrderedGroups = await getOrderedActiveGroups(defaultStrategyContract);
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
           await manager.withdraw(450);
         });
 
@@ -1220,8 +1276,10 @@ describe("DefaultStrategy", () => {
   describe("#generateVoteDistribution", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).generateVoteDistribution(10, false)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+        defaultStrategyContract
+          .connect(nonManager)
+          .generateVoteDistribution(false, 10, ADDRESS_ZERO)
+      ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });
 
@@ -1427,6 +1485,30 @@ describe("DefaultStrategy", () => {
           .to.emit(defaultStrategyContract, "GroupRemoved")
           .withArgs(groupAddresses[1]);
       });
+    });
+  });
+
+  describe("V1 -> V2 migration test", () => {
+    const votes = [parseUnits("95824"), parseUnits("0"), parseUnits("95664")];
+
+    beforeEach(async () => {
+      for (let i = 0; i < 3; i++) {
+        await account.setCeloForGroup(groupAddresses[i], votes[i]);
+      }
+    });
+
+    it("should set correct accounting for group[0]", async () => {
+      await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
+
+      const stCeloInDefault = await defaultStrategyContract.stCeloInGroup(groupAddresses[0]);
+      expect(stCeloInDefault).to.deep.eq(votes[0]);
+    });
+
+    it("should set correct accounting for group that has 0 celo locked", async () => {
+      await defaultStrategyContract.activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+
+      const stCeloInDefault = await defaultStrategyContract.stCeloInGroup(groupAddresses[1]);
+      expect(stCeloInDefault).to.deep.eq(BigNumber.from("0"));
     });
   });
 });
