@@ -26,7 +26,7 @@ export async function revoke(hre: HardhatRuntimeEnvironment, signer: Signer) {
     const scheduledToRevokeAmount: BigNumber = await accountContract.scheduledRevokeForGroup(group);
 
     taskLogger.debug(
-      `ToRevoke withdrawal amount from group: ${scheduledToRevokeAmount.toString()}. Group: ${group}`
+      `ToRevoke amount from group: ${scheduledToRevokeAmount.toString()}. Group: ${group}`
     );
 
     if (scheduledToRevokeAmount.gt(0)) {
