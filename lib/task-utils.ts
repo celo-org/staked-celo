@@ -15,11 +15,11 @@ export async function getDefaultGroupsHHTask(defaultStrategy: Contract): Promise
 }
 
 export async function getSpecificGroupsHHTask(specificGroupStrategy: Contract): Promise<string[]> {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfVotedGroups();
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+    specificGroupsPromises.push(specificGroupStrategy.getVotedGroup(i));
   }
 
   return Promise.all(specificGroupsPromises);

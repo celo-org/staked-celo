@@ -488,11 +488,11 @@ export async function getDefaultGroups(defaultStrategy: DefaultGroupContract): P
 export async function getSpecificGroups(
   specificGroupStrategy: SpecificGroupStrategy
 ): Promise<string[]> {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfVotedGroups();
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+    specificGroupsPromises.push(specificGroupStrategy.getVotedGroup(i));
   }
 
   return Promise.all(specificGroupsPromises);
@@ -514,10 +514,10 @@ export async function getGroupsOfAllStrategies(
 export async function getBlockedSpecificGroupStrategies(
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedStrategies();
+  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedGroups();
   const promises: Promise<string>[] = [];
   for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
-    promises.push(specificGroupStrategy.getBlockedStrategy(i));
+    promises.push(specificGroupStrategy.getBlockedGroup(i));
   }
 
   return await Promise.all(promises);

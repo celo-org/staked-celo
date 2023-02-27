@@ -12,10 +12,6 @@ interface IDefaultStrategy {
 
     function activateGroup(address group) external;
 
-    function addToStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) external;
-
-    function subtractFromStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) external;
-
     function isActive(address group) external view returns (bool);
 
     function getNumberOfGroups() external view returns (uint256);

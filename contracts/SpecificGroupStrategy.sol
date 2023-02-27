@@ -20,14 +20,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Specific groups strategies (validator groups) that can be chosen to be voted on.
+     * @notice Validator groups that is voted for.
      */
-    EnumerableSet.AddressSet private specificGroupStrategies;
+    EnumerableSet.AddressSet private votedGroups;
 
     /**
-     * @notice Specific groups strategies that were blocked from voting.
+     * @notice Validator groups that were blocked from voting.
      */
-    EnumerableSet.AddressSet private blockedStrategies;
+    EnumerableSet.AddressSet private blockedGroups;
 
     /**
      * @notice stCELO that was cast for specific group strategies,
@@ -44,7 +44,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice stCELO that was cast for specific group strategies and overflowed
-     * to default strategy: strategy => stCELO amount.
+     * to default strategy: group => stCELO amount.
      */
     mapping(address => uint256) private stCeloInGroupOverflowed;
 
@@ -69,56 +69,55 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     IAccount public account;
 
     /**
-     * @notice Emitted when a strategy was unlbocked.
+     * @notice Emitted when a group was unblocked.
      * @param group The group's address.
      */
-    event StrategyUnblocked(address indexed group);
+    event GroupUnblocked(address indexed group);
 
     /**
-     * @notice Emmited when strategy is blocked.
+     * @notice Emmited when group is blocked.
      * @param group The group's address.
      */
-    event StrategyBlocked(address group);
+    event GroupBlocked(address group);
 
     /**
-     * @notice Used when attempting to block a strategy that is not allowed.
+     * @notice Used when attempting to block a group that is not allowed.
      * @param group The group's address.
      */
-    error StrategyAlreadyBlocked(address group);
+    error GroupAlreadyBlocked(address group);
 
     /**
-     * @notice Used when an attempt to add an specific group strategy to the EnumerableSet
+     * @notice Used when an attempt to add an specific group to the EnumerableSet
      * fails.
      * @param group The group's address.
      */
-    error FailedToAddSpecificGroupStrategy(address group);
+    error FailedToAddGroup(address group);
 
     /**
-     * @notice Used when attempting to block a strategy failed.
+     * @notice Used when attempting to block a group failed.
      * @param group The group's address.
      */
-    error FailedToBlockStrategy(address group);
+    error FailedToBlockGroup(address group);
 
     /**
-     * @notice Used when attempting to unblock a strategy that is not blocked.
+     * @notice Used when attempting to unblock a group that is not blocked.
      * @param group The group's address.
      */
-    error FailedToUnBlockStrategy(address group);
+    error FailedToUnblockGroup(address group);
 
     /**
-     * @notice Used when attempting to allow strategy that is already allowed.
+     * @notice Used when a group does not meet the validator group health requirements.
      * @param group The group's address.
      */
-    error StrategyAlreadyAdded(address group);
+    error GroupNotEligible(address group);
 
     /**
-     * @notice Used when a strategy does not meet the validator group health requirements.
-     * @param group The group's address.
+     * @notice Used when attempting to pass in address zero where not allowed.
      */
-    error StrategyNotEligible(address group);
+    error AddressZeroNotAllowed();
 
     /**
-     * @notice Used when attempting to withdraw from specific group strategy
+     * @notice Used when attempting to withdraw from specific group
      * but group does not have enough CELO. Group either doesn't have enough stCELO
      * or it is necessary to rebalance the group.
      * @param group The group's address.
@@ -145,13 +144,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * voted for.
      */
     error NoGroups();
-
-    /**
-     * @notice Used when attempting to allow a strategy when the maximum number
-     * of groups voted (as allowed by the Election contract) is already being
-     * voted for.
-     */
-    error MaxGroupsVotedForReached();
 
     /**
      * Used when trying to `rebalanceOverflowedGroup` when the group is not overflowing.
@@ -193,9 +185,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         address _groupHealth,
         address _defaultStrategy
     ) external onlyOwner {
-        require(_account != address(0), "Account null");
-        require(_groupHealth != address(0), "GroupHealth null");
-        require(_defaultStrategy != address(0), "DefaultStrategy null");
+        if (
+            _account == address(0) || _groupHealth == address(0) || _defaultStrategy == address(0)
+        ) {
+            revert AddressZeroNotAllowed();
+        }
 
         account = IAccount(_account);
         groupHealth = IGroupHealth(_groupHealth);
@@ -203,150 +197,145 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Unblocks previously blocked Strategy
+     * @notice Unblocks previously blocked group.
      * @param group The address of the group to add to the set of specific group
      * strategies.
      */
-    function unblockStrategy(address group) external onlyOwner {
+    function unblockGroup(address group) external onlyOwner {
         if (!groupHealth.isGroupValid(group)) {
-            revert StrategyNotEligible(group);
+            revert GroupNotEligible(group);
         }
 
-        if (!blockedStrategies.remove(group)) {
-            revert FailedToUnBlockStrategy(group);
+        if (!blockedGroups.remove(group)) {
+            revert FailedToUnblockGroup(group);
         }
-        emit StrategyUnblocked(group);
+        emit GroupUnblocked(group);
     }
 
     /**
-     * @notice Marks a group as not specific group strategy for voting.
-     * @param group The address of the group to remove from the set of specific group
-     * strategies.
+     * @notice Marks a group as blocked for voting.
+     * @param group The group address.
      */
-    function blockStrategy(address group) external onlyOwner {
-        _blockStrategy(group);
+    function blockGroup(address group) external onlyOwner {
+        _blockGroup(group);
     }
 
     /**
-     * @notice Used to withdraw CELO from a specific group strategy
+     * @notice Used to withdraw CELO from a specific group
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function.
-     * @param strategy The validator group that we want to withdraw from.
+     * @param group The validator group that we want to withdraw from.
      * @param celoWithdrawalAmount The amount of CELO to withdraw.
      * @param stCeloWithdrawalAmount The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
     function generateWithdrawalVoteDistribution(
-        address strategy,
+        address group,
         uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        uint256 votesRemaining = account.getCeloForGroup(strategy);
+        uint256 votesRemaining = account.getCeloForGroup(group);
         (groups, votes) = generateWithdrawalVoteDistributionTransfer(
-            strategy,
+            group,
             celoWithdrawalAmount,
             stCeloWithdrawalAmount
         );
 
         if (votesRemaining < celoWithdrawalAmount) {
-            revert GroupNotBalancedOrNotEnoughStCelo(
-                strategy,
-                celoWithdrawalAmount,
-                votesRemaining
-            );
+            revert GroupNotBalancedOrNotEnoughStCelo(group, celoWithdrawalAmount, votesRemaining);
         }
     }
 
     /**
      * @notice Generates groups and votes to distribute votes to.
-     * @param strategy The validator group that we want to deposit to or transfer from.
+     * @param group The validator group that we want to deposit to or transfer from.
      * @param celoAmount The amount of CELO.
      * @param stCeloAmount The amount of stCELO.
      * @return finalGroups The groups to withdraw from.
      * @return finalVotes The amount to withdraw from each group.
      */
     function generateDepositVoteDistribution(
-        address strategy,
+        address group,
         uint256 celoAmount,
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
-        specificGroupStrategies.add(strategy);
-        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
-        uint256 votesToBeScheduledForSpecificStrategy = Math.min(receivableVotes, celoAmount);
+        votedGroups.add(group);
+        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(group);
+        uint256 votesToBeScheduledForSpecificGroup = Math.min(receivableVotes, celoAmount);
 
-        celoAmount -= votesToBeScheduledForSpecificStrategy;
+        celoAmount -= votesToBeScheduledForSpecificGroup;
         if (celoAmount > 0) {
             // overflow
             (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
-                .generateDepositVoteDistribution(celoAmount, strategy);
-            updateOverflowGroup(strategy, IManager(manager).toStakedCelo(celoAmount), true);
+                .generateDepositVoteDistribution(celoAmount, group);
+            updateOverflowGroup(group, IManager(manager).toStakedCelo(celoAmount), true);
             finalGroups = new address[](groups.length + 1);
             finalVotes = new uint256[](groups.length + 1);
             for (uint256 i = 0; i < groups.length; i++) {
                 finalGroups[i] = groups[i];
                 finalVotes[i] = votesForGroups[i];
             }
-            finalGroups[groups.length] = strategy;
-            finalVotes[groups.length] = votesToBeScheduledForSpecificStrategy;
+            finalGroups[groups.length] = group;
+            finalVotes[groups.length] = votesToBeScheduledForSpecificGroup;
         } else {
             finalGroups = new address[](1);
             finalVotes = new uint256[](1);
-            finalGroups[0] = strategy;
-            finalVotes[0] = votesToBeScheduledForSpecificStrategy;
+            finalGroups[0] = group;
+            finalVotes[0] = votesToBeScheduledForSpecificGroup;
         }
 
-        updateGroupStCelo(strategy, stCeloAmount, true);
+        updateGroupStCelo(group, stCeloAmount, true);
     }
 
     /**
-     * @notice Returns if a group is a valid specific group strategy.
-     * @param strategy The validator group.
-     * @return Whether or not is specific group strategy.
+     * @notice Returns if a group is a voted group.
+     * @param group The validator group.
+     * @return Whether or not is group is voted.
      */
-    function isStrategy(address strategy) external view returns (bool) {
-        return specificGroupStrategies.contains(strategy);
+    function isVotedGroup(address group) external view returns (bool) {
+        return votedGroups.contains(group);
     }
 
     /**
-     * @notice Returns if strategy is blocked.
-     * @param strategy The validator group.
-     * @return Whether or not is blocked specific group strategy.
+     * @notice Returns if group is blocked.
+     * @param group The validator group.
+     * @return Whether or not group is blocked.
      */
-    function isBlockedStrategy(address strategy) external view returns (bool) {
-        return blockedStrategies.contains(strategy);
+    function isBlockedGroup(address group) external view returns (bool) {
+        return blockedGroups.contains(group);
     }
 
     /**
-     * @notice Returns the number of blocked group strategies.
+     * @notice Returns the number of blocked groups.
      * @return The length of blocked groups.
      */
-    function getNumberOfBlockedStrategies() external view returns (uint256) {
-        return blockedStrategies.length();
+    function getNumberOfBlockedGroups() external view returns (uint256) {
+        return blockedGroups.length();
     }
 
     /**
-     * @notice Returns the blocked group strategy at index.
+     * @notice Returns the blocked group at index.
      * @return The blocked group.
      */
-    function getBlockedStrategy(uint256 index) external view returns (address) {
-        return blockedStrategies.at(index);
+    function getBlockedGroup(uint256 index) external view returns (address) {
+        return blockedGroups.at(index);
     }
 
     /**
-     * @notice Returns the number of specific group strategies.
-     * @return The length of active groups.
+     * @notice Returns the number of voted groups.
+     * @return The length of voted groups.
      */
-    function getNumberOfStrategies() external view returns (uint256) {
-        return specificGroupStrategies.length();
+    function getNumberOfVotedGroups() external view returns (uint256) {
+        return votedGroups.length();
     }
 
     /**
-     * @notice Returns the specific group strategy at index.
+     * @notice Returns the specific group at index.
      * @return The specific group.
      */
-    function getStrategy(uint256 index) external view returns (address) {
-        return specificGroupStrategies.at(index);
+    function getVotedGroup(uint256 index) external view returns (address) {
+        return votedGroups.at(index);
     }
 
     /**
@@ -370,35 +359,35 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
     }
 
     /**
-     * @notice Used to withdraw CELO from the system from specific group strategy
+     * @notice Used to withdraw CELO from from specific group
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function
-     * @param strategy The validator group that we want to withdraw from.
+     * @param group The validator group that we want to withdraw from.
      * @param celoWithdrawalAmount The amount of stCELO to withdraw.
      * @return groups The groups to withdraw from.
      * @return votes The amount to withdraw from each group.
      */
     function generateWithdrawalVoteDistributionTransfer(
-        address strategy,
+        address group,
         uint256 celoWithdrawalAmount,
         uint256 stCeloWithdrawalAmount
     ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        if (specificGroupStrategies.length() == 0) {
+        if (votedGroups.length() == 0) {
             revert NoGroups();
         }
 
-        if (stCeloWithdrawalAmount > stCeloInGroup[strategy]) {
-            revert CantWithdrawAccordingToStrategy(strategy);
+        if (stCeloWithdrawalAmount > stCeloInGroup[group]) {
+            revert CantWithdrawAccordingToStrategy(group);
         }
 
-        uint256 overflowingStCelo = stCeloInGroupOverflowed[strategy];
+        uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
         if (overflowingStCelo > 0) {
             uint256 overflowingCelo = IManager(manager).toCelo(overflowingStCelo);
             uint256 celoToBeMovedFromOverflow = Math.min(celoWithdrawalAmount, overflowingCelo);
             (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
                 .generateWithdrawalVoteDistribution(celoToBeMovedFromOverflow);
             uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(celoToBeMovedFromOverflow);
-            updateOverflowGroup(strategy, stCeloToBeMoved, false);
+            updateOverflowGroup(group, stCeloToBeMoved, false);
             celoWithdrawalAmount -= celoToBeMovedFromOverflow;
             if (celoWithdrawalAmount > 0) {
                 groups = new address[](overflowGroups.length + 1);
@@ -407,7 +396,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                     groups[i] = overflowGroups[i];
                     votes[i] = overflowVotes[i];
                 }
-                groups[overflowGroups.length] = strategy;
+                groups[overflowGroups.length] = group;
                 votes[overflowGroups.length] = celoWithdrawalAmount;
             } else {
                 groups = overflowGroups;
@@ -416,35 +405,35 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         } else {
             groups = new address[](1);
             votes = new uint256[](1);
-            groups[0] = strategy;
+            groups[0] = group;
             votes[0] = celoWithdrawalAmount;
         }
 
-        updateGroupStCelo(strategy, stCeloWithdrawalAmount, false);
+        updateGroupStCelo(group, stCeloWithdrawalAmount, false);
     }
 
     /**
-     * @notice When there is strategy that is overflowing and
+     * @notice When there is group that is overflowing and
      * in meantime there are votes that freed up. This function
      * makes sure to reschedule votes correctly for overflowing group.
-     * @param strategy The group address.
+     * @param group The group address.
      */
-    function rebalanceOverflowedGroup(address strategy) public {
-        uint256 overflowingStCelo = stCeloInGroupOverflowed[strategy];
+    function rebalanceOverflowedGroup(address group) public {
+        uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
         if (overflowingStCelo == 0) {
-            revert GroupNotOverflowing(strategy);
+            revert GroupNotOverflowing(group);
         }
 
-        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(strategy);
+        uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(group);
         if (receivableVotes == 0) {
-            revert GroupStillOverflowing(strategy);
+            revert GroupStillOverflowing(group);
         }
 
         uint256 receivableStCelo = IManager(manager).toStakedCelo(receivableVotes);
         uint256 toMove = Math.min(receivableStCelo, overflowingStCelo);
-        updateGroupStCelo(strategy, toMove, false);
-        IManager(manager).transferBetweenStrategies(address(0), strategy, toMove);
-        updateOverflowGroup(strategy, toMove, false);
+        updateGroupStCelo(group, toMove, false);
+        IManager(manager).transferBetweenStrategies(address(0), group, toMove);
+        updateOverflowGroup(group, toMove, false);
     }
 
     /**
@@ -452,83 +441,74 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      * @return total The total stCELO amount.
      * @return overflow The stCELO amount that is overflowed to default strategy.
      */
-    function getStCeloInGroup(address strategy)
-        public
-        view
-        returns (uint256 total, uint256 overflow)
-    {
-        total = stCeloInGroup[strategy];
-        overflow = stCeloInGroupOverflowed[strategy];
+    function getStCeloInGroup(address group) public view returns (uint256 total, uint256 overflow) {
+        total = stCeloInGroup[group];
+        overflow = stCeloInGroupOverflowed[group];
     }
 
     /**
      * @notice Adds/substracts value to totals of strategy and
-     * total stCELO in specific strategy.
-     * @param strategy The validator group that we are updating.
+     * total stCELO in specific group.
+     * @param group The validator group that we are updating.
      * @param stCeloAmount The amount of stCELO.
      * @param add Whether to add or substract.
      */
     function updateGroupStCelo(
-        address strategy,
+        address group,
         uint256 stCeloAmount,
         bool add
     ) internal {
         if (add) {
-            stCeloInGroup[strategy] += stCeloAmount;
+            stCeloInGroup[group] += stCeloAmount;
             totalStCeloLocked += stCeloAmount;
         } else {
-            stCeloInGroup[strategy] -= stCeloAmount;
+            stCeloInGroup[group] -= stCeloAmount;
             totalStCeloLocked -= stCeloAmount;
         }
     }
 
     /**
-     * @notice Updates overflow stCELO amount of strategy.
-     * @param strategy The strategy that is overflowing.
+     * @notice Updates overflow stCELO amount of group.
+     * @param group The group that is overflowing.
      * @param stCeloAmount The stCELO amount.
      * @param add Whether to add or subtract stCELO amount.
      */
     function updateOverflowGroup(
-        address strategy,
+        address group,
         uint256 stCeloAmount,
         bool add
     ) private {
         if (add) {
-            stCeloInGroupOverflowed[strategy] += stCeloAmount;
+            stCeloInGroupOverflowed[group] += stCeloAmount;
             totalStCeloOverflow += stCeloAmount;
         } else {
-            stCeloInGroupOverflowed[strategy] -= stCeloAmount;
+            stCeloInGroupOverflowed[group] -= stCeloAmount;
             totalStCeloOverflow -= stCeloAmount;
         }
     }
 
     /**
-     * @notice Blocks a group from being added as specific group strategy for voting.
-     * @param group The address of the group to remove from the set of specific group
-     * strategies.
+     * @notice Blocks a group from being added as voted group.
+     * @param group The group address.
      */
-    function _blockStrategy(address group) private {
+    function _blockGroup(address group) private {
         if (defaultStrategy.getNumberOfGroups() == 0) {
             revert NoActiveGroups();
         }
 
-        if (blockedStrategies.contains(group)) {
-            revert StrategyAlreadyBlocked(group);
+        if (blockedGroups.contains(group)) {
+            revert GroupAlreadyBlocked(group);
         }
 
-        (uint256 stCeloInSpecificStrategy, uint256 overflowedStCelo) = getStCeloInGroup(group);
+        (uint256 stCeloInSpecificGroup, ) = getStCeloInGroup(group);
 
-        if (stCeloInSpecificStrategy - overflowedStCelo != 0) {
-            IManager(manager).transferBetweenStrategies(
-                group,
-                address(0),
-                stCeloInSpecificStrategy
-            );
+        if (stCeloInSpecificGroup != 0) {
+            IManager(manager).transferBetweenStrategies(group, address(0), stCeloInSpecificGroup);
         }
 
-        specificGroupStrategies.remove(group);
-        blockedStrategies.add(group);
+        votedGroups.remove(group);
+        blockedGroups.add(group);
 
-        emit StrategyBlocked(group);
+        emit GroupBlocked(group);
     }
 }

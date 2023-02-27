@@ -284,7 +284,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
             if (!groupHealth.isGroupValid(strategy)) {
-                uint256 stCeloBalance = specificGroupStrategy.stCeloInGroup(strategy);
+                (uint256 stCeloBalance, ) = specificGroupStrategy.getStCeloInGroup(strategy);
                 if (stCeloBalance != 0) {
                     _transferWithoutChecks(strategy, address(0), stCeloBalance);
                 }
@@ -372,7 +372,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (specificGroupStrategy.isBlockedStrategy(newStrategy) ||
+            (specificGroupStrategy.isBlockedGroup(newStrategy) ||
                 !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
@@ -403,7 +403,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
-        if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
+        if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isVotedGroup(toGroup)) {
             // rebalancing to deactivated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
@@ -535,7 +535,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        bool isSpecificGroupStrategy = specificGroupStrategy.isStrategy(group);
+        bool isSpecificGroupStrategy = specificGroupStrategy.isVotedGroup(group);
         bool isActiveGroup = defaultStrategy.isActive(group);
         actualCelo = account.getCeloForGroup(group);
 
@@ -595,7 +595,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return Up to date strategy.
      */
     function checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && specificGroupStrategy.isBlockedStrategy(strategy)) {
+        if (strategy != address(0) && specificGroupStrategy.isBlockedGroup(strategy)) {
             // strategy not allowed revert to default strategy
             return address(0);
         }

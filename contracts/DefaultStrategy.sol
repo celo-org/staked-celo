@@ -182,6 +182,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error RebalanceEnoughStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
+     * @notice Used when attempting to pass in address zero where not allowed.
+     */
+    error AddressZeroNotAllowed();
+
+    /**
      *  @notice Used when a `managerOrStrategy` function is called
      *  by a non-manager or non-strategy.
      *  @param caller `msg.sender` that called the function.
@@ -230,9 +235,13 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         address _groupHealth,
         address _specificGroupStrategy
     ) external onlyOwner {
-        require(_account != address(0), "Account null");
-        require(_groupHealth != address(0), "GroupHealth null");
-        require(_specificGroupStrategy != address(0), "SpecificGroupStrategy null");
+        if (
+            _account == address(0) ||
+            _groupHealth == address(0) ||
+            _specificGroupStrategy == address(0)
+        ) {
+            revert AddressZeroNotAllowed();
+        }
 
         groupHealth = IGroupHealth(_groupHealth);
         specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
@@ -325,7 +334,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         );
 
         if (stCeloForWholeGroup != 0) {
-            uint256 specificGroupTotalStCelo = specificGroupStrategy.stCeloInGroup(group);
+            (uint256 specificGroupTotalStCelo, ) = specificGroupStrategy.getStCeloInGroup(group);
             currentStCelo =
                 stCeloForWholeGroup -
                 Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);

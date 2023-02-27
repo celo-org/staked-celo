@@ -207,7 +207,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(ADDRESS_ZERO, nonVote.address, nonVote.address)
-      ).revertedWith("Account null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("reverts with zero groupHealth address", async () => {
@@ -215,7 +215,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(nonVote.address, ADDRESS_ZERO, nonVote.address)
-      ).revertedWith("GroupHealth null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("reverts with zero specific group strategy address", async () => {
@@ -223,7 +223,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(nonVote.address, nonVote.address, ADDRESS_ZERO)
-      ).revertedWith("SpecificGroupStrategy null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("sets the vote contract", async () => {
