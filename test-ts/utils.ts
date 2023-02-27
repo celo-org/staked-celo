@@ -609,7 +609,7 @@ export async function rebalanceGroups(
   const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
 
-  rebalanceInternal(managerContract, expectedVsReal);
+  await rebalanceInternal(managerContract, expectedVsReal);
 }
 
 export async function electMockValidatorGroupsAndUpdate(
