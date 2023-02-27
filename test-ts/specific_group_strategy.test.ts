@@ -22,9 +22,9 @@ import {
   deregisterValidatorGroup,
   electMockValidatorGroupsAndUpdate,
   getBlockedSpecificGroupStrategies,
-  getDefaultGroupsSafe,
+  getDefaultGroups,
   getImpersonatedSigner,
-  getSpecificGroupsSafe,
+  getSpecificGroups,
   prepareOverflow,
   randomSigner,
   registerValidatorAndAddToGroupMembers,
@@ -263,16 +263,16 @@ describe("SpecificGroupStrategy", () => {
         });
 
         it("added group to allowed strategies", async () => {
-          const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+          const activeGroups = await getDefaultGroups(defaultStrategyContract);
+          const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
           expect(specificStrategies).to.deep.eq([specificGroupStrategy.address]);
         });
 
         it("removes the group from the groups array", async () => {
           await specificGroupStrategyContract.blockStrategy(specificGroupStrategy.address);
-          const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
-          const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategyContract);
+          const activeGroups = await getDefaultGroups(defaultStrategyContract);
+          const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
           expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
           expect(specificStrategies).to.deep.eq([]);
         });

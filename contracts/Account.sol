@@ -227,7 +227,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /**
      * @notice Deposits CELO sent via msg.value as unlocked CELO intended as
      * votes for groups.
-     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
+     * @dev Only callable by the Manager contract, which must restrict which groups
+     * gets CELO distribution.
      * @param groups The groups the deposited CELO is intended to vote for.
      * @param votes The amount of CELO to schedule for each respective group
      * from `groups`.

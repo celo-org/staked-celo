@@ -1,7 +1,8 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import { BigNumber, Contract, Signer } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { taskLogger } from "../../logger";
+import { getDefaultGroupsHHTask, getSpecificGroupsHHTask } from "../../task-utils";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -16,8 +17,8 @@ export async function withdraw(
   const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
   // Use active groups to get the full list of groups with potential withdrawals.
-  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
-  const specificStrategies = await getSpecificGroupsSafe(specificGroupStrategy);
+  const activeGroups = await getDefaultGroupsHHTask(defaultStrategy);
+  const specificStrategies = await getSpecificGroupsHHTask(specificGroupStrategy);
   const groupList = new Set(activeGroups.concat(specificStrategies)).values();
   taskLogger.debug("DEBUG: groupList:", groupList);
 
@@ -135,31 +136,4 @@ async function findAddressIndex(
 ): Promise<number> {
   const list = await electionWrapper.getGroupsVotedForByAccount(account);
   return list.indexOf(group);
-}
-
-export async function getDefaultGroupsSafe(
-  defaultStrategy: Contract
-) : Promise<string[]> {
-  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
-  let [key] = await defaultStrategy.getGroupsHead();
-
-  const activeGroups = [];
-
-  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-    activeGroups.push(key);
-    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
-  }
-
-  return activeGroups
-}
-
-export async function getSpecificGroupsSafe(specificGroupStrategy: Contract): Promise<string[]> {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
-  const specificGroupsPromises = [];
-
-  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
-  }
-
-  return Promise.all(specificGroupsPromises);
 }

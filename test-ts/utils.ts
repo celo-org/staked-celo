@@ -471,9 +471,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getDefaultGroupsSafe(
-  defaultStrategy: DefaultGroupContract
-): Promise<string[]> {
+export async function getDefaultGroups(defaultStrategy: DefaultGroupContract): Promise<string[]> {
   const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
   let [key] = await defaultStrategy.getGroupsHead();
 
@@ -487,7 +485,7 @@ export async function getDefaultGroupsSafe(
   return activeGroups;
 }
 
-export async function getSpecificGroupsSafe(
+export async function getSpecificGroups(
   specificGroupStrategy: SpecificGroupStrategy
 ): Promise<string[]> {
   const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
@@ -504,8 +502,8 @@ export async function getGroupsOfAllStrategies(
   defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const activeGroups = getDefaultGroupsSafe(defaultStrategy);
-  const specificGroupsPromise = getSpecificGroupsSafe(specificGroupStrategy);
+  const activeGroups = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificGroupStrategy);
 
   const allGroups = await Promise.all([activeGroups, specificGroupsPromise]);
   const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
@@ -557,7 +555,7 @@ export async function getRealVsExpectedStCeloForGroupsDefaultStrategy(
 }
 
 export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
-  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const activeGroups = await getDefaultGroups(defaultStrategy);
   const expectedVsReal = await getRealVsExpectedStCeloForGroupsDefaultStrategy(
     defaultStrategy,
     activeGroups
@@ -812,7 +810,7 @@ export async function updateMaxNumberOfGroups(
 }
 
 export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
-  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const activeGroups = await getDefaultGroups(defaultStrategy);
   return await Promise.all(
     activeGroups.map(async (ag) => {
       const stCelo = await defaultStrategy.stCeloInGroup(ag);
@@ -865,8 +863,8 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
   account: MockAccount,
   manager: Manager
 ) {
-  const defaultGroups = await getDefaultGroupsSafe(defaultStrategy);
-  const specificGroups = await getSpecificGroupsSafe(specificStrategy);
+  const defaultGroups = await getDefaultGroups(defaultStrategy);
+  const specificGroups = await getSpecificGroups(specificStrategy);
 
   const groups: Record<string, EthersBigNumber> = {};
 

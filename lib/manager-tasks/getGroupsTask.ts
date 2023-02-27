@@ -1,4 +1,3 @@
-import { Contract } from "ethers";
 import { task, types } from "hardhat/config";
 import { setLocalNodeDeploymentPath, TransactionArguments } from "../helpers/interfaceHelper";
 import {
@@ -7,6 +6,7 @@ import {
   MANAGER_GET_GROUPS_TASK_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
+import { getDefaultGroupsHHTask } from "../task-utils";
 import { MANAGER_GET_GROUPS } from "../tasksNames";
 
 task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
@@ -18,25 +18,9 @@ task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
       await setLocalNodeDeploymentPath(hre);
 
       const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
-      const groups = await getDefaultGroupsSafe(defaultStrategyContract)
+      const groups = await getDefaultGroupsHHTask(defaultStrategyContract)
       taskLogger.log("Groups:", groups);
     } catch (error) {
       taskLogger.error("Error getting groups:", error);
     }
   });
-
-  export async function getDefaultGroupsSafe(
-    defaultStrategy: Contract
-  ) : Promise<string[]> {
-    const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
-    let [key] = await defaultStrategy.getGroupsHead();
-  
-    const activeGroups = [];
-  
-    for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
-      activeGroups.push(key);
-      [key] = await defaultStrategy.getGroupPreviousAndNext(key);
-    }
-  
-    return activeGroups
-  }
