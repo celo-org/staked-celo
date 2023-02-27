@@ -648,7 +648,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the total amount of CELO that's scheduled to revoke for a group.
+     * @notice Returns the total amount of CELO that's scheduled to be revoked for a group.
      * @param group The address of the validator group.
      * @return The total amount of CELO scheduled to be revoked from `group`.
      */
