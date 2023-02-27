@@ -284,7 +284,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 stCeloAmount = toStakedCelo(msg.value);
         if (strategy != address(0)) {
             if (!groupHealth.isGroupValid(strategy)) {
-                uint256 stCeloBalance = specificGroupStrategy.stCeloInStrategy(strategy);
+                uint256 stCeloBalance = specificGroupStrategy.stCeloInGroup(strategy);
                 if (stCeloBalance != 0) {
                     _transferWithoutChecks(strategy, address(0), stCeloBalance);
                 }
@@ -544,9 +544,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (isSpecificGroupStrategy) {
             uint256 overflow;
-            (stCeloFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
-                group
-            );
+            (stCeloFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInGroup(group);
 
             stCeloFromSpecificStrategy -= overflow;
         }
@@ -643,14 +641,13 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address strategy
     ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (strategy != address(0)) {
-            (finalGroups, finalVotes) = specificGroupStrategy.generateGroupVotesToDistributeTo(
+            (finalGroups, finalVotes) = specificGroupStrategy.generateDepositVoteDistribution(
                 strategy,
                 votes,
                 stCeloAmount
             );
         } else {
-            (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(
-                false,
+            (finalGroups, finalVotes) = defaultStrategy.generateDepositVoteDistribution(
                 votes,
                 address(0)
             );
@@ -695,22 +692,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         if (strategy != address(0)) {
             (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
-                ? specificGroupStrategy.calculateAndUpdateForWithdrawalTransfer(
+                ? specificGroupStrategy.generateWithdrawalVoteDistributionTransfer(
                     strategy,
                     celoAmount,
                     stCeloAmount
                 )
-                : specificGroupStrategy.calculateAndUpdateForWithdrawal(
+                : specificGroupStrategy.generateWithdrawalVoteDistribution(
                     strategy,
                     celoAmount,
                     stCeloAmount
                 );
         } else {
-            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
-                true,
-                celoAmount,
-                address(0)
-            );
+            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
+                .generateWithdrawalVoteDistribution(celoAmount);
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);

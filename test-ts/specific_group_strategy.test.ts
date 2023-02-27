@@ -222,12 +222,32 @@ describe("SpecificGroupStrategy", () => {
     });
   });
 
-  describe("#calculateAndUpdateForWithdrawal", () => {
+  describe("#generateWithdrawalVoteDistribution()", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         specificGroupStrategyContract
           .connect(nonManager)
-          .calculateAndUpdateForWithdrawal(nonVote.address, 10, 10)
+          .generateWithdrawalVoteDistribution(nonVote.address, 10, 10)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+  });
+
+  describe("#generateWithdrawalVoteDistributionTransfer()", () => {
+    it("cannot be called by a non-Manager address", async () => {
+      await expect(
+        specificGroupStrategyContract
+          .connect(nonManager)
+          .generateWithdrawalVoteDistributionTransfer(nonVote.address, 10, 10)
+      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+  });
+
+  describe("#generateDepositVoteDistribution()", () => {
+    it("cannot be called by a non-Manager address", async () => {
+      await expect(
+        specificGroupStrategyContract
+          .connect(nonManager)
+          .generateDepositVoteDistribution(nonVote.address, 10, 10)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });
@@ -415,7 +435,7 @@ describe("SpecificGroupStrategy", () => {
             new BigNumberJs(thirdGroupCapacity.toString())
           );
           await revokeTx.sendAndWaitForReceipt({ from: voter.address });
-          [, originalOverflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+          [, originalOverflow] = await specificGroupStrategyContract.getStCeloInGroup(
             groupAddresses[2]
           );
         });
@@ -427,7 +447,7 @@ describe("SpecificGroupStrategy", () => {
             });
 
             it("should return 0 overflow", async () => {
-              const [total, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [total, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[2]
               );
               expect(overflow).to.deep.eq(BigNumber.from("0"));
@@ -474,7 +494,7 @@ describe("SpecificGroupStrategy", () => {
             });
 
             it("should return 0 overflow", async () => {
-              const [total, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [total, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[2]
               );
               expect(overflow).to.deep.eq(BigNumber.from("0"));
@@ -487,7 +507,7 @@ describe("SpecificGroupStrategy", () => {
             });
 
             it("should remove overflow from specific group strategy", async () => {
-              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[2]
               );
               expect(overflow).to.deep.eq(BigNumber.from(0));
@@ -521,7 +541,7 @@ describe("SpecificGroupStrategy", () => {
             });
 
             it("should return 0 overflow", async () => {
-              const [total, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [total, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[2]
               );
               expect(overflow).to.deep.eq(BigNumber.from("0"));
@@ -534,7 +554,7 @@ describe("SpecificGroupStrategy", () => {
             });
 
             it("should remove overflow from specific group strategy", async () => {
-              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[2]
               );
               expect(overflow).to.deep.eq(BigNumber.from(0));

@@ -542,7 +542,7 @@ describe("Manager", () => {
 
             it("should overflow to default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount);
               expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity));
             });
@@ -577,7 +577,7 @@ describe("Manager", () => {
 
             it("should overflow to default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount.div(2));
               expect(overflowAmount).to.eq(depositAmount.div(2).sub(firstGroupCapacityInStCelo));
             });
@@ -612,7 +612,7 @@ describe("Manager", () => {
 
             it("should overflow to default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount.mul(2));
               expect(overflowAmount).to.eq(depositAmount.mul(2).sub(firstGroupCapacityInStCelo));
             });
@@ -1268,7 +1268,7 @@ describe("Manager", () => {
 
         it("should remove overflow from default strategy", async () => {
           const [stCeloInStrategy, overflowAmount] =
-            await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+            await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
           expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
           expect(overflowAmount).to.eq(depositAmount.sub(firstGroupCapacity).sub(toWithdraw));
         });
@@ -1286,7 +1286,7 @@ describe("Manager", () => {
         it("should add overflow to default strategy stCelo balance", async () => {
           const currentDefaultStrategyStCeloBalance =
             await defaultStrategyContract.totalStCeloInStrategy();
-          const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+          const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
             groupAddresses[0]
           );
           expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
@@ -1304,7 +1304,7 @@ describe("Manager", () => {
 
             it("should remove overflow from default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
               expect(overflowAmount).to.eq(0);
             });
@@ -1330,7 +1330,7 @@ describe("Manager", () => {
             it("should add overflow to default strategy stCelo balance", async () => {
               const currentDefaultStrategyStCeloBalance =
                 await defaultStrategyContract.totalStCeloInStrategy();
-              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[0]
               );
               expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
@@ -1351,7 +1351,7 @@ describe("Manager", () => {
 
             it("should remove overflow from default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
               expect(overflowAmount).to.eq(0);
             });
@@ -1377,7 +1377,7 @@ describe("Manager", () => {
             it("should add overflow to default strategy stCelo balance", async () => {
               const currentDefaultStrategyStCeloBalance =
                 await defaultStrategyContract.totalStCeloInStrategy();
-              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[0]
               );
               expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);
@@ -1392,7 +1392,7 @@ describe("Manager", () => {
 
             it("should remove overflow from default strategy", async () => {
               const [stCeloInStrategy, overflowAmount] =
-                await specificGroupStrategyContract.getStCeloInStrategy(groupAddresses[0]);
+                await specificGroupStrategyContract.getStCeloInGroup(groupAddresses[0]);
               expect(stCeloInStrategy).to.eq(depositAmount.sub(toWithdraw));
               expect(overflowAmount).to.eq(0);
             });
@@ -1418,7 +1418,7 @@ describe("Manager", () => {
             it("should add overflow to default strategy stCelo balance", async () => {
               const currentDefaultStrategyStCeloBalance =
                 await defaultStrategyContract.totalStCeloInStrategy();
-              const [, overflow] = await specificGroupStrategyContract.getStCeloInStrategy(
+              const [, overflow] = await specificGroupStrategyContract.getStCeloInGroup(
                 groupAddresses[0]
               );
               expect(currentDefaultStrategyStCeloBalance).to.deep.eq(overflow);

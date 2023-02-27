@@ -863,24 +863,41 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
   account: MockAccount,
   manager: Manager
 ) {
-  const defaultGroups = await getDefaultGroups(defaultStrategy);
-  const specificGroups = await getSpecificGroups(specificStrategy);
+  const defaultGroupsPromise = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificStrategy);
+
+  const defaultGroups = await defaultGroupsPromise;
+  const specificGroups = await specificGroupsPromise;
+
+  const defaultGroupsWithStCeloPromise = defaultGroups.map(async (g) => ({
+    group: g,
+    amount: await defaultStrategy.stCeloInGroup(g),
+  }));
+
+  const specificGroupsWithStCeloPromise = specificGroups.map(async (g) => ({
+    group: g,
+    amount: await specificStrategy.stCeloInGroup(g),
+  }));
+
+  const defaultGroupsWithStCelo = await Promise.all(defaultGroupsWithStCeloPromise);
+  const specificGroupsWithStCelo = await Promise.all(specificGroupsWithStCeloPromise);
 
   const groups: Record<string, EthersBigNumber> = {};
 
-  for (let i = 0; i < defaultGroups.length; i++) {
-    groups[defaultGroups[i]] = await defaultStrategy.stCeloInGroup(defaultGroups[i]);
+  for (let i = 0; i < defaultGroupsWithStCelo.length; i++) {
+    groups[defaultGroupsWithStCelo[i].group] = defaultGroupsWithStCelo[i].amount;
   }
 
-  for (let i = 0; i < specificGroups.length; i++) {
-    const stCeloInSpecificGroup = await specificStrategy.stCeloInStrategy(specificGroups[i]);
-    groups[specificGroups[i]] = (groups[specificGroups[i]] ?? EthersBigNumber.from(0)).add(
-      stCeloInSpecificGroup
-    );
+  for (let i = 0; i < specificGroupsWithStCelo.length; i++) {
+    groups[specificGroupsWithStCelo[i].group] = (
+      groups[specificGroupsWithStCelo[i].group] ?? EthersBigNumber.from(0)
+    ).add(specificGroupsWithStCelo[i].amount);
   }
 
-  for (const key of Object.keys(groups)) {
-    const celoInGroup = await manager.toCelo(groups[key].toString());
-    await account.setCeloForGroup(key, celoInGroup);
-  }
+  await Promise.all(
+    Object.keys(groups).map(async (key) => {
+      const celoInGroup = await manager.toCelo(groups[key].toString());
+      await account.setCeloForGroup(key, celoInGroup);
+    })
+  );
 }

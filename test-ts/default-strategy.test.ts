@@ -1273,12 +1273,20 @@ describe("DefaultStrategy", () => {
     });
   });
 
-  describe("#generateVoteDistribution", () => {
+  describe("#generateDepositVoteDistribution", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         defaultStrategyContract
           .connect(nonManager)
-          .generateVoteDistribution(false, 10, ADDRESS_ZERO)
+          .generateDepositVoteDistribution(10, ADDRESS_ZERO)
+      ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
+    });
+  });
+
+  describe("#generateWithdrawalVoteDistribution", () => {
+    it("cannot be called by a non-Manager address", async () => {
+      await expect(
+        defaultStrategyContract.connect(nonManager).generateWithdrawalVoteDistribution(10)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });
