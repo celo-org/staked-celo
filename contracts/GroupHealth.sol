@@ -43,6 +43,13 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error GroupHealthy(address group);
 
     /**
+     * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
+     * implementation gets initialized.
+     */
+    // solhint-disable-next-line no-empty-blocks
+    constructor() initializer {}
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the CELO Registry.
      * @param _owner The address of the contract owner.
