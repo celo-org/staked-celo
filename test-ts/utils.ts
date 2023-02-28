@@ -879,10 +879,13 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
     amount: await defaultStrategy.stCeloInGroup(g),
   }));
 
-  const specificGroupsWithStCeloPromise = specificGroups.map(async (g) => ({
-    group: g,
-    amount: await specificStrategy.stCeloInGroup(g),
-  }));
+  const specificGroupsWithStCeloPromise = specificGroups.map(async (g) => {
+    const [total, overflow, unhealthy] = await specificStrategy.getStCeloInGroup(g);
+    return {
+      group: g,
+      amount: total.sub(overflow).sub(unhealthy),
+    };
+  });
 
   const defaultGroupsWithStCelo = await Promise.all(defaultGroupsWithStCeloPromise);
   const specificGroupsWithStCelo = await Promise.all(specificGroupsWithStCeloPromise);

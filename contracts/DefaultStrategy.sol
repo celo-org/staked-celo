@@ -341,7 +341,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
         );
 
         if (stCeloForWholeGroup != 0) {
-            (uint256 specificGroupTotalStCelo, ) = specificGroupStrategy.getStCeloInGroup(group);
+            (uint256 specificGroupTotalStCelo, , ) = specificGroupStrategy.getStCeloInGroup(group);
             currentStCelo =
                 stCeloForWholeGroup -
                 Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);

@@ -334,6 +334,9 @@ describe("e2e specific group strategy voting", () => {
     await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
       specificGroupThatWillBeUnhealthy.address,
     ]);
+    await specificGroupStrategyContract.rebalanceWhenHealthChanged(
+      specificGroupThatWillBeUnhealthy.address
+    );
     await managerContract.connect(depositor6).deposit({ value: amountOfCeloToDeposit });
     expectBigNumberInRange(
       await accountContract.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy.address),

@@ -27,7 +27,11 @@ interface ISpecificGroupStrategy {
     function getStCeloInGroup(address group)
         external
         view
-        returns (uint256 total, uint256 overflow);
+        returns (
+            uint256 total,
+            uint256 overflow,
+            uint256 unhealthy
+        );
 
     function totalStCeloLocked() external view returns (uint256);
 

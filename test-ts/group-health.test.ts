@@ -237,14 +237,12 @@ describe("GroupHealth", () => {
         });
 
         it("should update to invalid when group not elected", async () => {
-          console.log("isValid", await groupHealthContract.isGroupValid(groupAddresses[0]));
           await revokeElectionOnMockValidatorGroupsAndUpdate(
             validatorsWrapper,
             groupHealthContract,
             [activatedGroupAddresses[0]],
             false
           );
-          console.log("last call");
           await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
             .to.emit(groupHealthContract, "GroupHealthUpdated")
             .withArgs(activatedGroupAddresses[0], false);
