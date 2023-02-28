@@ -53,8 +53,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     ISpecificGroupStrategy public specificGroupStrategy;
 
     /**
-     * @notice stCELO that was cast for default group strategy,
-     * strategy => stCELO amount
+     * @notice StCELO that was cast for default group strategy,
+     * strategy => stCELO amount.
      */
     mapping(address => uint256) public stCeloInGroup;
 
@@ -80,12 +80,12 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Whether or not active groups are sorted.
-     * If active groups are not sorted it is neccessary to call updateActiveGroupOrder
+     * If active groups are not sorted it is neccessary to call updateActiveGroupOrder.
      */
     bool public sorted;
 
     /**
-     * @notice Groups that need to be sorted
+     * @notice Groups that need to be sorted.
      */
     EnumerableSet.AddressSet private unsortedGroups;
 
@@ -102,7 +102,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     event GroupActivated(address indexed group);
 
     /**
-     * Emmited when sorted status of active groups was changed
+     * Emmited when sorted status of active groups was changed.
      * @param update The new value.
      */
     event SortedFlagUpdated(bool update);
@@ -166,7 +166,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error InvalidFromGroup(address group);
 
     /**
-     * @notice Used when rebalancing and fromGroup doesn't have any extra stCELO.
+     * @notice Used when rebalancing and `fromGroup` doesn't have any extra stCELO.
      * @param group The group's address.
      * @param actualCelo The actual stCELO value.
      * @param expectedCelo The expected stCELO value.
@@ -174,7 +174,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
     error RebalanceNoExtraStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
-     * @notice Used when rebalancing and toGroup has enough stCELO.
+     * @notice Used when rebalancing and `toGroup` has enough stCELO.
      * @param group The group's address.
      * @param actualCelo The actual stCELO value.
      * @param expectedCelo The expected stCELO value.

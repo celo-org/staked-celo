@@ -646,7 +646,7 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: 100 });
       });
 
-      it("should add group to allowed strategies", async () => {
+      it("should add group to voted strategies", async () => {
         const activeGroups = await getDefaultGroups(defaultStrategyContract);
         const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
         expect(activeGroups.length).to.eq(0);
@@ -693,7 +693,7 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: 100 });
       });
 
-      it("should not add group to allowed strategies", async () => {
+      it("should not add group to voted strategies", async () => {
         const activeGroups = await getDefaultGroups(defaultStrategyContract);
         const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
         expect(activeGroups).to.have.deep.members(groupAddresses.slice(0, 3));
@@ -803,7 +803,7 @@ describe("Manager", () => {
           await manager.connect(depositor).deposit({ value: 100 });
         });
 
-        it("should add group to allowed strategies", async () => {
+        it("should add group to voted strategies", async () => {
           const activeGroups = await getDefaultGroups(defaultStrategyContract);
           const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
@@ -830,7 +830,7 @@ describe("Manager", () => {
           await manager.connect(depositor).deposit({ value: 100 });
         });
 
-        it("should add group to allowed strategies", async () => {
+        it("should add group to voted strategies", async () => {
           const activeGroups = await getDefaultGroups(defaultStrategyContract);
           const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[1]]);
@@ -1092,7 +1092,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When there are other active groups besides specific validator group - allowed is different from active", () => {
+    describe("When there are other active groups besides specific validator group - voted is different from active", () => {
       const withdrawals = [40, 50];
       const specificGroupStrategyWithdrawal = 100;
       let specificGroupStrategy: SignerWithAddress;
@@ -1116,7 +1116,7 @@ describe("Manager", () => {
         await manager.connect(depositor).deposit({ value: specificGroupStrategyWithdrawal });
       });
 
-      it("added group to allowed strategies", async () => {
+      it("added group to voted strategies", async () => {
         const activeGroups = await getDefaultGroups(defaultStrategyContract);
         const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
         expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[1]]);
@@ -1187,7 +1187,7 @@ describe("Manager", () => {
       });
     });
 
-    describe("When there are other active groups besides specific validator group - allowed is one of the active groups", () => {
+    describe("When there are other active groups besides specific validator group - voted is one of the active groups", () => {
       const withdrawals = [40, 50];
       const specificGroupStrategyWithdrawal = 100;
 
@@ -2071,7 +2071,7 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
       });
 
-      it("should add group to allowed strategies", async () => {
+      it("should add group to voted strategies", async () => {
         await manager.connect(depositor).deposit({ value: 100 });
         const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
         expect([groupAddresses[0]]).to.deep.eq(specificStrategies);
@@ -2301,7 +2301,7 @@ describe("Manager", () => {
         });
       });
 
-      describe("When group is in both active and allowed", () => {
+      describe("When group is in both active and voted", () => {
         const defaultDepositedValue = 100;
         const specificGroupStrategyDepositedValue = 100;
 
