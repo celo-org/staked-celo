@@ -111,12 +111,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error InvalidToGroup(address group);
 
     /**
-     * @notice Used when rebalancing from address(0) group.
-     * @param group The group's address.
-     */
-    error InvalidFromGroup(address group);
-
-    /**
      * @notice Used when rebalancing and fromGroup doesn't have any extra CELO.
      * @param group The group's address.
      * @param actualCelo The actual CELO value.
@@ -137,12 +131,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error FromGroupNotOverflowing(address group);
-
-    /**
-     * @notice Used when trying to rebalance group that has no scheduled votes.
-     * @param group The group's address.
-     */
-    error NoScheduledVotes(address group);
 
     /**
      * @notice Used when trying to rebalance to a group that is overflowing.

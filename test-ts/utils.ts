@@ -647,7 +647,8 @@ export async function electMockValidatorGroupsAndUpdate(
 export async function revokeElectionOnMockValidatorGroupsAndUpdate(
   validators: ValidatorsWrapper,
   groupHealthContract: MockGroupHealth,
-  validatorGroups: string[]
+  validatorGroups: string[],
+  update = true
 ) {
   const allValidatorsInValGroup = await Promise.all(
     validatorGroups.map(async (vg) => {
@@ -664,6 +665,10 @@ export async function revokeElectionOnMockValidatorGroupsAndUpdate(
       await groupHealthContract.setElectedValidator(i, ADDRESS_ZERO);
     }
   }
+  if (!update) {
+    return;
+  }
+
   for (let j = 0; j < validatorGroups.length; j++) {
     await groupHealthContract.updateGroupHealth(validatorGroups[j]);
   }

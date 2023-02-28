@@ -29,6 +29,22 @@ const tests: ProxyDeployTestData[] = [
     contractName: "RebasedStakedCelo",
     initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
   },
+  {
+    contractName: "Vote",
+    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "DefaultStrategy",
+    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "SpecificGroupStrategy",
+    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+  },
+  {
+    contractName: "GroupHealth",
+    initializeArgs: [randomAddress(), randomAddress()],
+  },
 ];
 
 describe("Contract deployed via proxy", () => {
@@ -48,9 +64,15 @@ describe("Contract deployed via proxy", () => {
 
         await hre.deployments.fixture("core");
 
+        const implementation = await hre.deployments.getOrNull(
+          test.contractName + "_Implementation"
+        );
+
         multiSig = await hre.deployments.get("MultiSig");
         multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-        contractFactory = await hre.ethers.getContractFactory(test.contractName);
+        contractFactory = await hre.ethers.getContractFactory(test.contractName, {
+          libraries: implementation?.libraries,
+        });
       });
 
       it("the implementation can not be initialized", async () => {
