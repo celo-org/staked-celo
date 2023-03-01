@@ -312,6 +312,9 @@ describe("SpecificGroupStrategy", () => {
 
         it("should add blocked strategy to blocked strategies", async () => {
           await specificGroupStrategyContract.blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract.rebalanceWhenHealthChanged(
+            specificGroupStrategy.address
+          );
           const blockedStrategies = await getBlockedSpecificGroupStrategies(
             specificGroupStrategyContract
           );
@@ -320,6 +323,9 @@ describe("SpecificGroupStrategy", () => {
 
         it("should update accounting correctly", async () => {
           await specificGroupStrategyContract.blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract.rebalanceWhenHealthChanged(
+            specificGroupStrategy.address
+          );
           const [total, overflow, unhealthy] = await specificGroupStrategyContract.getStCeloInGroup(
             specificGroupStrategy.address
           );
@@ -346,6 +352,9 @@ describe("SpecificGroupStrategy", () => {
         it("should schedule transfers to default strategy", async () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
           await specificGroupStrategyContract.blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract.rebalanceWhenHealthChanged(
+            specificGroupStrategy.address
+          );
           const [
             lastTransferFromGroups,
             lastTransferFromVotes,

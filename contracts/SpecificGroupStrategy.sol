@@ -284,7 +284,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         votedGroups.add(group);
-
+        console.log("stCeloAmount", stCeloAmount);
         updateGroupStCelo(group, stCeloAmount, true);
 
         if (groupHealth.isGroupValid(group) && !blockedGroups.contains(group)) {
