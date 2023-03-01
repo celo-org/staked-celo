@@ -11,6 +11,7 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
+import "hardhat/console.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
@@ -335,8 +336,8 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             if (unhealthyStCelo == 0) {
                 revert GroupBalanced(group);
             }
-            uint256 overflow = stCeloInGroupOverflowed[group];
-            uint256 toMove = unhealthyStCelo - overflow;
+            uint256 toMove = unhealthyStCelo;
+            console.log("toMove from default", toMove);
 
             transferFromDefaultStrategy(group, toMove);
             updateUnhealthyGroupStCelo(group, toMove, false);
@@ -346,8 +347,13 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                 revert GroupBalanced(group);
             }
 
+            if (defaultStrategy.getNumberOfGroups() == 0) {
+                revert NoActiveGroups();
+            }
+
             uint256 overflow = stCeloInGroupOverflowed[group];
             uint256 toMove = totalStCeloInGroup - unhealthyStCelo - overflow;
+            console.log("toMove to default", toMove);
 
             transferToDefaultStrategy(group, toMove);
             updateUnhealthyGroupStCelo(group, toMove, true);
@@ -504,7 +510,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
      */
     function rebalanceOverflowedGroup(address group) public {
         if (!groupHealth.isGroupValid(group) || blockedGroups.contains(group)) {
-            revert GroupNotOverflowing(group);
+            revert GroupNotEligible(group);
         }
 
         uint256 overflowingStCelo = stCeloInGroupOverflowed[group];

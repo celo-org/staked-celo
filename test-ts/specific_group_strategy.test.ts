@@ -30,6 +30,7 @@ import {
   registerValidatorAndAddToGroupMembers,
   registerValidatorGroup,
   resetNetwork,
+  revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupCeloBasedOnProtocolStCelo,
 } from "./utils";
 
@@ -56,6 +57,7 @@ describe("SpecificGroupStrategy", () => {
   let defaultStrategyContract: MockDefaultStrategy;
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
+  let validatorsWrapper: ValidatorsWrapper;
 
   let nonOwner: SignerWithAddress;
 
@@ -88,6 +90,7 @@ describe("SpecificGroupStrategy", () => {
       [voter] = await randomSigner(parseUnits("10000000000"));
       [someone] = await randomSigner(parseUnits("100"));
       [depositor] = await randomSigner(parseUnits("500"));
+      validatorsWrapper = await hre.kit.contracts.getValidators();
 
       const stakedCeloFactory: MockStakedCelo__factory = (
         await hre.ethers.getContractFactory("MockStakedCelo")
@@ -601,6 +604,258 @@ describe("SpecificGroupStrategy", () => {
               expect(lastTransferToVotes).to.have.deep.members([originalOverflow.div(2)]);
             });
           });
+        });
+      });
+    });
+  });
+
+  describe("#rebalanceWhenHealthChanged()", () => {
+    let specificGroupAddress: string;
+
+    beforeEach(async () => {
+      specificGroupAddress = groupAddresses[4];
+    });
+
+    it("should revert when healthy and no unhealthy stCelo", async () => {
+      expect(
+        specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress)
+      ).revertedWith(`GroupBalanced("${specificGroupAddress}")`);
+    });
+
+    describe("When group is unhealthy", () => {
+      beforeEach(async () => {
+        await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+          specificGroupAddress,
+        ]);
+      });
+
+      it("should have unhealthy group", async () => {
+        const isGroupValid = await groupHealthContract.isGroupValid(specificGroupAddress);
+        expect(isGroupValid).to.be.false;
+      });
+
+      it("should revert when no stCelo in group", async () => {
+        expect(
+          specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress)
+        ).revertedWith(`GroupBalanced("${specificGroupAddress}")`);
+      });
+
+      describe("When Celo deposited in group", () => {
+        let deposit: BigNumber;
+
+        beforeEach(async () => {
+          deposit = parseUnits("1");
+          await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+            specificGroupAddress,
+          ]);
+          await manager.connect(depositor).changeStrategy(specificGroupAddress);
+          await manager.connect(depositor).deposit({ value: deposit });
+          await revokeElectionOnMockValidatorGroupsAndUpdate(
+            validatorsWrapper,
+            groupHealthContract,
+            [specificGroupAddress]
+          );
+        });
+
+        it("should have stCelo in strategy", async () => {
+          const [total, overflow, unhealthy] = await specificGroupStrategyContract.getStCeloInGroup(
+            specificGroupAddress
+          );
+          expect(total).to.deep.eq(deposit);
+          expect(overflow).to.deep.eq(BigNumber.from("0"));
+          expect(unhealthy).to.deep.eq(BigNumber.from("0"));
+        });
+
+        it("should revert when no active groups", async () => {
+          await expect(
+            specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress)
+          ).revertedWith(`NoActiveGroups()`);
+        });
+
+        describe("When active groups and rebalanceWhenHealthChanged called", () => {
+          let tail: string;
+          beforeEach(async () => {
+            await prepareOverflow(
+              defaultStrategyContract,
+              election,
+              lockedGold,
+              voter,
+              groupAddresses
+            );
+            [tail] = await defaultStrategyContract.getGroupsTail();
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
+          });
+
+          it("should have stCelo unhealthy stCelo in strategy", async () => {
+            const [total, overflow, unhealthy] =
+              await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
+            expect(total).to.deep.eq(deposit);
+            expect(overflow).to.deep.eq(BigNumber.from("0"));
+            expect(unhealthy).to.deep.eq(deposit);
+          });
+
+          it("should schedule transfers", async () => {
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.have.deep.members([specificGroupAddress]);
+            expect(lastTransferFromVotes).to.deep.eq([deposit]);
+
+            expect(lastTransferToGroups).to.have.deep.members([tail]);
+            expect(lastTransferToVotes).to.deep.eq([deposit]);
+          });
+
+          it("should update stCelo in Default strategy", async () => {
+            const stCeloInDefault = await defaultStrategyContract.stCeloInGroup(tail);
+            expect(stCeloInDefault).to.deep.eq(deposit);
+          });
+
+          describe("When group becomes healthy again", () => {
+            let head: string;
+            beforeEach(async () => {
+              [head] = await defaultStrategyContract.getGroupsHead();
+              await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
+                specificGroupAddress,
+              ]);
+              await updateGroupCeloBasedOnProtocolStCelo(
+                defaultStrategyContract,
+                specificGroupStrategyContract,
+                account,
+                manager
+              );
+              await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
+            });
+
+            it("should remove unhealthy stCelo", async () => {
+              const [total, overflow, unhealthy] =
+                await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
+              expect(total).to.deep.eq(deposit);
+              expect(overflow).to.deep.eq(BigNumber.from("0"));
+              expect(unhealthy).to.deep.eq(BigNumber.from("0"));
+            });
+
+            it("should schedule transfers", async () => {
+              const [
+                lastTransferFromGroups,
+                lastTransferFromVotes,
+                lastTransferToGroups,
+                lastTransferToVotes,
+              ] = await account.getLastTransferValues();
+
+              expect(lastTransferFromGroups).to.have.deep.members([head]);
+              expect(lastTransferFromVotes).to.deep.eq([deposit]);
+
+              expect(lastTransferToGroups).to.have.deep.members([specificGroupAddress]);
+              expect(lastTransferToVotes).to.deep.eq([deposit]);
+            });
+
+            it("should update stCelo in Default strategy", async () => {
+              const stCeloInDefault = await defaultStrategyContract.stCeloInGroup(tail);
+              expect(stCeloInDefault).to.deep.eq(BigNumber.from("0"));
+            });
+          });
+        });
+      });
+    });
+
+    describe("When overflowing group is blocked", () => {
+      const firstGroupCapacity = parseUnits("40.166666666666666666");
+      const depositOverCapacity = parseUnits("10");
+      let deposit: BigNumber;
+      let tail: string;
+      let specificOverflowingGroup: string;
+
+      beforeEach(async () => {
+        specificOverflowingGroup = groupAddresses[0];
+        deposit = firstGroupCapacity.add(depositOverCapacity);
+        await manager.connect(depositor).changeStrategy(specificOverflowingGroup);
+        await prepareOverflow(defaultStrategyContract, election, lockedGold, voter, groupAddresses);
+        [tail] = await defaultStrategyContract.getGroupsTail();
+        await manager.connect(depositor).deposit({ value: deposit });
+        await specificGroupStrategyContract.blockGroup(specificOverflowingGroup);
+      });
+
+      it("should have blocked group", async () => {
+        const isGroupBlocked = await specificGroupStrategyContract.isBlockedGroup(
+          specificOverflowingGroup
+        );
+        expect(isGroupBlocked).to.be.true;
+      });
+
+      it("should have stCelo unhealthy stCelo in strategy", async () => {
+        const [total, overflow, unhealthy] = await specificGroupStrategyContract.getStCeloInGroup(
+          specificOverflowingGroup
+        );
+        expect(total).to.deep.eq(deposit);
+        expect(overflow).to.deep.eq(depositOverCapacity);
+        expect(unhealthy).to.deep.eq(firstGroupCapacity);
+      });
+
+      it("should schedule transfers", async () => {
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups).to.have.deep.members([specificOverflowingGroup]);
+        expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity]);
+
+        expect(lastTransferToGroups).to.have.deep.members([tail]);
+        expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity]);
+      });
+
+      it("should update stCelo in Default strategy", async () => {
+        const stCeloInDefault = await defaultStrategyContract.totalStCeloInStrategy();
+        expect(stCeloInDefault).to.deep.eq(deposit);
+      });
+
+      describe("When group becomes unblocked again", () => {
+        let head: string;
+        beforeEach(async () => {
+          [head] = await defaultStrategyContract.getGroupsHead();
+          await specificGroupStrategyContract.unblockGroup(specificOverflowingGroup);
+          await updateGroupCeloBasedOnProtocolStCelo(
+            defaultStrategyContract,
+            specificGroupStrategyContract,
+            account,
+            manager
+          );
+          await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificOverflowingGroup);
+        });
+
+        it("should remove unhealthy stCelo", async () => {
+          const [total, overflow, unhealthy] = await specificGroupStrategyContract.getStCeloInGroup(
+            specificOverflowingGroup
+          );
+          expect(total).to.deep.eq(deposit);
+          expect(overflow).to.deep.eq(depositOverCapacity);
+          expect(unhealthy).to.deep.eq(BigNumber.from("0"));
+        });
+
+        it("should schedule transfers", async () => {
+          const [
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes,
+          ] = await account.getLastTransferValues();
+
+          expect(lastTransferFromGroups).to.have.deep.members([head]);
+          expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity]);
+
+          expect(lastTransferToGroups).to.have.deep.members([specificOverflowingGroup]);
+          expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity]);
+        });
+
+        it("should update stCelo in Default strategy", async () => {
+          const stCeloInDefault = await defaultStrategyContract.totalStCeloInStrategy();
+          expect(stCeloInDefault).to.deep.eq(depositOverCapacity);
         });
       });
     });
