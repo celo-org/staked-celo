@@ -35,11 +35,11 @@ const tests: ProxyDeployTestData[] = [
   },
   {
     contractName: "DefaultStrategy",
-    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+    initializeArgs: [randomAddress(), randomAddress()],
   },
   {
     contractName: "SpecificGroupStrategy",
-    initializeArgs: [randomAddress(), randomAddress(), randomAddress()],
+    initializeArgs: [randomAddress(), randomAddress()],
   },
   {
     contractName: "GroupHealth",

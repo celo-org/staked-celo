@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [hre.ethers.constants.AddressZero, deployer, managerAddress],
+        args: [deployer, managerAddress],
       },
     },
   });

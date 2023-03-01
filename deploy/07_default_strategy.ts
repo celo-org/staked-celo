@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         execute: {
           init: {
             methodName: "initialize",
-            args: [hre.ethers.constants.AddressZero, deployer, managerAddress],
+            args: [deployer, managerAddress],
           },
         },
       },

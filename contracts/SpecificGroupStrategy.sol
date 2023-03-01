@@ -4,20 +4,18 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
-import "hardhat/console.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
  * for accounts with specific strategy selected.
  */
-contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -187,17 +185,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the Manager contract.
      */
-    function initialize(
-        address _registry,
-        address _owner,
-        address _manager
-    ) external initializer {
+    function initialize(address _owner, address _manager) external initializer {
         _transferOwnership(_owner);
-        __UsingRegistry_init(_registry);
         __Managed_init(_manager);
     }
 
@@ -284,7 +276,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         votedGroups.add(group);
-        console.log("stCeloAmount", stCeloAmount);
         updateGroupStCelo(group, stCeloAmount, true);
 
         if (groupHealth.isGroupValid(group) && !blockedGroups.contains(group)) {
@@ -337,7 +328,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
                 revert GroupBalanced(group);
             }
             uint256 toMove = unhealthyStCelo;
-            console.log("toMove from default", toMove);
 
             transferFromDefaultStrategy(group, toMove);
             updateUnhealthyGroupStCelo(group, toMove, false);
@@ -353,7 +343,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
 
             uint256 overflow = stCeloInGroupOverflowed[group];
             uint256 toMove = totalStCeloInGroup - unhealthyStCelo - overflow;
-            console.log("toMove to default", toMove);
 
             transferToDefaultStrategy(group, toMove);
             updateUnhealthyGroupStCelo(group, toMove, true);

@@ -1590,32 +1590,74 @@ describe("Manager", () => {
         });
 
         describe("When withdrawing from unhealthy overflowed group", () => {
-          const withdraw = parseUnits("14");
-          let head: string;
-          let perviousToHead: string;
-          beforeEach(async () => {
-            await updateGroupCeloBasedOnProtocolStCelo(
-              defaultStrategyContract,
-              specificGroupStrategyContract,
-              account,
-              manager
-            );
-            [head, perviousToHead] = await defaultStrategyContract.getGroupsHead();
-            await manager.connect(depositor).withdraw(withdraw);
-          });
+          describe("When different ratio of CELO vs stCELO", () => {
+            describe("When 1:1", () => {
+              const withdraw = parseUnits("14");
+              let head: string;
+              let perviousToHead: string;
+              beforeEach(async () => {
+                await updateGroupCeloBasedOnProtocolStCelo(
+                  defaultStrategyContract,
+                  specificGroupStrategyContract,
+                  account,
+                  manager
+                );
+                [head, perviousToHead] = await defaultStrategyContract.getGroupsHead();
+                await manager.connect(depositor).withdraw(withdraw);
+              });
 
-          it("should have stCelo in strategy", async () => {
-            const [total, overflow, unhealthy] =
-              await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
-            expect(total).to.deep.eq(deposit2.add(deposit).sub(withdraw));
-            expect(overflow).to.deep.eq(BigNumber.from(0));
-            expect(unhealthy).to.deep.eq(parseUnits("1"));
-          });
+              it("should have stCelo in strategy", async () => {
+                const [total, overflow, unhealthy] =
+                  await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
+                expect(total).to.deep.eq(deposit2.add(deposit).sub(withdraw));
+                expect(overflow).to.deep.eq(BigNumber.from(0));
+                expect(unhealthy).to.deep.eq(parseUnits("1"));
+              });
 
-          it("should schedule withdrawal from default strategy", async () => {
-            const [votedGroups, votes] = await account.getLastScheduledWithdrawals();
-            expect(votedGroups).to.have.deep.members([head, perviousToHead]);
-            expect(votes[0].add(votes[1])).to.deep.eq(withdraw);
+              it("should schedule withdrawal from default strategy", async () => {
+                const [votedGroups, votes] = await account.getLastScheduledWithdrawals();
+                expect(votedGroups).to.have.deep.members([head, perviousToHead]);
+                expect(votes[0].add(votes[1])).to.deep.eq(withdraw);
+              });
+            });
+
+            describe("When less CELO than stCELO", () => {
+              const withdraw = parseUnits("14");
+              let head: string;
+              let perviousToHead: string;
+              beforeEach(async () => {
+                await account.setTotalCelo(deposit.add(deposit2).div(2));
+                await updateGroupCeloBasedOnProtocolStCelo(
+                  defaultStrategyContract,
+                  specificGroupStrategyContract,
+                  account,
+                  manager
+                );
+
+                await updateGroupCeloBasedOnProtocolStCelo(
+                  defaultStrategyContract,
+                  specificGroupStrategyContract,
+                  account,
+                  manager
+                );
+                [head, perviousToHead] = await defaultStrategyContract.getGroupsHead();
+                await manager.connect(depositor).withdraw(withdraw);
+              });
+
+              it("should have stCelo in strategy", async () => {
+                const [total, overflow, unhealthy] =
+                  await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
+                expect(total).to.deep.eq(deposit2.add(deposit).sub(withdraw));
+                expect(overflow).to.deep.eq(BigNumber.from(0));
+                expect(unhealthy).to.deep.eq(parseUnits("1"));
+              });
+
+              it("should schedule withdrawal from default strategy", async () => {
+                const [votedGroups, votes] = await account.getLastScheduledWithdrawals();
+                expect(votedGroups).to.have.deep.members([head, perviousToHead]);
+                expect(votes[0].add(votes[1])).to.deep.eq(withdraw.div(2));
+              });
+            });
           });
         });
       });

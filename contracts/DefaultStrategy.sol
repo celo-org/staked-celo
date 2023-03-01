@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/linkedlists/AddressSortedLinkedList.sol";
 import "./interfaces/IAccount.sol";
@@ -17,7 +16,7 @@ import "./Managed.sol";
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
  * for accounts without any specific strategy.
  */
-contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     using EnumerableSet for EnumerableSet.AddressSet;
     using AddressSortedLinkedList for SortedLinkedList.List;
 
@@ -212,17 +211,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Ma
 
     /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the Manager contract.
      */
-    function initialize(
-        address _registry,
-        address _owner,
-        address _manager
-    ) external initializer {
+    function initialize(address _owner, address _manager) external initializer {
         _transferOwnership(_owner);
-        __UsingRegistry_init(_registry);
         __Managed_init(_manager);
         maxGroupsToDistributeTo = 8;
         maxGroupsToWithdrawFrom = 8;
