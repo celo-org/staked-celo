@@ -625,16 +625,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, UsingRegistryUpgradeab
             revert GroupAlreadyBlocked(group);
         }
 
-        (uint256 stCeloInSpecificGroup, uint256 overflow, uint256 unhealthy) = getStCeloInGroup(
-            group
-        );
-
-        uint256 toMove = stCeloInSpecificGroup - overflow - unhealthy;
-        if (toMove != 0) {
-            transferToDefaultStrategy(group, toMove);
-            updateUnhealthyGroupStCelo(group, toMove, true);
-        }
-
         blockedGroups.add(group);
 
         emit GroupBlocked(group);
