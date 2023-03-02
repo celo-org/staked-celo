@@ -228,9 +228,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * `Account.finishPendingWithdrawal`.
      */
     function withdraw(uint256 stCeloAmount) external {
-        // distributeAndScheduleWithdrawals(stakedCeloAmount, msg.sender);
-
-        // address strategy = checkStrategy(strategies[beneficiary]);
         (
             address[] memory groupsWithdrawn,
             uint256[] memory withdrawalsPerGroup
