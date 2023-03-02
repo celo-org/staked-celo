@@ -230,17 +230,7 @@ describe("SpecificGroupStrategy", () => {
       await expect(
         specificGroupStrategyContract
           .connect(nonManager)
-          .generateWithdrawalVoteDistribution(nonVote.address, 10, 10)
-      ).revertedWith(`CallerNotManager("${nonManager.address}")`);
-    });
-  });
-
-  describe("#generateWithdrawalVoteDistributionTransfer()", () => {
-    it("cannot be called by a non-Manager address", async () => {
-      await expect(
-        specificGroupStrategyContract
-          .connect(nonManager)
-          .generateWithdrawalVoteDistributionTransfer(nonVote.address, 10, 10)
+          .generateWithdrawalVoteDistribution(nonVote.address, 10, 10, false)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
   });

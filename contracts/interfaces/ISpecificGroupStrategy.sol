@@ -11,13 +11,8 @@ interface ISpecificGroupStrategy {
     function generateWithdrawalVoteDistribution(
         address group,
         uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
-    ) external returns (address[] memory groups, uint256[] memory votes);
-
-    function generateWithdrawalVoteDistributionTransfer(
-        address group,
-        uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
+        uint256 stCeloWithdrawalAmount,
+        bool isTransfer
     ) external returns (address[] memory groups, uint256[] memory votes);
 
     function isVotedGroup(address group) external view returns (bool);

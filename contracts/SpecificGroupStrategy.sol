@@ -253,13 +253,67 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
     function generateWithdrawalVoteDistribution(
         address group,
         uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
+        uint256 stCeloWithdrawalAmount,
+        bool isTransfer
     ) external onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        (groups, votes) = generateWithdrawalVoteDistributionTransfer(
-            group,
-            celoWithdrawalAmount,
-            stCeloWithdrawalAmount
-        );
+        if (votedGroups.length() == 0) {
+            revert NoGroups();
+        }
+
+        if (stCeloWithdrawalAmount > stCeloInGroup[group]) {
+            revert CantWithdrawAccordingToStrategy(group);
+        }
+
+        updateGroupStCelo(group, stCeloWithdrawalAmount, false);
+
+        uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
+        uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
+        if (overflowingStCelo > 0 || unhealthyStCelo > 0) {
+            uint256 celoInDefaultStrategy = IManager(manager).toCelo(
+                overflowingStCelo + unhealthyStCelo
+            );
+            uint256 celoToBeMovedFromDefaultStrategy = Math.min(
+                celoWithdrawalAmount,
+                celoInDefaultStrategy
+            );
+            celoWithdrawalAmount -= celoToBeMovedFromDefaultStrategy;
+
+            (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
+                .generateWithdrawalVoteDistribution(celoToBeMovedFromDefaultStrategy);
+
+            uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(
+                celoToBeMovedFromDefaultStrategy
+            );
+            uint256 subtractedFromOveflow = Math.min(overflowingStCelo, stCeloToBeMoved);
+            if (subtractedFromOveflow > 0) {
+                updateOverflowGroup(group, subtractedFromOveflow, false);
+            }
+            if (!isTransfer) {
+                uint256 subtracteddFromUnHealthy = stCeloToBeMoved - subtractedFromOveflow;
+                if (subtracteddFromUnHealthy > 0) {
+                    updateUnhealthyGroupStCelo(group, subtracteddFromUnHealthy, false);
+                }
+            }
+
+            if (celoWithdrawalAmount > 0) {
+                groups = new address[](overflowGroups.length + 1);
+                votes = new uint256[](overflowGroups.length + 1);
+                for (uint256 i = 0; i < overflowGroups.length; i++) {
+                    groups[i] = overflowGroups[i];
+                    votes[i] = overflowVotes[i];
+                }
+                groups[overflowGroups.length] = group;
+                votes[overflowGroups.length] = celoWithdrawalAmount;
+            } else {
+                groups = overflowGroups;
+                votes = overflowVotes;
+            }
+        } else {
+            groups = new address[](1);
+            votes = new uint256[](1);
+            groups[0] = group;
+            votes[0] = celoWithdrawalAmount;
+        }
     }
 
     /**
@@ -417,78 +471,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         )
     {
         return (1, 1, 0, 0);
-    }
-
-    /**
-     * @notice Used to withdraw CELO from from specific group
-     * that account voted for previously. It is expected that strategy will be balanced.
-     * For balancing use `rebalance` function
-     * @param group The validator group that we want to withdraw from.
-     * @param celoWithdrawalAmount The amount of stCELO to withdraw.
-     * @return groups The groups to withdraw from.
-     * @return votes The amount to withdraw from each group.
-     */
-    function generateWithdrawalVoteDistributionTransfer(
-        address group,
-        uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
-    ) public onlyManager returns (address[] memory groups, uint256[] memory votes) {
-        if (votedGroups.length() == 0) {
-            revert NoGroups();
-        }
-
-        if (stCeloWithdrawalAmount > stCeloInGroup[group]) {
-            revert CantWithdrawAccordingToStrategy(group);
-        }
-
-        updateGroupStCelo(group, stCeloWithdrawalAmount, false);
-
-        uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
-        uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
-        if (overflowingStCelo > 0 || unhealthyStCelo > 0) {
-            uint256 celoInDefaultStrategy = IManager(manager).toCelo(
-                overflowingStCelo + unhealthyStCelo
-            );
-            uint256 celoToBeMovedFromDefaultStrategy = Math.min(
-                celoWithdrawalAmount,
-                celoInDefaultStrategy
-            );
-            celoWithdrawalAmount -= celoToBeMovedFromDefaultStrategy;
-
-            (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
-                .generateWithdrawalVoteDistribution(celoToBeMovedFromDefaultStrategy);
-
-            uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(
-                celoToBeMovedFromDefaultStrategy
-            );
-            uint256 subtractedFromOveflow = Math.min(overflowingStCelo, stCeloToBeMoved);
-            if (subtractedFromOveflow > 0) {
-                updateOverflowGroup(group, subtractedFromOveflow, false);
-            }
-            uint256 subtracteddFromUnHealthy = stCeloToBeMoved - subtractedFromOveflow;
-            if (subtracteddFromUnHealthy > 0) {
-                updateUnhealthyGroupStCelo(group, subtracteddFromUnHealthy, false);
-            }
-
-            if (celoWithdrawalAmount > 0) {
-                groups = new address[](overflowGroups.length + 1);
-                votes = new uint256[](overflowGroups.length + 1);
-                for (uint256 i = 0; i < overflowGroups.length; i++) {
-                    groups[i] = overflowGroups[i];
-                    votes[i] = overflowVotes[i];
-                }
-                groups[overflowGroups.length] = group;
-                votes[overflowGroups.length] = celoWithdrawalAmount;
-            } else {
-                groups = overflowGroups;
-                votes = overflowVotes;
-            }
-        } else {
-            groups = new address[](1);
-            votes = new uint256[](1);
-            groups[0] = group;
-            votes[0] = celoWithdrawalAmount;
-        }
     }
 
     /**

@@ -30,14 +30,6 @@ contract MockManager is IManager {
         transfers.push(MockTransfer(from, to, amount));
     }
 
-    function transferBetweenStrategies(
-        address fromStrategy,
-        address toStrategy,
-        uint256 stCeloAmount
-    ) external {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
         address[] calldata toGroups,

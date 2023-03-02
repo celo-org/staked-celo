@@ -340,20 +340,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Schedules transfer of CELO between strategies.
-     * @param fromStrategy The from strategy.
-     * @param toStrategy The to strategy.
-     * @param stCeloAmount The stCELO amount.
-     */
-    function transferBetweenStrategies(
-        address fromStrategy,
-        address toStrategy,
-        uint256 stCeloAmount
-    ) public onlyStrategy {
-        _transferWithoutChecks(fromStrategy, toStrategy, stCeloAmount);
-    }
-
-    /**
      * @notice Allows account to change strategy.
      * address(0) = default strategy
      * !address(0) = voting for allowed validator group. Group needs to be in allowed
@@ -373,7 +359,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             _transfer(strategies[msg.sender], newStrategy, stCeloAmount);
         }
 
-        strategies[msg.sender] = newStrategy; //checkStrategy(newStrategy);
+        strategies[msg.sender] = newStrategy;
     }
 
     /**
@@ -654,17 +640,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
-                ? specificGroupStrategy.generateWithdrawalVoteDistributionTransfer(
-                    strategy,
-                    celoAmount,
-                    stCeloAmount
-                )
-                : specificGroupStrategy.generateWithdrawalVoteDistribution(
-                    strategy,
-                    celoAmount,
-                    stCeloAmount
-                );
+            (groupsWithdrawn, withdrawalsPerGroup) = specificGroupStrategy
+                .generateWithdrawalVoteDistribution(strategy, celoAmount, stCeloAmount, isTransfer);
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
                 .generateWithdrawalVoteDistribution(celoAmount);
