@@ -129,13 +129,10 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
 
     /**
      * @notice Used when attempting to withdraw from specific group
-     * but group does not have enough CELO. Group either doesn't have enough stCELO
-     * or it is necessary to rebalance the group.
+     * but group does not have enough CELO. It is necessary to rebalance the group.
      * @param group The group's address.
-     * @param expected The expected vote amount.
-     * @param real The real vote amount.
      */
-    error GroupNotBalancedOrNotEnoughStCelo(address group, uint256 expected, uint256 real);
+    error GroupNotBalanced(address group);
 
     /**
      * @notice Used when there isn't enough CELO voting for an account's strategy
@@ -269,31 +266,20 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
         uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
         if (overflowingStCelo > 0 || unhealthyStCelo > 0) {
-            uint256 celoInDefaultStrategy = IManager(manager).toCelo(
-                overflowingStCelo + unhealthyStCelo
-            );
             uint256 celoToBeMovedFromDefaultStrategy = Math.min(
                 celoWithdrawalAmount,
-                celoInDefaultStrategy
+                IManager(manager).toCelo(overflowingStCelo + unhealthyStCelo)
             );
             celoWithdrawalAmount -= celoToBeMovedFromDefaultStrategy;
 
             (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
                 .generateWithdrawalVoteDistribution(celoToBeMovedFromDefaultStrategy);
 
-            uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(
-                celoToBeMovedFromDefaultStrategy
+            handleWithdrawalOverflowAndUnhealthyAccounting(
+                group,
+                celoToBeMovedFromDefaultStrategy,
+                overflowingStCelo
             );
-            uint256 subtractedFromOveflow = Math.min(overflowingStCelo, stCeloToBeMoved);
-            if (subtractedFromOveflow > 0) {
-                updateOverflowGroup(group, subtractedFromOveflow, false);
-            }
-            if (!isTransfer) {
-                uint256 subtracteddFromUnHealthy = stCeloToBeMoved - subtractedFromOveflow;
-                if (subtracteddFromUnHealthy > 0) {
-                    updateUnhealthyGroupStCelo(group, subtracteddFromUnHealthy, false);
-                }
-            }
 
             if (celoWithdrawalAmount > 0) {
                 groups = new address[](overflowGroups.length + 1);
@@ -301,6 +287,9 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
                 for (uint256 i = 0; i < overflowGroups.length; i++) {
                     groups[i] = overflowGroups[i];
                     votes[i] = overflowVotes[i];
+                }
+                if (!isTransfer && account.getCeloForGroup(group) < celoWithdrawalAmount) {
+                    revert GroupNotBalanced(group);
                 }
                 groups[overflowGroups.length] = group;
                 votes[overflowGroups.length] = celoWithdrawalAmount;
@@ -351,10 +340,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
                 finalGroups[groups.length] = group;
                 finalVotes[groups.length] = votesToBeScheduledForSpecificGroup;
             } else {
-                uint256 votesRemaining = account.getCeloForGroup(group);
-                if (votesRemaining < celoAmount) {
-                    revert GroupNotBalancedOrNotEnoughStCelo(group, celoAmount, votesRemaining);
-                }
                 finalGroups = new address[](1);
                 finalVotes = new uint256[](1);
                 finalGroups[0] = group;
@@ -601,6 +586,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         emit GroupBlocked(group);
     }
 
+    /**
+     * Transfers stCelo to default strategy without updating accounting in specific group.
+     * @param group The group addres.
+     * @param stCeloToMove StCelo amount to be moved.
+     */
     function transferToDefaultStrategy(address group, uint256 stCeloToMove) private {
         uint256 toMoveCelo = IManager(manager).toCelo(stCeloToMove);
         address[] memory fromGroups = new address[](1);
@@ -612,6 +602,11 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         IManager(manager).scheduleTransferWithinStrategy(fromGroups, toGroups, fromVotes, toVotes);
     }
 
+    /**
+     * Transfers stCelo from default strategy without updating accounting in specific group.
+     * @param group The group addres.
+     * @param stCeloToMove StCELO amount to be moved.
+     */
     function transferFromDefaultStrategy(address group, uint256 stCeloToMove) private {
         uint256 toMoveCelo = IManager(manager).toCelo(stCeloToMove);
         (address[] memory fromGroups, uint256[] memory fromVotes) = defaultStrategy
@@ -621,5 +616,27 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         toGroups[0] = group;
         toVotes[0] = toMoveCelo;
         IManager(manager).scheduleTransferWithinStrategy(fromGroups, toGroups, fromVotes, toVotes);
+    }
+
+    /**
+     * Handles accounting when group is overflowing/unhelthy during withdrawal.
+     * @param group The group address.
+     * @param celoToBeMovedFromDefaultStrategy The celo that is being moved from default strategy.
+     * @param overflowingStCelo StCELO amount that is overflowing.
+     */
+    function handleWithdrawalOverflowAndUnhealthyAccounting(
+        address group,
+        uint256 celoToBeMovedFromDefaultStrategy,
+        uint256 overflowingStCelo
+    ) private {
+        uint256 stCeloToBeMoved = IManager(manager).toStakedCelo(celoToBeMovedFromDefaultStrategy);
+        uint256 subtractedFromOveflow = Math.min(overflowingStCelo, stCeloToBeMoved);
+        if (subtractedFromOveflow > 0) {
+            updateOverflowGroup(group, subtractedFromOveflow, false);
+        }
+        uint256 subtracteddFromUnHealthy = stCeloToBeMoved - subtractedFromOveflow;
+        if (subtracteddFromUnHealthy > 0) {
+            updateUnhealthyGroupStCelo(group, subtracteddFromUnHealthy, false);
+        }
     }
 }
