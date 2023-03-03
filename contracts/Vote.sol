@@ -174,7 +174,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 1, 1);
+        return (1, 1, 2, 0);
     }
 
     /**
@@ -344,17 +344,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * Deletes timestamp of expired proposal from storage.
-     * @param proposalId The proposal Id.
-     */
-    function deleteExpiredProposalTimestamp(uint256 proposalId) external {
-        uint256 proposalTimestamp = proposalTimestamps[proposalId];
-        if (block.timestamp > proposalTimestamp + getGovernance().getReferendumStageDuration()) {
-            delete proposalTimestamps[proposalId];
-        }
-    }
-
-    /**
      * Deletes proposalId from voter's history if proposal expired.
      * @param voter The voter address.
      * @param proposalId The proposal id.
@@ -372,6 +361,8 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             revert IncorrectIndex();
         }
 
+        deleteExpiredProposalTimestamp(proposalId);
+
         uint256 proposalTimestamp = proposalTimestamps[proposalId];
         if (proposalTimestamp != 0) {
             revert ProposalNotExpired();
@@ -381,6 +372,17 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             voterStruct.votedProposalIds.length - 1
         ];
         voterStruct.votedProposalIds.pop();
+    }
+
+    /**
+     * Deletes timestamp of expired proposal from storage.
+     * @param proposalId The proposal Id.
+     */
+    function deleteExpiredProposalTimestamp(uint256 proposalId) public {
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (block.timestamp > proposalTimestamp + getGovernance().getReferendumStageDuration()) {
+            delete proposalTimestamps[proposalId];
+        }
     }
 
     /**

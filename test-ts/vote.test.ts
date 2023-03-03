@@ -853,7 +853,6 @@ describe("Vote", async function (this: any) {
       });
 
       it("should delete delete proposalId from voter history since proposal expired", async () => {
-        await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
         await voteContract.deleteExpiredVoterProposalId(
           depositor0.address,
           proposal1Id,
