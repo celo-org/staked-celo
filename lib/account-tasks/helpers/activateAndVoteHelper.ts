@@ -1,17 +1,21 @@
 import { Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { taskLogger } from "../../logger";
+import { getDefaultGroupsHHTask, getSpecificGroupsHHTask } from "../../task-utils";
 
 export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Signer) {
   const accountContract = await hre.ethers.getContract("Account");
-  const managerContract = await hre.ethers.getContract("Manager");
+  const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+  const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = await hre.ethers.getContractAt("IElection", electionWrapper.address);
 
-  const groupList = await managerContract.getGroups();
-
+  const activeGroups = await getDefaultGroupsHHTask(defaultStrategy)
+  const specificStrategies = await getSpecificGroupsHHTask(specificGroupStrategy)
+  const groupList = new Set<string>(activeGroups.concat(specificStrategies)).values();
   taskLogger.debug("groups:", groupList);
+  
   for (const group of groupList) {
     // Using election contract to make this `hasActivatablePendingVotes` call.
     // This allows to check activatable pending votes for a specified group,
@@ -45,3 +49,4 @@ export async function activateAndVote(hre: HardhatRuntimeEnvironment, signer: Si
     }
   }
 }
+

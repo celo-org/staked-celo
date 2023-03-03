@@ -1,15 +1,10 @@
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { catchNotOwnerForProxy, executeAndWait } from "../lib/deploy-utils";
-
-const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
-  validatorGroupsString ? validatorGroupsString.split(",") : [];
+import { catchNotOwnerForProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
-
-  const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
 
   const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
 
@@ -33,13 +28,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (isManagerAlreadyDeployed) {
     console.log("Manager proxy was already deployed - skipping group activation");
     return;
-  }
-
-  const manager = await hre.ethers.getContract("Manager");
-
-  for (let i = 0; i < validatorGroups.length; i++) {
-    console.log("activating group", validatorGroups[i]);
-    await executeAndWait(manager.activateGroup(validatorGroups[i]));
   }
 };
 

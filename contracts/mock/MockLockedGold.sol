@@ -112,4 +112,8 @@ contract MockLockedGold is ILockedGold {
     function getSlashingWhitelist() external view returns (bytes32[] memory) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function getAccountNonvotingLockedGold(address account) external view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
