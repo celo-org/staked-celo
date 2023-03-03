@@ -8,13 +8,16 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
   activateValidators,
   ADDRESS_ZERO,
-  electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
   randomSigner,
@@ -23,14 +26,17 @@ import {
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
+  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
+  let groupHealthContract: MockGroupHealth;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
+  let defaultStrategyContract: DefaultStrategy;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
@@ -93,58 +99,79 @@ describe("Vote", async function (this: any) {
   }
 
   before(async () => {
-    await resetNetwork();
+    try {
+      await resetNetwork();
 
-    process.env = {
-      ...process.env,
-      TIME_LOCK_MIN_DELAY: "1",
-      TIME_LOCK_DELAY: "1",
-      MULTISIG_REQUIRED_CONFIRMATIONS: "1",
-      VALIDATOR_GROUPS: "",
-    };
+      process.env = {
+        ...process.env,
+        TIME_LOCK_MIN_DELAY: "1",
+        TIME_LOCK_DELAY: "1",
+        MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+        VALIDATOR_GROUPS: "",
+      };
 
-    [depositor0] = await randomSigner(parseUnits("300"));
-    [depositor1] = await randomSigner(parseUnits("300"));
-    [nonStakedCelo] = await randomSigner(parseUnits("100"));
-    [nonOwner] = await randomSigner(parseUnits("100"));
-    [nonAccount] = await randomSigner(parseUnits("100"));
-    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    [voter] = await randomSigner(parseUnits("300"));
-    const accounts = await hre.kit.contracts.getAccounts();
-    await accounts.createAccount().sendAndWaitForReceipt({
-      from: voter.address,
-    });
+      [depositor0] = await randomSigner(parseUnits("300"));
+      [depositor1] = await randomSigner(parseUnits("300"));
+      [nonStakedCelo] = await randomSigner(parseUnits("100"));
+      [nonOwner] = await randomSigner(parseUnits("100"));
+      [nonAccount] = await randomSigner(parseUnits("100"));
+      multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+      [voter] = await randomSigner(parseUnits("300"));
+      const accounts = await hre.kit.contracts.getAccounts();
+      await accounts.createAccount().sendAndWaitForReceipt({
+        from: voter.address,
+      });
 
-    groups = [];
-    activatedGroupAddresses = [];
-    groupAddresses = [];
-    validators = [];
-    validatorAddresses = [];
-    for (let i = 0; i < 10; i++) {
-      const [group] = await randomSigner(parseUnits("11000"));
-      groups.push(group);
-      if (i < 3) {
-        activatedGroupAddresses.push(groups[i].address);
+      groups = [];
+      activatedGroupAddresses = [];
+      groupAddresses = [];
+      validators = [];
+      validatorAddresses = [];
+
+      for (let i = 0; i < 10; i++) {
+        const [group] = await randomSigner(parseUnits("11000"));
+        groups.push(group);
+        if (i < 3) {
+          activatedGroupAddresses.push(groups[i].address);
+        }
+        groupAddresses.push(groups[i].address);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        validators.push(validator);
+        validatorAddresses.push(validators[i].address);
+
+        await registerValidatorGroup(groups[i]);
+        await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
       }
-      groupAddresses.push(groups[i].address);
-      const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      validators.push(validator);
-      validatorAddresses.push(validators[i].address);
-
-      await registerValidatorGroup(groups[i]);
-      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
+    } catch (error) {
+      console.error(error);
     }
-
-    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
     await hre.deployments.fixture("core");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
+    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    groupHealthContract = await upgradeToMockGroupHealthE2E(
+      multisigOwner0,
+      groupHealthContract as unknown as GroupHealth
+    );
+    const validatorWrapper = await hre.kit.contracts.getValidators();
+    await electMockValidatorGroupsAndUpdate(
+      validatorWrapper,
+      groupHealthContract,
+      activatedGroupAddresses
+    );
+
+    await activateValidators(
+      defaultStrategyContract,
+      groupHealthContract as unknown as GroupHealth,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   describe("#getVoteWeight()", () => {
@@ -473,23 +500,13 @@ describe("Vote", async function (this: any) {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedStCeloInVoting = await voteContract
-        .connect(managerSigner)
-        .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-      const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-      const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-        .topics as string[];
-      const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-        event.topics.some((topic) => topic == eventTopics[0])
-      );
-      const eventArgs = voteContract.interface.decodeEventLog(
-        voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-        event!.data,
-        eventTopics
-      );
-
-      expect(eventArgs.lockedCelo).to.eq(0);
+      await expect(
+        voteContract
+          .connect(managerSigner)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+      )
+        .to.emit(voteContract, "LockedStCeloInVoting")
+        .withArgs(depositor0.address, hre.ethers.BigNumber.from(0));
     });
 
     describe("when voted", async () => {
@@ -507,22 +524,13 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return locked celo", async () => {
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should return locked celo when voting on maximum number of proposals", async () => {
@@ -538,22 +546,13 @@ describe("Vote", async function (this: any) {
             .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should update locked celo when revoted", async () => {
@@ -575,22 +574,13 @@ describe("Vote", async function (this: any) {
             abstainVotesRevote
           );
 
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs?.lockedCelo).to.eq(totalRevotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalRevotes);
       });
     });
 

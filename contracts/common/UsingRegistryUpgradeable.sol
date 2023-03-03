@@ -15,21 +15,6 @@ import "../interfaces/IValidators.sol";
  * @title A helper for getting Celo core contracts from the Registry.
  */
 abstract contract UsingRegistryUpgradeable is Initializable {
-    /**
-     * @notice Initializes the UsingRegistryUpgradable contract in an upgradable scenario
-     * @param _registry The address of the Registry. For convenience, if the zero address is
-     * provided, the registry is set to the canonical Registry address, i.e. 0x0...ce10. This
-     * parameter should only be a non-zero address when testing.
-     */
-    // solhint-disable-next-line func-name-mixedcase
-    function __UsingRegistry_init(address _registry) internal onlyInitializing {
-        if (_registry == address(0)) {
-            registry = IRegistry(CANONICAL_REGISTRY);
-        } else {
-            registry = IRegistry(_registry);
-        }
-    }
-
     /// @notice The canonical address of the Registry.
     address internal constant CANONICAL_REGISTRY = 0x000000000000000000000000000000000000ce10;
 
@@ -53,6 +38,21 @@ abstract contract UsingRegistryUpgradeable is Initializable {
 
     /// @notice The Registry.
     IRegistry public registry;
+
+    /**
+     * @notice Initializes the UsingRegistryUpgradable contract in an upgradable scenario
+     * @param _registry The address of the Registry. For convenience, if the zero address is
+     * provided, the registry is set to the canonical Registry address, i.e. 0x0...ce10. This
+     * parameter should only be a non-zero address when testing.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function __UsingRegistry_init(address _registry) internal onlyInitializing {
+        if (_registry == address(0)) {
+            registry = IRegistry(CANONICAL_REGISTRY);
+        } else {
+            registry = IRegistry(_registry);
+        }
+    }
 
     /**
      * @notice Gets the Accounts contract from the Registry.

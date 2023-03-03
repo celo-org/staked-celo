@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   existsSync,
   mkdirSync,
@@ -80,35 +81,37 @@ async function runCmd(outputDir: string, inputDir: string) {
     mkdirSync(artifactsPostProcessedPath);
   }
 
-  const contractsAbsolute = path.join(inputDirResolved, artifactDirectory, contractsDirectory);
+  const artifactsAbsolute = path.join(inputDirResolved, artifactDirectory);
+  const contractsAbsolute = path.join(artifactsAbsolute, contractsDirectory);
 
   const contracts = await getContracts(
     path.join(inputDirResolved, artifactDirectory),
     contractsAbsolute
   );
 
-  let buildInfo: BuildInfoInterface | undefined;
+  const buildInfos: Record<string, BuildInfoInterface> = {};
   let allBuildSources: Set<string> = new Set<string>();
-
-  if (contracts.length > 0) {
-    const contract = contracts[0];
-    const dbgString = readFileSync(
-      path.join(contractsAbsolute, contract.name, contract.dbg),
-      "utf-8"
-    );
-    const dbg = JSON.parse(dbgString) as Dbg;
-    const buildInfoString = readFileSync(
-      path.join(contractsAbsolute, contract.name, dbg.buildInfo),
-      "utf-8"
-    );
-    buildInfo = JSON.parse(buildInfoString) as BuildInfoInterface;
-    allBuildSources = new Set(Object.keys(buildInfo.output.sources));
-  }
 
   for (const contract of contracts) {
     console.log("Processing", contract.relativePath);
 
-    const source = buildInfo!.output.sources[contract.relativePath];
+    const dbgString = readFileSync(
+      path.join(artifactsAbsolute, contract.relativePath, contract.dbg),
+      "utf-8"
+    );
+    const dbg = JSON.parse(dbgString) as Dbg;
+    const buildInfoPath = path.join(artifactsAbsolute, contract.relativePath, dbg.buildInfo);
+    contract.buildInfoPath = buildInfoPath;
+    if (buildInfos[buildInfoPath] == null) {
+      const buildInfoString = readFileSync(buildInfoPath, "utf-8");
+      buildInfos[buildInfoPath] = JSON.parse(buildInfoString);
+      allBuildSources = new Set([
+        ...allBuildSources.values(),
+        ...Object.keys(buildInfos[buildInfoPath].output.sources),
+      ]);
+    }
+
+    const source = buildInfos[buildInfoPath].output.sources[contract.relativePath];
     const artifactString = readFileSync(
       path.join(inputDirResolved, artifactDirectory, contract.relativePath, contract.artifact),
       "utf-8"
@@ -123,22 +126,26 @@ async function runCmd(outputDir: string, inputDir: string) {
     );
   }
 
+  console.log("allBuildSources", JSON.stringify(allBuildSources));
+
   for (const source of allBuildSources.values()) {
     const contractName = path.parse(source).name;
+    const contractInputSource = getInputContractSource(buildInfos, source);
+    const contractOutputSource = getOutputContractSource(buildInfos, source);
+    const contract = getContract(buildInfos, source);
     const art: ArtifactInterface = {
       contractName: contractName,
-      ast: buildInfo!.output.sources[source].ast,
+      ast: contractOutputSource?.ast,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      abi: (buildInfo!.output.contracts[source]?.[contractName].abi as any) ?? [],
+      abi: (contract?.[contractName].abi as any) ?? [],
       bytecode: "0x",
       deployedBytecode: "0x",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      metadata: (buildInfo!.output.contracts[source]?.[contractName].metadata as any) ?? "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      source: (buildInfo!.input.sources[source]?.content as any) ?? "",
+      metadata: (contract?.[contractName].metadata as any) ?? "",
+      source: (contractInputSource?.[source]?.content as any) ?? "",
       compiler: {
         name: "solc",
-        version: buildInfo!.solcVersion,
+        version: buildInfos[Object.keys(buildInfos)?.[0]].solcVersion,
       },
     };
     let artPath = path.join(artifactsPostProcessedPath, `${contractName}`);
@@ -154,6 +161,33 @@ async function runCmd(outputDir: string, inputDir: string) {
   unlinkSync(path.join(artifactsPostProcessedPath, "ERC1967Proxy1.json"));
 
   return null;
+}
+
+function getInputContractSource(buildInfos: Record<string, BuildInfoInterface>, source: string) {
+  for (const key of Object.keys(buildInfos)) {
+    if (buildInfos[key].input.sources[source] != null) {
+      return buildInfos[key].input.sources[source];
+    }
+  }
+  return undefined;
+}
+
+function getOutputContractSource(buildInfos: Record<string, BuildInfoInterface>, source: string) {
+  for (const key of Object.keys(buildInfos)) {
+    if (buildInfos[key].output.sources[source] != null) {
+      return buildInfos[key].output.sources[source];
+    }
+  }
+  return undefined;
+}
+
+function getContract(buildInfos: Record<string, BuildInfoInterface>, source: string) {
+  for (const key of Object.keys(buildInfos)) {
+    if (buildInfos[key].output.contracts[source] != null) {
+      return buildInfos[key].output.contracts[source];
+    }
+  }
+  return undefined;
 }
 
 function exitOnError(p: Promise<unknown>) {

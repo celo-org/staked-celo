@@ -11,10 +11,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vote = await hre.deployments.get("Vote");
   const manager: Manager = await hre.ethers.getContract("Manager");
   const multisig = await hre.deployments.get("MultiSig");
+  const groupHealth = await hre.deployments.get("GroupHealth");
+  const specificGroupStrategy = await hre.deployments.get("SpecificGroupStrategy");
+  const defaultStrategy = await hre.deployments.get("DefaultStrategy");
 
   if ((await manager.callStatic.owner()) !== multisig.address) {
     await executeAndWait(
-      manager.setDependencies(stakedCelo.address, account.address, vote.address)
+      manager.setDependencies(
+        stakedCelo.address,
+        account.address,
+        vote.address,
+        groupHealth.address,
+        specificGroupStrategy.address,
+        defaultStrategy.address
+      )
     );
   } else {
     console.log(
