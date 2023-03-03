@@ -119,6 +119,16 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error AddressZeroNotAllowed();
 
     /**
+     * @notice Used when attempting to delete voter's proposal id with incorrect index.
+     */
+    error IncorrectIndex();
+
+    /**
+     * @notice Used when attempting to delete voter's proposal id when proposal is not expired.
+     */
+    error ProposalNotExpired();
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
@@ -158,6 +168,35 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * Deletes proposalId from voter's history if proposal expired.
+     * @param voter The voter address.
+     * @param proposalId The proposal id.
+     * @param index Index of voter's proposal id.
+     */
+    function deleteExpiredVoterProposalId(
+        address voter,
+        uint256 proposalId,
+        uint256 index
+    ) external {
+        Voter storage voterStruct = voters[voter];
+
+        uint256 proposalIdOnChain = voterStruct.votedProposalIds[index];
+        if (proposalIdOnChain == 0 || proposalIdOnChain != proposalId) {
+            revert IncorrectIndex();
+        }
+
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (proposalTimestamp != 0) {
+            deleteExpiredProposalTimestamp(proposalId);
+        }
+
+        voterStruct.votedProposalIds[index] = voterStruct.votedProposalIds[
+            voterStruct.votedProposalIds.length - 1
+        ];
+        voterStruct.votedProposalIds.pop();
+    }
+
+    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -174,7 +213,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 1, 1);
+        return (1, 1, 2, 0);
     }
 
     /**
@@ -331,6 +370,19 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         uint256 stCELO = toStakedCelo(lockedAmount);
         emit LockedStCeloInVoting(beneficiary, stCELO);
         return stCELO;
+    }
+
+    /**
+     * Deletes timestamp of expired proposal from storage.
+     * @param proposalId The proposal Id.
+     */
+    function deleteExpiredProposalTimestamp(uint256 proposalId) public {
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (block.timestamp <= proposalTimestamp + getGovernance().getReferendumStageDuration()) {
+            revert ProposalNotExpired();
+        }
+
+        delete proposalTimestamps[proposalId];
     }
 
     /**
