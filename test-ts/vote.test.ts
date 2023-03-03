@@ -749,4 +749,120 @@ describe("Vote", async function (this: any) {
       ).revertedWith("Ownable: caller is not the owner");
     });
   });
+
+  describe("#deleteExpiredProposalTimestamp()", () => {
+    const proposal1Id = 1;
+    const proposal1Index = 0;
+    const amountOfCeloToDeposit = parseUnits("10");
+
+    const yesVotes = hre.web3.utils.toWei("7");
+    const noVotes = hre.web3.utils.toWei("2");
+    const abstainVotes = hre.web3.utils.toWei("1");
+
+    beforeEach(async () => {
+      await proposeNewProposal();
+      await depositAndActivate(depositor0, amountOfCeloToDeposit);
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+    });
+
+    it("voter should have proposal as voted", async () => {
+      const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+      expect(proposalIds).to.have.deep.members([BigNumber.from(proposal1Id)]);
+    });
+
+    it("should have proposal timestamp in storage", async () => {
+      const timestamp = await voteContract.proposalTimestamps(proposal1Id);
+      expect(timestamp.toNumber()).to.be.greaterThan(0);
+    });
+
+    it("should not delete timestamp from storage since proposal is not expired", async () => {
+      await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
+      const timestamp = await voteContract.proposalTimestamps(proposal1Id);
+      expect(timestamp.toNumber()).to.not.eq(0);
+    });
+
+    describe("When proposal expires", () => {
+      let referendumDuration: BigNumber;
+
+      beforeEach(async () => {
+        referendumDuration = await voteContract.getReferendumDuration();
+        const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+        await timeTravel(referendumDuration.toNumber() - dequeueFrequency.toNumber() + 1);
+      });
+
+      it("should delete timestamp from storage since proposal expired", async () => {
+        await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
+        const timestamp = await voteContract.proposalTimestamps(proposal1Id);
+        expect(timestamp.toNumber()).to.be.eq(0);
+      });
+    });
+  });
+
+  describe("#deleteExpiredVoterProposalId()", () => {
+    const proposal1Id = 1;
+    const proposal1Index = 0;
+    const proposal2Id = 2;
+    const proposal2Index = 1;
+    const amountOfCeloToDeposit = parseUnits("10");
+
+    const yesVotes = hre.web3.utils.toWei("7");
+    const noVotes = hre.web3.utils.toWei("2");
+    const abstainVotes = hre.web3.utils.toWei("1");
+
+    beforeEach(async () => {
+      await depositAndActivate(depositor0, amountOfCeloToDeposit);
+      await proposeNewProposal();
+      await proposeNewProposal();
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal2Id, proposal2Index, yesVotes, noVotes, abstainVotes);
+    });
+
+    it("voter should have proposal as voted", async () => {
+      const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+      expect(proposalIds).to.have.deep.members([
+        BigNumber.from(proposal1Id),
+        BigNumber.from(proposal2Id),
+      ]);
+    });
+
+    it("should revert when incorrect index", async () => {
+      await expect(
+        voteContract.deleteExpiredVoterProposalId(depositor0.address, proposal1Id, proposal2Index)
+      ).revertedWith("IncorrectIndex()");
+    });
+
+    it("should revert when proposal not expired", async () => {
+      await expect(
+        voteContract.deleteExpiredVoterProposalId(depositor0.address, proposal1Id, proposal1Index)
+      ).revertedWith("ProposalNotExpired()");
+    });
+
+    describe("When proposal expires", () => {
+      let referendumDuration: BigNumber;
+
+      beforeEach(async () => {
+        referendumDuration = await voteContract.getReferendumDuration();
+        const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+        await timeTravel(referendumDuration.toNumber() - dequeueFrequency.toNumber() + 1);
+      });
+
+      it("should delete delete proposalId from voter history since proposal expired", async () => {
+        await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
+        await voteContract.deleteExpiredVoterProposalId(
+          depositor0.address,
+          proposal1Id,
+          proposal1Index
+        );
+
+        const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+        expect(proposalIds).to.have.deep.members([BigNumber.from(proposal2Id)]);
+      });
+    });
+  });
 });

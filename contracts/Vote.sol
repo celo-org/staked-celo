@@ -116,6 +116,16 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error AddressZeroNotAllowed();
 
     /**
+     * @notice Used when attempting to delete voter's proposal id with incorrect index.
+     */
+    error IncorrectIndex();
+
+    /**
+     * @notice Used when attempting to delete voter's proposal id when proposal is not expired yet.
+     */
+    error ProposalNotExpired();
+
+    /**
      * @notice Initialize the contract with registry and owner.
      * @param _registry The address of the Celo registry.
      * @param _owner The address of the contract owner.
@@ -331,6 +341,46 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         uint256 stCelo = toStakedCelo(lockedAmount);
         emit LockedStCeloInVoting(beneficiary, stCelo);
         return stCelo;
+    }
+
+    /**
+     * Deletes timestamp of expired proposal from storage.
+     * @param proposalId The proposal Id.
+     */
+    function deleteExpiredProposalTimestamp(uint256 proposalId) external {
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (block.timestamp > proposalTimestamp + getGovernance().getReferendumStageDuration()) {
+            delete proposalTimestamps[proposalId];
+        }
+    }
+
+    /**
+     * Deletes proposalId from voter's history if proposal expired.
+     * @param voter The voter address.
+     * @param proposalId The peoposal id.
+     * @param index Index of voter's proposal id.
+     */
+    function deleteExpiredVoterProposalId(
+        address voter,
+        uint256 proposalId,
+        uint256 index
+    ) external {
+        Voter storage voterStruct = voters[voter];
+
+        uint256 proposalIdOnChain = voterStruct.votedProposalIds[index];
+        if (proposalIdOnChain == 0 || proposalIdOnChain != proposalId) {
+            revert IncorrectIndex();
+        }
+
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (proposalTimestamp != 0) {
+            revert ProposalNotExpired();
+        }
+
+        voterStruct.votedProposalIds[index] = voterStruct.votedProposalIds[
+            voterStruct.votedProposalIds.length - 1
+        ];
+        voterStruct.votedProposalIds.pop();
     }
 
     /**
