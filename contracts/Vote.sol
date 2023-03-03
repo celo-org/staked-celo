@@ -371,11 +371,9 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             revert IncorrectIndex();
         }
 
-        deleteExpiredProposalTimestamp(proposalId);
-
         uint256 proposalTimestamp = proposalTimestamps[proposalId];
         if (proposalTimestamp != 0) {
-            revert ProposalNotExpired();
+            deleteExpiredProposalTimestamp(proposalId);
         }
 
         voterStruct.votedProposalIds[index] = voterStruct.votedProposalIds[
@@ -390,9 +388,11 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      */
     function deleteExpiredProposalTimestamp(uint256 proposalId) public {
         uint256 proposalTimestamp = proposalTimestamps[proposalId];
-        if (block.timestamp > proposalTimestamp + getGovernance().getReferendumStageDuration()) {
-            delete proposalTimestamps[proposalId];
+        if (block.timestamp <= proposalTimestamp + getGovernance().getReferendumStageDuration()) {
+            revert ProposalNotExpired();
         }
+
+        delete proposalTimestamps[proposalId];
     }
 
     /**

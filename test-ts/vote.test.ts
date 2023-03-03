@@ -767,10 +767,10 @@ describe("Vote", async function (this: any) {
       expect(timestamp.toNumber()).to.be.greaterThan(0);
     });
 
-    it("should not delete timestamp from storage since proposal is not expired", async () => {
-      await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
-      const timestamp = await voteContract.proposalTimestamps(proposal1Id);
-      expect(timestamp.toNumber()).to.not.eq(0);
+    it("should revert when proposal is not expired", async () => {
+      await expect(voteContract.deleteExpiredProposalTimestamp(proposal1Id)).revertedWith(
+        "ProposalNotExpired()"
+      );
     });
 
     describe("When proposal expires", () => {
