@@ -373,16 +373,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns save timestamp of proposal.
-     * @param proposalId The proposal UUID.
-     * @return The timestamp of proposal.
-     */
-    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
-        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
-        return timestamp;
-    }
-
-    /**
      * Deletes timestamp of expired proposal from storage.
      * @param proposalId The proposal Id.
      */
@@ -393,6 +383,16 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         }
 
         delete proposalTimestamps[proposalId];
+    }
+
+    /**
+     * @notice Returns save timestamp of proposal.
+     * @param proposalId The proposal UUID.
+     * @return The timestamp of proposal.
+     */
+    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
+        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
+        return timestamp;
     }
 
     /**
