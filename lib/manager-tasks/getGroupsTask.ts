@@ -6,6 +6,7 @@ import {
   MANAGER_GET_GROUPS_TASK_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
+import { getDefaultGroupsHHTask } from "../task-utils";
 import { MANAGER_GET_GROUPS } from "../tasksNames";
 
 task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
@@ -16,9 +17,9 @@ task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
       taskLogger.info("Starting stakedCelo:manager:getGroups task...");
       await setLocalNodeDeploymentPath(hre);
 
-      const managerContract = await hre.ethers.getContract("Manager");
-      const deprecatedGroups = await managerContract.getGroups();
-      taskLogger.log("Groups:", deprecatedGroups);
+      const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+      const groups = await getDefaultGroupsHHTask(defaultStrategyContract)
+      taskLogger.log("Groups:", groups);
     } catch (error) {
       taskLogger.error("Error getting groups:", error);
     }

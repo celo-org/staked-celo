@@ -19,14 +19,14 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
     address public overrideFor;
     uint256 public overrideBalance;
 
+    receive() external payable {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     function mint(address to, uint256 amount) external {
         lastMintTarget = to;
         lastMintAmount = amount;
         _mint(to, amount);
-    }
-
-    function getLastMinting() external view returns (address, uint256) {
-        return (lastMintTarget, lastMintAmount);
     }
 
     function burn(address from, uint256 amount) external {
@@ -37,6 +37,10 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
 
     function lockVoteBalance(address, uint256 amount) external {
         lockedBalance = amount;
+    }
+
+    function getLastMinting() external view returns (address, uint256) {
+        return (lastMintTarget, lastMintAmount);
     }
 
     function unlockVoteBalance(address beneficiary) public {

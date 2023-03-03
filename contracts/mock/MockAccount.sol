@@ -7,9 +7,15 @@ pragma solidity 0.8.11;
  * 1. Record their arguments for functions called by Manager.
  * 2. Can have their output mocked for functions read by Manager.
  */
+// solhint-disable max-states-count
 contract MockAccount {
     address[] public lastVotedGroups;
     uint256[] public lastVotes;
+
+    address[] public lastTransferFromGroups;
+    uint256[] public lastTransferFromVotes;
+    address[] public lastTransferToGroups;
+    uint256[] public lastTransferToVotes;
 
     address[] public lastWithdrawnGroups;
     uint256[] public lastWithdrawals;
@@ -19,6 +25,8 @@ contract MockAccount {
     uint256 public getTotalCelo;
 
     mapping(address => uint256) public scheduledVotesForGroup;
+    mapping(address => uint256) public scheduledRevokeForGroup;
+    mapping(address => uint256) public scheduledWithdrawalsForGroup;
 
     uint256 public proposalIdVoted;
     uint256 public indexVoted;
@@ -26,13 +34,12 @@ contract MockAccount {
     uint256 public noVotesVoted;
     uint256 public abstainVoteVoted;
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     function scheduleVotes(address[] calldata groups, uint256[] calldata votes) external payable {
         lastVotedGroups = groups;
         lastVotes = votes;
-    }
-
-    function getLastScheduledVotes() external view returns (address[] memory, uint256[] memory) {
-        return (lastVotedGroups, lastVotes);
     }
 
     function scheduleWithdrawals(
@@ -43,18 +50,6 @@ contract MockAccount {
         lastWithdrawnGroups = groups;
         lastWithdrawals = withdrawals;
         lastWithdrawalBeneficiary = beneficiary;
-    }
-
-    function getLastScheduledWithdrawals()
-        external
-        view
-        returns (
-            address[] memory,
-            uint256[] memory,
-            address
-        )
-    {
-        return (lastWithdrawnGroups, lastWithdrawals, lastWithdrawalBeneficiary);
     }
 
     function setCeloForGroup(address group, uint256 amount) external {
@@ -69,8 +64,59 @@ contract MockAccount {
         scheduledVotesForGroup[group] = amount;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    function setScheduledRevokeForGroup(address group, uint256 amount) external {
+        scheduledRevokeForGroup[group] = amount;
+    }
+
+    function setScheduledWithdrawalsForGroup(address group, uint256 amount) external {
+        scheduledWithdrawalsForGroup[group] = amount;
+    }
+
+    function scheduleTransfer(
+        address[] calldata fromGroups,
+        uint256[] calldata fromVotes,
+        address[] calldata toGroups,
+        uint256[] calldata toVotes
+    ) external {
+        lastTransferFromGroups = fromGroups;
+        lastTransferFromVotes = fromVotes;
+        lastTransferToGroups = toGroups;
+        lastTransferToVotes = toVotes;
+    }
+
+    function getLastScheduledVotes() external view returns (address[] memory, uint256[] memory) {
+        return (lastVotedGroups, lastVotes);
+    }
+
+    function getLastScheduledWithdrawals()
+        external
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            address
+        )
+    {
+        return (lastWithdrawnGroups, lastWithdrawals, lastWithdrawalBeneficiary);
+    }
+
+    function getLastTransferValues()
+        external
+        view
+        returns (
+            address[] memory,
+            uint256[] memory,
+            address[] memory,
+            uint256[] memory
+        )
+    {
+        return (
+            lastTransferFromGroups,
+            lastTransferFromVotes,
+            lastTransferToGroups,
+            lastTransferToVotes
+        );
+    }
 
     function votePartially(
         uint256 proposalId,

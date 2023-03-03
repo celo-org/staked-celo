@@ -1,19 +1,38 @@
 import { CeloTxReceipt } from "@celo/connect";
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
+import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
+import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
 import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
-import { parseUnits } from "ethers/lib/utils";
+import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre, { ethers, kit } from "hardhat";
 import Web3 from "web3";
 import {
   ACCOUNT_ACTIVATE_AND_VOTE,
+  ACCOUNT_REVOKE,
   MULTISIG_EXECUTE_PROPOSAL,
   MULTISIG_SUBMIT_PROPOSAL,
 } from "../lib/tasksNames";
+import { Account } from "../typechain-types/Account";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+import { MockGroupHealth__factory } from "../typechain-types/factories/MockGroupHealth__factory";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockAccount } from "../typechain-types/MockAccount";
+import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
+import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
+import electionContractData from "./code/abi/electionAbi.json";
+import {
+  DefaultGroupContract,
+  ExpectVsReal,
+  OrderedGroup,
+  RebalanceContract,
+} from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -145,27 +164,31 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
 }
 
 export async function activateValidators(
-  managerContract: Manager,
+  defaultStrategyContract: DefaultStrategy,
+  groupHealthContract: GroupHealth,
   multisigOwner: string,
   groupAddresses: string[]
 ) {
-  const payloads: string[] = [];
-  const destinations: string[] = [];
-  const values: string[] = [];
-
-  for (let i = 0; i < 3; i++) {
-    const isValidGroup = await managerContract.isValidGroup(groupAddresses[i]);
-    if (!isValidGroup) {
+  let [nextGroup] = await defaultStrategyContract.getGroupsTail();
+  for (let i = 0; i < groupAddresses.length; i++) {
+    const isGroupValid = await groupHealthContract.isGroupValid(groupAddresses[i]);
+    if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
-    destinations.push(managerContract.address);
-    values.push("0");
-    payloads.push(
-      managerContract.interface.encodeFunctionData("activateGroup", [groupAddresses[i]])
+    await submitAndExecuteProposal(
+      multisigOwner,
+      [defaultStrategyContract.address],
+      ["0"],
+      [
+        defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
+          groupAddresses[i],
+          ADDRESS_ZERO,
+          nextGroup,
+        ]),
+      ]
     );
+    nextGroup = groupAddresses[i];
   }
-
-  await submitAndExecuteProposal(multisigOwner, destinations, values, payloads);
 }
 
 export async function voteForGroup(groupAddress: string, voter: SignerWithAddress) {
@@ -189,23 +212,6 @@ export async function activateVotesForGroup(voter: SignerWithAddress) {
     txs.push(tx);
   }
   await Promise.all(txs);
-}
-
-export async function electMinimumNumberOfValidators(
-  groups: SignerWithAddress[],
-  voter: SignerWithAddress
-) {
-  const election = await kit.contracts.getElection();
-  const { min } = await election.electableValidators();
-  const txs: Promise<void>[] = [];
-  for (let i = 0; i < min.toNumber(); i++) {
-    const tx = voteForGroup(groups[i].address, voter);
-    txs.push(tx);
-  }
-
-  await Promise.all(txs);
-  await mineToNextEpoch(kit.web3);
-  await activateVotesForGroup(voter);
 }
 
 export async function electGroup(groupAddress: string, voter: SignerWithAddress) {
@@ -232,6 +238,8 @@ export async function updateGroupSlashingMultiplier(
 
   await lockedGoldContract.connect(coreContractsOwner).addSlasher("MockSlasher");
   await validatorsContract.connect(mockSlasher).halveSlashingMultiplier(group.address);
+
+  await mineToNextEpoch(hre.web3);
 }
 
 // ---- Account utils ----
@@ -440,6 +448,17 @@ export async function activateAndVoteTest(deployerAccountName = "deployer") {
   }
 }
 
+export async function revokeTest(deployerAccountName = "deployer") {
+  try {
+    await hre.run(ACCOUNT_REVOKE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+    });
+  } catch (error) {
+    throw Error(`Revoke failed! ${JSON.stringify(error)}`);
+  }
+}
+
 export async function setGovernanceConcurrentProposals(count: number) {
   const governanceWrapper = await hre.kit.contracts.getGovernance();
   const governanceContract = governanceWrapper["contract"];
@@ -450,4 +469,443 @@ export async function setGovernanceConcurrentProposals(count: number) {
   await setConcurrentProposalsTx.send({
     from: governanceOwner,
   });
+}
+
+export async function getDefaultGroups(defaultStrategy: DefaultGroupContract): Promise<string[]> {
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
+  let [key] = await defaultStrategy.getGroupsHead();
+
+  const activeGroups = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroups.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+  }
+
+  return activeGroups;
+}
+
+export async function getSpecificGroups(
+  specificGroupStrategy: SpecificGroupStrategy
+): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfVotedGroups();
+  const specificGroupsPromises = [];
+
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getVotedGroup(i));
+  }
+
+  return Promise.all(specificGroupsPromises);
+}
+
+export async function getGroupsOfAllStrategies(
+  defaultStrategy: DefaultStrategy,
+  specificGroupStrategy: SpecificGroupStrategy
+) {
+  const activeGroups = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificGroupStrategy);
+
+  const allGroups = await Promise.all([activeGroups, specificGroupsPromise]);
+  const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
+
+  return [...allGroupsSet];
+}
+
+export async function getBlockedSpecificGroupStrategies(
+  specificGroupStrategy: SpecificGroupStrategy
+) {
+  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedGroups();
+  const promises: Promise<string>[] = [];
+  for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
+    promises.push(specificGroupStrategy.getBlockedGroup(i));
+  }
+
+  return await Promise.all(promises);
+}
+
+export async function getRealVsExpectedCeloForGroups(managerContract: Manager, groups: string[]) {
+  const expectedVsRealPromises = groups.map(async (group) => {
+    const expectedVsReal = await managerContract.getExpectedAndActualCeloForGroup(group);
+    return {
+      group,
+      expected: expectedVsReal[0],
+      real: expectedVsReal[1],
+      diff: expectedVsReal[1].sub(expectedVsReal[0]),
+    };
+  });
+
+  return await Promise.all(expectedVsRealPromises);
+}
+
+export async function getRealVsExpectedStCeloForGroupsDefaultStrategy(
+  defaultStrategyContract: DefaultStrategy,
+  groups: string[]
+) {
+  const expectedVsRealPromises = groups.map(async (group) => {
+    const expectedVsReal = await defaultStrategyContract.getExpectedAndActualStCeloForGroup(group);
+    return {
+      group,
+      expected: expectedVsReal[0],
+      real: expectedVsReal[1],
+      diff: expectedVsReal[1].sub(expectedVsReal[0]),
+    };
+  });
+
+  return await Promise.all(expectedVsRealPromises);
+}
+
+export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroups(defaultStrategy);
+  const expectedVsReal = await getRealVsExpectedStCeloForGroupsDefaultStrategy(
+    defaultStrategy,
+    activeGroups
+  );
+
+  await rebalanceInternal(defaultStrategy, expectedVsReal);
+}
+
+async function rebalanceInternal(
+  rebalanceContract: RebalanceContract,
+  expectedVsReal: ExpectVsReal[]
+) {
+  const unbalanced = expectedVsReal.filter((k) => k.diff.abs().gt(0));
+  if (unbalanced.length == 0) {
+    return;
+  }
+
+  const sortedUnbalancedDesc = unbalanced.sort((a, b) => (a.diff.lt(b.diff) ? 1 : -1));
+
+  let firstIndex = 0;
+  let lastIndex = sortedUnbalancedDesc.length - 1;
+
+  while (firstIndex < lastIndex) {
+    await rebalanceContract.rebalance(
+      sortedUnbalancedDesc[firstIndex].group,
+      sortedUnbalancedDesc[lastIndex].group
+    );
+
+    const sumDiff = sortedUnbalancedDesc[firstIndex].diff.add(sortedUnbalancedDesc[lastIndex].diff);
+
+    if (sumDiff.lt(0)) {
+      sortedUnbalancedDesc[lastIndex].diff = sumDiff;
+      firstIndex++;
+    } else if (sumDiff.gt(0)) {
+      sortedUnbalancedDesc[firstIndex].diff = sumDiff;
+      lastIndex--;
+    } else {
+      sortedUnbalancedDesc[firstIndex].diff = sortedUnbalancedDesc[lastIndex].diff =
+        EthersBigNumber.from(0);
+      firstIndex++;
+      lastIndex--;
+    }
+  }
+}
+
+export async function rebalanceGroups(
+  managerContract: Manager,
+  specificGroupStrategy: SpecificGroupStrategy,
+  defaultStrategy: DefaultStrategy
+) {
+  const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
+  const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
+
+  await rebalanceInternal(managerContract, expectedVsReal);
+}
+
+export async function electMockValidatorGroupsAndUpdate(
+  validators: ValidatorsWrapper,
+  groupHealthContract: MockGroupHealth,
+  validatorGroups: string[],
+  revoke = false,
+  update = true
+): Promise<number[]> {
+  let validatorsProcessed = 0;
+  const mockedIndexes: number[] = [];
+
+  for (let j = 0; j < validatorGroups.length; j++) {
+    const validatorGroup = validatorGroups[j];
+    const isValidatorGroup = await validators.isValidatorGroup(validatorGroup);
+
+    if (isValidatorGroup) {
+      const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
+      for (let i = 0; i < validatorGroupDetail.members.length; i++) {
+        const mockIndex = validatorsProcessed++;
+        await groupHealthContract.setElectedValidator(
+          mockIndex,
+          revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
+        );
+        mockedIndexes.push(mockIndex);
+      }
+    }
+    if (update) {
+      await groupHealthContract.updateGroupHealth(validatorGroup);
+    }
+  }
+  return mockedIndexes;
+}
+
+export async function revokeElectionOnMockValidatorGroupsAndUpdate(
+  validators: ValidatorsWrapper,
+  groupHealthContract: MockGroupHealth,
+  validatorGroups: string[],
+  update = true
+) {
+  const allValidatorsInValGroup = await Promise.all(
+    validatorGroups.map(async (vg) => {
+      const valGroup = await validators.getValidatorGroup(vg);
+      return valGroup.members;
+    })
+  );
+
+  const flattened = allValidatorsInValGroup.flat();
+  const valGroupsSet = new Set(flattened);
+  for (let i = 0; i < (await groupHealthContract.numberOfValidators()).toNumber(); i++) {
+    const electedValidator = await groupHealthContract.electedValidators(i);
+    if (valGroupsSet.has(electedValidator)) {
+      await groupHealthContract.setElectedValidator(i, ADDRESS_ZERO);
+    }
+  }
+  if (!update) {
+    return;
+  }
+
+  for (let j = 0; j < validatorGroups.length; j++) {
+    await groupHealthContract.updateGroupHealth(validatorGroups[j]);
+  }
+}
+
+// Since Ganache doesn't support Celo pre-compiles we need to mock some methods to be able to use GroupHealth in e2e tests
+export async function upgradeToMockGroupHealthE2E(
+  multisigOwner: SignerWithAddress,
+  groupHealthContract: GroupHealth
+) {
+  const mockGroupHealthFactory: MockGroupHealth__factory = (
+    await hre.ethers.getContractFactory("MockGroupHealth")
+  ).connect(multisigOwner) as MockGroupHealth__factory;
+  const mockGroupHealth = await mockGroupHealthFactory.deploy();
+
+  await submitAndExecuteProposal(
+    multisigOwner.address,
+    [groupHealthContract.address],
+    ["0"],
+    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])]
+  );
+
+  return mockGroupHealthFactory.attach(groupHealthContract.address);
+}
+
+export async function getIndexesOfElectedValidatorGroupMembers(
+  election: ElectionWrapper,
+  validators: ValidatorsWrapper,
+  validatorGroup: string
+) {
+  const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
+  const currentValidatorSigners = await election.getCurrentValidatorSigners();
+  const finalIndexes: number[] = [];
+  for (const member of validatorGroupDetail.members) {
+    const index = currentValidatorSigners.indexOf(member);
+    finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
+  }
+  return finalIndexes;
+}
+
+export async function getOrderedActiveGroups(
+  defaultStrategyContract: MockDefaultStrategy,
+  account?: Account
+): Promise<OrderedGroup[]> {
+  let [head] = await defaultStrategyContract.getGroupsHead();
+  const groupsForLog = [];
+
+  for (let i = 0; i < (await defaultStrategyContract.getNumberOfGroups()).toNumber(); i++) {
+    const [prev] = await defaultStrategyContract.getGroupPreviousAndNext(head);
+    const stCelo = await defaultStrategyContract.stCeloInGroup(head);
+    const realCelo = await account?.getCeloForGroup(head);
+    groupsForLog.unshift({
+      group: head,
+      stCelo: formatEther(stCelo),
+      realCelo: formatEther(realCelo ?? 0),
+    });
+    head = prev;
+  }
+  return groupsForLog;
+}
+
+export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStrategy) {
+  const length = await defaultStrategyContract.getNumberOfUnsortedGroups();
+
+  const unsortedGroupsPromises = [];
+
+  for (let i = 0; i < length.toNumber(); i++) {
+    unsortedGroupsPromises.push(defaultStrategyContract.getUnsortedGroupAt(i));
+  }
+  return await Promise.all(unsortedGroupsPromises);
+}
+
+export async function prepareOverflow(
+  defaultStrategyContract: DefaultGroupContract,
+  election: ElectionWrapper,
+  lockedGold: LockedGoldWrapper,
+  voter: SignerWithAddress,
+  groupAddresses: string[],
+  activateGroups = true
+) {
+  if (groupAddresses.length < 3) {
+    throw Error("It is necessary to provide at least 3 groups");
+  }
+  // These numbers are derived from a system of linear equations such that
+  // given 12 validators registered and elected, as above, we have the following
+  // limits for the first three groups:
+  // group[0] and group[2]: 95864 Locked CELO
+  // group[1]: 143797 Locked CELO
+  // and the remaining receivable votes are [40, 100, 200] (in CELO) for
+  // the three groups, respectively.
+  const votes = [parseUnits("95824"), parseUnits("143697"), parseUnits("95664")];
+
+  for (let i = 2; i >= 0; i--) {
+    const [head] = await defaultStrategyContract.getGroupsHead();
+    if (activateGroups) {
+      await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+    }
+
+    await lockedGold.lock().sendAndWaitForReceipt({
+      from: voter.address,
+      value: votes[i].toString(),
+    });
+  }
+
+  // We have to do this in a separate loop because the voting limits
+  // depend on total locked CELO. The votes we want to cast are very close
+  // to the final limit we'll arrive at, so we first lock all CELO, then
+  // cast it as votes.
+  for (let i = 0; i < 3; i++) {
+    const voteTx = await election.vote(groupAddresses[i], new BigNumberJs(votes[i].toString()));
+    await voteTx.sendAndWaitForReceipt({ from: voter.address });
+  }
+}
+
+export async function updateMaxNumberOfGroups(
+  accountAddress: string,
+  election: ElectionWrapper,
+  signerWithCelo: SignerWithAddress,
+  updateValue: boolean
+) {
+  const sendFundsTx = await signerWithCelo.sendTransaction({
+    value: parseUnits("1"),
+    to: accountAddress,
+  });
+  await sendFundsTx.wait();
+  await impersonateAccount(accountAddress);
+
+  const accountsContract = await hre.kit.contracts.getAccounts();
+  const createAccountTxObject = accountsContract.createAccount();
+  await createAccountTxObject.send({
+    from: accountAddress,
+  });
+  // TODO: once contractkit updated - use just election contract from contractkit
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionContractData.abi as any,
+    election.address
+  );
+  const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
+    electionContract.methods.setAllowedToVoteOverMaxNumberOfGroups(updateValue);
+  await setAllowedToVoteOverMaxNumberOfGroupsTxObject.send({
+    from: accountAddress,
+  });
+}
+
+export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
+  const activeGroups = await getDefaultGroups(defaultStrategy);
+  return await Promise.all(
+    activeGroups.map(async (ag) => {
+      const stCelo = await defaultStrategy.stCeloInGroup(ag);
+      return {
+        group: ag,
+        stCelo,
+      };
+    })
+  );
+}
+
+export async function sortActiveGroups(defaultStrategy: DefaultStrategy) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unsortedGroups = await getUnsortedGroups(defaultStrategy as any);
+  let defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  const defaultGroupsWithStCeloRecord = defaultGroupsWithStCelo.reduce(
+    (prev, current) => ({ ...prev, [current.group]: current.stCelo }),
+    {} as Record<string, EthersBigNumber>
+  );
+
+  while (unsortedGroups.length > 0) {
+    const uGroup = unsortedGroups.pop();
+    let prev = ADDRESS_ZERO;
+    let next = ADDRESS_ZERO;
+    let i = 0;
+    while (i++ < defaultGroupsWithStCelo.length) {
+      prev = next;
+      next = defaultGroupsWithStCelo?.[i]?.group ?? ADDRESS_ZERO;
+
+      if (
+        defaultGroupsWithStCelo[i] == null ||
+        defaultGroupsWithStCelo[i].stCelo.gt(defaultGroupsWithStCeloRecord[uGroup!])
+      ) {
+        break;
+      }
+
+      if (defaultGroupsWithStCelo[i].group == uGroup) {
+        next = defaultGroupsWithStCelo?.[i - 1].group ?? ADDRESS_ZERO;
+        continue;
+      }
+    }
+    await defaultStrategy.updateActiveGroupOrder(uGroup!, prev, next);
+    defaultGroupsWithStCelo = await getDefaultGroupsWithStCelo(defaultStrategy);
+  }
+}
+
+export async function updateGroupCeloBasedOnProtocolStCelo(
+  defaultStrategy: MockDefaultStrategy,
+  specificStrategy: SpecificGroupStrategy,
+  account: MockAccount,
+  manager: Manager
+) {
+  const defaultGroupsPromise = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificStrategy);
+
+  const defaultGroups = await defaultGroupsPromise;
+  const specificGroups = await specificGroupsPromise;
+
+  const defaultGroupsWithStCeloPromise = defaultGroups.map(async (g) => ({
+    group: g,
+    amount: await defaultStrategy.stCeloInGroup(g),
+  }));
+
+  const specificGroupsWithStCeloPromise = specificGroups.map(async (g) => {
+    const [total, overflow, unhealthy] = await specificStrategy.getStCeloInGroup(g);
+    return {
+      group: g,
+      amount: total.sub(overflow).sub(unhealthy),
+    };
+  });
+
+  const defaultGroupsWithStCelo = await Promise.all(defaultGroupsWithStCeloPromise);
+  const specificGroupsWithStCelo = await Promise.all(specificGroupsWithStCeloPromise);
+
+  const groups: Record<string, EthersBigNumber> = {};
+
+  for (let i = 0; i < defaultGroupsWithStCelo.length; i++) {
+    groups[defaultGroupsWithStCelo[i].group] = defaultGroupsWithStCelo[i].amount;
+  }
+
+  for (let i = 0; i < specificGroupsWithStCelo.length; i++) {
+    groups[specificGroupsWithStCelo[i].group] = (
+      groups[specificGroupsWithStCelo[i].group] ?? EthersBigNumber.from(0)
+    ).add(specificGroupsWithStCelo[i].amount);
+  }
+
+  await Promise.all(
+    Object.keys(groups).map(async (key) => {
+      const celoInGroup = await manager.toCelo(groups[key].toString());
+      await account.setCeloForGroup(key, celoInGroup);
+    })
+  );
 }

@@ -237,4 +237,18 @@ describe("StakedCelo", () => {
       });
     });
   });
+
+  describe("#transfer()", () => {
+    beforeEach(async () => {
+      await stakedCelo.connect(manager).mint(anAccount.address, 100);
+    });
+
+    it("should call Manager transfer", async () => {
+      await stakedCelo.connect(anAccount).transfer(managerContract.address, 1);
+      const transfer = await managerContract.getTransfer(0);
+      expect(transfer[0]).to.eq(anAccount.address);
+      expect(transfer[1]).to.eq(managerContract.address);
+      expect(transfer[2]).to.eq(1);
+    });
+  });
 });

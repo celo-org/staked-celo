@@ -10,6 +10,9 @@ import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 
+/**
+ * @title Handles governance voting for CELO in protocol.
+ */
 contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     /**
      * @notice Keeps track of total votes for proposal (votes of Account contract).
@@ -99,13 +102,13 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     event LockedStCeloInVoting(address account, uint256 lockedCelo);
 
     /**
-     * @notice Used when attempting to vote when there is no stCelo.
+     * @notice Used when attempting to vote when there is no stCELO.
      * @param account The account's address.
      */
     error NoStakedCelo(address account);
 
     /**
-     * @notice Used when attempting to vote when there is not enough of stCelo.
+     * @notice Used when attempting to vote when there is not enough of stCELO.
      * @param account The account's address.
      */
     error NotEnoughStakedCelo(address account);
@@ -126,8 +129,15 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error ProposalNotExpired();
 
     /**
+     * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
+     * implementation gets initialized.
+     */
+    // solhint-disable-next-line no-empty-blocks
+    constructor() initializer {}
+
+    /**
      * @notice Initialize the contract with registry and owner.
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _owner The address of the contract owner.
      * @param _manager The address of the contract manager.
      */
@@ -143,7 +153,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
 
     /**
      * @notice Set this contract's dependencies in the StakedCelo system.
-     * @dev Manager, Account and StakedCelo all reference each other
+     * @dev The StakedCelo contracts all reference each other
      * so we need a way of setting these after all contracts are
      * deployed and initialized.
      * @param _stakedCelo the address of the StakedCelo contract.
@@ -285,16 +295,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns save timestamp of proposal.
-     * @param proposalId The proposal UUID.
-     * @return The timestamp of proposal.
-     */
-    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
-        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
-        return timestamp;
-    }
-
-    /**
      * @notice Updates the beneficiaries voting history and returns locked stCELO in voting.
      * (This stCELO cannot be unlocked.)
      * And it will remove voted proposals from account history if appropriate.
@@ -338,9 +338,19 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             }
         }
 
-        uint256 stCelo = toStakedCelo(lockedAmount);
-        emit LockedStCeloInVoting(beneficiary, stCelo);
-        return stCelo;
+        uint256 stCELO = toStakedCelo(lockedAmount);
+        emit LockedStCeloInVoting(beneficiary, stCELO);
+        return stCELO;
+    }
+
+    /**
+     * @notice Returns save timestamp of proposal.
+     * @param proposalId The proposal UUID.
+     * @return The timestamp of proposal.
+     */
+    function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
+        (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
+        return timestamp;
     }
 
     /**
@@ -434,7 +444,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns vote weight of account owning stCelo.
+     * @notice Returns vote weight of account owning stCELO.
      * @param beneficiary The account.
      */
     function getVoteWeight(address beneficiary) public view returns (uint256) {

@@ -2,10 +2,6 @@
 pragma solidity 0.8.11;
 
 interface IElection {
-    function electValidatorSigners() external view returns (address[] memory);
-
-    function electNValidatorSigners(uint256, uint256) external view returns (address[] memory);
-
     function vote(
         address,
         uint256,
@@ -56,7 +52,30 @@ interface IElection {
         uint256[] calldata
     ) external returns (uint256);
 
+    // only owner
+    function setElectableValidators(uint256, uint256) external returns (bool);
+
+    function setMaxNumGroupsVotedFor(uint256) external returns (bool);
+
+    function setElectabilityThreshold(uint256) external returns (bool);
+
+    // only VM
+    function distributeEpochRewards(
+        address,
+        uint256,
+        address,
+        address
+    ) external;
+
+    function allowedToVoteOverMaxNumberOfGroups(address) external returns (bool);
+
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external;
+
     // view functions
+    function electValidatorSigners() external view returns (address[] memory);
+
+    function electNValidatorSigners(uint256, uint256) external view returns (address[] memory);
+
     function getElectableValidators() external view returns (uint256, uint256);
 
     function getElectabilityThreshold() external view returns (uint256);
@@ -106,24 +125,11 @@ interface IElection {
 
     function hasActivatablePendingVotes(address, address) external view returns (bool);
 
-    // only owner
-    function setElectableValidators(uint256, uint256) external returns (bool);
-
-    function setMaxNumGroupsVotedFor(uint256) external returns (bool);
-
-    function setElectabilityThreshold(uint256) external returns (bool);
-
-    // only VM
-    function distributeEpochRewards(
-        address,
-        uint256,
-        address,
-        address
-    ) external;
-
     function maxNumGroupsVotedFor() external view returns (uint256);
 
-    function allowedToVoteOverMaxNumberOfGroups(address) external returns (bool);
+    function validatorSignerAddressFromCurrentSet(uint256 index) external view returns (address);
 
-    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external;
+    function numberValidatorsInCurrentSet() external view returns (uint256);
+
+    function getEpochNumber() external view returns (uint256);
 }
