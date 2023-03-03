@@ -121,7 +121,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     error IncorrectIndex();
 
     /**
-     * @notice Used when attempting to delete voter's proposal id when proposal is not expired yet.
+     * @notice Used when attempting to delete voter's proposal id when proposal is not expired.
      */
     error ProposalNotExpired();
 
