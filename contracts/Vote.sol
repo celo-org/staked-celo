@@ -168,6 +168,35 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * Deletes proposalId from voter's history if proposal expired.
+     * @param voter The voter address.
+     * @param proposalId The proposal id.
+     * @param index Index of voter's proposal id.
+     */
+    function deleteExpiredVoterProposalId(
+        address voter,
+        uint256 proposalId,
+        uint256 index
+    ) external {
+        Voter storage voterStruct = voters[voter];
+
+        uint256 proposalIdOnChain = voterStruct.votedProposalIds[index];
+        if (proposalIdOnChain == 0 || proposalIdOnChain != proposalId) {
+            revert IncorrectIndex();
+        }
+
+        uint256 proposalTimestamp = proposalTimestamps[proposalId];
+        if (proposalTimestamp != 0) {
+            deleteExpiredProposalTimestamp(proposalId);
+        }
+
+        voterStruct.votedProposalIds[index] = voterStruct.votedProposalIds[
+            voterStruct.votedProposalIds.length - 1
+        ];
+        voterStruct.votedProposalIds.pop();
+    }
+
+    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -351,35 +380,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     function getProposalTimestamp(uint256 proposalId) public view returns (uint256) {
         (, , uint256 timestamp, , ) = getGovernance().getProposal(proposalId);
         return timestamp;
-    }
-
-    /**
-     * Deletes proposalId from voter's history if proposal expired.
-     * @param voter The voter address.
-     * @param proposalId The proposal id.
-     * @param index Index of voter's proposal id.
-     */
-    function deleteExpiredVoterProposalId(
-        address voter,
-        uint256 proposalId,
-        uint256 index
-    ) external {
-        Voter storage voterStruct = voters[voter];
-
-        uint256 proposalIdOnChain = voterStruct.votedProposalIds[index];
-        if (proposalIdOnChain == 0 || proposalIdOnChain != proposalId) {
-            revert IncorrectIndex();
-        }
-
-        uint256 proposalTimestamp = proposalTimestamps[proposalId];
-        if (proposalTimestamp != 0) {
-            deleteExpiredProposalTimestamp(proposalId);
-        }
-
-        voterStruct.votedProposalIds[index] = voterStruct.votedProposalIds[
-            voterStruct.votedProposalIds.length - 1
-        ];
-        voterStruct.votedProposalIds.pop();
     }
 
     /**
