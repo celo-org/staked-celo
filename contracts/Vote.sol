@@ -357,7 +357,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     /**
      * Deletes proposalId from voter's history if proposal expired.
      * @param voter The voter address.
-     * @param proposalId The peoposal id.
+     * @param proposalId The proposal id.
      * @param index Index of voter's proposal id.
      */
     function deleteExpiredVoterProposalId(
