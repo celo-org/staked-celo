@@ -36,6 +36,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param toVote Amount of CELO held by this contract intended to vote for a group.
      * @param toWithdraw Amount of CELO that's scheduled for withdrawal.
      * @param toWithdrawFor Amount of CELO that's scheduled for withdrawal grouped by beneficiary.
+     * @param toRevoke Amount of CELO that's scheduled to be revoked.
      */
     struct ScheduledVotes {
         uint256 toVote;
