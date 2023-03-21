@@ -327,7 +327,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Starts withdrawal of CELO from `group`. If there is any unlocked CELO for the group,
      * that CELO is used for immediate withdrawal. Otherwise, CELO is taken from pending and active
      * votes, which are subject to the unlock period of LockedGold.sol.
-     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
      * @param group The group to withdraw CELO from.
      * @param beneficiary The recipient of the withdrawn CELO.
      * @param lesserAfterPendingRevoke Used by Election's `revokePending`. This is the group that
