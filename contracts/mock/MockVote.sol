@@ -6,7 +6,7 @@ import "../interfaces/IVote.sol";
 /**
  * @notice This is a simple mock exposing the Manager-facing Vote API as
  * simple functions that
- * 1. Return currently locked stCelo.
+ * 1. Return currently locked stCELO.
  */
 contract MockVote is IVote {
     address public accountVoter;
@@ -59,16 +59,6 @@ contract MockVote is IVote {
         );
     }
 
-    function setVotes(
-        uint256 yes,
-        uint256 no,
-        uint256 abstain
-    ) public {
-        totalYesVotes = yes;
-        totalNoVotes = no;
-        totalAbstainVotes = abstain;
-    }
-
     function revokeVotes(address _accountVoter, uint256 _proposalId)
         external
         override
@@ -81,5 +71,15 @@ contract MockVote is IVote {
         revokeAccountVoter = _accountVoter;
         revokeProposalId = _proposalId;
         return (totalYesVotes, totalNoVotes, totalAbstainVotes);
+    }
+
+    function setVotes(
+        uint256 yes,
+        uint256 no,
+        uint256 abstain
+    ) public {
+        totalYesVotes = yes;
+        totalNoVotes = no;
+        totalAbstainVotes = abstain;
     }
 }

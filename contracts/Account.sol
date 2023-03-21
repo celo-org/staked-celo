@@ -36,13 +36,14 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param toVote Amount of CELO held by this contract intended to vote for a group.
      * @param toWithdraw Amount of CELO that's scheduled for withdrawal.
      * @param toWithdrawFor Amount of CELO that's scheduled for withdrawal grouped by beneficiary.
+     * @param toRevoke Amount of CELO that's scheduled to be revoked.
      */
     struct ScheduledVotes {
         uint256 toVote;
         uint256 toWithdraw;
         mapping(address => uint256) toWithdrawFor;
+        uint256 toRevoke;
     }
-
     /**
      * @notice Keyed by beneficiary address, the related array of pending withdrawals.
      * See `PendingWithdrawal` for more info.
@@ -69,6 +70,13 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param amount The amount of CELO scheduled.
      */
     event VotesScheduled(address indexed group, uint256 amount);
+
+    /**
+     * @notice Emitted when CELO is scheduled to be revoked from a given group.
+     * @param group The validator group the CELO is being revoked from.
+     * @param amount The amount of CELO scheduled.
+     */
+    event RevocationScheduled(address indexed group, uint256 amount);
 
     /**
      * @notice Emitted when CELO withdrawal is scheduled for a group.
@@ -182,14 +190,23 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     error VotingNotSuccessful(uint256 proposalId);
 
     /**
+     * @notice Scheduling transfer was not successfull since
+     * total amount of "from" and "to" are not the same.
+     */
+    error TransferAmountMisalignment();
+
+    /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
      * implementation gets initialized.
      */
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
+
     /**
-     * @param _registry The address of the Celo registry.
+     * @param _registry The address of the Celo Registry.
      * @param _manager The address of the Manager contract.
      * @param _owner The address of the contract owner.
      */
@@ -208,13 +225,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
-
     /**
      * @notice Deposits CELO sent via msg.value as unlocked CELO intended as
      * votes for groups.
-     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
+     * @dev Only callable by the Manager contract, which must restrict which groups
+     * gets CELO distribution.
      * @param groups The groups the deposited CELO is intended to vote for.
      * @param votes The amount of CELO to schedule for each respective group
      * from `groups`.
@@ -230,13 +245,48 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         uint256 totalVotes;
         for (uint256 i = 0; i < groups.length; i++) {
-            scheduledVotes[groups[i]].toVote += votes[i];
+            getAndUpdateToVoteAndToRevoke(groups[i], votes[i], 0);
             totalVotes += votes[i];
-            emit VotesScheduled(groups[i], votes[i]);
         }
 
         if (totalVotes != uint256(msg.value)) {
             revert TotalVotesMismatch(msg.value, totalVotes);
+        }
+    }
+
+    /**
+     * @notice Schedules votes which will be revoked from some groups and voted to others.
+     * @dev Only callable by the Manager contract, which must restrict which groups are valid.
+     * @param fromGroups The groups the deposited CELO is intended to be revoked from.
+     * @param fromVotes The amount of CELO scheduled to be revoked from each respective group.
+     * @param toGroups The groups the transferred CELO is intended to vote for.
+     * @param toVotes The amount of CELO to schedule for each respective group
+     * from `toGroups`.
+     */
+    function scheduleTransfer(
+        address[] calldata fromGroups,
+        uint256[] calldata fromVotes,
+        address[] calldata toGroups,
+        uint256[] calldata toVotes
+    ) external onlyManager {
+        if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
+            revert GroupsAndVotesArrayLengthsMismatch();
+        }
+        uint256 totalFromVotes;
+        uint256 totalToVotes;
+
+        for (uint256 i = 0; i < fromGroups.length; i++) {
+            getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
+            totalFromVotes += fromVotes[i];
+        }
+
+        for (uint256 i = 0; i < toGroups.length; i++) {
+            getAndUpdateToVoteAndToRevoke(toGroups[i], toVotes[i], 0);
+            totalToVotes += toVotes[i];
+        }
+
+        if (totalFromVotes != totalToVotes) {
+            revert TransferAmountMisalignment();
         }
     }
 
@@ -278,7 +328,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Starts withdrawal of CELO from `group`. If there is any unlocked CELO for the group,
      * that CELO is used for immediate withdrawal. Otherwise, CELO is taken from pending and active
      * votes, which are subject to the unlock period of LockedGold.sol.
-     * @dev Only callable by the Staked CELO contract, which must restrict which groups are valid.
      * @param group The group to withdraw CELO from.
      * @param beneficiary The recipient of the withdrawn CELO.
      * @param lesserAfterPendingRevoke Used by Election's `revokePending`. This is the group that
@@ -294,7 +343,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
      * after the revoke of active votes has occurred.
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
-     * `group` in the this contract's array of groups it is voting for.
+     * `group` in this contract's array of groups it is voting for.
      * @return The amount of immediately withdrawn CELO that is obtained from scheduledVotes
      * for `group`.
      */
@@ -318,13 +367,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         scheduledVotes[group].toWithdraw -= withdrawalAmount;
         totalScheduledWithdrawals -= withdrawalAmount;
 
-        uint256 immediateWithdrawalAmount = scheduledVotes[group].toVote;
+        // It might happen that toVotes are from transfers
+        // and the contract doesn't have enough CELO.
+        (uint256 celoToVoteForGroup, ) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
+        uint256 immediateWithdrawalAmount = Math.min(address(this).balance, celoToVoteForGroup);
 
         if (immediateWithdrawalAmount > 0) {
             if (immediateWithdrawalAmount > withdrawalAmount) {
                 immediateWithdrawalAmount = withdrawalAmount;
             }
-
             scheduledVotes[group].toVote -= immediateWithdrawalAmount;
 
             // The benefit of using getGoldToken().transfer() rather than transferring
@@ -350,7 +401,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             PendingWithdrawal(revokeAmount, block.timestamp + lockedGold.unlockingPeriod())
         );
 
-        revokeVotes(
+        _revokeVotes(
             group,
             revokeAmount,
             lesserAfterPendingRevoke,
@@ -384,7 +435,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         IElection election = getElection();
 
         // The amount of unlocked CELO for group that we want to lock and vote with.
-        uint256 unlockedCeloForGroup = scheduledVotes[group].toVote;
+        (uint256 celoToVoteForGroup, ) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
         // Reset the unlocked CELO amount for group.
         scheduledVotes[group].toVote = 0;
@@ -398,17 +449,28 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         // If there is no CELO to lock up and vote with, return.
-        if (unlockedCeloForGroup == 0) {
+        if (celoToVoteForGroup == 0) {
             return;
         }
 
+        uint256 accountLockedNonvotingCelo = getLockedGold().getAccountNonvotingLockedGold(
+            address(this)
+        );
+
+        // There might be some locked unvoting (revoked) CELO from previous transfers
+        uint256 toLock = accountLockedNonvotingCelo >= celoToVoteForGroup
+            ? 0
+            : celoToVoteForGroup - accountLockedNonvotingCelo;
+
         // Lock up the unlockedCeloForGroup in LockedGold, which increments the
         // non-voting LockedGold balance for this contract.
-        getLockedGold().lock{value: unlockedCeloForGroup}();
+        if (toLock > 0) {
+            getLockedGold().lock{value: toLock}();
+        }
 
         // Vote for group using the newly locked CELO, reverting if it fails.
-        if (!election.vote(group, unlockedCeloForGroup, voteLesser, voteGreater)) {
-            revert VoteFailed(group, unlockedCeloForGroup);
+        if (!election.vote(group, celoToVoteForGroup, voteLesser, voteGreater)) {
+            revert VoteFailed(group, celoToVoteForGroup);
         }
     }
 
@@ -458,6 +520,41 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         emit CeloWithdrawalFinished(beneficiary, value, timestamp);
         return value;
+    }
+
+    /**
+     * @notice Turns on/off voting for more then max number of groups.
+     * @param flag The on/off flag.
+     */
+    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external onlyOwner {
+        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+    }
+
+    /**
+     * @notice Votes on a proposal in the referendum stage.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param index The index of the proposal ID in `dequeued`.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    function votePartially(
+        uint256 proposalId,
+        uint256 index,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    ) external onlyManager {
+        bool voteResult = getGovernance().votePartially(
+            proposalId,
+            index,
+            yesVotes,
+            noVotes,
+            abstainVotes
+        );
+        if (!voteResult) {
+            revert VotingNotSuccessful(proposalId);
+        }
     }
 
     /**
@@ -537,6 +634,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         return
             getElection().getTotalVotesForGroupByAccount(group, address(this)) +
             scheduledVotes[group].toVote -
+            scheduledVotes[group].toRevoke -
             scheduledVotes[group].toWithdraw;
     }
 
@@ -547,6 +645,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     function scheduledVotesForGroup(address group) external view returns (uint256) {
         return scheduledVotes[group].toVote;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO that's scheduled to be revoked for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO scheduled to be revoked from `group`.
+     */
+    function scheduledRevokeForGroup(address group) external view returns (uint256) {
+        return scheduledVotes[group].toRevoke;
     }
 
     /**
@@ -574,6 +681,74 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 2, 0, 0);
+    }
+
+    /**
+     * @notice Revokes votes from a validator group. It first attempts to revoke pending votes,
+     * and then active votes if necessary.
+     * @dev Reverts if `revokeAmount` exceeds the total number of pending and active votes for
+     * the group from this contract.
+     * @param group The group to revoke CELO from.
+     * @param lesserAfterPendingRevoke Used by Election's `revokePending`. This is the group that
+     * is before `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of pending votes has occurred.
+     * @param greaterAfterPendingRevoke Used by Election's `revokePending`. This is the group that
+     * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of pending votes has occurred.
+     * @param lesserAfterActiveRevoke Used by Election's `revokeActive`. This is the group that
+     * is before `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of active votes has occurred.
+     * @param greaterAfterActiveRevoke Used by Election's `revokeActive`. This is the group that
+     * is after `group` within the validators sorted LinkedList, or address(0) if there isn't one,
+     * after the revoke of active votes has occurred.
+     * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
+     * `group` in the this contract's array of groups it is voting for.
+     */
+    function revokeVotes(
+        address group,
+        address lesserAfterPendingRevoke,
+        address greaterAfterPendingRevoke,
+        address lesserAfterActiveRevoke,
+        address greaterAfterActiveRevoke,
+        uint256 index
+    ) public {
+        (, uint256 revokeAmount) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
+
+        if (revokeAmount == 0) {
+            return;
+        }
+
+        _revokeVotes(
+            group,
+            revokeAmount,
+            lesserAfterPendingRevoke,
+            greaterAfterPendingRevoke,
+            lesserAfterActiveRevoke,
+            greaterAfterActiveRevoke,
+            index
+        );
+
+        scheduledVotes[group].toRevoke -= revokeAmount;
+    }
+
+    /**
      * @notice Revokes votes from a validator group. It first attempts to revoke pending votes,
      * and then active votes if necessary.
      * @dev Reverts if `revokeAmount` exceeds the total number of pending and active votes for
@@ -595,7 +770,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param index Used by Election's `revokePending` and `revokeActive`. This is the index of
      * `group` in the this contract's array of groups it is voting for.
      */
-    function revokeVotes(
+    function _revokeVotes(
         address group,
         uint256 revokeAmount,
         address lesserAfterPendingRevoke,
@@ -631,7 +806,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         uint256 activeVotesAmount = election.getActiveVotesForGroupByAccount(group, address(this));
-
         if (activeVotesAmount < toRevokeFromActive) {
             revert InsufficientRevokableVotes(group, revokeAmount);
         }
@@ -700,57 +874,38 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Turns on/off voting for more then max number of groups.
-     * @param flag The on/off flag.
+     * @notice Adds amount to `toVote` and `toRevoke` and returns the `toVote`
+     * and `toRevoke` amount of CELO directed towards `group`. This is the `toVote`
+     * CELO balance for `group` minus the `toRevoke` amount and vice versa.
+     * Both `toRevoke` and `toVote` are updated.
+     * @param group The address of the validator group.
+     * @param addToVote The amount to add to `toVote`.
+     * @param addToRevoke The amount to add to `toRevoke`.
+     * @return toVote The `toVote` amount of CELO directed towards `group`.
+     * @return toRevoke The `toRevoke` amount of CELO directed towards `group`.
      */
-    function setAllowedToVoteOverMaxNumberOfGroups(bool flag) public onlyOwner {
-        getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
-    }
+    function getAndUpdateToVoteAndToRevoke(
+        address group,
+        uint256 addToVote,
+        uint256 addToRevoke
+    ) private returns (uint256 toVote, uint256 toRevoke) {
+        toVote = scheduledVotes[group].toVote + addToVote;
+        toRevoke = scheduledVotes[group].toRevoke + addToRevoke;
 
-    /**
-     * @notice Votes on a proposal in the referendum stage.
-     * @param proposalId The ID of the proposal to vote on.
-     * @param index The index of the proposal ID in `dequeued`.
-     * @param yesVotes The yes votes weight.
-     * @param noVotes The no votes weight.
-     * @param abstainVotes The abstain votes weight.
-     */
-    function votePartially(
-        uint256 proposalId,
-        uint256 index,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
-    ) public onlyManager {
-        bool voteResult = getGovernance().votePartially(
-            proposalId,
-            index,
-            yesVotes,
-            noVotes,
-            abstainVotes
-        );
-        if (!voteResult) {
-            revert VotingNotSuccessful(proposalId);
+        if (toVote > toRevoke) {
+            scheduledVotes[group].toVote = toVote = toVote - toRevoke;
+            scheduledVotes[group].toRevoke = toRevoke = 0;
+        } else {
+            scheduledVotes[group].toRevoke = toRevoke = toRevoke - toVote;
+            scheduledVotes[group].toVote = toVote = 0;
         }
-    }
 
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 3, 0);
+        if (addToVote > 0) {
+            emit VotesScheduled(group, addToVote);
+        }
+
+        if (addToRevoke > 0) {
+            emit RevocationScheduled(group, addToRevoke);
+        }
     }
 }

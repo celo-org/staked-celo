@@ -768,6 +768,7 @@ export interface Contract {
   relativePath: string;
   dbg: string;
   artifact: string;
+  buildInfoPath?: string;
 }
 
 export interface Dbg {

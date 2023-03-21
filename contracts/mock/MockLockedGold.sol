@@ -29,24 +29,12 @@ contract MockLockedGold is ILockedGold {
         nonvotingAccountBalance[account] = nonvotingAccountBalance[account].add(value);
     }
 
-    function decrementNonvotingAccountBalance(address account, uint256 value) public {
-        nonvotingAccountBalance[account] = nonvotingAccountBalance[account].sub(value);
-    }
-
     function setAccountTotalLockedGold(address account, uint256 value) external {
         accountTotalLockedGold[account] = value;
     }
 
-    function getAccountTotalLockedGold(address account) external view returns (uint256) {
-        return accountTotalLockedGold[account];
-    }
-
     function setTotalLockedGold(uint256 value) external {
         totalLockedGold = value;
-    }
-
-    function getTotalLockedGold() external view returns (uint256) {
-        return totalLockedGold;
     }
 
     function lock() external payable {
@@ -75,10 +63,6 @@ contract MockLockedGold is ILockedGold {
         uint256[] calldata
     ) external {
         accountTotalLockedGold[account] = accountTotalLockedGold[account].sub(penalty);
-    }
-
-    function owner() public view virtual returns (address) {
-        // solhint-disable-previous-line no-empty-blocks
     }
 
     function addSlasher(string calldata slasherIdentifier) external {
@@ -110,6 +94,26 @@ contract MockLockedGold is ILockedGold {
     }
 
     function getSlashingWhitelist() external view returns (bytes32[] memory) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getAccountNonvotingLockedGold(address account) external view returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getAccountTotalLockedGold(address account) external view returns (uint256) {
+        return accountTotalLockedGold[account];
+    }
+
+    function getTotalLockedGold() external view returns (uint256) {
+        return totalLockedGold;
+    }
+
+    function decrementNonvotingAccountBalance(address account, uint256 value) public {
+        nonvotingAccountBalance[account] = nonvotingAccountBalance[account].sub(value);
+    }
+
+    function owner() public view virtual returns (address) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }

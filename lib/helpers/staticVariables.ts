@@ -44,10 +44,10 @@ export const ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION =
 export const ACCOUNT_GET_PENDING_WITHDRAWALS_TASK_DESCRIPTION =
   "Returns the pending withdrawals for a beneficiary.";
 export const ACCOUNT_WITHDRAW_TASK_DESCRIPTION = "Withdraws CELO from account contract.";
+export const ACCOUNT_REVOKE_TASK_DESCRIPTION = "Revokes votes from a validator group.";
 
 // MANAGER TASK DESCRIPTIONS
 export const MANAGER_DEPOSIT_TASK_DESCRIPTION = "Deposits CELO in staked CELO protocol.";
-export const MANAGER_GET_DEPRECATED_GROUPS_TASK_DESCRIPTION = "Returns list of deprecated groups";
 export const MANAGER_GET_GROUPS_TASK_DESCRIPTION = "Returns all groups voting for";
 export const MANAGER_WITHDRAW_TASK_DESCRIPTION = "Withdraws stCELO from staked CELO protocol.";
 
