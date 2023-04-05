@@ -2,17 +2,15 @@
 pragma solidity 0.8.11;
 
 interface IDefaultStrategy {
-    function generateVoteDistribution(
-        bool withdraw,
-        uint256 celoAmount,
-        address groupToIgnore
-    ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
+    function generateDepositVoteDistribution(uint256 celoAmount, address depositGroupToIgnore)
+        external
+        returns (address[] memory finalGroups, uint256[] memory finalVotes);
+
+    function generateWithdrawalVoteDistribution(uint256 celoAmount)
+        external
+        returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
     function activateGroup(address group) external;
-
-    function addToStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) external;
-
-    function subtractFromStrategyTotalStCeloVotes(address strategy, uint256 stCeloAmount) external;
 
     function isActive(address group) external view returns (bool);
 

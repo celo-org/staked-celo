@@ -111,12 +111,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     error InvalidToGroup(address group);
 
     /**
-     * @notice Used when rebalancing from address(0) group.
-     * @param group The group's address.
-     */
-    error InvalidFromGroup(address group);
-
-    /**
      * @notice Used when rebalancing and fromGroup doesn't have any extra CELO.
      * @param group The group's address.
      * @param actualCelo The actual CELO value.
@@ -137,12 +131,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error FromGroupNotOverflowing(address group);
-
-    /**
-     * @notice Used when trying to rebalance group that has no scheduled votes.
-     * @param group The group's address.
-     */
-    error NoScheduledVotes(address group);
 
     /**
      * @notice Used when trying to rebalance to a group that is overflowing.
@@ -232,16 +220,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     /**
      * @notice Used to withdraw CELO from the system, in exchange for burning
      * stCELO.
-     * @param stakedCeloAmount The amount of stCELO to burn.
+     * @param stCeloAmount The amount of stCELO to burn.
      * @dev Calculates the CELO amount based on the ratio of outstanding stCELO
      * and the total amount of CELO owned and used for voting by Account. See
      * `toCelo`.
      * @dev The funds need to be withdrawn using calls to `Account.withdraw` and
      * `Account.finishPendingWithdrawal`.
      */
-    function withdraw(uint256 stakedCeloAmount) external {
-        distributeAndScheduleWithdrawals(stakedCeloAmount, msg.sender);
-        stakedCelo.burn(msg.sender, stakedCeloAmount);
+    function withdraw(uint256 stCeloAmount) external {
+        (
+            address[] memory groupsWithdrawn,
+            uint256[] memory withdrawalsPerGroup
+        ) = distributeWithdrawals(stCeloAmount, strategies[msg.sender], false);
+        account.scheduleWithdrawals(msg.sender, groupsWithdrawn, withdrawalsPerGroup);
+
+        stakedCelo.burn(msg.sender, stCeloAmount);
     }
 
     /**
@@ -279,24 +272,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * The CELO will be distributed based on address strategy.
      */
     function deposit() external payable {
-        address strategy = checkStrategy(strategies[msg.sender]);
-
         uint256 stCeloAmount = toStakedCelo(msg.value);
-        if (strategy != address(0)) {
-            if (!groupHealth.isGroupValid(strategy)) {
-                uint256 stCeloBalance = specificGroupStrategy.stCeloInStrategy(strategy);
-                if (stCeloBalance != 0) {
-                    _transferWithoutChecks(strategy, address(0), stCeloBalance);
-                }
-                strategy = address(0);
-            }
-        }
-        address[] memory finalGroups;
-        uint256[] memory finalVotes;
-        (finalGroups, finalVotes) = distributeVotes(msg.value, stCeloAmount, strategy);
+        (address[] memory finalGroups, uint256[] memory finalVotes) = distributeVotes(
+            msg.value,
+            stCeloAmount,
+            strategies[msg.sender]
+        );
 
         stakedCelo.mint(msg.sender, stCeloAmount);
-
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
     }
 
@@ -309,7 +292,16 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @return The strategy.
      */
     function getAddressStrategy(address accountAddress) external view returns (address) {
-        return checkStrategy(strategies[accountAddress]);
+        address strategy = strategies[accountAddress];
+        if (
+            strategy != address(0) &&
+            (specificGroupStrategy.isBlockedGroup(strategy) || !groupHealth.isGroupValid(strategy))
+        ) {
+            // strategy not allowed revert to default strategy
+            return address(0);
+        }
+
+        return strategy;
     }
 
     /**
@@ -344,23 +336,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address to,
         uint256 stCeloAmount
     ) public onlyStakedCelo {
-        address fromStrategy = strategies[from];
-        address toStrategy = strategies[to];
-        _transfer(fromStrategy, toStrategy, stCeloAmount);
-    }
-
-    /**
-     * @notice Schedules transfer of CELO between strategies.
-     * @param fromStrategy The from strategy.
-     * @param toStrategy The to strategy.
-     * @param stCeloAmount The stCELO amount.
-     */
-    function transferBetweenStrategies(
-        address fromStrategy,
-        address toStrategy,
-        uint256 stCeloAmount
-    ) public onlyStrategy {
-        _transferWithoutChecks(fromStrategy, toStrategy, stCeloAmount);
+        _transfer(strategies[from], strategies[to], stCeloAmount);
     }
 
     /**
@@ -372,7 +348,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     function changeStrategy(address newStrategy) public {
         if (
             newStrategy != address(0) &&
-            (specificGroupStrategy.isBlockedStrategy(newStrategy) ||
+            (specificGroupStrategy.isBlockedGroup(newStrategy) ||
                 !groupHealth.isGroupValid(newStrategy))
         ) {
             revert GroupNotEligible(newStrategy);
@@ -380,11 +356,10 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
 
         uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
         if (stCeloAmount != 0) {
-            address currentStrategy = strategies[msg.sender];
-            _transfer(currentStrategy, newStrategy, stCeloAmount);
+            _transfer(strategies[msg.sender], newStrategy, stCeloAmount);
         }
 
-        strategies[msg.sender] = checkStrategy(newStrategy);
+        strategies[msg.sender] = newStrategy;
     }
 
     /**
@@ -403,7 +378,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param toGroup The to group.
      */
     function rebalance(address fromGroup, address toGroup) public {
-        if (!defaultStrategy.isActive(toGroup) && !specificGroupStrategy.isStrategy(toGroup)) {
+        if (!defaultStrategy.isActive(toGroup) && specificGroupStrategy.isBlockedGroup(toGroup)) {
             // rebalancing to deactivated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
         }
@@ -535,20 +510,21 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        bool isSpecificGroupStrategy = specificGroupStrategy.isStrategy(group);
-        bool isActiveGroup = defaultStrategy.isActive(group);
         actualCelo = account.getCeloForGroup(group);
+
+        bool isSpecificGroupStrategy = !specificGroupStrategy.isBlockedGroup(group);
+        bool isActiveGroup = defaultStrategy.isActive(group);
 
         uint256 stCeloFromSpecificStrategy;
         uint256 stCeloFromDefaultStrategy;
 
         if (isSpecificGroupStrategy) {
             uint256 overflow;
-            (stCeloFromSpecificStrategy, overflow) = specificGroupStrategy.getStCeloInStrategy(
-                group
-            );
+            uint256 unhealthy;
+            (stCeloFromSpecificStrategy, overflow, unhealthy) = specificGroupStrategy
+                .getStCeloInGroup(group);
 
-            stCeloFromSpecificStrategy -= overflow;
+            stCeloFromSpecificStrategy -= overflow + unhealthy;
         }
 
         if (isActiveGroup) {
@@ -592,20 +568,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
-     * @notice Checks if strategy is valid. Blocked strategy is reverted to default.
-     * @param strategy The strategy.
-     * @return Up to date strategy.
-     */
-    function checkStrategy(address strategy) public view returns (address) {
-        if (strategy != address(0) && specificGroupStrategy.isBlockedStrategy(strategy)) {
-            // strategy not allowed revert to default strategy
-            return address(0);
-        }
-
-        return strategy;
-    }
-
-    /**
      * Returns votes count that can be received by group through stCELO protocol.
      * @param group The group that can receive votes.
      * @return The amount of CELO that can be received by group though stCELO protocol.
@@ -643,35 +605,19 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address strategy
     ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         if (strategy != address(0)) {
-            (finalGroups, finalVotes) = specificGroupStrategy.generateGroupVotesToDistributeTo(
+            (finalGroups, finalVotes) = specificGroupStrategy.generateDepositVoteDistribution(
                 strategy,
                 votes,
                 stCeloAmount
             );
         } else {
-            (finalGroups, finalVotes) = defaultStrategy.generateVoteDistribution(
-                false,
+            (finalGroups, finalVotes) = defaultStrategy.generateDepositVoteDistribution(
                 votes,
                 address(0)
             );
         }
 
         return (finalGroups, finalVotes);
-    }
-
-    /**
-     * @notice Distributes withdrawals according to chosen strategy and schedules them.
-     * @param stCeloAmount The amount of stCELO to be withdrawn.
-     * @param beneficiary The address that should end up receiving the withdrawn
-     * CELO.
-     **/
-    function distributeAndScheduleWithdrawals(uint256 stCeloAmount, address beneficiary) private {
-        address strategy = checkStrategy(strategies[beneficiary]);
-        (
-            address[] memory groupsWithdrawn,
-            uint256[] memory withdrawalsPerGroup
-        ) = distributeWithdrawals(stCeloAmount, strategy, false);
-        account.scheduleWithdrawals(beneficiary, groupsWithdrawn, withdrawalsPerGroup);
     }
 
     /**
@@ -694,23 +640,11 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256[] memory withdrawalsPerGroup;
 
         if (strategy != address(0)) {
-            (groupsWithdrawn, withdrawalsPerGroup) = isTransfer
-                ? specificGroupStrategy.calculateAndUpdateForWithdrawalTransfer(
-                    strategy,
-                    celoAmount,
-                    stCeloAmount
-                )
-                : specificGroupStrategy.calculateAndUpdateForWithdrawal(
-                    strategy,
-                    celoAmount,
-                    stCeloAmount
-                );
+            (groupsWithdrawn, withdrawalsPerGroup) = specificGroupStrategy
+                .generateWithdrawalVoteDistribution(strategy, celoAmount, stCeloAmount, isTransfer);
         } else {
-            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy.generateVoteDistribution(
-                true,
-                celoAmount,
-                address(0)
-            );
+            (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
+                .generateWithdrawalVoteDistribution(celoAmount);
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);
@@ -727,9 +661,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address toStrategy,
         uint256 stCeloAmount
     ) private {
-        fromStrategy = checkStrategy(fromStrategy);
-        toStrategy = checkStrategy(toStrategy);
-
         if (fromStrategy == toStrategy) {
             // either both addresses use default strategy
             // or both addresses use same specific strategy

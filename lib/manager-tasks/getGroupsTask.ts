@@ -7,6 +7,7 @@ import {
   MANAGER_GET_GROUPS_TASK_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
+import { getDefaultGroupsHHTask } from "../task-utils";
 import { MANAGER_GET_GROUPS } from "../tasksNames";
 
 task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
@@ -18,7 +19,7 @@ task(MANAGER_GET_GROUPS, MANAGER_GET_GROUPS_TASK_DESCRIPTION)
       await setLocalNodeDeploymentPath(hre);
 
       const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
-      const groups = await getDefaultGroupsSafe(defaultStrategyContract)
+      const groups = await getDefaultGroupsHHTask(defaultStrategyContract)
       taskLogger.log("Groups:", groups);
     } catch (error) {
       taskLogger.error("Error getting groups:", error);

@@ -27,7 +27,7 @@ import {
   deregisterValidatorGroup,
   electGroup,
   electMockValidatorGroupsAndUpdate,
-  getDefaultGroupsSafe,
+  getDefaultGroups,
   getImpersonatedSigner,
   getOrderedActiveGroups,
   getUnsortedGroups,
@@ -207,7 +207,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(ADDRESS_ZERO, nonVote.address, nonVote.address)
-      ).revertedWith("Account null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("reverts with zero groupHealth address", async () => {
@@ -215,7 +215,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(nonVote.address, ADDRESS_ZERO, nonVote.address)
-      ).revertedWith("GroupHealth null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("reverts with zero specific group strategy address", async () => {
@@ -223,7 +223,7 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract
           .connect(ownerSigner)
           .setDependencies(nonVote.address, nonVote.address, ADDRESS_ZERO)
-      ).revertedWith("SpecificGroupStrategy null");
+      ).revertedWith("AddressZeroNotAllowed");
     });
 
     it("sets the vote contract", async () => {
@@ -252,7 +252,7 @@ describe("DefaultStrategy", () => {
   describe("#activateGroup()", () => {
     it("adds a group", async () => {
       await defaultStrategyContract.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
-      const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
+      const activeGroups = await getDefaultGroups(defaultStrategyContract);
       const activeGroupsLength = await defaultStrategyContract.getNumberOfGroups();
       const [firstActiveGroup] = await defaultStrategyContract.getGroupsHead();
       expect(activeGroups).to.deep.eq([groupAddresses[0]]);
@@ -391,7 +391,7 @@ describe("DefaultStrategy", () => {
       it("adds another group", async () => {
         const [head] = await defaultStrategyContract.getGroupsHead();
         await defaultStrategyContract.activateGroup(groupAddresses[3], ADDRESS_ZERO, head);
-        const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
+        const activeGroups = await getDefaultGroups(defaultStrategyContract);
         expect(activeGroups).to.deep.eq(groupAddresses.slice(0, 4));
       });
 
@@ -475,7 +475,7 @@ describe("DefaultStrategy", () => {
           await defaultStrategyContract.deactivateGroup(groupAddresses[7]);
           const [head] = await defaultStrategyContract.getGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[2], ADDRESS_ZERO, head);
-          const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
+          const activeGroups = await getDefaultGroups(defaultStrategyContract);
           expect(activeGroups[8]).to.equal(groupAddresses[2]);
         });
 
@@ -512,7 +512,7 @@ describe("DefaultStrategy", () => {
 
         it("removes the group from the groups array", async () => {
           await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
-          const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
+          const activeGroups = await getDefaultGroups(defaultStrategyContract);
           expect(activeGroups).to.have.deep.members([groupAddresses[0], groupAddresses[2]]);
         });
 
@@ -600,7 +600,7 @@ describe("DefaultStrategy", () => {
       describe("when the group is not voted for", () => {
         it("removes the group from the groups array", async () => {
           await defaultStrategyContract.deactivateGroup(deactivatedGroup.address);
-          const activeGroups = await getDefaultGroupsSafe(defaultStrategyContract);
+          const activeGroups = await getDefaultGroups(defaultStrategyContract);
           expect(activeGroups).to.deep.eq([groupAddresses[0], groupAddresses[2]]);
         });
 
@@ -1273,12 +1273,20 @@ describe("DefaultStrategy", () => {
     });
   });
 
-  describe("#generateVoteDistribution", () => {
+  describe("#generateDepositVoteDistribution", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
         defaultStrategyContract
           .connect(nonManager)
-          .generateVoteDistribution(false, 10, ADDRESS_ZERO)
+          .generateDepositVoteDistribution(10, ADDRESS_ZERO)
+      ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
+    });
+  });
+
+  describe("#generateWithdrawalVoteDistribution", () => {
+    it("cannot be called by a non-Manager address", async () => {
+      await expect(
+        defaultStrategyContract.connect(nonManager).generateWithdrawalVoteDistribution(10)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });

@@ -471,9 +471,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getDefaultGroupsSafe(
-  defaultStrategy: DefaultGroupContract
-): Promise<string[]> {
+export async function getDefaultGroups(defaultStrategy: DefaultGroupContract): Promise<string[]> {
   const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
   let [key] = await defaultStrategy.getGroupsHead();
 
@@ -487,14 +485,14 @@ export async function getDefaultGroupsSafe(
   return activeGroups;
 }
 
-export async function getSpecificGroupsSafe(
+export async function getSpecificGroups(
   specificGroupStrategy: SpecificGroupStrategy
 ): Promise<string[]> {
-  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfVotedGroups();
   const specificGroupsPromises = [];
 
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
-    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+    specificGroupsPromises.push(specificGroupStrategy.getVotedGroup(i));
   }
 
   return Promise.all(specificGroupsPromises);
@@ -504,8 +502,8 @@ export async function getGroupsOfAllStrategies(
   defaultStrategy: DefaultStrategy,
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const activeGroups = getDefaultGroupsSafe(defaultStrategy);
-  const specificGroupsPromise = getSpecificGroupsSafe(specificGroupStrategy);
+  const activeGroups = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificGroupStrategy);
 
   const allGroups = await Promise.all([activeGroups, specificGroupsPromise]);
   const allGroupsSet = new Set([...allGroups[0], ...allGroups[1]]);
@@ -516,10 +514,10 @@ export async function getGroupsOfAllStrategies(
 export async function getBlockedSpecificGroupStrategies(
   specificGroupStrategy: SpecificGroupStrategy
 ) {
-  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedStrategies();
+  const blockedStrategiesLength = await specificGroupStrategy.getNumberOfBlockedGroups();
   const promises: Promise<string>[] = [];
   for (let i = 0; i < blockedStrategiesLength.toNumber(); i++) {
-    promises.push(specificGroupStrategy.getBlockedStrategy(i));
+    promises.push(specificGroupStrategy.getBlockedGroup(i));
   }
 
   return await Promise.all(promises);
@@ -557,7 +555,7 @@ export async function getRealVsExpectedStCeloForGroupsDefaultStrategy(
 }
 
 export async function rebalanceDefaultGroups(defaultStrategy: DefaultStrategy) {
-  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const activeGroups = await getDefaultGroups(defaultStrategy);
   const expectedVsReal = await getRealVsExpectedStCeloForGroupsDefaultStrategy(
     defaultStrategy,
     activeGroups
@@ -611,7 +609,7 @@ export async function rebalanceGroups(
   const allGroups = await getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
   const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
 
-  rebalanceInternal(managerContract, expectedVsReal);
+  await rebalanceInternal(managerContract, expectedVsReal);
 }
 
 export async function electMockValidatorGroupsAndUpdate(
@@ -649,7 +647,8 @@ export async function electMockValidatorGroupsAndUpdate(
 export async function revokeElectionOnMockValidatorGroupsAndUpdate(
   validators: ValidatorsWrapper,
   groupHealthContract: MockGroupHealth,
-  validatorGroups: string[]
+  validatorGroups: string[],
+  update = true
 ) {
   const allValidatorsInValGroup = await Promise.all(
     validatorGroups.map(async (vg) => {
@@ -666,6 +665,10 @@ export async function revokeElectionOnMockValidatorGroupsAndUpdate(
       await groupHealthContract.setElectedValidator(i, ADDRESS_ZERO);
     }
   }
+  if (!update) {
+    return;
+  }
+
   for (let j = 0; j < validatorGroups.length; j++) {
     await groupHealthContract.updateGroupHealth(validatorGroups[j]);
   }
@@ -812,7 +815,7 @@ export async function updateMaxNumberOfGroups(
 }
 
 export async function getDefaultGroupsWithStCelo(defaultStrategy: DefaultStrategy) {
-  const activeGroups = await getDefaultGroupsSafe(defaultStrategy);
+  const activeGroups = await getDefaultGroups(defaultStrategy);
   return await Promise.all(
     activeGroups.map(async (ag) => {
       const stCelo = await defaultStrategy.stCeloInGroup(ag);
@@ -865,24 +868,44 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
   account: MockAccount,
   manager: Manager
 ) {
-  const defaultGroups = await getDefaultGroupsSafe(defaultStrategy);
-  const specificGroups = await getSpecificGroupsSafe(specificStrategy);
+  const defaultGroupsPromise = getDefaultGroups(defaultStrategy);
+  const specificGroupsPromise = getSpecificGroups(specificStrategy);
+
+  const defaultGroups = await defaultGroupsPromise;
+  const specificGroups = await specificGroupsPromise;
+
+  const defaultGroupsWithStCeloPromise = defaultGroups.map(async (g) => ({
+    group: g,
+    amount: await defaultStrategy.stCeloInGroup(g),
+  }));
+
+  const specificGroupsWithStCeloPromise = specificGroups.map(async (g) => {
+    const [total, overflow, unhealthy] = await specificStrategy.getStCeloInGroup(g);
+    return {
+      group: g,
+      amount: total.sub(overflow).sub(unhealthy),
+    };
+  });
+
+  const defaultGroupsWithStCelo = await Promise.all(defaultGroupsWithStCeloPromise);
+  const specificGroupsWithStCelo = await Promise.all(specificGroupsWithStCeloPromise);
 
   const groups: Record<string, EthersBigNumber> = {};
 
-  for (let i = 0; i < defaultGroups.length; i++) {
-    groups[defaultGroups[i]] = await defaultStrategy.stCeloInGroup(defaultGroups[i]);
+  for (let i = 0; i < defaultGroupsWithStCelo.length; i++) {
+    groups[defaultGroupsWithStCelo[i].group] = defaultGroupsWithStCelo[i].amount;
   }
 
-  for (let i = 0; i < specificGroups.length; i++) {
-    const stCeloInSpecificGroup = await specificStrategy.stCeloInStrategy(specificGroups[i]);
-    groups[specificGroups[i]] = (groups[specificGroups[i]] ?? EthersBigNumber.from(0)).add(
-      stCeloInSpecificGroup
-    );
+  for (let i = 0; i < specificGroupsWithStCelo.length; i++) {
+    groups[specificGroupsWithStCelo[i].group] = (
+      groups[specificGroupsWithStCelo[i].group] ?? EthersBigNumber.from(0)
+    ).add(specificGroupsWithStCelo[i].amount);
   }
 
-  for (const key of Object.keys(groups)) {
-    const celoInGroup = await manager.toCelo(groups[key].toString());
-    await account.setCeloForGroup(key, celoInGroup);
-  }
+  await Promise.all(
+    Object.keys(groups).map(async (key) => {
+      const celoInGroup = await manager.toCelo(groups[key].toString());
+      await account.setCeloForGroup(key, celoInGroup);
+    })
+  );
 }

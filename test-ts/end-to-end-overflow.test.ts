@@ -313,7 +313,7 @@ describe("e2e overflow test", () => {
     total?: BigNumber,
     overflow?: BigNumber
   ) {
-    const [totalActual, overflowActual] = await specificGroupStrategyContract.getStCeloInStrategy(
+    const [totalActual, overflowActual] = await specificGroupStrategyContract.getStCeloInGroup(
       strategy
     );
     if (total != undefined) {

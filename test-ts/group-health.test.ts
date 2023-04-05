@@ -191,7 +191,9 @@ describe("GroupHealth", () => {
         await electMockValidatorGroupsAndUpdate(
           validatorsWrapper,
           groupHealthContract,
-          activatedGroupAddresses
+          activatedGroupAddresses,
+          false,
+          false
         );
       });
 
@@ -201,40 +203,50 @@ describe("GroupHealth", () => {
           .withArgs(activatedGroupAddresses[0], true);
       });
 
-      it("should update to invalid when slashed", async () => {
-        await updateGroupSlashingMultiplier(
-          registryContract,
-          lockedGoldContract,
-          validatorsContract,
-          activatedGroups[0],
-          mockSlasher
-        );
-        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
-          .to.emit(groupHealthContract, "GroupHealthUpdated")
-          .withArgs(activatedGroupAddresses[0], false);
-      });
+      describe("When valid", () => {
+        beforeEach(async () => {
+          await groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]);
+          expect(await groupHealthContract.isGroupValid(activatedGroupAddresses[0])).to.be.true;
+        });
 
-      it("should update to invalid when no members", async () => {
-        await removeMembersFromGroup(activatedGroups[0]);
-        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
-          .to.emit(groupHealthContract, "GroupHealthUpdated")
-          .withArgs(activatedGroupAddresses[0], false);
-      });
+        it("should update to invalid when slashed", async () => {
+          await updateGroupSlashingMultiplier(
+            registryContract,
+            lockedGoldContract,
+            validatorsContract,
+            activatedGroups[0],
+            mockSlasher
+          );
+          await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+            .to.emit(groupHealthContract, "GroupHealthUpdated")
+            .withArgs(activatedGroupAddresses[0], false);
+        });
 
-      it("should update to invalid when group not registered", async () => {
-        await deregisterValidatorGroup(activatedGroups[0]);
-        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
-          .to.emit(groupHealthContract, "GroupHealthUpdated")
-          .withArgs(activatedGroupAddresses[0], false);
-      });
+        it("should update to invalid when no members", async () => {
+          await removeMembersFromGroup(activatedGroups[0]);
+          await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+            .to.emit(groupHealthContract, "GroupHealthUpdated")
+            .withArgs(activatedGroupAddresses[0], false);
+        });
 
-      it("should update to invalid when group not elected", async () => {
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
-          activatedGroupAddresses[0],
-        ]);
-        await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
-          .to.emit(groupHealthContract, "GroupHealthUpdated")
-          .withArgs(activatedGroupAddresses[0], false);
+        it("should update to invalid when group not registered", async () => {
+          await deregisterValidatorGroup(activatedGroups[0]);
+          await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+            .to.emit(groupHealthContract, "GroupHealthUpdated")
+            .withArgs(activatedGroupAddresses[0], false);
+        });
+
+        it("should update to invalid when group not elected", async () => {
+          await revokeElectionOnMockValidatorGroupsAndUpdate(
+            validatorsWrapper,
+            groupHealthContract,
+            [activatedGroupAddresses[0]],
+            false
+          );
+          await expect(groupHealthContract.updateGroupHealth(activatedGroupAddresses[0]))
+            .to.emit(groupHealthContract, "GroupHealthUpdated")
+            .withArgs(activatedGroupAddresses[0], false);
+        });
       });
     });
   });

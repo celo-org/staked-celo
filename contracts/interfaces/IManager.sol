@@ -12,12 +12,6 @@ interface IManager {
         uint256 amount
     ) external;
 
-    function transferBetweenStrategies(
-        address fromStrategy,
-        address toStrategy,
-        uint256 stCeloAmount
-    ) external;
-
     function scheduleTransferWithinStrategy(
         address[] calldata fromGroups,
         address[] calldata toGroups,

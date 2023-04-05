@@ -2,40 +2,35 @@
 pragma solidity 0.8.11;
 
 interface ISpecificGroupStrategy {
-    function calculateAndUpdateForWithdrawal(
-        address strategy,
-        uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
-    ) external returns (address[] memory groups, uint256[] memory votes);
-
-    function calculateAndUpdateForWithdrawalTransfer(
-        address strategy,
-        uint256 celoWithdrawalAmount,
-        uint256 stCeloWithdrawalAmount
-    ) external returns (address[] memory groups, uint256[] memory votes);
-
-    function blockStrategy(address group) external returns (uint256);
-
-    function generateGroupVotesToDistributeTo(
-        address strategy,
+    function generateDepositVoteDistribution(
+        address group,
         uint256 votes,
         uint256 stCeloAmount
     ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
-    function isStrategy(address strategy) external view returns (bool);
+    function generateWithdrawalVoteDistribution(
+        address group,
+        uint256 celoWithdrawalAmount,
+        uint256 stCeloWithdrawalAmount,
+        bool isTransfer
+    ) external returns (address[] memory groups, uint256[] memory votes);
 
-    function isBlockedStrategy(address strategy) external view returns (bool);
+    function isVotedGroup(address group) external view returns (bool);
 
-    function getStCeloInStrategy(address strategy)
+    function isBlockedGroup(address group) external view returns (bool);
+
+    function getStCeloInGroup(address group)
         external
         view
-        returns (uint256 total, uint256 overflow);
+        returns (
+            uint256 total,
+            uint256 overflow,
+            uint256 unhealthy
+        );
 
     function totalStCeloLocked() external view returns (uint256);
 
     function totalStCeloOverflow() external view returns (uint256);
 
-    function stCeloInStrategy(address strategy) external view returns (uint256);
-
-    function getNumberOfStrategies() external view returns (uint256);
+    function getNumberOfVotedGroups() external view returns (uint256);
 }
