@@ -161,6 +161,5 @@ export async function getSpecificGroupsSafe(specificGroupStrategy: Contract): Pr
   for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
     specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
   }
-
   return Promise.all(specificGroupsPromises);
 }
