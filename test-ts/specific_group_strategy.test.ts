@@ -505,7 +505,6 @@ describe("SpecificGroupStrategy", () => {
                 manager
               );
               await account.setCeloForGroup(groupAddresses[2], BigNumber.from("0"));
-
               await specificGroupStrategyContract.rebalanceOverflowedGroup(groupAddresses[2]);
             });
 
