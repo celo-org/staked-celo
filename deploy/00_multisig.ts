@@ -1,6 +1,6 @@
-import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
+import { DeployFunction, DeployResult } from "@celo/staked-celo-hardhat-deploy/types";
+import chalk from "chalk";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { catchNotOwnerForProxy } from "../lib/deploy-utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
@@ -20,9 +20,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const requiredConfirmations = Number(process.env.MULTISIG_REQUIRED_CONFIRMATIONS);
 
-  await catchNotOwnerForProxy(
+  await catchUpgradeErrorInMultisig(
     deploy("MultiSig", {
       from: deployer,
+      gasLimit: 3852749, // we need manual gas limit so upgradeTo transaction can fail (because of multisig ownership) during execution rather than during gas estimation
       log: true,
       // minDelay 4 Days, to protect against stakedCelo withdrawals
       args: [minDelay],
@@ -36,7 +37,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           },
         },
       },
-    })
+    }),
+    hre
   );
 };
 
@@ -44,3 +46,43 @@ func.id = "deploy_multisig";
 func.tags = ["MultiSig", "core", "proxy"];
 func.dependencies = [];
 export default func;
+
+async function catchUpgradeErrorInMultisig(
+  action: Promise<DeployResult> | (() => Promise<DeployResult>),
+  hre: HardhatRuntimeEnvironment
+) {
+  try {
+    if (action instanceof Promise) {
+      await action;
+    } else {
+      await action();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    if (err?.data?.stack?.indexOf("VM Exception while processing transaction: revert")) {
+      console.log(
+        chalk.red(
+          "Transaction was reverted. Most probably it was because caller is not an owner. Please make sure to update the proxy implementation manually."
+        )
+      );
+    } else {
+      const multisigContract = await hre.ethers.getContractOrNull("MultiSig");
+
+      if (multisigContract != null && err.transaction != null) {
+        const parsedTx = multisigContract.interface.parseTransaction({
+          data: err.transaction.data,
+          value: err.transaction.value,
+        });
+        if (parsedTx.functionFragment.name === "upgradeTo") {
+          console.log(
+            chalk.red(
+              "Transaction was reverted. Most probably it was because caller is not an owner. Please make sure to update the proxy implementation manually."
+            )
+          );
+          return;
+        }
+      }
+      throw err;
+    }
+  }
+}

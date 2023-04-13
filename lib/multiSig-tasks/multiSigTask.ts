@@ -14,3 +14,4 @@ import "./is-owner";
 import "./is-confirmed-by";
 import "./encode-proposal-payload";
 import "./encodeProposalSetDependencies";
+import "./update-v1-to-v2";
