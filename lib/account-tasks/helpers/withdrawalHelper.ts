@@ -1,7 +1,8 @@
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, Contract, Signer } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { taskLogger } from "../../logger";
+import { getDefaultGroupsHHTask, getSpecificGroupsHHTask } from "../../task-utils";
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -12,13 +13,13 @@ export async function withdraw(
 ) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const accountContract = await hre.ethers.getContract("Account");
-  const managerContract = await hre.ethers.getContract("Manager");
+  const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+  const defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
 
-  // Use deprecated and active groups to get the full list of groups with potential withdrawals.
-  const deprecatedGroups: [] = await managerContract.getDeprecatedGroups();
-  const activeGroups: [] = await managerContract.getGroups();
-  const groupList = deprecatedGroups.concat(activeGroups);
-
+  // Use active groups to get the full list of groups with potential withdrawals.
+  const activeGroups = await getDefaultGroupsHHTask(defaultStrategy);
+  const specificStrategies = await getSpecificGroupsHHTask(specificGroupStrategy);
+  const groupList = new Set(activeGroups.concat(specificStrategies)).values();
   taskLogger.debug("DEBUG: groupList:", groupList);
 
   for (const group of groupList) {
@@ -135,4 +136,30 @@ async function findAddressIndex(
 ): Promise<number> {
   const list = await electionWrapper.getGroupsVotedForByAccount(account);
   return list.indexOf(group);
+}
+
+export async function getDefaultGroupsSafe(
+  defaultStrategy: Contract
+) : Promise<string[]> {
+  const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
+  let [key] = await defaultStrategy.getGroupsHead();
+
+  const activeGroups = [];
+
+  for (let i = 0; i < (await activeGroupsLengthPromise).toNumber(); i++) {
+    activeGroups.push(key);
+    [key] = await defaultStrategy.getGroupPreviousAndNext(key);
+  }
+
+  return activeGroups
+}
+
+export async function getSpecificGroupsSafe(specificGroupStrategy: Contract): Promise<string[]> {
+  const getSpecificGroupStrategiesLength = specificGroupStrategy.getNumberOfStrategies();
+  const specificGroupsPromises = [];
+
+  for (let i = 0; i < (await getSpecificGroupStrategiesLength).toNumber(); i++) {
+    specificGroupsPromises.push(specificGroupStrategy.getStrategy(i));
+  }
+  return Promise.all(specificGroupsPromises);
 }

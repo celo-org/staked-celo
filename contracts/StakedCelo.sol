@@ -18,33 +18,33 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     mapping(address => uint256) private _lockedBalances;
 
     /**
-     * @notice Emitted when stCelo is locked.
-     * @param account The owner of locked stCelo.
-     * @param amount The amount of locked stCelo.
+     * @notice Emitted when stCELO is locked.
+     * @param account The owner of locked stCELO.
+     * @param amount The amount of locked stCELO.
      */
     event LockedStCelo(address account, uint256 amount);
 
     /**
-     * @notice Emitted when stCelo is inlocked.
-     * @param account The owner of unlocked stCelo.
-     * @param amount The amount of unlocked stCelo.
+     * @notice Emitted when stCELO is inlocked.
+     * @param account The owner of unlocked stCELO.
+     * @param amount The amount of unlocked stCELO.
      */
     event UnlockedStCelo(address account, uint256 amount);
 
     /**
-     * @notice Used when attempting to unlock stCelo when there is no locked stCelo.
+     * @notice Used when attempting to unlock stCELO when there is no locked stCELO.
      * @param account The account's address.
      */
     error NoLockedStakedCelo(address account);
 
     /**
-     * @notice Used when attempting to lock stCelo when there is not enough stCelo.
+     * @notice Used when attempting to lock stCELO when there is not enough stCELO.
      * @param account The account's address.
      */
     error NotEnoughStCeloToLock(address account);
 
     /**
-     * @notice Used when attempting to unlock stCelo when there is no stCelo to unlock.
+     * @notice Used when attempting to unlock stCELO when there is no stCELO to unlock.
      * @param account The account's address.
      */
     error NothingToUnlock(address account);
@@ -107,12 +107,23 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns vote stCELO locked balance.
-     * @param account The address of locked stCELO balance.
-     * @return The amount of locked stCELO.
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
      */
-    function lockedVoteBalanceOf(address account) public view returns (uint256) {
-        return _lockedBalances[account];
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 2, 1);
     }
 
     /**
@@ -138,22 +149,26 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
     }
 
     /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
+     * @notice Returns vote stCELO locked balance.
+     * @param account The address of locked stCELO balance.
+     * @return The amount of locked stCELO.
      */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 2, 0);
+    function lockedVoteBalanceOf(address account) public view returns (uint256) {
+        return _lockedBalances[account];
+    }
+
+    /**
+     * @notice Registers transfer to manager whenever stCELO is being transfered.
+     **/
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        if (from == address(0) || to == address(0)) {
+            // mint or burn
+            return;
+        }
+        IManager(manager).transfer(from, to, amount);
     }
 }

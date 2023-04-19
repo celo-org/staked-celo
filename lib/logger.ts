@@ -1,4 +1,4 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import chalk from "chalk";
 
 class Log {
@@ -17,7 +17,7 @@ class Log {
     }
   }
   public info(msg: string, supportingDetails?: any): void {
-    if (this.level === "info") {
+    if (this.level === "info" || this.level === "debug") {
       this.emitLogMessage("info", chalk.blue(msg), supportingDetails);
     }
   }

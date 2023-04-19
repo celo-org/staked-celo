@@ -8,13 +8,16 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
+import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
+import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
   activateValidators,
   ADDRESS_ZERO,
-  electMinimumNumberOfValidators,
+  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
   randomSigner,
@@ -23,14 +26,17 @@ import {
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
+  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
+  let groupHealthContract: MockGroupHealth;
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
+  let defaultStrategyContract: DefaultStrategy;
 
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
@@ -93,58 +99,79 @@ describe("Vote", async function (this: any) {
   }
 
   before(async () => {
-    await resetNetwork();
+    try {
+      await resetNetwork();
 
-    process.env = {
-      ...process.env,
-      TIME_LOCK_MIN_DELAY: "1",
-      TIME_LOCK_DELAY: "1",
-      MULTISIG_REQUIRED_CONFIRMATIONS: "1",
-      VALIDATOR_GROUPS: "",
-    };
+      process.env = {
+        ...process.env,
+        TIME_LOCK_MIN_DELAY: "1",
+        TIME_LOCK_DELAY: "1",
+        MULTISIG_REQUIRED_CONFIRMATIONS: "1",
+        VALIDATOR_GROUPS: "",
+      };
 
-    [depositor0] = await randomSigner(parseUnits("300"));
-    [depositor1] = await randomSigner(parseUnits("300"));
-    [nonStakedCelo] = await randomSigner(parseUnits("100"));
-    [nonOwner] = await randomSigner(parseUnits("100"));
-    [nonAccount] = await randomSigner(parseUnits("100"));
-    multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    [voter] = await randomSigner(parseUnits("300"));
-    const accounts = await hre.kit.contracts.getAccounts();
-    await accounts.createAccount().sendAndWaitForReceipt({
-      from: voter.address,
-    });
+      [depositor0] = await randomSigner(parseUnits("300"));
+      [depositor1] = await randomSigner(parseUnits("300"));
+      [nonStakedCelo] = await randomSigner(parseUnits("100"));
+      [nonOwner] = await randomSigner(parseUnits("100"));
+      [nonAccount] = await randomSigner(parseUnits("100"));
+      multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
+      [voter] = await randomSigner(parseUnits("300"));
+      const accounts = await hre.kit.contracts.getAccounts();
+      await accounts.createAccount().sendAndWaitForReceipt({
+        from: voter.address,
+      });
 
-    groups = [];
-    activatedGroupAddresses = [];
-    groupAddresses = [];
-    validators = [];
-    validatorAddresses = [];
-    for (let i = 0; i < 10; i++) {
-      const [group] = await randomSigner(parseUnits("11000"));
-      groups.push(group);
-      if (i < 3) {
-        activatedGroupAddresses.push(groups[i].address);
+      groups = [];
+      activatedGroupAddresses = [];
+      groupAddresses = [];
+      validators = [];
+      validatorAddresses = [];
+
+      for (let i = 0; i < 10; i++) {
+        const [group] = await randomSigner(parseUnits("11000"));
+        groups.push(group);
+        if (i < 3) {
+          activatedGroupAddresses.push(groups[i].address);
+        }
+        groupAddresses.push(groups[i].address);
+        const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
+        validators.push(validator);
+        validatorAddresses.push(validators[i].address);
+
+        await registerValidatorGroup(groups[i]);
+        await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
       }
-      groupAddresses.push(groups[i].address);
-      const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      validators.push(validator);
-      validatorAddresses.push(validators[i].address);
-
-      await registerValidatorGroup(groups[i]);
-      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
+    } catch (error) {
+      console.error(error);
     }
-
-    await electMinimumNumberOfValidators(groups, voter);
   });
 
   beforeEach(async () => {
     await hre.deployments.fixture("core");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
+    groupHealthContract = await hre.ethers.getContract("GroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
+    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
 
-    await activateValidators(managerContract, multisigOwner0.address, activatedGroupAddresses);
+    groupHealthContract = await upgradeToMockGroupHealthE2E(
+      multisigOwner0,
+      groupHealthContract as unknown as GroupHealth
+    );
+    const validatorWrapper = await hre.kit.contracts.getValidators();
+    await electMockValidatorGroupsAndUpdate(
+      validatorWrapper,
+      groupHealthContract,
+      activatedGroupAddresses
+    );
+
+    await activateValidators(
+      defaultStrategyContract,
+      groupHealthContract as unknown as GroupHealth,
+      multisigOwner0.address,
+      activatedGroupAddresses
+    );
   });
 
   describe("#getVoteWeight()", () => {
@@ -473,23 +500,13 @@ describe("Vote", async function (this: any) {
     });
 
     it("should return 0 when not voted", async () => {
-      const lockedStCeloInVoting = await voteContract
-        .connect(managerSigner)
-        .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-      const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-      const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-        .topics as string[];
-      const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-        event.topics.some((topic) => topic == eventTopics[0])
-      );
-      const eventArgs = voteContract.interface.decodeEventLog(
-        voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-        event!.data,
-        eventTopics
-      );
-
-      expect(eventArgs.lockedCelo).to.eq(0);
+      await expect(
+        voteContract
+          .connect(managerSigner)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+      )
+        .to.emit(voteContract, "LockedStCeloInVoting")
+        .withArgs(depositor0.address, hre.ethers.BigNumber.from(0));
     });
 
     describe("when voted", async () => {
@@ -507,22 +524,13 @@ describe("Vote", async function (this: any) {
       });
 
       it("should return locked celo", async () => {
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should return locked celo when voting on maximum number of proposals", async () => {
@@ -538,22 +546,13 @@ describe("Vote", async function (this: any) {
             .voteProposal(i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs.lockedCelo).to.eq(totalVotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalVotes);
       });
 
       it("should update locked celo when revoted", async () => {
@@ -575,22 +574,13 @@ describe("Vote", async function (this: any) {
             abstainVotesRevote
           );
 
-        const lockedStCeloInVoting = await voteContract
-          .connect(managerSigner)
-          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address);
-        const lockedStCeloInVotingReceipt = await lockedStCeloInVoting.wait();
-
-        const eventTopics = voteContract.filters["LockedStCeloInVoting(address,uint256)"]()
-          .topics as string[];
-        const event = lockedStCeloInVotingReceipt!.events?.find((event) =>
-          event.topics.some((topic) => topic == eventTopics[0])
-        );
-        const eventArgs = voteContract.interface.decodeEventLog(
-          voteContract.interface.events["LockedStCeloInVoting(address,uint256)"],
-          event!.data,
-          eventTopics
-        );
-        expect(eventArgs?.lockedCelo).to.eq(totalRevotes);
+        await expect(
+          voteContract
+            .connect(managerSigner)
+            .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        )
+          .to.emit(voteContract, "LockedStCeloInVoting")
+          .withArgs(depositor0.address, totalRevotes);
       });
     });
 
@@ -747,6 +737,121 @@ describe("Vote", async function (this: any) {
       await expect(
         voteContract.connect(nonOwner).setDependencies(nonStakedCelo.address, nonAccount.address)
       ).revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#deleteExpiredProposalTimestamp()", () => {
+    const proposal1Id = 1;
+    const proposal1Index = 0;
+    const amountOfCeloToDeposit = parseUnits("10");
+
+    const yesVotes = hre.web3.utils.toWei("7");
+    const noVotes = hre.web3.utils.toWei("2");
+    const abstainVotes = hre.web3.utils.toWei("1");
+
+    beforeEach(async () => {
+      await proposeNewProposal();
+      await depositAndActivate(depositor0, amountOfCeloToDeposit);
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+    });
+
+    it("voter should have proposal as voted", async () => {
+      const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+      expect(proposalIds).to.have.deep.members([BigNumber.from(proposal1Id)]);
+    });
+
+    it("should have proposal timestamp in storage", async () => {
+      const timestamp = await voteContract.proposalTimestamps(proposal1Id);
+      expect(timestamp.toNumber()).to.be.greaterThan(0);
+    });
+
+    it("should revert when proposal is not expired", async () => {
+      await expect(voteContract.deleteExpiredProposalTimestamp(proposal1Id)).revertedWith(
+        "ProposalNotExpired()"
+      );
+    });
+
+    describe("When proposal expires", () => {
+      let referendumDuration: BigNumber;
+
+      beforeEach(async () => {
+        referendumDuration = await voteContract.getReferendumDuration();
+        const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+        await timeTravel(referendumDuration.toNumber() - dequeueFrequency.toNumber() + 1);
+      });
+
+      it("should delete timestamp from storage since proposal expired", async () => {
+        await voteContract.deleteExpiredProposalTimestamp(proposal1Id);
+        const timestamp = await voteContract.proposalTimestamps(proposal1Id);
+        expect(timestamp.toNumber()).to.be.eq(0);
+      });
+    });
+  });
+
+  describe("#deleteExpiredVoterProposalId()", () => {
+    const proposal1Id = 1;
+    const proposal1Index = 0;
+    const proposal2Id = 2;
+    const proposal2Index = 1;
+    const amountOfCeloToDeposit = parseUnits("10");
+
+    const yesVotes = hre.web3.utils.toWei("7");
+    const noVotes = hre.web3.utils.toWei("2");
+    const abstainVotes = hre.web3.utils.toWei("1");
+
+    beforeEach(async () => {
+      await depositAndActivate(depositor0, amountOfCeloToDeposit);
+      await proposeNewProposal();
+      await proposeNewProposal();
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal2Id, proposal2Index, yesVotes, noVotes, abstainVotes);
+    });
+
+    it("voter should have proposal as voted", async () => {
+      const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+      expect(proposalIds).to.have.deep.members([
+        BigNumber.from(proposal1Id),
+        BigNumber.from(proposal2Id),
+      ]);
+    });
+
+    it("should revert when incorrect index", async () => {
+      await expect(
+        voteContract.deleteExpiredVoterProposalId(depositor0.address, proposal1Id, proposal2Index)
+      ).revertedWith("IncorrectIndex()");
+    });
+
+    it("should revert when proposal not expired", async () => {
+      await expect(
+        voteContract.deleteExpiredVoterProposalId(depositor0.address, proposal1Id, proposal1Index)
+      ).revertedWith("ProposalNotExpired()");
+    });
+
+    describe("When proposal expires", () => {
+      let referendumDuration: BigNumber;
+
+      beforeEach(async () => {
+        referendumDuration = await voteContract.getReferendumDuration();
+        const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+        await timeTravel(referendumDuration.toNumber() - dequeueFrequency.toNumber() + 1);
+      });
+
+      it("should delete delete proposalId from voter history since proposal expired", async () => {
+        await voteContract.deleteExpiredVoterProposalId(
+          depositor0.address,
+          proposal1Id,
+          proposal1Index
+        );
+
+        const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
+        expect(proposalIds).to.have.deep.members([BigNumber.from(proposal2Id)]);
+      });
     });
   });
 });
