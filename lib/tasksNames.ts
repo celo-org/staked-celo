@@ -28,3 +28,4 @@ export const ACCOUNT_REVOKE = "stakedCelo:account:revoke";
 export const MANAGER_DEPOSIT = "stakedCelo:manager:deposit";
 export const MANAGER_WITHDRAW = "stakedCelo:manager:withdraw";
 export const MANAGER_GET_GROUPS = "stakedCelo:manager:getGroups";
+export const MANAGER_VOTE_PROPOSAL = "stakedCelo:manager:voteProposal";

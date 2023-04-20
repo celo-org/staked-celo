@@ -13,6 +13,9 @@ export const CONTRACT = "contract";
 export const FUNCTION = "function";
 export const ARGS = "args";
 export const LOG_LEVEL = "logLevel";
+export const YES = "yes";
+export const NO = "no";
+export const ABSTAIN = "abstain";
 
 // PARAM DESCRIPTIONS
 export const AMOUNT_DESCRIPTION =
@@ -35,6 +38,9 @@ export const CONTRACT_DESCRIPTION = "Name of the contract.";
 export const FUNCTION_DESCRIPTION = "Name of the function.";
 export const ARGS_DESCRIPTION = "Arguments of function separated by ,";
 export const LOG_LEVEL_DESCRIPTION = "Specify logging level (e.g.: debug, info, warn, error).";
+export const YES_DESCRIPTION = "Number of yes votes for proposal.";
+export const NO_DESCRIPTION = "Number of no votes for proposal.";
+export const ABSTAIN_DESCRIPTION = "Number of abstain votes for proposal.";
 
 // ACCOUNT TASK DESCRIPTIONS
 export const ACCOUNT_ACTIVATE_AND_VOTE_TASK_DESCRIPTION =
@@ -50,6 +56,7 @@ export const ACCOUNT_REVOKE_TASK_DESCRIPTION = "Revokes votes from a validator g
 export const MANAGER_DEPOSIT_TASK_DESCRIPTION = "Deposits CELO in staked CELO protocol.";
 export const MANAGER_GET_GROUPS_TASK_DESCRIPTION = "Returns all groups voting for";
 export const MANAGER_WITHDRAW_TASK_DESCRIPTION = "Withdraws stCELO from staked CELO protocol.";
+export const MANAGER_VOTE_TASK_DESCRIPTION = "Votes with stCELO for governance proposal.";
 
 // MULTISIG TASK DESCRIPTIONS
 export const MULTISIG_CONFIRM_PROPOSAL_TASK_DESCRIPTION = "Confirm a multiSig proposal.";
