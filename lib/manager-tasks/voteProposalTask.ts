@@ -34,13 +34,11 @@ task(MANAGER_VOTE_PROPOSAL, MANAGER_VOTE_TASK_DESCRIPTION)
   .setAction(async (args: TransactionArguments, hre) => {
     taskLogger.setLogLevel(args.logLevel);
     try {
-      console.log(``);
       taskLogger.info(`Starting ${MANAGER_VOTE_PROPOSAL} task...`);
       const signer = await getSignerAndSetDeploymentPath(hre, args);
       
       const governance = await hre.kit.contracts.getGovernance();
       const dequeue = await governance.getDequeue()
-      console.log("dequeue", dequeue.map(k => k.toString()));
       const proposalIndex = dequeue.findIndex(d => d.eq(args.proposalId!))
       if (proposalIndex == -1) {
         throw new Error(`Proposal ${args.proposalId} is not dequeued!`)
