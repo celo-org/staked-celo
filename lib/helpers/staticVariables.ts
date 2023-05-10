@@ -50,6 +50,7 @@ export const ACCOUNT_FINISH_PENDING_WITHDRAWAL_TASK_DESCRIPTION =
 export const ACCOUNT_GET_PENDING_WITHDRAWALS_TASK_DESCRIPTION =
   "Returns the pending withdrawals for a beneficiary.";
 export const ACCOUNT_WITHDRAW_TASK_DESCRIPTION = "Withdraws CELO from account contract.";
+export const ACCOUNT_ALLOWED_TO_VOTE_OVER_MAXIMUM_NUMBER_OF_GROUPS_DESCRIPTION = "Checks if account is able to vote over maximum number of groups.";
 export const ACCOUNT_REVOKE_TASK_DESCRIPTION = "Revokes votes from a validator group.";
 
 // MANAGER TASK DESCRIPTIONS

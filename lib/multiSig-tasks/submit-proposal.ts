@@ -58,6 +58,8 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
           taskLogger.debug(`new event emitted: ${events[i].event}`, `(${events[i].args})`);
         }
       }
+
+      taskLogger.info("Proposal id:", proposalId)
       return proposalId;
     } catch (error) {
       taskLogger.error("Error submitting proposal:", error);

@@ -32,6 +32,7 @@ task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (
     await generateContractUpdate(hre, "Account", destinations, values, payloads);
     await generateContractUpdate(hre, "StakedCelo", destinations, values, payloads);
     await generateContractUpdate(hre, "RebasedStakedCelo", destinations, values, payloads);
+    await generateAllowedToVoteOverMaxNumberOfGroups(hre, destinations, values, payloads);
 
     const {destination, value, payload} = await hre.run(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES)
     if (payload == null) {
@@ -75,6 +76,24 @@ async function generateContractUpdate(
       contract: contractName,
       function: "upgradeTo",
       args: (await hre.deployments.get(`${contractName}_Implementation`)).address,
+    })
+  );
+}
+
+async function generateAllowedToVoteOverMaxNumberOfGroups(
+  hre: HardhatRuntimeEnvironment,
+  destinations: string[],
+  values: number[],
+  payloads: string[]
+) {
+  const accountContract = await hre.ethers.getContract("Account");
+  destinations.push(accountContract.address);
+  values.push(0);
+  payloads.push(
+    await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
+      contract: "Account",
+      function: "setAllowedToVoteOverMaxNumberOfGroups",
+      args: "true",
     })
   );
 }
