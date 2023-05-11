@@ -12,6 +12,8 @@ import {
   MULTISIG_UPDATE_V1_V2,
 } from "../tasksNames";
 
+const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
+
 task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (_, hre) => {
   try {
     taskLogger.setLogLevel("info");
@@ -33,6 +35,7 @@ task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (
     await generateContractUpdate(hre, "StakedCelo", destinations, values, payloads);
     await generateContractUpdate(hre, "RebasedStakedCelo", destinations, values, payloads);
     await generateAllowedToVoteOverMaxNumberOfGroups(hre, destinations, values, payloads);
+    await generateGroupActivate(hre, destinations, values, payloads);
 
     const {destination, value, payload} = await hre.run(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES)
     if (payload == null) {
@@ -96,6 +99,64 @@ async function generateAllowedToVoteOverMaxNumberOfGroups(
       args: "true",
     })
   );
+}
+
+const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
+  validatorGroupsString ? validatorGroupsString.split(",") : [];
+
+async function generateGroupActivate(
+  hre: HardhatRuntimeEnvironment,
+  destinations: string[],
+  values: number[],
+  payloads: string[]
+) {
+  const groupHealthContract = await hre.ethers.getContract("GroupHealth");
+
+  const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
+  if (validatorGroups.length == 0) {
+    return;
+  }
+
+  const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+  const accountContract = await hre.ethers.getContract("Account");
+
+  
+
+  const validatorGroupsWithCelo = await Promise.all(
+    validatorGroups.map(async (validatorGroup) => ({
+      group: validatorGroup,
+      celo: (await accountContract.getCeloForGroup(validatorGroup)),
+    }))
+  );
+
+  const validatorGroupsSortedDesc = validatorGroupsWithCelo.sort((a, b) =>
+    a.celo.lt(b.celo) ? 1 : -1
+  );
+
+  let nextGroup = ADDRESS_ZERO;
+  for (let i = 0; i < validatorGroupsSortedDesc.length; i++) {
+    const healthy = await groupHealthContract.isGroupValid(validatorGroupsSortedDesc[i].group);
+    if (!healthy) {
+      console.log(
+        chalk.red(
+          `Group ${validatorGroupsSortedDesc[i].group} is not healthy - it cannot be activated!`
+        )
+      );
+      continue;
+    }
+
+    destinations.push(defaultStrategyContract.address);
+    values.push(0);
+    payloads.push(
+      await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
+        contract: "DefaultStrategy",
+        function: "activateGroup",
+        args: `${validatorGroupsSortedDesc[i].group},${ADDRESS_ZERO},${nextGroup}`,
+      })
+    );
+
+    nextGroup = validatorGroupsSortedDesc[i].group;
+  }
 }
 
 async function updateAbiOfV1(hre: HardhatRuntimeEnvironment, contract: string) {
