@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if ((await manager.callStatic.owner()) === multisig.address) {
       console.log(
         chalk.red(
-          `Manager is already owned by multisig - most probably this is update. It will be necessary to activate groups in update proposal!`
+          `Manager is already owned by multisig - most probably this is update. It will be necessary to activate groups in update multisig proposal!`
         )
       );
       return;
