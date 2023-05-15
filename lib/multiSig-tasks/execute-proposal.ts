@@ -20,6 +20,8 @@ import {
 import { taskLogger } from "../logger";
 import { MULTISIG_EXECUTE_PROPOSAL } from "../tasksNames";
 
+export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 task(MULTISIG_EXECUTE_PROPOSAL, MULTISIG_EXECUTE_PROPOSAL_TASK_DESCRIPTION)
   .addParam(PROPOSAL_ID, PROPOSAL_ID_DESCRIPTION, undefined, types.int)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
@@ -35,6 +37,7 @@ task(MULTISIG_EXECUTE_PROPOSAL, MULTISIG_EXECUTE_PROPOSAL_TASK_DESCRIPTION)
       const multiSigContract = await hre.ethers.getContract("MultiSig");
 
       const isProposalTimelockReached = await multiSigContract.isProposalTimelockReached(args.proposalId);
+
       if (!isProposalTimelockReached) {
         const timestamp = await multiSigContract.getTimestamp(args.proposalId);
         throw new Error(`Timelock of proposal ${args.proposalId} haven't been reached yet. Proposal can be executed soonest at ${new Date(Number(timestamp.toBigInt()) * 1000)}`)

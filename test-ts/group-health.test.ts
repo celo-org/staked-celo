@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -34,6 +35,7 @@ describe("GroupHealth", () => {
   let nonManager: SignerWithAddress;
 
   let validatorsWrapper: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
   let registryContract: MockRegistry;
   let owner: SignerWithAddress;
   let lockedGoldContract: MockLockedGold;
@@ -62,6 +64,7 @@ describe("GroupHealth", () => {
 
       lockedGold = await hre.kit.contracts.getLockedGold();
       validatorsWrapper = await hre.kit.contracts.getValidators();
+      accountsWrapper = await hre.kit.contracts.getAccounts();
 
       await hre.deployments.fixture("FullTestManager");
       groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
@@ -170,6 +173,7 @@ describe("GroupHealth", () => {
             beforeEach(async () => {
               await revokeElectionOnMockValidatorGroupsAndUpdate(
                 validatorsWrapper,
+                accountsWrapper,
                 groupHealthContract,
                 [activatedGroupAddresses[0]]
               );
@@ -239,6 +243,7 @@ describe("GroupHealth", () => {
         it("should update to invalid when group not elected", async () => {
           await revokeElectionOnMockValidatorGroupsAndUpdate(
             validatorsWrapper,
+            accountsWrapper,
             groupHealthContract,
             [activatedGroupAddresses[0]],
             false
@@ -306,9 +311,12 @@ describe("GroupHealth", () => {
       });
 
       it("should not update group to healthy when validator groups not elected", async () => {
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
-          activatedGroupAddresses[0],
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validatorsWrapper,
+          accountsWrapper,
+          groupHealthContract,
+          [activatedGroupAddresses[0]]
+        );
         await groupHealthContract.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
         expect(await groupHealthContract.isGroupValid(groupAddresses[0])).to.be.false;
       });

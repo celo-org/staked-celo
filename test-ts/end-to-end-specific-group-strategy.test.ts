@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -41,6 +42,7 @@ describe("e2e specific group strategy voting", () => {
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
   let validatorsWrapper: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
   let specificGroupStrategyContract: SpecificGroupStrategy;
   let defaultStrategy: DefaultStrategy;
 
@@ -135,6 +137,7 @@ describe("e2e specific group strategy voting", () => {
     specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
     defaultStrategy = await hre.ethers.getContract("DefaultStrategy");
     validatorsWrapper = await hre.kit.contracts.getValidators();
+    accountsWrapper = await hre.kit.contracts.getAccounts();
 
     multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
 
@@ -331,9 +334,12 @@ describe("e2e specific group strategy voting", () => {
     expect(
       await accountContract.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy.address)
     ).to.deep.eq(amountOfCeloToDeposit);
-    await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
-      specificGroupThatWillBeUnhealthy.address,
-    ]);
+    await revokeElectionOnMockValidatorGroupsAndUpdate(
+      validatorsWrapper,
+      accountsWrapper,
+      groupHealthContract,
+      [specificGroupThatWillBeUnhealthy.address]
+    );
     await specificGroupStrategyContract.rebalanceWhenHealthChanged(
       specificGroupThatWillBeUnhealthy.address
     );
