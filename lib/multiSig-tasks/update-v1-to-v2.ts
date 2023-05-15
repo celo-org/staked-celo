@@ -1,9 +1,9 @@
 import { Deployment } from "@celo/staked-celo-hardhat-deploy/types";
 import chalk from "chalk";
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
-import { MULTISIG_UPDATE_V1_V2_DESCRIPTION } from "../helpers/staticVariables";
+import { TransactionArguments, getSignerAndSetDeploymentPath, setLocalNodeDeploymentPath } from "../helpers/interfaceHelper";
+import { ACCOUNT, ACCOUNT_DESCRIPTION, MULTISIG_UPDATE_V1_V2_DESCRIPTION } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
 import {
   MULTISIG_ENCODE_PROPOSAL_PAYLOAD,
@@ -11,8 +11,13 @@ import {
   MULTISIG_SUBMIT_PROPOSAL,
   MULTISIG_UPDATE_V1_V2,
 } from "../tasksNames";
+import { Contract, Signer } from "ethers";
 
-task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (_, hre) => {
+const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
+
+task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION)
+.addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
+.setAction(async (args: TransactionArguments, hre) => {
   try {
     taskLogger.setLogLevel("info");
     taskLogger.info(`${MULTISIG_UPDATE_V1_V2} task...`);
@@ -20,6 +25,9 @@ task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (
     const destinations: string[] = [];
     const values: number[] = [];
     const payloads: string[] = [];
+
+    const signer = await getSignerAndSetDeploymentPath(hre, args);
+    await generateGroupActivate(hre, destinations, values, payloads, signer);
 
     await updateAbiOfV1(hre, "MultiSig")
     await updateAbiOfV1(hre, "Manager")
@@ -32,8 +40,9 @@ task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (
     await generateContractUpdate(hre, "Account", destinations, values, payloads);
     await generateContractUpdate(hre, "StakedCelo", destinations, values, payloads);
     await generateContractUpdate(hre, "RebasedStakedCelo", destinations, values, payloads);
+    await generateAllowedToVoteOverMaxNumberOfGroups(hre, destinations, values, payloads);
 
-    const {destination, value, payload} = await hre.run(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES)
+    const { destination, value, payload } = await hre.run(MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES)
     if (payload == null) {
       throw Error("There was a problem in task " + MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES)
     }
@@ -49,11 +58,10 @@ task(MULTISIG_UPDATE_V1_V2, MULTISIG_UPDATE_V1_V2_DESCRIPTION).setAction(async (
     taskLogger.info(`Use these values with ${MULTISIG_SUBMIT_PROPOSAL} task`);
 
     taskLogger.info(chalk.green(
-      `yarn hardhat ${MULTISIG_SUBMIT_PROPOSAL} --network ${
-        hre.network.name
+      `yarn hardhat ${MULTISIG_SUBMIT_PROPOSAL} --network ${hre.network.name
       } --destinations ${destinations.join(",")} --values ${values.join(
         ","
-      )} --payloads ${payloads.join(",")} --account '<YOUR_ACCOUNT_ADDRESS>'`
+      )} --payloads ${payloads.join(",")} --account '${await signer.getAddress()}'`
     ));
   } catch (error) {
     taskLogger.error("Error encoding manager setDependencies payload:", error);
@@ -79,6 +87,100 @@ async function generateContractUpdate(
   );
 }
 
+async function generateAllowedToVoteOverMaxNumberOfGroups(
+  hre: HardhatRuntimeEnvironment,
+  destinations: string[],
+  values: number[],
+  payloads: string[]
+) {
+  const accountContract = await hre.ethers.getContract("Account");
+  destinations.push(accountContract.address);
+  values.push(0);
+  payloads.push(
+    await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
+      contract: "Account",
+      function: "setAllowedToVoteOverMaxNumberOfGroups",
+      args: "true",
+    })
+  );
+}
+
+const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
+  validatorGroupsString ? validatorGroupsString.split(",") : [];
+
+async function generateGroupActivate(
+  hre: HardhatRuntimeEnvironment,
+  destinations: string[],
+  values: number[],
+  payloads: string[],
+  signer: Signer
+) {
+  const groupHealthContract = await hre.ethers.getContract("GroupHealth");
+
+  const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
+  if (validatorGroups.length == 0) {
+    return;
+  }
+
+  const defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+  const accountContract = await hre.ethers.getContract("Account");
+
+
+
+  const validatorGroupsWithCelo = await Promise.all(
+    validatorGroups.map(async (validatorGroup) => ({
+      group: validatorGroup,
+      celo: (await accountContract.getCeloForGroup(validatorGroup)),
+    }))
+  );
+
+  const validatorGroupsSortedDesc = validatorGroupsWithCelo.sort((a, b) =>
+    a.celo.lt(b.celo) ? 1 : -1
+  );
+
+  let nextGroup = ADDRESS_ZERO;
+  for (let i = 0; i < validatorGroupsSortedDesc.length; i++) {
+    let healthy = await checkGroupHealth(groupHealthContract, validatorGroupsSortedDesc[i].group)
+
+    if (!healthy) {
+      taskLogger.warning(chalk.yellow(`Updating group health ${validatorGroupsSortedDesc[i].group}`));
+      const tx = await groupHealthContract.connect(signer).updateGroupHealth(validatorGroupsSortedDesc[i].group)
+      await tx.wait()
+
+      healthy = await checkGroupHealth(groupHealthContract, validatorGroupsSortedDesc[i].group)
+      if (!healthy) {
+        continue;
+      } else {
+        taskLogger.info(chalk.green(`Group ${validatorGroupsSortedDesc[i].group} is healthy`))
+      }
+    }
+
+    destinations.push(defaultStrategyContract.address);
+    values.push(0);
+    payloads.push(
+      await hre.run(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, {
+        contract: "DefaultStrategy",
+        function: "activateGroup",
+        args: `${validatorGroupsSortedDesc[i].group},${ADDRESS_ZERO},${nextGroup}`,
+      })
+    );
+
+    nextGroup = validatorGroupsSortedDesc[i].group;
+  }
+}
+
+async function checkGroupHealth(groupHealthContract: Contract, group: string) {
+  const healthy = await groupHealthContract.isGroupValid(group);
+  if (!healthy) {
+    console.log(
+      chalk.red(
+        `Group ${group} is not healthy - it cannot be activated!`
+      )
+    );
+  }
+  return healthy
+}
+
 async function updateAbiOfV1(hre: HardhatRuntimeEnvironment, contract: string) {
   const contractDeployment: Deployment = await hre.deployments.get(contract);
   const artifact = await hre.deployments.getExtendedArtifact(contract);
@@ -89,6 +191,6 @@ async function updateAbiOfV1(hre: HardhatRuntimeEnvironment, contract: string) {
       )
     );
     contractDeployment.abi = artifact.abi;
-    await hre.deployments.save(contract, { ...contractDeployment});
+    await hre.deployments.save(contract, { ...contractDeployment });
   }
 }
