@@ -20,8 +20,6 @@ import {
 import { taskLogger } from "../logger";
 import { MULTISIG_EXECUTE_PROPOSAL } from "../tasksNames";
 
-export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
 task(MULTISIG_EXECUTE_PROPOSAL, MULTISIG_EXECUTE_PROPOSAL_TASK_DESCRIPTION)
   .addParam(PROPOSAL_ID, PROPOSAL_ID_DESCRIPTION, undefined, types.int)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
