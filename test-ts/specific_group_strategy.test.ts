@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -58,6 +59,7 @@ describe("SpecificGroupStrategy", () => {
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
   let validatorsWrapper: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
 
   let nonOwner: SignerWithAddress;
 
@@ -91,6 +93,7 @@ describe("SpecificGroupStrategy", () => {
       [someone] = await randomSigner(parseUnits("100"));
       [depositor] = await randomSigner(parseUnits("500"));
       validatorsWrapper = await hre.kit.contracts.getValidators();
+      accountsWrapper = await hre.kit.contracts.getAccounts();
 
       const stakedCeloFactory: MockStakedCelo__factory = (
         await hre.ethers.getContractFactory("MockStakedCelo")
@@ -622,9 +625,12 @@ describe("SpecificGroupStrategy", () => {
 
     describe("When group is unhealthy", () => {
       beforeEach(async () => {
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
-          specificGroupAddress,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validatorsWrapper,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroupAddress]
+        );
       });
 
       it("should have unhealthy group", async () => {
@@ -650,6 +656,7 @@ describe("SpecificGroupStrategy", () => {
           await manager.connect(depositor).deposit({ value: deposit });
           await revokeElectionOnMockValidatorGroupsAndUpdate(
             validatorsWrapper,
+            accountsWrapper,
             groupHealthContract,
             [specificGroupAddress]
           );

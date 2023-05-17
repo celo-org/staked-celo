@@ -1,4 +1,6 @@
 import { CeloTxReceipt } from "@celo/connect";
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
+import { stringToSolidityBytes } from "@celo/contractkit/lib/wrappers/BaseWrapper";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -396,7 +398,8 @@ export async function submitAndExecuteProposal(
   account: string,
   destinations: string[],
   values: string[],
-  payloads: string[]
+  payloads: string[],
+  timeTravelBeforeExecuting = 5
 ) {
   const proposalId = await hre.run(MULTISIG_SUBMIT_PROPOSAL, {
     destinations: destinations.join(","),
@@ -407,6 +410,7 @@ export async function submitAndExecuteProposal(
   });
 
   try {
+    await timeTravel(timeTravelBeforeExecuting);
     await hre.run(MULTISIG_EXECUTE_PROPOSAL, {
       proposalId: proposalId,
       account: account,
@@ -617,7 +621,8 @@ export async function electMockValidatorGroupsAndUpdate(
   groupHealthContract: MockGroupHealth,
   validatorGroups: string[],
   revoke = false,
-  update = true
+  update = true,
+  makeOneValidatorGroupUseSigner = true
 ): Promise<number[]> {
   let validatorsProcessed = 0;
   const mockedIndexes: number[] = [];
@@ -629,23 +634,50 @@ export async function electMockValidatorGroupsAndUpdate(
     if (isValidatorGroup) {
       const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
       for (let i = 0; i < validatorGroupDetail.members.length; i++) {
+        const memberOriginalAccount = validatorGroupDetail.members[i];
+        const signer = makeOneValidatorGroupUseSigner
+          ? await makeValidatorUseSigner(memberOriginalAccount)
+          : memberOriginalAccount;
         const mockIndex = validatorsProcessed++;
-        await groupHealthContract.setElectedValidator(
-          mockIndex,
-          revoke ? ADDRESS_ZERO : validatorGroupDetail.members[i]
-        );
+        await groupHealthContract.setElectedValidator(mockIndex, revoke ? ADDRESS_ZERO : signer);
         mockedIndexes.push(mockIndex);
       }
     }
     if (update) {
       await groupHealthContract.updateGroupHealth(validatorGroup);
     }
+
+    makeOneValidatorGroupUseSigner = false;
   }
   return mockedIndexes;
 }
 
+async function makeValidatorUseSigner(validatorAddress: string) {
+  const newAccountWallet = hre.ethers.Wallet.createRandom();
+  const newSignerAddress = await newAccountWallet.getAddress();
+
+  const accounts = await hre.kit.contracts.getAccounts();
+
+  const pop = await accounts.generateProofOfKeyPossessionLocally(
+    validatorAddress,
+    newSignerAddress,
+    newAccountWallet.privateKey
+  );
+  const publicKey = stringToSolidityBytes(newAccountWallet.publicKey.slice(4));
+  const authWithPubKey = await accounts["contract"].methods.authorizeValidatorSignerWithPublicKey(
+    newSignerAddress,
+    pop.v,
+    pop.r,
+    pop.s,
+    publicKey
+  );
+  await authWithPubKey.send({ from: validatorAddress });
+  return newSignerAddress;
+}
+
 export async function revokeElectionOnMockValidatorGroupsAndUpdate(
   validators: ValidatorsWrapper,
+  accounts: AccountsWrapper,
   groupHealthContract: MockGroupHealth,
   validatorGroups: string[],
   update = true
@@ -653,7 +685,10 @@ export async function revokeElectionOnMockValidatorGroupsAndUpdate(
   const allValidatorsInValGroup = await Promise.all(
     validatorGroups.map(async (vg) => {
       const valGroup = await validators.getValidatorGroup(vg);
-      return valGroup.members;
+
+      return await Promise.all(
+        valGroup.members.map(async (member) => accounts.getValidatorSigner(member))
+      );
     })
   );
 
