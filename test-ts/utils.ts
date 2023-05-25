@@ -1,3 +1,4 @@
+import electionContractData from "@celo/abis/Election.json";
 import { CeloTxReceipt } from "@celo/connect";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -26,7 +27,6 @@ import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   DefaultGroupContract,
   ExpectVsReal,

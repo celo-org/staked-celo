@@ -1,3 +1,4 @@
+import electionContractData from "@celo/abis/Election.json";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -10,7 +11,6 @@ import { Account } from "../typechain-types/Account";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
 import { MockGovernance } from "../typechain-types/MockGovernance";
 import { MockRegistry } from "../typechain-types/MockRegistry";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   getImpersonatedSigner,
