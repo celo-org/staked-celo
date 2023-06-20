@@ -75,6 +75,8 @@ async function generateContractUpdate(
   values: number[],
   payloads: string[]
 ) {
+  ``
+  taskLogger.info(`Generating contract upgrade for ${contractName}`)
   const accountContract = await hre.ethers.getContract(contractName);
   destinations.push(accountContract.address);
   values.push(0);
@@ -93,6 +95,7 @@ async function generateAllowedToVoteOverMaxNumberOfGroups(
   values: number[],
   payloads: string[]
 ) {
+  taskLogger.info(`generating allowed to vote over maximum number of groups`)
   const accountContract = await hre.ethers.getContract("Account");
   destinations.push(accountContract.address);
   values.push(0);
@@ -154,6 +157,8 @@ async function generateGroupActivate(
         taskLogger.info(chalk.green(`Group ${validatorGroupsSortedDesc[i].group} is healthy`))
       }
     }
+    ``
+    taskLogger.info(`Generating activeGroup for ${validatorGroupsSortedDesc[i].group}`)
 
     destinations.push(defaultStrategyContract.address);
     values.push(0);
