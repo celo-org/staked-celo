@@ -510,7 +510,15 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        actualCelo = account.getCeloForGroup(group);
+        uint256 celoScheduled = account.votesForGroup(group) +
+            account.scheduledVotesForGroup(group);
+        uint256 celoToRemove = account.scheduledRevokeForGroup(group) +
+            account.scheduledWithdrawalsForGroup(group);
+        if (celoToRemove > celoScheduled) {
+            return (celoToRemove - celoScheduled, 0);
+        }
+
+        actualCelo = celoScheduled - celoToRemove;
 
         bool isSpecificGroupStrategy = !specificGroupStrategy.isBlockedGroup(group);
         bool isActiveGroup = defaultStrategy.isActive(group);

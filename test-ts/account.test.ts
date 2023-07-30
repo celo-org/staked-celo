@@ -1689,6 +1689,38 @@ describe("Account", () => {
           });
         });
       });
+
+      describe("When there is not enough stCelo locked from previous transfers", () => {
+        beforeEach(async () => {
+          await account
+            .connect(manager)
+            .scheduleTransfer([groupAddresses[0]], [30], [groupAddresses[1]], [30]);
+        });
+
+        it("reports correctly", async () => {
+          const votesGroupFrom = await account.getCeloForGroup(groupAddresses[0]);
+          expect(votesGroupFrom).to.eq(0);
+
+          const votesGroupTo = await account.getCeloForGroup(groupAddresses[1]);
+          expect(votesGroupTo).to.eq(30);
+        });
+
+        describe("When scheduled new votes", () => {
+          beforeEach(async () => {
+            await account
+              .connect(manager)
+              .scheduleVotes([groupAddresses[0]], [31], { value: "31" });
+          });
+
+          it("reports correctly", async () => {
+            const votesGroupFrom = await account.getCeloForGroup(groupAddresses[0]);
+            expect(votesGroupFrom).to.eq(1);
+
+            const votesGroupTo = await account.getCeloForGroup(groupAddresses[1]);
+            expect(votesGroupTo).to.eq(30);
+          });
+        });
+      });
     });
 
     describe("when there are active votes", () => {

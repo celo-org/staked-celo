@@ -631,11 +631,24 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @return The total amount of CELO directed towards `group`.
      */
     function getCeloForGroup(address group) external view returns (uint256) {
-        return
-            getElection().getTotalVotesForGroupByAccount(group, address(this)) +
-            scheduledVotes[group].toVote -
-            scheduledVotes[group].toRevoke -
-            scheduledVotes[group].toWithdraw;
+        uint256 combinedVotes = getElection().getTotalVotesForGroupByAccount(group, address(this)) +
+            scheduledVotes[group].toVote;
+        uint256 toBeRemoved = scheduledVotes[group].toRevoke + scheduledVotes[group].toWithdraw;
+
+        if (combinedVotes > toBeRemoved) {
+            return combinedVotes - toBeRemoved;
+        }
+
+        return 0;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO that's voted with for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO voted with for `group`.
+     */
+    function votesForGroup(address group) external view returns (uint256) {
+        return getElection().getTotalVotesForGroupByAccount(group, address(this));
     }
 
     /**
