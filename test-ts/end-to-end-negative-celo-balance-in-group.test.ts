@@ -1,3 +1,4 @@
+import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -180,6 +181,18 @@ describe("e2e change strategy from specific when specific doesn't have enough of
       revoke.sub(votes)
     );
 
+    await revokeGroup(specificGroupStrategyDifferentFromActive.address);
+
+    const votesAfterSpecificGroupRevoke = await accountContract.votesForGroup(
+      specificGroupStrategyDifferentFromActive.address
+    );
+    const revokeAfterSpecificGroupRevoke = await accountContract.scheduledRevokeForGroup(
+      specificGroupStrategyDifferentFromActive.address
+    );
+
+    expect(votesAfterSpecificGroupRevoke).to.deep.eq(hre.ethers.BigNumber.from(0));
+    expect(revokeAfterSpecificGroupRevoke).to.deep.eq(revoke.sub(votes));
+
     await rebalanceAllAndActivate();
 
     const votesAfterRebalance = await accountContract.votesForGroup(
@@ -226,5 +239,88 @@ describe("e2e change strategy from specific when specific doesn't have enough of
       realSum.add(group.real);
     }
     expect(expectedSum).to.deep.eq(realSum);
+  }
+
+  async function revokeGroup(group: string) {
+    const electionWrapper = await hre.kit.contracts.getElection();
+    const scheduledToRevokeAmount = await accountContract.scheduledRevokeForGroup(group);
+
+    if (scheduledToRevokeAmount.gt(0)) {
+      let remainingToRevokeAmount = hre.ethers.BigNumber.from(0);
+      let toRevokeFromPending = hre.ethers.BigNumber.from(0);
+
+      let lesserAfterPendingRevoke: string = ADDRESS_ZERO;
+      let greaterAfterPendingRevoke: string = ADDRESS_ZERO;
+      let lesserAfterActiveRevoke: string = ADDRESS_ZERO;
+      let greaterAfterActiveRevoke: string = ADDRESS_ZERO;
+
+      // substract the immediateWithdrawalAmount from scheduledToRevokeAmount to get the revokable amount
+      const immediateWithdrawalAmount = await accountContract.scheduledVotesForGroup(group);
+      if (immediateWithdrawalAmount.lt(scheduledToRevokeAmount)) {
+        remainingToRevokeAmount = scheduledToRevokeAmount.sub(immediateWithdrawalAmount);
+
+        // get AccountContract pending votes for group.
+        const groupVote = await electionWrapper.getVotesForGroupByAccount(
+          accountContract.address,
+          group
+        );
+        const pendingVotes = groupVote.pending;
+
+        // amount to revoke from pending
+        toRevokeFromPending = hre.ethers.BigNumber.from(
+          remainingToRevokeAmount.lt(hre.ethers.BigNumber.from(pendingVotes.toString())) // Math.min
+            ? remainingToRevokeAmount.toString()
+            : pendingVotes.toString()
+        );
+
+        // find lesser and greater for pending votes
+        const lesserAndGreaterAfterPendingRevoke =
+          await electionWrapper.findLesserAndGreaterAfterVote(
+            group,
+            // @ts-ignore:  hre.ethers.BigNumber types library conflict.
+            toRevokeFromPending.mul(-1).toString()
+          );
+        lesserAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.lesser;
+        greaterAfterPendingRevoke = lesserAndGreaterAfterPendingRevoke.greater;
+
+        // Given that validators are sorted by total votes and that revoking pending votes happen before active votes.
+        // One must account for any pending votes that would get removed from the total votes when revoking active votes
+        // in the same transaction.
+
+        // find lesser and greater for active votes
+        const lesserAndGreaterAfterActiveRevoke =
+          await electionWrapper.findLesserAndGreaterAfterVote(
+            group,
+            // @ts-ignore:  hre.ethers.BigNumber types library conflict.
+            remainingToRevokeAmount.mul(-1).toString()
+          );
+        lesserAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.lesser;
+        greaterAfterActiveRevoke = lesserAndGreaterAfterActiveRevoke.greater;
+      }
+
+      // find index of group
+      const index = await findAddressIndex(electionWrapper, group, accountContract.address);
+
+      // use current index
+      const tx = await accountContract.revokeVotes(
+        group,
+        lesserAfterPendingRevoke,
+        greaterAfterPendingRevoke,
+        lesserAfterActiveRevoke,
+        greaterAfterActiveRevoke,
+        index
+      );
+
+      await tx.wait();
+    }
+  }
+
+  async function findAddressIndex(
+    electionWrapper: ElectionWrapper,
+    group: string,
+    account: string
+  ): Promise<number> {
+    const list = await electionWrapper.getGroupsVotedForByAccount(account);
+    return list.indexOf(group);
   }
 });

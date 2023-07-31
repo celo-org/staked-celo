@@ -1019,6 +1019,36 @@ describe("Account", () => {
         expect(scheduled).to.eq(originalAmount);
       });
 
+      describe("When transferred more then current group has", () => {
+        beforeEach(async () => {
+          await account
+            .connect(manager)
+            .scheduleTransfer(
+              [groupAddresses[0]],
+              [originalAmount * 2],
+              [groupAddresses[1]],
+              [originalAmount * 2]
+            );
+
+          await account.revokeVotes(
+            groupAddresses[0],
+            groupAddresses[1],
+            ADDRESS_ZERO,
+            groupAddresses[1],
+            ADDRESS_ZERO,
+            0
+          );
+        });
+
+        it("should return still pending revoke for first group", async () => {
+          expect(await account.scheduledRevokeForGroup(groupAddresses[0])).to.eq(originalAmount);
+        });
+
+        it("should return votes in second group", async () => {
+          expect(await account.scheduledVotesForGroup(groupAddresses[1])).to.eq(originalAmount * 2);
+        });
+      });
+
       describe("When there is transfer to new group", () => {
         beforeEach(async () => {
           await account

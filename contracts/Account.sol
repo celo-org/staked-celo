@@ -643,15 +643,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the total amount of CELO that's voted with for a group.
-     * @param group The address of the validator group.
-     * @return The total amount of CELO voted with for `group`.
-     */
-    function votesForGroup(address group) external view returns (uint256) {
-        return getElection().getTotalVotesForGroupByAccount(group, address(this));
-    }
-
-    /**
      * @notice Returns the total amount of CELO that's scheduled to vote for a group.
      * @param group The address of the validator group.
      * @return The total amount of CELO directed towards `group`.
@@ -748,9 +739,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             return;
         }
 
+        uint256 revokable = Math.min(votesForGroup(group), revokeAmount);
+
         _revokeVotes(
             group,
-            revokeAmount,
+            revokable,
             lesserAfterPendingRevoke,
             greaterAfterPendingRevoke,
             lesserAfterActiveRevoke,
@@ -758,7 +751,16 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             index
         );
 
-        scheduledVotes[group].toRevoke -= revokeAmount;
+        scheduledVotes[group].toRevoke -= revokable;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO that's voted with for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO voted with for `group`.
+     */
+    function votesForGroup(address group) public view returns (uint256) {
+        return getElection().getTotalVotesForGroupByAccount(group, address(this));
     }
 
     /**
