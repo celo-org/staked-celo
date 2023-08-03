@@ -264,6 +264,60 @@ describe("Account", () => {
         expect(votes.pending).to.eq(40);
       });
     });
+
+    describe("When group doesnt have enough of Celo", () => {
+      beforeEach(async () => {
+        await account
+          .connect(manager)
+          .scheduleVotes(groupAddresses, [100, 30, 70], { value: "200" });
+        await account
+          .connect(manager)
+          .scheduleVotes(groupAddresses, [40, 50, 20], { value: "110" });
+
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[0], groupAddresses[1], ADDRESS_ZERO);
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[1], ADDRESS_ZERO, groupAddresses[0]);
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[2], groupAddresses[1], groupAddresses[0]);
+        await mineToNextEpoch(hre.web3);
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[0], groupAddresses[1], ADDRESS_ZERO);
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[1], ADDRESS_ZERO, groupAddresses[0]);
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[2], groupAddresses[1], groupAddresses[0]);
+      });
+
+      it("should activate when not enough of Celo in account", async () => {
+        await account
+          .connect(manager)
+          .scheduleTransfer([groupAddresses[0]], [100], [groupAddresses[1]], [100]);
+        await account.connect(manager).scheduleVotes([groupAddresses[1]], [5], { value: 5 });
+
+        expect(await account.scheduledVotesForGroup(groupAddresses[1])).to.eq(105);
+        expect(await account.scheduledRevokeForGroup(groupAddresses[1])).to.eq(0);
+        expect(await account.scheduledWithdrawalsForGroup(groupAddresses[1])).to.eq(0);
+        expect(await account.votesForGroup(groupAddresses[1])).to.eq(80);
+        expect(await hre.ethers.provider.getBalance(account.address)).to.eq(5);
+
+        await account
+          .connect(manager)
+          .activateAndVote(groupAddresses[1], ADDRESS_ZERO, groupAddresses[2]);
+
+        expect(await account.scheduledVotesForGroup(groupAddresses[1])).to.eq(100);
+        expect(await account.scheduledRevokeForGroup(groupAddresses[1])).to.eq(0);
+        expect(await account.scheduledWithdrawalsForGroup(groupAddresses[1])).to.eq(0);
+        expect(await account.votesForGroup(groupAddresses[1])).to.eq(85);
+        expect(await hre.ethers.provider.getBalance(account.address)).to.eq(0);
+      });
+    });
   });
 
   describe("#scheduleWithdrawals()", () => {
