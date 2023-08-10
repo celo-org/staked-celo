@@ -538,6 +538,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (isActiveGroup) {
             stCeloFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
+        // TODO: if blocked or not active check if there are any withdrawals pending !
 
         expectedCelo = toCelo(stCeloFromSpecificStrategy + stCeloFromDefaultStrategy);
     }
@@ -689,15 +690,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         address toStrategy,
         uint256 stCeloAmount
     ) private {
-        address[] memory fromGroups;
-        uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy, true);
-
-        address[] memory toGroups;
-        uint256[] memory toVotes;
-        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
-
-        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+        distributeWithdrawals(stCeloAmount, fromStrategy, true);
+        distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
     }
 
     /**
