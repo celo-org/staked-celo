@@ -616,22 +616,9 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
 
         if (groupTotalStCeloVotes > 0) {
             updateGroupStCelo(group, groupTotalStCeloVotes, false);
-            address[] memory fromGroups = new address[](1);
-            uint256[] memory fromVotes = new uint256[](1);
-            fromGroups[0] = group;
-            fromVotes[0] = IManager(manager).toCelo(groupTotalStCeloVotes);
-            (
-                address[] memory toGroups,
-                uint256[] memory toVotes
-            ) = _generateDepositVoteDistribution(
-                    IManager(manager).toCelo(groupTotalStCeloVotes),
-                    address(0)
-                );
-            IManager(manager).scheduleTransferWithinStrategy(
-                fromGroups,
-                toGroups,
-                fromVotes,
-                toVotes
+            _generateDepositVoteDistribution(
+                IManager(manager).toCelo(groupTotalStCeloVotes),
+                address(0)
             );
         }
 
