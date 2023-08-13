@@ -89,6 +89,16 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     EnumerableSet.AddressSet private unsortedGroups;
 
     /**
+     * @notice Minimum count of active groups.
+     */
+    uint256 public minCountOfActiveGroups;
+
+    /**
+     * @notice Groups that wait to be activated
+     */
+    EnumerableSet.AddressSet private activatableGroups;
+
+    /**
      * @notice Emitted when a group is deactivated.
      * @param group The group's address.
      */
@@ -123,6 +133,16 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      * @param group The group's address.
      */
     error GroupNotActive(address group);
+
+    /**
+     * Used when attempting to deactivate a group when the minimum number of active groups reached.
+     */
+    error MinimumCountOfActiveGroupsReached();
+
+    /**
+     * @notice Used when attempting to activate a group that is not activatable.
+     */
+    error GroupNotActivatable(address group);
 
     /**
      * @notice Used when attempting to deactivate a healthy group using deactivateUnhealthyGroup().
@@ -312,7 +332,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
         address group,
         address lesser,
         address greater
-    ) external onlyOwner {
+    ) external {
+        if (!activatableGroups.contains(group)) {
+            revert GroupNotActivatable(group);
+        }
+
         if (!groupHealth.isGroupValid(group)) {
             revert GroupNotEligible(group);
         }
@@ -321,21 +345,8 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
             revert GroupAlreadyAdded(group);
         }
 
-        // For migration purposes between V1 and V2. It can be removed once migrated to V2.
-        uint256 currentStCelo = 0;
-        uint256 stCeloForWholeGroup = IManager(manager).toStakedCelo(
-            account.getCeloForGroup(group)
-        );
-
-        if (stCeloForWholeGroup != 0) {
-            (uint256 specificGroupTotalStCelo, , ) = specificGroupStrategy.getStCeloInGroup(group);
-            currentStCelo =
-                stCeloForWholeGroup -
-                Math.min(stCeloForWholeGroup, specificGroupTotalStCelo);
-            updateGroupStCelo(group, currentStCelo, true);
-        }
-
-        activeGroups.insert(group, currentStCelo, lesser, greater);
+        activeGroups.insert(group, 0, lesser, greater);
+        activatableGroups.remove(group);
 
         emit GroupActivated(group);
     }
@@ -458,6 +469,14 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     }
 
     /**
+     * @notice Sets the minimum number of active groups.
+     * @param minCount The minimum number of active groups.
+     */
+    function setMinCountOfActiveGroups(uint256 minCount) external onlyOwner {
+        minCountOfActiveGroups = minCount;
+    }
+
+    /**
      * @notice Deactivates an unhealthy group.
      * @param group The group to deactivate if unhealthy.
      */
@@ -466,6 +485,22 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
             revert HealthyGroup(group);
         }
         _deactivateGroup((group));
+    }
+
+    /**
+     * @notice Adds group to activatable groups.
+     * @param group The group to add.
+     */
+    function addActivatableGroup(address group) external onlyOwner {
+        if (!groupHealth.isGroupValid(group)) {
+            revert GroupNotEligible(group);
+        }
+
+        if (activeGroups.contains(group) || activatableGroups.contains(group)) {
+            revert GroupAlreadyAdded(group);
+        }
+
+        activatableGroups.add(group);
     }
 
     /**
@@ -533,6 +568,23 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      */
     function getUnsortedGroupAt(uint256 index) external view returns (address) {
         return unsortedGroups.at(index);
+    }
+
+    /**
+     * @notice Returns the activatable group at index.
+     * @param index The index to look up.
+     * @return The group.
+     */
+    function getActivatableGroupAt(uint256 index) external view returns (address) {
+        return activatableGroups.at(index);
+    }
+
+    /**
+     * @notice Returns the number of activatable groups.
+     * @return The number of activatable groups.
+     */
+    function activatableGroupsCount() external view returns (uint256) {
+        return activatableGroups.length();
     }
 
     /**
@@ -609,6 +661,11 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
         if (!activeGroups.contains(group)) {
             revert GroupNotActive(group);
         }
+
+        if (activeGroups.getNumElements() <= minCountOfActiveGroups) {
+            revert MinimumCountOfActiveGroupsReached();
+        }
+
         activeGroups.remove(group);
         unsortedGroups.remove(group);
 
