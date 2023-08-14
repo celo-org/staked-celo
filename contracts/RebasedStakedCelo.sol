@@ -168,7 +168,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
             uint256
         )
     {
-        return (1, 1, 1, 2);
+        return (1, 1, 1, 1);
     }
 
     /**
