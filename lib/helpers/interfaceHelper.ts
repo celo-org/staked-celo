@@ -17,6 +17,9 @@ export interface TransactionArguments {
   useLedger: boolean;
   useNodeAccount: boolean;
   logLevel: string;
+  yes?: string;
+  no?: string;
+  abstain?: string;
 }
 
 async function getSigner(

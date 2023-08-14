@@ -7,6 +7,7 @@ import { MULTISIG_ENCODE_PROPOSAL_PAYLOAD } from "../lib/tasksNames";
 import { ADDRESS_ZERO } from "../test-ts/utils";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
+import { Manager } from "../typechain-types/Manager";
 
 const parseValidatorGroups = (validatorGroupsString: string | undefined) =>
   validatorGroupsString ? validatorGroupsString.split(",") : [];
@@ -30,6 +31,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const validatorGroups = parseValidatorGroups(process.env.VALIDATOR_GROUPS);
     if (validatorGroups.length == 0) {
+      return;
+    }
+
+    const manager: Manager = await hre.ethers.getContract("Manager");
+    if ((await manager.callStatic.owner()) === multisig.address) {
+      console.log(
+        chalk.red(
+          `Manager is already owned by multisig - most probably this is update. It will be necessary to activate groups in update multisig proposal!`
+        )
+      );
       return;
     }
 

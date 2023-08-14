@@ -401,6 +401,15 @@ Note: `--destinations` is the target proxy contract whose implementation is bein
 ```
 3. Insert returned values into submitProposal task (it can be found few lines above)
 
+## Vote for governance proposal
+
+``` bash
+>  yarn hardhat stakedCelo:manager:voteProposal --network [network] --proposal-id [governance proposal id] --yes [# of votes] --account [address]
+
+# example
+>  yarn hardhat stakedCelo:manager:voteProposal --network alfajores --proposal-id 10 --yes 100 --no 0 --abstain 0 --account 0x456f41406B32c45D59E539e4BBA3D7898c3584dA
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for style and how to contribute.

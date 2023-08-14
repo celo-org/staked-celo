@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -66,6 +67,7 @@ describe("Manager", () => {
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
   let validators: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
 
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
@@ -87,6 +89,7 @@ describe("Manager", () => {
       lockedGold = await hre.kit.contracts.getLockedGold();
       election = await hre.kit.contracts.getElection();
       validators = await hre.kit.contracts.getValidators();
+      accountsWrapper = await hre.kit.contracts.getAccounts();
 
       await hre.deployments.fixture("FullTestManager");
       manager = await hre.ethers.getContract("Manager");
@@ -874,9 +877,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroupAddress);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroupAddress,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroupAddress]
+        );
       });
 
       describe("When different ratios of CELO vs stCELO", () => {
@@ -1561,9 +1567,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroupAddress);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroupAddress,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroupAddress]
+        );
       });
 
       describe("When depositing to unhealthy specific group", () => {
@@ -2308,9 +2317,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroup);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroup,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroup]
+        );
         await groupHealthContract.updateGroupHealth(specificGroup);
         await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroup);
 
@@ -2739,9 +2751,12 @@ describe("Manager", () => {
       describe("When group becomes unhealthy", () => {
         let newTail: string;
         beforeEach(async () => {
-          await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-            specificGroup,
-          ]);
+          await revokeElectionOnMockValidatorGroupsAndUpdate(
+            validators,
+            accountsWrapper,
+            groupHealthContract,
+            [specificGroup]
+          );
           [newTail] = await defaultStrategyContract.getGroupsTail();
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroup);
           await updateGroupCeloBasedOnProtocolStCelo(

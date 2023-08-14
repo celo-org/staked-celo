@@ -39,14 +39,14 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
      * @param depositor The address of the depositor.
      * @param amount The amount of stCELO deposited.
      */
-    event StakedCeloDeposited(address depositor, uint256 amount);
+    event StakedCeloDeposited(address indexed depositor, uint256 amount);
 
     /**
      * @notice Used when a withdrawal is successfully completed.
      * @param withdrawer The address of the withdrawer.
      * @param amount The amount of stCELO withdrawn.
      */
-    event StakedCeloWithdrawn(address withdrawer, uint256 amount);
+    event StakedCeloWithdrawn(address indexed withdrawer, uint256 amount);
 
     /**
      * @notice Used when the deposit amount is zero.
@@ -77,6 +77,11 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
      * @param amount The amount of stCELO the withdrawer attempted to withdraw.
      */
     error FailedWithdrawal(address withdrawer, uint256 amount);
+
+    /**
+     * Used when input amount of token is greater than total token amount.
+     */
+    error InputLargerThanTotalAmount();
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -163,7 +168,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
             uint256
         )
     {
-        return (1, 1, 1, 1);
+        return (1, 1, 1, 2);
     }
 
     /**
@@ -192,6 +197,11 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
         uint256 stCeloSupply = stakedCelo.totalSupply();
         uint256 celoBalance = account.getTotalCelo();
 
+        uint256 rstSupply = totalSupply();
+        if (rstSupply < rstCeloAmount) {
+            revert InputLargerThanTotalAmount();
+        }
+
         if (stCeloSupply == 0 || celoBalance == 0) {
             return rstCeloAmount;
         }
@@ -207,6 +217,10 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
     function toRebasedStakedCelo(uint256 stCeloAmount) public view returns (uint256) {
         uint256 stCeloSupply = stakedCelo.totalSupply();
         uint256 celoBalance = account.getTotalCelo();
+
+        if (stCeloSupply < stCeloAmount) {
+            revert InputLargerThanTotalAmount();
+        }
 
         if (stCeloSupply == 0 || celoBalance == 0) {
             return stCeloAmount;

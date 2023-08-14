@@ -33,13 +33,21 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
       taskLogger.setLogLevel(args.logLevel);
       const signer = await getSignerAndSetDeploymentPath(hre, args);
 
+      const destinations = args.destinations!.split(",")
+      const values = args.values!.split(",")
+      const payloads = args.payloads!.split(",")
+
+      if (destinations.length != values.length && values.length != payloads.length) {
+        throw new Error("Destinations, values and payloads need to have same length")
+      }
+
       const multiSigContract = await hre.ethers.getContract("MultiSig");
       const tx = await multiSigContract
         .connect(signer)
         .submitProposal(
-          args.destinations!.split(","),
-          args.values!.split(","),
-          args.payloads!.split(","),
+          destinations,
+          values,
+          payloads,
           {
             type: 0,
           }
@@ -58,6 +66,8 @@ task(MULTISIG_SUBMIT_PROPOSAL, MULTISIG_SUBMIT_PROPOSAL_TASK_DESCRIPTION)
           taskLogger.debug(`new event emitted: ${events[i].event}`, `(${events[i].args})`);
         }
       }
+
+      taskLogger.info("Proposal id:", proposalId)
       return proposalId;
     } catch (error) {
       taskLogger.error("Error submitting proposal:", error);

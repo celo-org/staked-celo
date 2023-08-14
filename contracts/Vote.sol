@@ -87,8 +87,8 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * @param abstainVotes The abstain votes.
      */
     event ProposalVoted(
-        address voter,
-        uint256 proposalId,
+        address indexed voter,
+        uint256 indexed proposalId,
         uint256 yesVotes,
         uint256 noVotes,
         uint256 abstainVotes
@@ -213,7 +213,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 2, 0);
+        return (1, 1, 2, 1);
     }
 
     /**

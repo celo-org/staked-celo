@@ -22,9 +22,12 @@ export const STAKED_CELO_DEPLOY = "stakedCelo:deploy";
 
 export const ACCOUNT_ACTIVATE_AND_VOTE = "stakedCelo:account:activateAndVote";
 export const ACCOUNT_WITHDRAW = "stakedCelo:account:withdraw";
+export const ACCOUNT_ALLOWED_TO_VOTE_OVER_MAXIMUM_NUMBER_OF_GROUPS =
+  "stakedCelo:account:voteOverMax";
 export const ACCOUNT_FINISH_PENDING_WITHDRAWAL = "stakedCelo:account:finishPendingWithdrawal";
 export const ACCOUNT_REVOKE = "stakedCelo:account:revoke";
 
 export const MANAGER_DEPOSIT = "stakedCelo:manager:deposit";
 export const MANAGER_WITHDRAW = "stakedCelo:manager:withdraw";
 export const MANAGER_GET_GROUPS = "stakedCelo:manager:getGroups";
+export const MANAGER_VOTE_PROPOSAL = "stakedCelo:manager:voteProposal";

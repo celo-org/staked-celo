@@ -40,7 +40,7 @@ class Log {
     }
   }
 
-  public setLogLevel(level: string): void {
+  public setLogLevel(level = "info"): void {
     this.level = level;
   }
 }

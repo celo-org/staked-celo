@@ -76,7 +76,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256
         )
     {
-        return (1, 1, 0, 0);
+        return (1, 1, 0, 1);
     }
 
     /**
@@ -222,7 +222,17 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         uint256 slashMultiplier;
-        (members, , , , , slashMultiplier, ) = validators.getValidatorGroup(group);
+        address[] memory originalMembers;
+        (originalMembers, , , , , slashMultiplier, ) = validators.getValidatorGroup(group);
+
+        members = new address[](originalMembers.length);
+
+        IAccounts accounts = getAccounts();
+
+        for (uint256 i = 0; i < originalMembers.length; i++) {
+            members[i] = accounts.getValidatorSigner(originalMembers[i]);
+        }
+
         // check if group has no members
         if (members.length == 0) {
             return (false, members);
