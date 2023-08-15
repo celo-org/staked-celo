@@ -94,7 +94,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     uint256 public minCountOfActiveGroups;
 
     /**
-     * @notice Groups that wait to be activated
+     * @notice Groups that wait to be activated.
      */
     EnumerableSet.AddressSet private activatableGroups;
 
