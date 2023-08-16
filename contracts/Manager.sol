@@ -532,7 +532,8 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             (stCeloFromSpecificStrategy, overflow, unhealthy) = specificGroupStrategy
                 .getStCeloInGroup(group);
 
-            stCeloFromSpecificStrategy -= overflow + unhealthy;
+            uint256 toSubtract = overflow + unhealthy;
+            stCeloFromSpecificStrategy -= Math.min(stCeloFromSpecificStrategy, toSubtract);
         }
 
         if (isActiveGroup) {
