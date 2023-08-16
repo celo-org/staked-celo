@@ -539,8 +539,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         if (isActiveGroup) {
             stCeloFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
-        // TODO: if blocked or not active check if there are any withdrawals pending !
-
         expectedCelo = toCelo(stCeloFromSpecificStrategy + stCeloFromDefaultStrategy);
     }
 
