@@ -114,13 +114,6 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     event ProposalAdded(uint256 indexed proposalId);
 
     /**
-     * @notice Emitted when a confirmed proposal is successfully executed.
-     * @param proposalId The ID of the proposal that was executed.
-     * @param returnData The response that was recieved from the external call.
-     */
-    event ProposalExecuted(uint256 indexed proposalId, bytes returnData);
-
-    /**
      * @notice Emitted when one of the transactions that make up a proposal is successfully
      * executed.
      * @param index The index of the transaction within the proposal.
