@@ -872,6 +872,12 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         return (1, 1, 1, 0);
     }
 
+    /**
+     * @notice Executes a proposal made by Celo Governance.
+     * @dev Only callable by the Celo Governance contract, as defined in the
+     * Celo Registry. Thus, this function may be called via a Governance
+     * referendum or hotfix.
+     */
     function governanceProposeAndExecute(
         address[] calldata destinations,
         uint256[] calldata values,
