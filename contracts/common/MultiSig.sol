@@ -713,6 +713,33 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     }
 
     /**
+     * @notice Executes a proposal made by Celo Governance.
+     * @dev Only callable by the Celo Governance contract, as defined in the
+     * Celo Registry. Thus, this function may be called via a Governance
+     * referendum or hotfix.
+     */
+    function governanceProposeAndExecute(
+        address[] calldata destinations,
+        uint256[] calldata values,
+        bytes[] calldata payloads
+    ) external {
+        address governanceAddress = address(getGovernance());
+
+        if (msg.sender != governanceAddress) {
+            revert SenderNotGovernance(msg.sender);
+        }
+
+        for (uint256 i = 0; i < destinations.length; i++) {
+            bytes memory returnData = ExternalCall.execute(
+                destinations[i],
+                values[i],
+                payloads[i]
+            );
+            emit GovernanceTransactionExecuted(i, returnData);
+        }
+    }
+
+    /**
      * @notice Returns the timestamp at which a proposal becomes executable.
      * @param proposalId The ID of the proposal.
      * @return The timestamp at which the proposal becomes executable.
@@ -870,32 +897,5 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         )
     {
         return (1, 1, 1, 0);
-    }
-
-    /**
-     * @notice Executes a proposal made by Celo Governance.
-     * @dev Only callable by the Celo Governance contract, as defined in the
-     * Celo Registry. Thus, this function may be called via a Governance
-     * referendum or hotfix.
-     */
-    function governanceProposeAndExecute(
-        address[] calldata destinations,
-        uint256[] calldata values,
-        bytes[] calldata payloads
-    ) external {
-        address governanceAddress = address(getGovernance());
-
-        if (msg.sender != governanceAddress) {
-            revert SenderNotGovernance(msg.sender);
-        }
-
-        for (uint256 i = 0; i < destinations.length; i++) {
-            bytes memory returnData = ExternalCall.execute(
-                destinations[i],
-                values[i],
-                payloads[i]
-            );
-            emit GovernanceTransactionExecuted(i, returnData);
-        }
     }
 }
