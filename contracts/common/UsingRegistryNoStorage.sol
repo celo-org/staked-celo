@@ -10,7 +10,10 @@ import "../interfaces/IGovernance.sol";
 import "../interfaces/IValidators.sol";
 
 /**
- * @title A helper for getting Celo core contracts from the Registry.
+ * @title A helper for getting Celo core contracts from the Registry. This
+ * version stores the canonical Celo Registry address in a constant and doesn't
+ * use any storage slots, thus can be inserted into the inheritance tree of an
+ * already existing contract.
  */
 abstract contract UsingRegistryNoStorage {
     /// @notice The canonical address of the Registry.
