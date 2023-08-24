@@ -730,11 +730,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         }
 
         for (uint256 i = 0; i < destinations.length; i++) {
-            bytes memory returnData = ExternalCall.execute(
-                destinations[i],
-                values[i],
-                payloads[i]
-            );
+            bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
             emit GovernanceTransactionExecuted(i, returnData);
         }
     }

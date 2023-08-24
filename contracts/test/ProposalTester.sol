@@ -12,7 +12,7 @@ contract ProposalTester {
 
     error CallDoesNotExist(uint256 i);
 
-    function testCall(uint256 x) payable public {
+    function testCall(uint256 x) public payable {
         Call memory newCall = Call(msg.sender, msg.value, x);
         calls.push(newCall);
     }
@@ -21,7 +21,15 @@ contract ProposalTester {
         return calls.length;
     }
 
-    function getCall(uint256 i) external view returns (address, uint256, uint256) {
+    function getCall(uint256 i)
+        external
+        view
+        returns (
+            address,
+            uint256,
+            uint256
+        )
+    {
         if (i >= calls.length) {
             revert CallDoesNotExist(i);
         }
