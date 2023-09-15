@@ -37,6 +37,7 @@ describe("Account", () => {
 
   let account: Account;
 
+  let owner: SignerWithAddress;
   let manager: SignerWithAddress;
   let nonManager: SignerWithAddress;
   let beneficiary: SignerWithAddress;
@@ -84,7 +85,7 @@ describe("Account", () => {
 
   beforeEach(async () => {
     await hre.deployments.fixture("TestAccount");
-    const owner = await hre.ethers.getNamedSigner("owner");
+    owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
     governance = await hre.ethers.getContract("MockGovernance");
@@ -2015,4 +2016,38 @@ describe("Account", () => {
       expect(await governance.abstainVotes()).to.eq(abstain);
     });
   });
+
+  describe("#pause", () => {
+    it("can be called by the owner", async () => {
+      await account.connect(owner).pause();
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.true;
+    })
+
+    it("cannot be called by a random account", async () => {
+      await expect(account.connect(beneficiary).pause())
+        .revertedWith("Ownable: caller is not the owner")
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.false;
+    })
+  })
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await account.connect(owner).pause();
+    })
+
+    it("can be called by the owner", async () => {
+      await account.connect(owner).unpause();
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.false;
+    })
+
+    it("cannot be called by a random account", async () => {
+      await expect(account.connect(beneficiary).unpause())
+        .revertedWith("Ownable: caller is not the owner")
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.true;
+    })
+  })
 });

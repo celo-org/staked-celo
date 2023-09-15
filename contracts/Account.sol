@@ -7,13 +7,14 @@ import "./Managed.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./interfaces/IAccount.sol";
+import "./Pausable.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
  * @notice This contract depends on the Manager to decide how to distribute votes and how to
  * keep track of ownership of CELO voted via this contract.
  */
-contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, IAccount {
+contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, IAccount, Pausable {
     /**
      * @notice Used to keep track of a pending withdrawal. A similar data structure
      * exists within LockedGold.sol, but it only keeps track of pending withdrawals
@@ -63,6 +64,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * by all beneficiaries.
      */
     uint256 public totalScheduledWithdrawals;
+
+    /**
+     * @notice Controls whether the contract is paused.
+     */
+    PausedRecord paused;
 
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
@@ -678,6 +684,18 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         returns (uint256)
     {
         return scheduledVotes[group].toWithdrawFor[beneficiary];
+    }
+
+    function pause() external onlyOwner {
+        _pause(paused);
+    }
+
+    function unpause() external onlyOwner {
+        _unpause(paused);
+    }
+
+    function isPaused() external view returns (bool) {
+        return paused.paused;
     }
 
     /**
