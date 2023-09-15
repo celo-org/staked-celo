@@ -244,6 +244,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         external
         payable
         onlyManager
+        onlyWhenNotPaused(paused)
     {
         if (groups.length != votes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
@@ -274,7 +275,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256[] calldata fromVotes,
         address[] calldata toGroups,
         uint256[] calldata toVotes
-    ) external onlyManager {
+    ) external onlyManager onlyWhenNotPaused(paused) {
         if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
@@ -307,7 +308,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address beneficiary,
         address[] calldata groups,
         uint256[] calldata withdrawals
-    ) external onlyManager {
+    ) external onlyManager onlyWhenNotPaused(paused) {
         if (groups.length != withdrawals.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
@@ -361,7 +362,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address lesserAfterActiveRevoke,
         address greaterAfterActiveRevoke,
         uint256 index
-    ) external returns (uint256) {
+    ) external onlyWhenNotPaused(paused) returns (uint256) {
         uint256 withdrawalAmount = scheduledVotes[group].toWithdrawFor[beneficiary];
         if (withdrawalAmount == 0) {
             revert NoScheduledWithdrawal(beneficiary, group);
@@ -437,7 +438,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address group,
         address voteLesser,
         address voteGreater
-    ) external {
+    ) external onlyWhenNotPaused(paused) {
         IElection election = getElection();
 
         // The amount of unlocked CELO for group that we want to lock and vote with.
@@ -497,7 +498,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address beneficiary,
         uint256 localPendingWithdrawalIndex,
         uint256 lockedGoldPendingWithdrawalIndex
-    ) external returns (uint256 amount) {
+    ) external onlyWhenNotPaused(paused) returns (uint256 amount) {
         (uint256 value, uint256 timestamp) = validatePendingWithdrawalRequest(
             beneficiary,
             localPendingWithdrawalIndex,
@@ -550,7 +551,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 yesVotes,
         uint256 noVotes,
         uint256 abstainVotes
-    ) external onlyManager {
+    ) external onlyManager onlyWhenNotPaused(paused) {
         bool voteResult = getGovernance().votePartially(
             proposalId,
             index,
@@ -746,7 +747,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address lesserAfterActiveRevoke,
         address greaterAfterActiveRevoke,
         uint256 index
-    ) public {
+    ) public onlyWhenNotPaused(paused) {
         (, uint256 revokeAmount) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
         if (revokeAmount == 0) {
