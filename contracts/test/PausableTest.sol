@@ -22,4 +22,8 @@ contract PausableTest is Pausable {
     function unpause() external {
         _unpause(paused);
     }
+
+    function isPaused() external view returns (bool) {
+        return _isPaused(paused);
+    }
 }

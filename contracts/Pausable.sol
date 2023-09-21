@@ -23,4 +23,13 @@ contract Pausable {
     function _unpause(PausedRecord storage paused) internal {
         paused.paused = false;
     }
+
+    /**
+     * @notice Returns whether or not the contract is paused.
+     * @param paused The PauseRecord to check.
+     * @return `true` if the contract is paused, `false` otherwise.
+     */
+    function _isPaused(PausedRecord storage paused) internal view returns (bool) {
+        return paused.paused;
+    }
 }

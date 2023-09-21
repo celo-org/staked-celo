@@ -15,17 +15,22 @@ describe("Pausable", () => {
 
   describe("When not paused", () => {
     it("should allow the pausable function to be called", async () => {
-      const numberBefore = await pausableTest.numberCalls()
-      expect(numberBefore).to.equal(0)
-      await pausableTest.callPausable()
-      const numberAfter = await pausableTest.numberCalls()
-      expect(numberAfter).to.equal(1)
+      const numberBefore = await pausableTest.numberCalls();
+      expect(numberBefore).to.equal(0);
+      await pausableTest.callPausable();
+      const numberAfter = await pausableTest.numberCalls();
+      expect(numberAfter).to.equal(1);
+    });
+
+    it("reports as not paused", async () => {
+      const paused = await pausableTest.isPaused();
+      expect(paused).to.be.false;
     });
   });
 
   describe("When paused", () => {
     beforeEach(async () => {
-      pausableTest.pause()
+      await pausableTest.pause()
     })
 
     it("should not allow the pausable function to be called", async () => {
@@ -41,5 +46,10 @@ describe("Pausable", () => {
       const numberAfter = await pausableTest.numberCalls()
       expect(numberAfter).to.equal(1)
     })
+
+    it("reports as paused", async () => {
+      const paused = await pausableTest.isPaused();
+      expect(paused).to.be.true;
+    });
   });
 });

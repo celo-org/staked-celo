@@ -709,7 +709,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @return `true` if the contract is paused, `false` otherwise.
      */
     function isPaused() external view returns (bool) {
-        return paused.paused;
+        return _isPaused(paused);
     }
 
     /**
