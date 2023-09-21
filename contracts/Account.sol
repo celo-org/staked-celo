@@ -687,14 +687,27 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         return scheduledVotes[group].toWithdrawFor[beneficiary];
     }
 
+    /**
+     * @notice Pauses external access to the contract.
+     * @dev Functions with the `onlyWhenNotPaused` modifier will be paused. This
+     * should be all the non-permissioned (i.e. not `onlyOwner` or * `onlyManager`)
+     * external/public functions.
+     */
     function pause() external onlyOwner {
         _pause(paused);
     }
 
+    /**
+     * @notice Unpauses the contract if it was previously paused using `pause()`.
+     */
     function unpause() external onlyOwner {
         _unpause(paused);
     }
 
+    /**
+     * @notice Returns the paused status of the contract.
+     * @return `true` if the contract is paused, `false` otherwise.
+     */
     function isPaused() external view returns (bool) {
         return paused.paused;
     }
