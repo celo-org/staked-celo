@@ -2022,95 +2022,107 @@ describe("Account", () => {
       await account.connect(owner).pause();
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
-    })
+    });
 
     it("cannot be called by a random account", async () => {
-      await expect(account.connect(beneficiary).pause())
-        .revertedWith("Ownable: caller is not the owner")
+      await expect(account.connect(beneficiary).pause()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
-    })
-  })
+    });
+  });
 
   describe("#unpause", () => {
     beforeEach(async () => {
       await account.connect(owner).pause();
-    })
+    });
 
     it("can be called by the owner", async () => {
       await account.connect(owner).unpause();
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
-    })
+    });
 
     it("cannot be called by a random account", async () => {
-      await expect(account.connect(beneficiary).unpause())
-        .revertedWith("Ownable: caller is not the owner")
+      await expect(account.connect(beneficiary).unpause()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
-    })
-  })
+    });
+  });
 
   describe("when paused", () => {
     beforeEach(async () => {
       await account.connect(owner).pause();
-    })
+    });
 
     it("can't call scheduleVotes", async () => {
-      await expect(account.connect(manager).scheduleVotes([groupAddresses[0]], [100], { value: "100" }))
-        .revertedWith("Paused()");
-    })
+      await expect(
+        account.connect(manager).scheduleVotes([groupAddresses[0]], [100], { value: "100" })
+      ).revertedWith("Paused()");
+    });
 
     it("can't call scheduleTransfer", async () => {
-      await expect(account.connect(manager).scheduleTransfer(
-        [groupAddresses[0]],
-        [1],
-        [groupAddresses[1]],
-        [1]
-      )).revertedWith("Paused()");
-    })
+      await expect(
+        account
+          .connect(manager)
+          .scheduleTransfer([groupAddresses[0]], [1], [groupAddresses[1]], [1])
+      ).revertedWith("Paused()");
+    });
 
     it("can't call scheduleWithdrawals", async () => {
-      await expect(account.connect(manager)
+      await expect(
+        account
+          .connect(manager)
           .scheduleWithdrawals(beneficiary.address, [groupAddresses[0]], [260])
       ).revertedWith("Paused()");
-    })
+    });
 
     it("can't call withdraw", async () => {
-      await expect(account.connect(manager).withdraw(
-          beneficiary.address,
+      await expect(
+        account
+          .connect(manager)
+          .withdraw(
+            beneficiary.address,
+            groupAddresses[0],
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            0
+          )
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call activateAndVote", async () => {
+      await expect(
+        account.activateAndVote(groupAddresses[0], groupAddresses[1], ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call finishPendingWithdrawal", async () => {
+      await expect(account.finishPendingWithdrawal(beneficiary.address, 0, 0)).revertedWith(
+        "Paused()"
+      );
+    });
+
+    it("can't call votePartially", async () => {
+      await expect(account.connect(manager).votePartially(0, 0, 1, 1, 1)).revertedWith("Paused()");
+    });
+
+    it("can't call revokeVotes", async () => {
+      await expect(
+        account.revokeVotes(
           groupAddresses[0],
           ADDRESS_ZERO,
           ADDRESS_ZERO,
           ADDRESS_ZERO,
           ADDRESS_ZERO,
           0
-        )).revertedWith("Paused()");
-    })
-
-    it("can't call activateAndVote", async () => {
-      await expect(account.activateAndVote(groupAddresses[0], groupAddresses[1], ADDRESS_ZERO))
-        .revertedWith("Paused()");
-    })
-
-    it("can't call finishPendingWithdrawal", async () => {
-      await expect(account.finishPendingWithdrawal(beneficiary.address, 0, 0))
-        .revertedWith("Paused()");
-    })
-
-    it("can't call votePartially", async () => {
-      await expect(account.connect(manager).votePartially(0, 0, 1, 1, 1))
-        .revertedWith("Paused()");
-    })
-
-    it("can't call revokeVotes", async () => {
-      await expect(account.revokeVotes(
-        groupAddresses[0],
-        ADDRESS_ZERO,
-        ADDRESS_ZERO,
-        ADDRESS_ZERO,
-        ADDRESS_ZERO,
-        0)).revertedWith("Paused()");
-    })
-  })
+        )
+      ).revertedWith("Paused()");
+    });
+  });
 });
