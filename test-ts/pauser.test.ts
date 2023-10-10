@@ -42,4 +42,21 @@ describe("Pauser", () => {
         .revertedWith("");
     });
   });
+
+  describe("unpause", () => {
+    beforeEach(async () => {
+      await pausableTest.pause();
+    });
+
+    it("should unpause a previously paused contract", async () => {
+      await pauser.connect(owner).unpause(pausableTest.address);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("should revert if called by a non-owner", async () => {
+      await expect(pauser.connect(nonOwner).unpause(pausableTest.address))
+        .revertedWith("");
+    });
+  });
 });

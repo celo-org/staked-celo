@@ -31,4 +31,8 @@ contract Pauser is UUPSOwnableUpgradeable {
     function pause(address contr) external onlyOwner {
         IPausable(contr).pause();
     }
+
+    function unpause(address contr) external onlyOwner {
+        IPausable(contr).unpause();
+    }
 }
