@@ -1,12 +1,14 @@
 //SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
+import "./interfaces/IPausable.sol";
+
 /**
  * @title A helper contract to add pasuing functionality to a contract.
  * @notice Used to prevent/mitigate damage in case an exploit is found in the
  * extending contract.
  */
-contract Pausable {
+abstract contract Pausable is IPausable {
     /**
      * @notice Struct wrapping a bool that determines whether the contract
      * should be paused.
