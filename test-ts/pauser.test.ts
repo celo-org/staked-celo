@@ -39,7 +39,7 @@ describe("Pauser", () => {
 
     it("should revert if called by a non-owner", async () => {
       await expect(pauser.connect(nonOwner).pause(pausableTest.address))
-        .revertedWith("");
+        .revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -56,7 +56,7 @@ describe("Pauser", () => {
 
     it("should revert if called by a non-owner", async () => {
       await expect(pauser.connect(nonOwner).unpause(pausableTest.address))
-        .revertedWith("");
+        .revertedWith("Ownable: caller is not the owner");
     });
   });
 });
