@@ -40,6 +40,7 @@ describe("Account", () => {
   let owner: SignerWithAddress;
   let manager: SignerWithAddress;
   let nonManager: SignerWithAddress;
+  let pauser: SignerWithAddress;
   let beneficiary: SignerWithAddress;
   let otherBeneficiary: SignerWithAddress;
   let nonBeneficiary: SignerWithAddress;
@@ -53,6 +54,7 @@ describe("Account", () => {
 
     [manager] = await randomSigner(parseUnits("100"));
     [nonManager] = await randomSigner(parseUnits("100"));
+    [pauser] = await randomSigner(parseUnits("100"));
     [beneficiary] = await randomSigner(parseUnits("100"));
     [otherBeneficiary] = await randomSigner(parseUnits("100"));
     [nonBeneficiary] = await randomSigner(parseUnits("100"));
@@ -88,6 +90,7 @@ describe("Account", () => {
     owner = await hre.ethers.getNamedSigner("owner");
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
+    await account.connect(owner).setPauser(pauser.address);
     governance = await hre.ethers.getContract("MockGovernance");
   });
 
@@ -2018,15 +2021,23 @@ describe("Account", () => {
   });
 
   describe("#pause", () => {
-    it("can be called by the owner", async () => {
-      await account.connect(owner).pause();
+    it("can be called by the pauser", async () => {
+      await account.connect(pauser).pause();
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
     });
 
+    it("cannot be called by the owner", async () => {
+      await expect(account.connect(owner).pause()).revertedWith(
+        "OnlyPauser()"
+      );
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
     it("cannot be called by a random account", async () => {
       await expect(account.connect(beneficiary).pause()).revertedWith(
-        "Ownable: caller is not the owner"
+        "OnlyPauser()"
       );
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
@@ -2035,18 +2046,26 @@ describe("Account", () => {
 
   describe("#unpause", () => {
     beforeEach(async () => {
-      await account.connect(owner).pause();
+      await account.connect(pauser).pause();
     });
 
-    it("can be called by the owner", async () => {
-      await account.connect(owner).unpause();
+    it("can be called by the pauser", async () => {
+      await account.connect(pauser).unpause();
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
     });
 
+    it("cannot be called by the owner", async () => {
+      await expect(account.connect(owner).pause()).revertedWith(
+        "OnlyPauser()"
+      );
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
     it("cannot be called by a random account", async () => {
       await expect(account.connect(beneficiary).unpause()).revertedWith(
-        "Ownable: caller is not the owner"
+        "OnlyPauser()"
       );
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
@@ -2055,7 +2074,7 @@ describe("Account", () => {
 
   describe("when paused", () => {
     beforeEach(async () => {
-      await account.connect(owner).pause();
+      await account.connect(pauser).pause();
     });
 
     it("can't call scheduleVotes", async () => {

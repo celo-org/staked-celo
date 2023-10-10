@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "./interfaces/IPausable.sol";
+import "./Pauser.sol";
 
 /**
  * @title A helper contract to add pasuing functionality to a contract.
@@ -28,12 +29,26 @@ abstract contract Pausable is IPausable {
     error Paused();
 
     /**
+     * @notice Used when an `onlyPauser` function is called with a different
+     * address.
+     */
+    error OnlyPauser();
+
+    /**
      * @notice Reverts if the contract is paused.
      * @param paused The `PausedRecord` struct containing the flag.
      */
     modifier onlyWhenNotPaused(PausedRecord storage paused) {
         if (paused.paused) {
             revert Paused();
+        }
+
+        _;
+    }
+
+    modifier onlyPauser(Pauser pauser) {
+        if (msg.sender != address(pauser)) {
+            revert OnlyPauser();
         }
 
         _;

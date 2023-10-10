@@ -8,6 +8,7 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./Pausable.sol";
+import "./Pauser.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
@@ -69,6 +70,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Controls whether the contract is paused.
      */
     PausedRecord public paused;
+
+    /**
+     * @notice The Pauser contract permissioned to pause/unpause this contract.
+     */
+    Pauser public pauser;
 
     /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
@@ -237,15 +243,19 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * should be all the non-permissioned (i.e. not `onlyOwner` or * `onlyManager`)
      * external/public functions.
      */
-    function pause() external onlyOwner {
+    function pause() external onlyPauser(pauser) {
         _pause(paused);
     }
 
     /**
      * @notice Unpauses the contract if it was previously paused using `pause()`.
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyPauser(pauser) {
         _unpause(paused);
+    }
+
+    function setPauser(address _pauser) external {
+        pauser = Pauser(_pauser);
     }
 
     /**
