@@ -456,6 +456,28 @@ describe("MultiSig", () => {
     });
   });
 
+  describe("#pauseContracts()", () => {
+    it("can be called by an owner to pause a contract", async () => {
+      await multiSig.connect(owner1).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("can be called by a different owner to pause a contract", async () => {
+      await multiSig.connect(owner2).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by a non-owner", async () => {
+      await expect(
+        multiSig.connect(nonOwner).pauseContracts([pausableTest.address])
+      ).revertedWith(`OwnerDoesNotExist("${nonOwner.address}")`)
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
   describe("#revokeConfirmation()", () => {
     let proposalId: BigNumber;
 

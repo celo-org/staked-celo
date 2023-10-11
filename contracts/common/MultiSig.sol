@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
 import "../interfaces/IPauser.sol";
+import "../interfaces/IPausable.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -733,6 +734,12 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
 
     function setPauser(address _pauser) external onlyWallet {
         pauser = IPauser(_pauser);
+    }
+
+    function pauseContracts(address[] calldata contracts) external ownerExists(msg.sender) {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            IPausable(contracts[i]).pause();
+        }
     }
 
     /**
