@@ -7,6 +7,8 @@ import { ProposalTester__factory } from "../typechain-types/factories/ProposalTe
 import { MultiSig } from "../typechain-types/MultiSig";
 import { ProposalTester } from "../typechain-types/ProposalTester";
 import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
+import { Pauser } from "../typechain-types/Pauser";
+import { PausableTest } from "../typechain-types/PausableTest";
 
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event
@@ -91,6 +93,9 @@ describe("MultiSig", () => {
   let owner2: SignerWithAddress;
   let nonOwner: SignerWithAddress;
 
+  let pauser: Pauser;
+  let pausableTest: PausableTest;
+
   let owners: string[];
   const requiredSignatures = 2;
   const delay = 7 * DAY;
@@ -98,11 +103,26 @@ describe("MultiSig", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
+    await hre.deployments.fixture("TestPauser");
+    pauser = await hre.ethers.getContract("Pauser");
+    await hre.deployments.fixture("TestPausable");
+    pausableTest = await hre.ethers.getContract("PausableTest");
     owner1 = await hre.ethers.getNamedSigner("multisigOwner0");
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
     [nonOwner] = await randomSigner(parseUnits("100"));
 
     owners = [owner1.address, owner2.address];
+
+    const setPauserPayload = multiSig.interface.encodeFunctionData("setPauser", [pauser.address]);
+    await executeMultisigProposal(
+      multiSig,
+      [multiSig.address],
+      [0],
+      [setPauserPayload],
+      delay,
+      owner1,
+      owner2
+    );
   });
 
   describe("#constructor", () => {
@@ -406,6 +426,33 @@ describe("MultiSig", () => {
 
       expect(await multiSig.delay()).to.be.equal(9 * DAY);
       expect(await multiSig.isOwner(nonOwner.address)).to.be.true;
+    });
+  });
+
+  describe("#setPauser()", () => {
+    it("allows the MultiSig to set a pauser", async () => {
+      const payload = multiSig.interface.encodeFunctionData("setPauser", [nonOwner.address]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [payload],
+        delay,
+        owner1,
+        owner2
+      );
+      const currentPauser = await multiSig.pauser();
+      expect(currentPauser).to.equal(nonOwner.address);
+    });
+
+    it("does not allow an owner to set a pauser", async () => {
+      await expect(multiSig.connect(owner1).setPauser(nonOwner.address))
+        .revertedWith(`SenderMustBeMultisigWallet("${owner1.address}")`)
+    });
+
+    it("does not allow a non-owner to set a pauser", async () => {
+      await expect(multiSig.connect(nonOwner).setPauser(nonOwner.address))
+        .revertedWith(`SenderMustBeMultisigWallet("${nonOwner.address}")`)
     });
   });
 
