@@ -112,17 +112,6 @@ describe("MultiSig", () => {
     [nonOwner] = await randomSigner(parseUnits("100"));
 
     owners = [owner1.address, owner2.address];
-
-    const setPauserPayload = multiSig.interface.encodeFunctionData("setPauser", [pauser.address]);
-    await executeMultisigProposal(
-      multiSig,
-      [multiSig.address],
-      [0],
-      [setPauserPayload],
-      delay,
-      owner1,
-      owner2
-    );
   });
 
   describe("#constructor", () => {
