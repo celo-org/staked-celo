@@ -745,6 +745,12 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         }
     }
 
+    function unpauseContracts(address[] calldata contracts) external onlyGovernance {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            pauser.unpause(contracts[i]);
+        }
+    }
+
     /**
      * @notice Returns the timestamp at which a proposal becomes executable.
      * @param proposalId The ID of the proposal.

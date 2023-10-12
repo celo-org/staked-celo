@@ -468,6 +468,50 @@ describe("MultiSig", () => {
     });
   });
 
+  describe("#unpauseContracts()", () => {
+    let governance: SignerWithAddress;
+    beforeEach(async () => {
+      const governanceAddress = (await hre.kit.contracts.getGovernance()).address;
+      governance = await getImpersonatedSigner(
+        governanceAddress,
+        BigNumber.from("100000000000000000000")
+      );
+
+      await multiSig.connect(owner1).pauseContracts([pausableTest.address]);
+    });
+
+    it("can be called by Governance to unpause a contract", async () => {
+      await multiSig.connect(governance).unpauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
+    })
+
+    it("reverts when called by an owner", async () => {
+      await expect(
+        multiSig.connect(owner1).unpauseContracts([pausableTest.address])
+      ).revertedWith(`SenderNotGovernance("${owner1.address}")`);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by the MultiSig", async () => {
+      const multiSigSigner = await getImpersonatedSigner(multiSig.address, parseUnits("100"));
+      await expect(
+        multiSig.connect(multiSigSigner).unpauseContracts([pausableTest.address])
+      ).revertedWith(`SenderNotGovernance("${multiSig.address}")`);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by a non-owner", async () => {
+      await expect(
+        multiSig.connect(nonOwner).unpauseContracts([pausableTest.address])
+      ).revertedWith(`SenderNotGovernance("${nonOwner.address}")`);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
   describe("#revokeConfirmation()", () => {
     let proposalId: BigNumber;
 
