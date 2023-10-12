@@ -1,12 +1,10 @@
-import hre from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Pauser } from "../typechain-types/Pauser";
-import { PausableTest } from "../typechain-types/PausableTest";
 import { parseUnits } from "ethers/lib/utils";
-import {
-  randomSigner
-} from "./utils";
+import hre from "hardhat";
+import { PausableTest } from "../typechain-types/PausableTest";
+import { Pauser } from "../typechain-types/Pauser";
+import { randomSigner } from "./utils";
 
 describe("Pauser", () => {
   let pauser: Pauser;
@@ -26,7 +24,7 @@ describe("Pauser", () => {
   describe("initialize", () => {
     it("should set the owner", async () => {
       const ownerSet = await pauser.owner();
-      expect(owner).to.equal(owner);
+      expect(ownerSet).to.equal(owner);
     });
   });
 
@@ -38,8 +36,9 @@ describe("Pauser", () => {
     });
 
     it("should revert if called by a non-owner", async () => {
-      await expect(pauser.connect(nonOwner).pause(pausableTest.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(pauser.connect(nonOwner).pause(pausableTest.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -55,8 +54,9 @@ describe("Pauser", () => {
     });
 
     it("should revert if called by a non-owner", async () => {
-      await expect(pauser.connect(nonOwner).unpause(pausableTest.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(pauser.connect(nonOwner).unpause(pausableTest.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });

@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
-  const { deployer, owner } = await hre.getNamedAccounts();
+  const { deployer } = await hre.getNamedAccounts();
   await deploy("PausableTest", {
     from: deployer,
     log: true,

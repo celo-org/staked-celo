@@ -2028,17 +2028,13 @@ describe("Account", () => {
     });
 
     it("cannot be called by the owner", async () => {
-      await expect(account.connect(owner).pause()).revertedWith(
-        "OnlyPauser()"
-      );
+      await expect(account.connect(owner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
     });
 
     it("cannot be called by a random account", async () => {
-      await expect(account.connect(beneficiary).pause()).revertedWith(
-        "OnlyPauser()"
-      );
+      await expect(account.connect(beneficiary).pause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
     });
@@ -2056,17 +2052,13 @@ describe("Account", () => {
     });
 
     it("cannot be called by the owner", async () => {
-      await expect(account.connect(owner).pause()).revertedWith(
-        "OnlyPauser()"
-      );
+      await expect(account.connect(owner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {
-      await expect(account.connect(beneficiary).unpause()).revertedWith(
-        "OnlyPauser()"
-      );
+      await expect(account.connect(beneficiary).unpause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.true;
     });
