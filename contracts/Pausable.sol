@@ -46,6 +46,12 @@ abstract contract Pausable is IPausable {
         _;
     }
 
+    /**
+     * @notice Reverts if the caller is not the given address.
+     * @param pauser The address permissioned to pause/unpause.
+     * @dev We use the Pauser contract type rather than just `address` to
+     * leverage the typechecker to help ensure the correct value is used.
+     */
     modifier onlyPauser(Pauser pauser) {
         if (msg.sender != address(pauser)) {
             revert OnlyPauser();

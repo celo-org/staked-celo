@@ -254,6 +254,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         _unpause(paused);
     }
 
+    /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
     function setPauser(address _pauser) external {
         pauser = Pauser(_pauser);
     }

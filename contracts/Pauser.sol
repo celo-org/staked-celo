@@ -28,10 +28,18 @@ contract Pauser is UUPSOwnableUpgradeable {
         _transferOwnership(_owner);
     }
 
+    /**
+     * @notice Pauses the given contract.
+     * @param contr The contract to pause.
+     */
     function pause(address contr) external onlyOwner {
         IPausable(contr).pause();
     }
 
+    /**
+     * @notice Unpauses the given contract.
+     * @param contr The contract to unpause.
+     */
     function unpause(address contr) external onlyOwner {
         IPausable(contr).unpause();
     }

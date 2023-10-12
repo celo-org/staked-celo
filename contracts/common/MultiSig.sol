@@ -94,6 +94,9 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     uint256 public proposalCount;
 
+    /**
+     * @notice The contract used for pausing StakedCelo protocol contracts.
+     */
     IPauser public pauser;
 
     /**
@@ -273,6 +276,11 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     error ParamLengthsMismatch();
 
+    /**
+     * @notice Used when the caller of an `onlyGovernance` function is not Celo
+     * Governance.
+     * @param sender The address that triggered this function.
+     */
     error SenderNotGovernance(address sender);
 
     /**
@@ -441,6 +449,9 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         _;
     }
 
+    /**
+     * @notice Checks that the caller is the Celo Governance contract.
+     */
     modifier onlyGovernance() {
         address governanceAddress = address(getGovernance());
 
@@ -735,16 +746,35 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         }
     }
 
+    /**
+     * @notice Sets the address of the Pauser contract that will be used to
+     * pause StakedCelo protocol contracts.
+     * @param _pauser The Pauser address to set.
+     */
     function setPauser(address _pauser) external onlyWallet {
         pauser = IPauser(_pauser);
     }
 
+    /**
+     * @notice Pauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to pause.
+     * @dev Can be called by any one of the MultiSig signers to immediately
+     * pause contracts. To be used to mitigate damage if a vulnerability is
+     * found/exploited.
+     */
     function pauseContracts(address[] calldata contracts) external ownerExists(msg.sender) {
         for (uint256 i = 0; i < contracts.length; i++) {
             pauser.pause(contracts[i]);
         }
     }
 
+    /**
+     * @notice Unpauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to unpause.
+     * @dev Can be called by Celo Governance (via hotfix or referendum). To be
+     * used after contracts have been paused with `pauseContracts`, and the
+     * related vulnerability have been patched.
+     */
     function unpauseContracts(address[] calldata contracts) external onlyGovernance {
         for (uint256 i = 0; i < contracts.length; i++) {
             pauser.unpause(contracts[i]);
