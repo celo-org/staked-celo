@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
 import "../interfaces/IPauser.sol";
-import "../interfaces/IPausable.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -442,6 +441,16 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         _;
     }
 
+    modifier onlyGovernance() {
+        address governanceAddress = address(getGovernance());
+
+        if (msg.sender != governanceAddress) {
+            revert SenderNotGovernance(msg.sender);
+        }
+
+        _;
+    }
+
     /**
      * @notice Sets `initialized` to  true on implementation contracts.
      * @param _minDelay The minimum time in seconds that must elapse before a
@@ -719,13 +728,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         address[] calldata destinations,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) external {
-        address governanceAddress = address(getGovernance());
-
-        if (msg.sender != governanceAddress) {
-            revert SenderNotGovernance(msg.sender);
-        }
-
+    ) external onlyGovernance {
         for (uint256 i = 0; i < destinations.length; i++) {
             bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
             emit GovernanceTransactionExecuted(i, returnData);
@@ -738,7 +741,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
 
     function pauseContracts(address[] calldata contracts) external ownerExists(msg.sender) {
         for (uint256 i = 0; i < contracts.length; i++) {
-            IPausable(contracts[i]).pause();
+            pauser.pause(contracts[i]);
         }
     }
 

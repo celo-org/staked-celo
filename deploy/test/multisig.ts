@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Setting the pauser via address impersonation. In a production envrionment,
   // this needs to be done via a MultiSig proposal.
-  const pauser = await hre.deployments.get("Pauser");
+  const pauser = await hre.ethers.getContract("Pauser");
   const multiSig = await hre.ethers.getContract("MultiSig");
   const multiSigSigner = await getImpersonatedSigner(multiSig.address, parseUnits("100"));
   await multiSig.connect(multiSigSigner).setPauser(pauser.address);
