@@ -24,7 +24,7 @@ describe("Pauser", () => {
   describe("initialize", () => {
     it("should set the owner", async () => {
       const ownerSet = await pauser.owner();
-      expect(ownerSet).to.equal(owner);
+      expect(ownerSet).to.equal(owner.address);
     });
   });
 
