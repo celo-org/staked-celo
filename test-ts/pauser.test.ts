@@ -4,7 +4,7 @@ import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { PausableTest } from "../typechain-types/PausableTest";
 import { Pauser } from "../typechain-types/Pauser";
-import { randomSigner } from "./utils";
+import { randomSigner, resetNetwork } from "./utils";
 
 describe("Pauser", () => {
   let pauser: Pauser;
@@ -12,7 +12,9 @@ describe("Pauser", () => {
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
 
-  beforeEach(async () => {
+  before(async () => {
+    await resetNetwork();
+
     await hre.deployments.fixture("TestPauser");
     pauser = await hre.ethers.getContract("Pauser");
     await hre.deployments.fixture("TestPausable");
