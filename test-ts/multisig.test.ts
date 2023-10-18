@@ -69,7 +69,7 @@ async function executeMultisigProposal(
     await multiSig.connect(signer2).confirmProposal(proposalId);
   }
 
-  timeTravel(delay);
+  await timeTravel(delay);
   await multiSig.connect(signer2).executeProposal(proposalId);
 }
 
@@ -393,7 +393,7 @@ describe("MultiSig", () => {
     });
 
     it("should fail execute a proposal that is not scheduled", async () => {
-      timeTravel(delay);
+      await timeTravel(delay);
       await expect(multiSig.connect(owner1).executeProposal(proposalId)).revertedWith(
         "ProposalNotScheduled(0)"
       );
