@@ -6,7 +6,7 @@ import "../Pausable.sol";
 contract PausableTest is Pausable {
     uint256 public numberCalls;
 
-    function callPausable() external onlyWhenNotPaused() {
+    function callPausable() external onlyWhenNotPaused {
         numberCalls++;
     }
 

@@ -1,9 +1,9 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { PausableTest } from "../typechain-types/PausableTest";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { randomSigner } from "./utils";
-import { parseUnits } from "ethers/lib/utils";
 
 describe("Pausable", () => {
   let pausableTest: PausableTest;
