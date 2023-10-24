@@ -19,6 +19,7 @@ describe("Pauser", () => {
     pauser = await hre.ethers.getContract("Pauser");
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
+    pausableTest.setPauser(pauser.address);
     owner = await hre.ethers.getNamedSigner("owner");
     [nonOwner] = await randomSigner(parseUnits("100"));
   });
@@ -46,7 +47,7 @@ describe("Pauser", () => {
 
   describe("unpause", () => {
     beforeEach(async () => {
-      await pausableTest.pause();
+      await pauser.connect(owner).pause(pausableTest.address);
     });
 
     it("should unpause a previously paused contract", async () => {

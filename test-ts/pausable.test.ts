@@ -1,12 +1,19 @@
 import { expect } from "chai";
 import hre from "hardhat";
 import { PausableTest } from "../typechain-types/PausableTest";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { randomSigner } from "./utils";
+import { parseUnits } from "ethers/lib/utils";
 
 describe("Pausable", () => {
   let pausableTest: PausableTest;
+  let pauser: SignerWithAddress;
+
   beforeEach(async () => {
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
+    [pauser] = await randomSigner(parseUnits("100"));
+    await pausableTest.setPauser(pauser.address);
   });
 
   describe("When not paused", () => {
@@ -26,7 +33,7 @@ describe("Pausable", () => {
 
   describe("When paused", () => {
     beforeEach(async () => {
-      await pausableTest.pause();
+      await pausableTest.connect(pauser).pause();
     });
 
     it("should not allow the pausable function to be called", async () => {

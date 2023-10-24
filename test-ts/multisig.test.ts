@@ -108,6 +108,7 @@ describe("MultiSig", () => {
     await pauser.connect(owner).transferOwnership(multiSig.address);
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
+    pausableTest.setPauser(pauser.address);
     owner1 = await hre.ethers.getNamedSigner("multisigOwner0");
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
     [nonOwner] = await randomSigner(parseUnits("100"));

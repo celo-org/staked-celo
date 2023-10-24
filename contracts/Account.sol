@@ -67,16 +67,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     uint256 public totalScheduledWithdrawals;
 
     /**
-     * @notice Controls whether the contract is paused.
-     */
-    PausedRecord public paused;
-
-    /**
-     * @notice The Pauser contract permissioned to pause/unpause this contract.
-     */
-    Pauser public pauser;
-
-    /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
      * @param group The validator group the CELO is intended to vote for.
      * @param amount The amount of CELO scheduled.
@@ -238,28 +228,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Pauses external access to the contract.
-     * @dev Functions with the `onlyWhenNotPaused` modifier will be paused. This
-     * should be all the non-permissioned (i.e. not `onlyOwner` or * `onlyManager`)
-     * external/public functions.
-     */
-    function pause() external onlyPauser(pauser) {
-        _pause(paused);
-    }
-
-    /**
-     * @notice Unpauses the contract if it was previously paused using `pause()`.
-     */
-    function unpause() external onlyPauser(pauser) {
-        _unpause(paused);
-    }
-
-    /**
      * @notice Sets that address permissioned to pause/unpause this contract.
      * @param _pauser The address that can pause/unpause this contract.
      */
     function setPauser(address _pauser) external {
-        pauser = Pauser(_pauser);
+        _setPauser(_pauser);
     }
 
     /**
@@ -275,7 +248,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         external
         payable
         onlyManager
-        onlyWhenNotPaused(paused)
+        onlyWhenNotPaused
     {
         if (groups.length != votes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
@@ -306,7 +279,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256[] calldata fromVotes,
         address[] calldata toGroups,
         uint256[] calldata toVotes
-    ) external onlyManager onlyWhenNotPaused(paused) {
+    ) external onlyManager onlyWhenNotPaused {
         if (fromGroups.length != fromVotes.length || toGroups.length != toVotes.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
@@ -339,7 +312,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address beneficiary,
         address[] calldata groups,
         uint256[] calldata withdrawals
-    ) external onlyManager onlyWhenNotPaused(paused) {
+    ) external onlyManager onlyWhenNotPaused {
         if (groups.length != withdrawals.length) {
             revert GroupsAndVotesArrayLengthsMismatch();
         }
@@ -393,7 +366,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address lesserAfterActiveRevoke,
         address greaterAfterActiveRevoke,
         uint256 index
-    ) external onlyWhenNotPaused(paused) returns (uint256) {
+    ) external onlyWhenNotPaused returns (uint256) {
         uint256 withdrawalAmount = scheduledVotes[group].toWithdrawFor[beneficiary];
         if (withdrawalAmount == 0) {
             revert NoScheduledWithdrawal(beneficiary, group);
@@ -469,7 +442,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address group,
         address voteLesser,
         address voteGreater
-    ) external onlyWhenNotPaused(paused) {
+    ) external onlyWhenNotPaused {
         IElection election = getElection();
 
         // The amount of unlocked CELO for group that we want to lock and vote with.
@@ -529,7 +502,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address beneficiary,
         uint256 localPendingWithdrawalIndex,
         uint256 lockedGoldPendingWithdrawalIndex
-    ) external onlyWhenNotPaused(paused) returns (uint256 amount) {
+    ) external onlyWhenNotPaused returns (uint256 amount) {
         (uint256 value, uint256 timestamp) = validatePendingWithdrawalRequest(
             beneficiary,
             localPendingWithdrawalIndex,
@@ -582,7 +555,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 yesVotes,
         uint256 noVotes,
         uint256 abstainVotes
-    ) external onlyManager onlyWhenNotPaused(paused) {
+    ) external onlyManager onlyWhenNotPaused {
         bool voteResult = getGovernance().votePartially(
             proposalId,
             index,
@@ -719,14 +692,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the paused status of the contract.
-     * @return `true` if the contract is paused, `false` otherwise.
-     */
-    function isPaused() external view returns (bool) {
-        return _isPaused(paused);
-    }
-
-    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -774,7 +739,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         address lesserAfterActiveRevoke,
         address greaterAfterActiveRevoke,
         uint256 index
-    ) public onlyWhenNotPaused(paused) {
+    ) public onlyWhenNotPaused {
         (, uint256 revokeAmount) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
         if (revokeAmount == 0) {

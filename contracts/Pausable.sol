@@ -11,16 +11,18 @@ import "./Pauser.sol";
  */
 abstract contract Pausable is IPausable {
     /**
-     * @notice Struct wrapping a bool that determines whether the contract
-     * should be paused.
-     * @dev We can't store the flag in this contract itself, since that would
-     * mangle storage of inheriting contracts. Instead, we provide a
-     * struct-wrapped bool type, to leverage the typechecker to help ensure the
-     * correct value is used.
+     * @notice The storage slot under which we store a boolean representing
+     * whether or not the contract is currently paused.
+    */
+    bytes32 public constant PAUSED_POSITION =
+        bytes32(uint256(keccak256("staked-celo.pausable.paused")) - 1);
+    /**
+     * @notice The storage slot under which we store an address representing the
+     * address permissioned to pause/unpause this contract.
      */
-    struct PausedRecord {
-        bool paused;
-    }
+    bytes32 public constant PAUSER_POSITION =
+        bytes32(uint256(keccak256("staked-celo.pausable.pauser")) - 1);
+
 
     /**
      * @notice Used when an `onlyWhenNotPaused` function is called while the
@@ -36,10 +38,9 @@ abstract contract Pausable is IPausable {
 
     /**
      * @notice Reverts if the contract is paused.
-     * @param paused The `PausedRecord` struct containing the flag.
      */
-    modifier onlyWhenNotPaused(PausedRecord storage paused) {
-        if (paused.paused) {
+    modifier onlyWhenNotPaused() {
+        if (isPaused()) {
             revert Paused();
         }
 
@@ -47,13 +48,10 @@ abstract contract Pausable is IPausable {
     }
 
     /**
-     * @notice Reverts if the caller is not the given address.
-     * @param pauser The address permissioned to pause/unpause.
-     * @dev We use the Pauser contract type rather than just `address` to
-     * leverage the typechecker to help ensure the correct value is used.
+     * @notice Reverts if the caller is not the pauser.
      */
-    modifier onlyPauser(Pauser pauser) {
-        if (msg.sender != address(pauser)) {
+    modifier onlyPauser() {
+        if (msg.sender != pauser()) {
             revert OnlyPauser();
         }
 
@@ -61,31 +59,65 @@ abstract contract Pausable is IPausable {
     }
 
     /**
-     * @notice Pauses the contract by setting the wrapped bool to `true`.
-     * @param paused The PausedRecord to modify.
-     * @dev The implementing contract should likely wrap this function in a
-     * permissioned (e.g. `onlyOwner`) `pause()` function.
+     * @notice Pauses the contract.
      */
-    function _pause(PausedRecord storage paused) internal {
-        paused.paused = true;
+    function pause() public onlyPauser {
+        _setPaused(true);
     }
 
     /**
-     * @notice Unpauses the contract by setting the wrapped bool to `false`.
-     * @param paused The PausedRecord to modify.
-     * @dev The implementing contract should likely wrap this function in a
-     * permissioned (e.g. `onlyOwner`) `unpause()` function.
+     * @notice Unpauses the contract.
      */
-    function _unpause(PausedRecord storage paused) internal {
-        paused.paused = false;
+    function unpause() public onlyPauser {
+       _setPaused(false);
     }
 
     /**
      * @notice Returns whether or not the contract is paused.
-     * @param paused The PauseRecord to check.
      * @return `true` if the contract is paused, `false` otherwise.
      */
-    function _isPaused(PausedRecord storage paused) internal view returns (bool) {
-        return paused.paused;
+    function isPaused() public view returns (bool) {
+        bool paused;
+        bytes32 pausedPosition = PAUSED_POSITION;
+        assembly {
+            paused := sload(pausedPosition)
+        }
+        return paused;
+    }
+
+    /**
+     * @notice Sets the contract's paused state.
+     * @param paused `true` for paused, `false` for unpaused.
+     */
+    function _setPaused(bool paused) internal {
+        bytes32 pausedPosition = PAUSED_POSITION;
+        assembly {
+            sstore(pausedPosition, paused)
+        }
+    }
+
+    /**
+     * @notice Returns the address permissioned to pause/unpause this contract.
+     */
+    function pauser() public view returns (address) {
+        address pauserAddress;
+        bytes32 pauserPosition = PAUSER_POSITION;
+        assembly {
+            pauserAddress := sload(pauserPosition)
+        }
+        return pauserAddress;
+    }
+
+    /**
+     * @notice Sets the address permissioned to pause this contract.
+     * @param _pauser The new pauser.
+     * @dev This shuold be wrapped by the inheriting contract, likely in a
+     * permissioned function like `onlyOwner`.
+     */
+    function _setPauser(address _pauser) internal {
+        bytes32 pauserPosition = PAUSER_POSITION;
+        assembly {
+            sstore(pauserPosition, _pauser)
+        }
     }
 }
