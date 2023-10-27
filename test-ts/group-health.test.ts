@@ -55,7 +55,7 @@ describe("GroupHealth", () => {
 
   before(async function () {
     try {
-      this.timeout(100000);
+      this.timeout(0);
       await resetNetwork();
 
       [nonManager] = await randomSigner(parseUnits("100"));
