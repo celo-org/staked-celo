@@ -99,4 +99,34 @@ describe("Pausable", () => {
       });
     });
   });
+
+  describe("#_setPauser", () => {
+    it("sets the pauser", async () => {
+      await pausableTest.setPauser(nonPauser.address);
+      const currentPauser = await pausableTest.pauser();
+      expect(currentPauser).to.equal(nonPauser.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(pausableTest.setPauser(nonPauser.address)).to.emit(pausableTest, "PauserSet").withArgs(nonPauser.address);
+    });
+
+    describe("when the pauser is changed", () => {
+      beforeEach(async () => {
+        await pausableTest.setPauser(nonPauser.address);
+      });
+
+      it("allows the new pauser to pause", async () => {
+        await pausableTest.connect(nonPauser).pause();
+        const paused = await pausableTest.isPaused();
+        expect(paused).to.be.true;
+      });
+
+      it("does not allow the old pauser to pause", async () => {
+        await expect(pausableTest.connect(pauser).pause()).revertedWith("OnlyPauser()");
+        const paused = await pausableTest.isPaused();
+        expect(paused).to.be.false;
+      });
+    });
+  });
 });
