@@ -24,6 +24,16 @@ abstract contract Pausable is IPausable {
         bytes32(uint256(keccak256("staked-celo.pausable.pauser")) - 1);
 
     /**
+     * Emitted when this contract is paused.
+     */
+    event ContractPaused();
+
+    /**
+     * Emitted when this contract is unpaused.
+     */
+    event ContractUnpaused();
+
+    /**
      * @notice Used when an `onlyWhenNotPaused` function is called while the
      * contract is paused.
      */
@@ -62,6 +72,7 @@ abstract contract Pausable is IPausable {
      */
     function pause() public onlyPauser {
         _setPaused(true);
+        emit ContractPaused();
     }
 
     /**
@@ -69,6 +80,7 @@ abstract contract Pausable is IPausable {
      */
     function unpause() public onlyPauser {
         _setPaused(false);
+        emit ContractUnpaused();
     }
 
     /**
