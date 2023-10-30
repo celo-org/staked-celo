@@ -34,6 +34,13 @@ abstract contract Pausable is IPausable {
     event ContractUnpaused();
 
     /**
+     * @notice Emitted when the address authorized to pause/unpause the contract is
+     * changed.
+     * @param pauser THe new pauser.
+     */
+    event PauserSet(address pauser);
+
+    /**
      * @notice Used when an `onlyWhenNotPaused` function is called while the
      * contract is paused.
      */
@@ -134,5 +141,6 @@ abstract contract Pausable is IPausable {
         assembly {
             sstore(pauserPosition, _pauser)
         }
+        emit PauserSet(_pauser);
     }
 }
