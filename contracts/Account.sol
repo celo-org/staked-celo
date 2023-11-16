@@ -8,7 +8,6 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./common/UsingRegistryUpgradeable.sol";
 import "./interfaces/IAccount.sol";
 import "./Pausable.sol";
-import "./Pauser.sol";
 
 /**
  * @title A contract that facilitates voting on behalf of StakedCelo.sol.
