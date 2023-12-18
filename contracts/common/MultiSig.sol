@@ -681,10 +681,10 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
      */
     function confirmProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         ownerExists(msg.sender)
         proposalExists(proposalId)
         notConfirmed(proposalId, msg.sender)
-        onlyWhenNotPaused
     {
         proposals[proposalId].confirmations[msg.sender] = true;
         emit ProposalConfirmed(msg.sender, proposalId);
@@ -699,6 +699,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
      */
     function scheduleProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         ownerExists(msg.sender)
         notExecuted(proposalId)
     {
@@ -714,6 +715,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
      */
     function executeProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         scheduled(proposalId)
         notExecuted(proposalId)
         timeLockReached(proposalId)

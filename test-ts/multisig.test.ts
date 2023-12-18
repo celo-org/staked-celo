@@ -1068,9 +1068,11 @@ describe("MultiSig", () => {
     });
 
     it("can't call scheduleProposal", async () => {
+      await expect(multiSig.connect(owner2).scheduleProposal(submittedProposal)).revertedWith("Paused()");
     });
 
     it("can't call executeProposal", async () => {
+      await expect(multiSig.connect(owner2).executeProposal(submittedProposal)).revertedWith("Paused()");
     });
   });
 });
