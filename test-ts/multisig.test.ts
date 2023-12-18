@@ -95,6 +95,7 @@ describe("MultiSig", () => {
 
   let pauser: Pauser;
   let pausableTest: PausableTest;
+  let mockPauserAddress: SignerWithAddress;
 
   let owners: string[];
   const requiredSignatures = 2;
@@ -111,6 +112,7 @@ describe("MultiSig", () => {
     pausableTest.setPauser(pauser.address);
     owner1 = await hre.ethers.getNamedSigner("multisigOwner0");
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
+    [mockPauserAddress] = await randomSigner(parseUnits("100"));
     [nonOwner] = await randomSigner(parseUnits("100"));
 
     owners = [owner1.address, owner2.address];
@@ -1029,6 +1031,35 @@ describe("MultiSig", () => {
       await expect(multiSig.connect(nonOwner).governanceProposeAndExecute([], [], [])).revertedWith(
         "SenderNotGovernance"
       );
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      const txData = multiSig.interface.encodeFunctionData("setPauser", [mockPauserAddress.address]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [txData],
+        delay,
+        owner1,
+        owner2
+      );
+      await multiSig.connect(mockPauserAddress).pause();
+    });
+
+    it("can't call submitProposal", async () => {
+      await expect(multiSig.connect(owner1).submitProposal([nonOwner.address], [0], ["0x"])).revertedWith("Paused()");
+    });
+
+    it("can't call confirmProposal", async () => {
+    });
+
+    it("can't call scheduleProposal", async () => {
+    });
+
+    it("can't call executeProposal", async () => {
     });
   });
 });

@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
 import "../interfaces/IPauser.sol";
+import { Pausable } from "../Pausable.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -31,7 +32,7 @@ import "../interfaces/IPauser.sol";
  * Forked from
  * github.com/celo-org/celo-monorepo/blob/master/packages/protocol/contracts/common/MultiSig.sol
  */
-contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
+contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -97,7 +98,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     /**
      * @notice The contract used for pausing StakedCelo protocol contracts.
      */
-    IPauser public pauser;
+    IPauser public _pauser;
 
     /**
      * @notice Used when a proposal is successfully confirmed.
@@ -588,7 +589,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         address[] calldata destinations,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) external returns (uint256 proposalId) {
+    ) onlyWhenNotPaused external returns (uint256 proposalId) {
         if (destinations.length != values.length) {
             revert ParamLengthsMismatch();
         }
@@ -749,10 +750,11 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     /**
      * @notice Sets the address of the Pauser contract that will be used to
      * pause StakedCelo protocol contracts.
-     * @param _pauser The Pauser address to set.
+     * @param __pauser The Pauser address to set.
      */
-    function setPauser(address _pauser) external onlyWallet {
-        pauser = IPauser(_pauser);
+    function setPauser(address __pauser) external onlyWallet {
+        _pauser = IPauser(__pauser);
+        _setPauser(__pauser);
     }
 
     /**
@@ -764,7 +766,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     function pauseContracts(address[] calldata contracts) external ownerExists(msg.sender) {
         for (uint256 i = 0; i < contracts.length; i++) {
-            pauser.pause(contracts[i]);
+            _pauser.pause(contracts[i]);
         }
     }
 
@@ -777,7 +779,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     function unpauseContracts(address[] calldata contracts) external onlyGovernance {
         for (uint256 i = 0; i < contracts.length; i++) {
-            pauser.unpause(contracts[i]);
+            _pauser.unpause(contracts[i]);
         }
     }
 
