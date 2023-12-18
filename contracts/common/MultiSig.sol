@@ -684,6 +684,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
         ownerExists(msg.sender)
         proposalExists(proposalId)
         notConfirmed(proposalId, msg.sender)
+        onlyWhenNotPaused
     {
         proposals[proposalId].confirmations[msg.sender] = true;
         emit ProposalConfirmed(msg.sender, proposalId);

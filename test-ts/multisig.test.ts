@@ -1035,7 +1035,17 @@ describe("MultiSig", () => {
   });
 
   describe("when paused", () => {
+    let submittedProposal: BigNumber;
+
     beforeEach(async () => {
+      submittedProposal = await submitProposalAndWaitForConfirmationEvent(
+        multiSig,
+        [nonOwner.address],
+        [0],
+        ["0x"],
+        owner1
+      );
+
       const txData = multiSig.interface.encodeFunctionData("setPauser", [mockPauserAddress.address]);
       await executeMultisigProposal(
         multiSig,
@@ -1054,6 +1064,7 @@ describe("MultiSig", () => {
     });
 
     it("can't call confirmProposal", async () => {
+      await expect(multiSig.connect(owner2).confirmProposal(submittedProposal)).revertedWith("Paused()");
     });
 
     it("can't call scheduleProposal", async () => {
