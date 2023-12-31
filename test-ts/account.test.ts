@@ -2020,6 +2020,25 @@ describe("Account", () => {
     });
   });
 
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await account.connect(owner).setPauser(nonManager.address);
+      const newPauser = await account.pauser();
+      expect(newPauser).to.eq(nonManager.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(account.connect(owner).setPauser(nonManager.address))
+        .to.emit(account, "PauserSet")
+        .withArgs(nonManager.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(account.connect(nonManager).setPauser(nonManager.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
   describe("#pause", () => {
     it("can be called by the pauser", async () => {
       await account.connect(pauser).pause();

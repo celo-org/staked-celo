@@ -230,7 +230,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Sets that address permissioned to pause/unpause this contract.
      * @param _pauser The address that can pause/unpause this contract.
      */
-    function setPauser(address _pauser) external {
+    function setPauser(address _pauser) external onlyOwner {
         _setPauser(_pauser);
     }
 
