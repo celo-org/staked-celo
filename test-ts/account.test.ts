@@ -2046,6 +2046,11 @@ describe("Account", () => {
       expect(isPaused).to.be.true;
     });
 
+    it("emits a ContractPaused event", async () => {
+      await expect(account.connect(pauser).pause())
+        .to.emit(account, "ContractPaused");
+    });
+
     it("cannot be called by the owner", async () => {
       await expect(account.connect(owner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
@@ -2068,6 +2073,11 @@ describe("Account", () => {
       await account.connect(pauser).unpause();
       const isPaused = await account.isPaused();
       expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(account.connect(pauser).unpause())
+        .to.emit(account, "ContractUnpaused");
     });
 
     it("cannot be called by the owner", async () => {
