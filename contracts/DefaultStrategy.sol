@@ -11,12 +11,13 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./Managed.sol";
+import "./Pausable.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
  * for accounts without any specific strategy.
  */
-contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
+contract DefaultStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using AddressSortedLinkedList for SortedLinkedList.List;
 
@@ -219,6 +220,14 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * @notice Set this contract's dependencies in the StakedCelo system.
      * @param _account The address of the Account contract.
      * @param _groupHealth The address of the GroupHealth contract.
@@ -285,7 +294,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
         address group,
         address lesserKey,
         address greaterKey
-    ) external {
+    ) external onlyWhenNotPaused {
         if (!unsortedGroups.contains(group)) {
             revert NotUnsortedGroup();
         }
@@ -347,7 +356,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      * @param fromGroup The from group.
      * @param toGroup The to group.
      */
-    function rebalance(address fromGroup, address toGroup) external {
+    function rebalance(address fromGroup, address toGroup) external onlyWhenNotPaused {
         if (!activeGroups.contains(fromGroup)) {
             revert InvalidFromGroup(fromGroup);
         }
@@ -461,7 +470,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      * @notice Deactivates an unhealthy group.
      * @param group The group to deactivate if unhealthy.
      */
-    function deactivateUnhealthyGroup(address group) external {
+    function deactivateUnhealthyGroup(address group) external onlyWhenNotPaused {
         if (groupHealth.isGroupValid(group)) {
             revert HealthyGroup(group);
         }
