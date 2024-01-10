@@ -14,6 +14,7 @@ describe("RebasedStakedCelo", () => {
   let account: MockAccount;
 
   let owner: SignerWithAddress;
+  let pauser: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let someone: SignerWithAddress;
@@ -29,9 +30,12 @@ describe("RebasedStakedCelo", () => {
     account = await hre.ethers.getContract("MockAccount");
 
     owner = await hre.ethers.getNamedSigner("owner");
+    [pauser] = await randomSigner(parseUnits("100"));
     [alice] = await randomSigner(parseUnits("100"));
     [bob] = await randomSigner(parseUnits("100"));
     [someone] = await randomSigner(parseUnits("1000"));
+
+    await rebasedStakedCelo.connect(owner).setPauser(pauser.address);
   });
 
   describe("#initialize()", () => {
@@ -628,6 +632,97 @@ describe("RebasedStakedCelo", () => {
 
         expect(bobBalance).to.gt(initialBalance);
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await rebasedStakedCelo.connect(owner).setPauser(someone.address);
+      const newPauser = await rebasedStakedCelo.pauser();
+      expect(newPauser).to.eq(someone.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(rebasedStakedCelo.connect(owner).setPauser(someone.address))
+        .to.emit(rebasedStakedCelo, "PauserSet")
+        .withArgs(someone.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(rebasedStakedCelo.connect(someone).setPauser(someone.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await rebasedStakedCelo.connect(pauser).pause();
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(rebasedStakedCelo.connect(pauser).pause())
+        .to.emit(rebasedStakedCelo, "ContractPaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(rebasedStakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(rebasedStakedCelo.connect(someone).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await rebasedStakedCelo.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await rebasedStakedCelo.connect(pauser).unpause();
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(rebasedStakedCelo.connect(pauser).unpause())
+        .to.emit(rebasedStakedCelo, "ContractUnpaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(rebasedStakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(rebasedStakedCelo.connect(someone).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await rebasedStakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await rebasedStakedCelo.connect(pauser).pause();
+    });
+
+    it("can't call deposit", async () => {
+      await expect(
+        rebasedStakedCelo.connect(someone).deposit(100)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call withdraw", async () => {
+      await expect(
+        rebasedStakedCelo.connect(someone).withdraw(100)
+      ).revertedWith("Paused()");
     });
   });
 });

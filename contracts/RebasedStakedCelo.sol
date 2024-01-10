@@ -6,6 +6,7 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "./Pausable.sol";
 
 /**
  * @title An ERC-20 wrapper contract that receives stCELO
@@ -13,7 +14,7 @@ import "./interfaces/IStakedCelo.sol";
  * @dev This contract depends on the Account and StakedCelo contracts
  * to calculate the amount of rstCELO held by depositors.
  */
-contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
+contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable {
     /**
      * @notice Total amount of stCELO deposited in this contract.
      */
@@ -108,12 +109,20 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * @notice Deposit stCELO in return for rstCELO.
      * @dev Although rstCELO is never minted to any account, the rstCELO balance
      * is calculated based on the account's deposited stCELO. See `balanceOf()` function below.
      * @param stCeloAmount The Amount of stCELO to be deposited.
      */
-    function deposit(uint256 stCeloAmount) external {
+    function deposit(uint256 stCeloAmount) external onlyWhenNotPaused {
         if (stCeloAmount == 0) {
             revert ZeroAmount();
         }
@@ -134,7 +143,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
      * previously deposited stCELO amount.
      * @param stCeloAmount The amount of stCELO to withdraw.
      */
-    function withdraw(uint256 stCeloAmount) external {
+    function withdraw(uint256 stCeloAmount) external onlyWhenNotPaused {
         if (stCeloAmount > stakedCeloBalance[msg.sender]) {
             revert InsufficientBalance(stCeloAmount);
         }
