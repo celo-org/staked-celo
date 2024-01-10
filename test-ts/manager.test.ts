@@ -78,6 +78,7 @@ describe("Manager", () => {
   let voter: SignerWithAddress;
   let groups: SignerWithAddress[];
   let groupAddresses: string[];
+  let pauser: SignerWithAddress;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let snapshotId: any;
@@ -107,6 +108,7 @@ describe("Manager", () => {
       [nonVote] = await randomSigner(parseUnits("100000"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
+      [pauser] = await randomSigner(parseUnits("100"));
 
       const accountFactory: MockAccount__factory = (
         await hre.ethers.getContractFactory("MockAccount")
@@ -185,6 +187,8 @@ describe("Manager", () => {
       }
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
+
+      await manager.connect(owner).setPauser(pauser.address);
     } catch (error) {
       console.error(error);
     }
@@ -3317,6 +3321,132 @@ describe("Manager", () => {
           });
         });
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await manager.connect(owner).setPauser(nonOwner.address);
+      const newPauser = await manager.pauser();
+      expect(newPauser).to.eq(nonOwner.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(manager.connect(owner).setPauser(nonOwner.address))
+        .to.emit(manager, "PauserSet")
+        .withArgs(nonOwner.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(manager.connect(nonOwner).setPauser(nonOwner.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await manager.connect(pauser).pause();
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(manager.connect(pauser).pause())
+        .to.emit(manager, "ContractPaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(manager.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(manager.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await manager.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await manager.connect(pauser).unpause();
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(manager.connect(pauser).unpause())
+        .to.emit(manager, "ContractUnpaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(manager.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(manager.connect(nonOwner).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await manager.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await manager.connect(pauser).pause();
+    });
+
+    it("can't call withdraw", async () => {
+      await expect(
+        manager.connect(nonOwner).withdraw(100)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call revokeVotes", async () => {
+      await expect(
+        manager.connect(nonOwner).revokeVotes(0, 0)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call updateHistoryAndReturnLockedStCeloInVoting", async () => {
+      await expect(
+        manager.connect(nonOwner).updateHistoryAndReturnLockedStCeloInVoting(nonOwner.address)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call deposit", async () => {
+      await expect(
+        manager.connect(nonOwner).deposit({ value: 100 })
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call changeStrategy", async () => {
+      await expect(
+        manager.connect(nonOwner).changeStrategy(ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call rebalance", async () => {
+      await expect(
+        manager.connect(nonOwner).rebalance(ADDRESS_ZERO, ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call rebalanceOverflow", async () => {
+      await expect(
+        manager.connect(nonOwner).rebalanceOverflow(ADDRESS_ZERO, ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call voteProposal", async () => {
+      await expect(
+        manager.connect(nonOwner).voteProposal(0, 0, 0, 0, 0)).revertedWith("Paused()");
     });
   });
 });
