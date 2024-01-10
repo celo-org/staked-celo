@@ -6,11 +6,12 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
+import "./Pausable.sol";
 
 /**
  * @title GroupHealth stores and updates info about validator group health.
  */
-contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
+contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -80,10 +81,18 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * @notice Updates validator group health.
      * @param group The group address.
      */
-    function updateGroupHealth(address group) public {
+    function updateGroupHealth(address group) public onlyWhenNotPaused {
         IValidators validators = getValidators();
 
         (bool valid, address[] memory members) = _isGroupPartiallyValid(validators, group);
@@ -104,7 +113,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * This array needs to have same length as all (even not elected) members of validator group.
      * Index of not elected member can be any uint256 number.
      */
-    function markGroupHealthy(address group, uint256[] calldata membersElectedIndex) public {
+    function markGroupHealthy(address group, uint256[] calldata membersElectedIndex) public onlyWhenNotPaused {
         if (isGroupValid[group] == true) {
             revert GroupHealthy(group);
         }
