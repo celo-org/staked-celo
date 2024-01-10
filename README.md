@@ -51,6 +51,29 @@ Alfajores :
 ```
 yarn verify:deploy --network alfajores
 ```
+
+## Verify on CeloScan
+1. Get CeloScan api key
+1. Update api key in hardhat.config.ts (etherscan.apiKey)
+1. Get constructor arguments of deployed smart contract
+  * Find contract in `deployments/[network]` (example deployments/celo/MultiSig_Proxy.json)
+  * In root level there are constructur arguments in `args`
+4. Save constructor arguments into js file
+```
+module.exports = [
+    "0xb78AB3f89C97C0291B747C3Ba8814b5AA47AEcF1",
+    "4814d6b8a8394fe8b363a892b6618b21",
+  ];
+```
+5. Verify smart contract
+```
+yarn hardhat verify --network [network] --constructor-args [path_to_js_file] [contract_address]
+```
+example
+```
+yarn hardhat verify --network celo --constructor-args arguments.js 0x78daa21fce4d30e74ff745da3204764a0ad40179
+```
+
 ## Deploying to local CELO node
 You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
 
@@ -377,6 +400,15 @@ Note: `--destinations` is the target proxy contract whose implementation is bein
 > yarn hardhat stakedCelo:multisig:encode:managerSetDependencies --network alfajores
 ```
 3. Insert returned values into submitProposal task (it can be found few lines above)
+
+## Vote for governance proposal
+
+``` bash
+>  yarn hardhat stakedCelo:manager:voteProposal --network [network] --proposal-id [governance proposal id] --yes [# of votes] --account [address]
+
+# example
+>  yarn hardhat stakedCelo:manager:voteProposal --network alfajores --proposal-id 10 --yes 100 --no 0 --abstain 0 --account 0x456f41406B32c45D59E539e4BBA3D7898c3584dA
+```
 
 ## Contributing
 

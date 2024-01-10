@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -65,6 +66,7 @@ describe("DefaultStrategy", () => {
   let voter: SignerWithAddress;
   let someone: SignerWithAddress;
   let validators: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
   let election: ElectionWrapper;
   let registryContract: MockRegistry;
   let lockedGoldContract: MockLockedGold;
@@ -94,6 +96,7 @@ describe("DefaultStrategy", () => {
       specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
       defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
       validators = await hre.kit.contracts.getValidators();
+      accountsWrapper = await hre.kit.contracts.getAccounts();
       election = await hre.kit.contracts.getElection();
       lockedGold = await hre.kit.contracts.getLockedGold();
 
@@ -309,9 +312,12 @@ describe("DefaultStrategy", () => {
       it("reverts when trying to add non elected group", async () => {
         const nonElectedGroup = groups[10];
         await mineToNextEpoch(hre.web3);
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          nonElectedGroup.address,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [nonElectedGroup.address]
+        );
         await expect(
           defaultStrategyContract.activateGroup(nonElectedGroup.address, ADDRESS_ZERO, ADDRESS_ZERO)
         ).revertedWith(`GroupNotEligible("${nonElectedGroup.address}")`);
@@ -1383,9 +1389,12 @@ describe("DefaultStrategy", () => {
     describe("when the group is not elected", () => {
       beforeEach(async () => {
         await mineToNextEpoch(hre.web3);
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          groupAddresses[1],
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [groupAddresses[1]]
+        );
       });
 
       it("should remove group", async () => {

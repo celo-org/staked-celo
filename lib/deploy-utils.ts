@@ -1,4 +1,5 @@
 import { DeployResult } from "@celo/staked-celo-hardhat-deploy/types";
+import chalk from "chalk";
 import { ContractTransaction } from "ethers";
 import { web3 } from "hardhat";
 
@@ -18,9 +19,13 @@ export async function catchNotOwnerForProxy(
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
-    if ((e.reason as string)?.indexOf("Ownable: caller is not the owner") >= 0) {
+    if (
+      ((e.reason as string) ?? e?.data?.stack)?.indexOf("Ownable: caller is not the owner") >= 0
+    ) {
       console.log(
-        "Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually."
+        chalk.red(
+          "Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually."
+        )
       );
       return;
     } else if (e.error?.data) {
@@ -30,12 +35,22 @@ export async function catchNotOwnerForProxy(
       );
       if (data.indexOf(encodedSenderMustBeMultisigWallet) == 0) {
         console.log(
-          "Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually."
+          chalk.red(
+            "Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually."
+          )
         );
         return;
       }
       throw e;
+    } else if (e?.data?.contract?.method.indexOf("upgradeTo") >= 0) {
+      console.log(
+        chalk.red(
+          "Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually."
+        )
+      );
+      return;
     }
+
     throw e;
   }
 }

@@ -107,12 +107,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     event SortedFlagUpdated(bool update);
 
     /**
-     * @notice Used when there isn't enough CELO voting for an account's strategy
-     * to fulfill a withdrawal.
-     */
-    error CantWithdrawAccordingToStrategy();
-
-    /**
      * @notice Used when attempting to activate a group that is already active.
      * @param group The group's address.
      */

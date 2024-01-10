@@ -1,3 +1,4 @@
+import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -66,6 +67,7 @@ describe("Manager", () => {
   let election: ElectionWrapper;
   let lockedGold: LockedGoldWrapper;
   let validators: ValidatorsWrapper;
+  let accountsWrapper: AccountsWrapper;
 
   let owner: SignerWithAddress;
   let nonOwner: SignerWithAddress;
@@ -87,6 +89,7 @@ describe("Manager", () => {
       lockedGold = await hre.kit.contracts.getLockedGold();
       election = await hre.kit.contracts.getElection();
       validators = await hre.kit.contracts.getValidators();
+      accountsWrapper = await hre.kit.contracts.getAccounts();
 
       await hre.deployments.fixture("FullTestManager");
       manager = await hre.ethers.getContract("Manager");
@@ -874,9 +877,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroupAddress);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroupAddress,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroupAddress]
+        );
       });
 
       describe("When different ratios of CELO vs stCELO", () => {
@@ -1043,6 +1049,7 @@ describe("Manager", () => {
           const [head] = await defaultStrategyContract.getGroupsHead();
           await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
+          await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(groupAddresses[i], 100);
         }
         await manager.connect(depositor).deposit({ value: 100 });
       });
@@ -1560,9 +1567,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroupAddress);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroupAddress,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroupAddress]
+        );
       });
 
       describe("When depositing to unhealthy specific group", () => {
@@ -2307,9 +2317,12 @@ describe("Manager", () => {
         await manager.connect(depositor).changeStrategy(specificGroup);
         await manager.connect(depositor).deposit({ value: deposit });
 
-        await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-          specificGroup,
-        ]);
+        await revokeElectionOnMockValidatorGroupsAndUpdate(
+          validators,
+          accountsWrapper,
+          groupHealthContract,
+          [specificGroup]
+        );
         await groupHealthContract.updateGroupHealth(specificGroup);
         await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroup);
 
@@ -2514,6 +2527,15 @@ describe("Manager", () => {
         expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferFromVotes);
         expect([differentSpecificGroupStrategy]).to.deep.eq(lastTransferToGroups);
         expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferToVotes);
+        expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferToVotes);
+      });
+
+      it("should emit StrategyChanged event", async () => {
+        const differentSpecificGroupStrategy = groupAddresses[0];
+
+        await expect(manager.changeStrategy(differentSpecificGroupStrategy))
+          .to.emit(manager, "StrategyChanged")
+          .withArgs(differentSpecificGroupStrategy);
       });
 
       it("should schedule transfers when changing to default strategy", async () => {
@@ -2738,9 +2760,12 @@ describe("Manager", () => {
       describe("When group becomes unhealthy", () => {
         let newTail: string;
         beforeEach(async () => {
-          await revokeElectionOnMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
-            specificGroup,
-          ]);
+          await revokeElectionOnMockValidatorGroupsAndUpdate(
+            validators,
+            accountsWrapper,
+            groupHealthContract,
+            [specificGroup]
+          );
           [newTail] = await defaultStrategyContract.getGroupsTail();
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroup);
           await updateGroupCeloBasedOnProtocolStCelo(

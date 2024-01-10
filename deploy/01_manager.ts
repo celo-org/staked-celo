@@ -6,8 +6,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
   const { deployer } = await hre.getNamedAccounts();
 
-  const isManagerAlreadyDeployed = await hre.deployments.getOrNull("Manager");
-
   await catchNotOwnerForProxy(
     deploy("Manager", {
       from: deployer,
@@ -24,11 +22,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     })
   );
-
-  if (isManagerAlreadyDeployed) {
-    console.log("Manager proxy was already deployed - skipping group activation");
-    return;
-  }
 };
 
 func.id = "deploy_manager";
