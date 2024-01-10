@@ -10,12 +10,13 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
+import "./Pausable.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
  * for accounts with specific strategy selected.
  */
-contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
+contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -213,6 +214,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * @notice Unblocks previously blocked group.
      * @param group The address of the group to add to the set of specific group
      * strategies.
@@ -358,7 +367,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
      * @notice Used when validator gets unhealthy and we need to move funds to default strategy
      * @param group The group address.
      */
-    function rebalanceWhenHealthChanged(address group) external {
+    function rebalanceWhenHealthChanged(address group) external onlyWhenNotPaused {
         bool isGroupValid = groupHealth.isGroupValid(group);
         uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
 
@@ -464,7 +473,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
      * makes sure to reschedule votes correctly for overflowing group.
      * @param group The group address.
      */
-    function rebalanceOverflowedGroup(address group) public {
+    function rebalanceOverflowedGroup(address group) public onlyWhenNotPaused {
         if (!groupHealth.isGroupValid(group) || blockedGroups.contains(group)) {
             revert GroupNotEligible(group);
         }

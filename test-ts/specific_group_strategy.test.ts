@@ -61,6 +61,7 @@ describe("SpecificGroupStrategy", () => {
   let validatorsWrapper: ValidatorsWrapper;
   let accountsWrapper: AccountsWrapper;
 
+  let pauser: SignerWithAddress;
   let nonOwner: SignerWithAddress;
 
   let groupAddresses: string[];
@@ -84,6 +85,7 @@ describe("SpecificGroupStrategy", () => {
       election = await hre.kit.contracts.getElection();
 
       owner = await hre.ethers.getNamedSigner("owner");
+      [pauser] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
       [nonVote] = await randomSigner(parseUnits("100000"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
@@ -160,6 +162,8 @@ describe("SpecificGroupStrategy", () => {
       }
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
+
+      await specificGroupStrategyContract.connect(owner).setPauser(pauser.address);
     } catch (error) {
       console.error(error);
     }
@@ -1102,6 +1106,97 @@ describe("SpecificGroupStrategy", () => {
           });
         });
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await specificGroupStrategyContract.connect(owner).setPauser(nonManager.address);
+      const newPauser = await specificGroupStrategyContract.pauser();
+      expect(newPauser).to.eq(nonManager.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(specificGroupStrategyContract.connect(owner).setPauser(nonManager.address))
+        .to.emit(specificGroupStrategyContract, "PauserSet")
+        .withArgs(nonManager.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(specificGroupStrategyContract.connect(nonManager).setPauser(nonManager.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await specificGroupStrategyContract.connect(pauser).pause();
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(specificGroupStrategyContract.connect(pauser).pause())
+        .to.emit(specificGroupStrategyContract, "ContractPaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(specificGroupStrategyContract.connect(nonManager).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await specificGroupStrategyContract.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await specificGroupStrategyContract.connect(pauser).unpause();
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(specificGroupStrategyContract.connect(pauser).unpause())
+        .to.emit(specificGroupStrategyContract, "ContractUnpaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(specificGroupStrategyContract.connect(nonManager).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await specificGroupStrategyContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await specificGroupStrategyContract.connect(pauser).pause();
+    });
+
+    it("can't call rebalanceWhenHealthChanged", async () => {
+      await expect(
+        specificGroupStrategyContract.connect(nonManager).rebalanceWhenHealthChanged(ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call rebalanceOverflowedGroup", async () => {
+      await expect(
+        specificGroupStrategyContract.connect(nonManager).rebalanceOverflowedGroup(ADDRESS_ZERO)
+      ).revertedWith("Paused()");
     });
   });
 });
