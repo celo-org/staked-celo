@@ -11,6 +11,7 @@ describe("StakedCelo", () => {
   let managerContract: MockManager;
 
   let owner: SignerWithAddress;
+  let pauser: SignerWithAddress;
   let manager: SignerWithAddress;
   let nonManager: SignerWithAddress;
 
@@ -19,6 +20,7 @@ describe("StakedCelo", () => {
   before(async () => {
     await resetNetwork();
     owner = await hre.ethers.getNamedSigner("owner");
+    [pauser] = await randomSigner(parseUnits("100"));
     [nonManager] = await randomSigner(parseUnits("100"));
     [anAccount] = await randomSigner(parseUnits("100"));
   });
@@ -38,6 +40,8 @@ describe("StakedCelo", () => {
       to: manager.address,
       value: parseUnits("100").toString(),
     });
+
+    await stakedCelo.connect(owner).setPauser(pauser.address);
   });
 
   describe("#mint()", () => {
@@ -249,6 +253,91 @@ describe("StakedCelo", () => {
       expect(transfer[0]).to.eq(anAccount.address);
       expect(transfer[1]).to.eq(managerContract.address);
       expect(transfer[2]).to.eq(1);
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await stakedCelo.connect(owner).setPauser(nonManager.address);
+      const newPauser = await stakedCelo.pauser();
+      expect(newPauser).to.eq(nonManager.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(stakedCelo.connect(owner).setPauser(nonManager.address))
+        .to.emit(stakedCelo, "PauserSet")
+        .withArgs(nonManager.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(stakedCelo.connect(nonManager).setPauser(nonManager.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await stakedCelo.connect(pauser).pause();
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(stakedCelo.connect(pauser).pause())
+        .to.emit(stakedCelo, "ContractPaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(stakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(stakedCelo.connect(nonManager).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await stakedCelo.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await stakedCelo.connect(pauser).unpause();
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(stakedCelo.connect(pauser).unpause())
+        .to.emit(stakedCelo, "ContractUnpaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(stakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(stakedCelo.connect(nonManager).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await stakedCelo.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await stakedCelo.connect(pauser).pause();
+    });
+
+    it("can't call unlockVoteBalance", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).unlockVoteBalance(nonManager.address)
+      ).revertedWith("Paused()");
     });
   });
 });

@@ -9,12 +9,13 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
+import "./Pausable.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation
  * of reward-earning voted LockedGold (i.e. locked CELO).
  */
-contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
+contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausable {
     mapping(address => uint256) private _lockedBalances;
 
     /**
@@ -65,6 +66,14 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         __ERC20_init("Staked CELO", "stCELO");
         __Managed_init(_manager);
         _transferOwnership(_owner);
+    }
+
+    /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
     }
 
     /**
@@ -130,7 +139,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
      * @notice Unlocks vote stCELO from an address.
      * @param beneficiary The address that will have its stCELO balance unlocked.
      */
-    function unlockVoteBalance(address beneficiary) public {
+    function unlockVoteBalance(address beneficiary) public onlyWhenNotPaused {
         uint256 previouslyLocked = _lockedBalances[beneficiary];
         if (previouslyLocked == 0) {
             revert NoLockedStakedCelo(beneficiary);
