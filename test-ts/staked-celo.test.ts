@@ -331,12 +331,43 @@ describe("StakedCelo", () => {
 
   describe("when paused", () => {
     beforeEach(async () => {
+      await stakedCelo.connect(anAccount).approve(nonManager.address, 1);
       await stakedCelo.connect(pauser).pause();
     });
 
     it("can't call unlockVoteBalance", async () => {
       await expect(
-        stakedCelo.connect(nonManager).unlockVoteBalance(nonManager.address)
+        stakedCelo.connect(anAccount).unlockVoteBalance(anAccount.address)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call transfer", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).transfer(anAccount.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call approve", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).approve(anAccount.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call transferFrom", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).transferFrom(anAccount.address, nonManager.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call increaseAllowance", async () => {
+      await expect(
+        stakedCelo.connect(nonManager).increaseAllowance(nonManager.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call decreaseAllowance", async () => {
+      await expect(
+        stakedCelo.connect(anAccount).decreaseAllowance(nonManager.address, 1)
       ).revertedWith("Paused()");
     });
   });

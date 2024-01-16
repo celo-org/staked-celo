@@ -180,4 +180,12 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
         }
         IManager(manager).transfer(from, to, amount);
     }
+
+    function _approve(address owner, address spender, uint256 amount) internal override onlyWhenNotPaused {
+        super._approve(owner, spender, amount);
+    }
+
+    function _transfer(address from, address to, uint256 amount) internal override onlyWhenNotPaused {
+        super._transfer(from, to, amount);
+    }
 }
