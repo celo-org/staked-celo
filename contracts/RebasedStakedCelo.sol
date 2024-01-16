@@ -248,7 +248,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override onlyWhenNotPaused {
         if (from == address(0)) {
             revert NullAddress();
         }
@@ -268,5 +268,9 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable
         stakedCeloBalance[to] += equivalentStakedCeloAmount;
 
         emit Transfer(from, to, amount);
+    }
+
+    function _approve(address owner, address spender, uint256 amount) internal override onlyWhenNotPaused {
+        super._approve(owner, spender, amount);
     }
 }

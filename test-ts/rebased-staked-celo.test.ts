@@ -710,18 +710,53 @@ describe("RebasedStakedCelo", () => {
 
   describe("when paused", () => {
     beforeEach(async () => {
+      await stakedCelo.mint(alice.address, 100);
+      await stakedCelo.connect(alice).approve(rebasedStakedCelo.address, 100);
+      await rebasedStakedCelo.connect(alice).deposit(100);
+      await rebasedStakedCelo.connect(alice).approve(bob.address, 1);
+
       await rebasedStakedCelo.connect(pauser).pause();
     });
 
     it("can't call deposit", async () => {
       await expect(
-        rebasedStakedCelo.connect(someone).deposit(100)
+        rebasedStakedCelo.connect(alice).deposit(100)
       ).revertedWith("Paused()");
     });
 
     it("can't call withdraw", async () => {
       await expect(
-        rebasedStakedCelo.connect(someone).withdraw(100)
+        rebasedStakedCelo.connect(alice).withdraw(100)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call transfer", async () => {
+      await expect(
+        rebasedStakedCelo.connect(alice).transfer(bob.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call approve", async () => {
+      await expect(
+        rebasedStakedCelo.connect(alice).approve(bob.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call transferFrom", async () => {
+      await expect(
+        rebasedStakedCelo.connect(bob).transferFrom(alice.address, bob.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call increaseAllowance", async () => {
+      await expect(
+        rebasedStakedCelo.connect(alice).increaseAllowance(bob.address, 1)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call decreaseAllowance", async () => {
+      await expect(
+        rebasedStakedCelo.connect(alice).decreaseAllowance(bob.address, 1)
       ).revertedWith("Paused()");
     });
   });
