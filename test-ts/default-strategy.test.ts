@@ -142,7 +142,7 @@ describe("DefaultStrategy", () => {
       ).connect(owner) as MockVote__factory;
       voteContract = await mockVoteFactory.deploy();
 
-      await manager.setDependencies(
+      await manager.connect(owner).setDependencies(
         stakedCelo.address,
         account.address,
         voteContract.address,
