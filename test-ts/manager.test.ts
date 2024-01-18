@@ -140,24 +140,30 @@ describe("Manager", () => {
       ).connect(owner) as MockVote__factory;
       voteContract = await mockVoteFactory.deploy();
 
-      await manager.connect(owner).setDependencies(
-        stakedCelo.address,
-        account.address,
-        voteContract.address,
-        groupHealthContract.address,
-        specificGroupStrategyContract.address,
-        defaultStrategyContract.address
-      );
-      await specificGroupStrategyContract.connect(owner).setDependencies(
-        account.address,
-        groupHealthContract.address,
-        defaultStrategyContract.address
-      );
-      await defaultStrategyContract.connect(owner).setDependencies(
-        account.address,
-        groupHealthContract.address,
-        specificGroupStrategyContract.address
-      );
+      await manager
+        .connect(owner)
+        .setDependencies(
+          stakedCelo.address,
+          account.address,
+          voteContract.address,
+          groupHealthContract.address,
+          specificGroupStrategyContract.address,
+          defaultStrategyContract.address
+        );
+      await specificGroupStrategyContract
+        .connect(owner)
+        .setDependencies(
+          account.address,
+          groupHealthContract.address,
+          defaultStrategyContract.address
+        );
+      await defaultStrategyContract
+        .connect(owner)
+        .setDependencies(
+          account.address,
+          groupHealthContract.address,
+          specificGroupStrategyContract.address
+        );
       const accounts = await hre.kit.contracts.getAccounts();
       await accounts.createAccount().sendAndWaitForReceipt({
         from: voter.address,
@@ -215,7 +221,10 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         await manager.connect(depositor).deposit({ value: 99 });
@@ -276,7 +285,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
@@ -433,7 +444,13 @@ describe("Manager", () => {
       const secondGroupCapacity = parseUnits("99.25");
 
       beforeEach(async () => {
-        await prepareOverflow(defaultStrategyContract.connect(owner), election, lockedGold, voter, groupAddresses);
+        await prepareOverflow(
+          defaultStrategyContract.connect(owner),
+          election,
+          lockedGold,
+          voter,
+          groupAddresses
+        );
       });
 
       it("Deposit to only one group if within capacity", async () => {
@@ -678,7 +695,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
 
@@ -752,7 +771,9 @@ describe("Manager", () => {
         beforeEach(async () => {
           for (let i = 0; i < 2; i++) {
             const [head] = await defaultStrategyContract.getGroupsHead();
-            await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+            await defaultStrategyContract
+              .connect(owner)
+              .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
           }
           specificGroupStrategyAddress = groupAddresses[2];
@@ -760,7 +781,9 @@ describe("Manager", () => {
           await manager.changeStrategy(specificGroupStrategyAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupStrategyAddress, depositedValue);
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategyAddress);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategyAddress);
         });
 
         it("should schedule votes for default strategy", async () => {
@@ -777,7 +800,9 @@ describe("Manager", () => {
         beforeEach(async () => {
           for (let i = 0; i < 3; i++) {
             const [head] = await defaultStrategyContract.getGroupsHead();
-            await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+            await defaultStrategyContract
+              .connect(owner)
+              .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
           }
           specificGroupStrategyAddress = groupAddresses[0];
@@ -785,7 +810,9 @@ describe("Manager", () => {
           await manager.changeStrategy(specificGroupStrategyAddress);
           await manager.deposit({ value: depositedValue });
           await account.setCeloForGroup(specificGroupStrategyAddress, depositedValue);
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategyAddress);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategyAddress);
         });
 
         it("should schedule votes for default strategy", async () => {
@@ -803,7 +830,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
       });
@@ -955,7 +984,9 @@ describe("Manager", () => {
         let nextGroup = ADDRESS_ZERO;
         for (let i = 0; i < 3; i++) {
           const [tail] = await defaultStrategyContract.getGroupsTail();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], nextGroup, tail);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], nextGroup, tail);
           nextGroup = groupAddresses[i];
           await account.setCeloForGroup(groupAddresses[i], 100);
           await manager.connect(depositor2).deposit({ value: 100 });
@@ -1051,7 +1082,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
           await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(groupAddresses[i], 100);
         }
@@ -1194,7 +1227,9 @@ describe("Manager", () => {
         specificGroupStrategy = groups[2];
         let nextGroup = ADDRESS_ZERO;
         for (let i = 0; i < 2; i++) {
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
           nextGroup = groupAddresses[i];
           await manager.connect(depositor2).deposit({ value: withdrawals[i] });
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
@@ -1235,7 +1270,9 @@ describe("Manager", () => {
       });
 
       it("should withdraw same amount as originally deposited from active groups after strategy is blocked", async () => {
-        await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+        await specificGroupStrategyContract
+          .connect(owner)
+          .blockGroup(specificGroupStrategy.address);
         await specificGroupStrategyContract.rebalanceWhenHealthChanged(
           specificGroupStrategy.address
         );
@@ -1263,7 +1300,9 @@ describe("Manager", () => {
 
       describe("When strategy blocked", () => {
         beforeEach(async () => {
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategy.address);
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(
             specificGroupStrategy.address
           );
@@ -1322,7 +1361,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         await account.setCeloForGroup(
@@ -1363,7 +1404,13 @@ describe("Manager", () => {
       let originalOverflow: BigNumber;
 
       beforeEach(async () => {
-        await prepareOverflow(defaultStrategyContract.connect(owner), election, lockedGold, voter, groupAddresses);
+        await prepareOverflow(
+          defaultStrategyContract.connect(owner),
+          election,
+          lockedGold,
+          voter,
+          groupAddresses
+        );
 
         await manager.connect(depositor).changeStrategy(groupAddresses[0]);
         await manager.connect(depositor).deposit({ value: depositAmount });
@@ -1926,7 +1973,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         defaultGroupDeposit = BigNumber.from(1000); //parseUnits("1");
@@ -2083,7 +2132,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2256,7 +2307,9 @@ describe("Manager", () => {
           account,
           manager
         );
-        await specificGroupStrategyContract.connect(owner).blockGroup(differentSpecificGroupStrategyAddress);
+        await specificGroupStrategyContract
+          .connect(owner)
+          .blockGroup(differentSpecificGroupStrategyAddress);
         await account.setCeloForGroup(
           differentSpecificGroupStrategyAddress,
           differentSpecificGroupStrategyDeposit
@@ -2309,12 +2362,12 @@ describe("Manager", () => {
           groupAddresses.slice(0, 3),
           false
         );
-        await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
-        await defaultStrategyContract.connect(owner).activateGroup(
-          groupAddresses[2],
-          ADDRESS_ZERO,
-          groupAddresses[1]
-        );
+        await defaultStrategyContract
+          .connect(owner)
+          .activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+        await defaultStrategyContract
+          .connect(owner)
+          .activateGroup(groupAddresses[2], ADDRESS_ZERO, groupAddresses[1]);
 
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         [originalHead] = await defaultStrategyContract.getGroupsHead();
@@ -2401,7 +2454,9 @@ describe("Manager", () => {
         specificGroupStrategyAddress = groupAddresses[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         await manager.connect(depositor).changeStrategy(specificGroupStrategyAddress);
@@ -2414,7 +2469,9 @@ describe("Manager", () => {
 
       describe("When strategy blocked", () => {
         beforeEach(async () => {
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategyAddress);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategyAddress);
         });
 
         it("should return default strategy", async () => {
@@ -2451,7 +2508,9 @@ describe("Manager", () => {
       specificGroupStrategyAddress = groupAddresses[2];
       for (let i = 0; i < 2; i++) {
         const [head] = await defaultStrategyContract.getGroupsHead();
-        await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        await defaultStrategyContract
+          .connect(owner)
+          .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
       }
     });
@@ -2696,7 +2755,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2731,12 +2792,12 @@ describe("Manager", () => {
           groupAddresses.slice(0, 3),
           false
         );
-        await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
-        await defaultStrategyContract.connect(owner).activateGroup(
-          groupAddresses[2],
-          ADDRESS_ZERO,
-          groupAddresses[1]
-        );
+        await defaultStrategyContract
+          .connect(owner)
+          .activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+        await defaultStrategyContract
+          .connect(owner)
+          .activateGroup(groupAddresses[2], ADDRESS_ZERO, groupAddresses[1]);
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         await manager.connect(depositor).changeStrategy(specificGroup);
         await manager.connect(depositor).deposit({ value: deposit });
@@ -2805,7 +2866,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2850,7 +2913,9 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
       });
@@ -2972,7 +3037,9 @@ describe("Manager", () => {
         );
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
@@ -3104,7 +3171,9 @@ describe("Manager", () => {
           beforeEach(async () => {
             for (let i = 0; i < 2; i++) {
               const [head] = await defaultStrategyContract.getGroupsHead();
-              await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+              await defaultStrategyContract
+                .connect(owner)
+                .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
             await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
 
@@ -3144,7 +3213,9 @@ describe("Manager", () => {
           beforeEach(async () => {
             for (let i = 2; i < 4; i++) {
               const [head] = await defaultStrategyContract.getGroupsHead();
-              await defaultStrategyContract.connect(owner).activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+              await defaultStrategyContract
+                .connect(owner)
+                .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
           });
 
@@ -3224,7 +3295,13 @@ describe("Manager", () => {
       const firstGroupCapacity = parseUnits("40.166666666666666666");
 
       beforeEach(async () => {
-        await prepareOverflow(defaultStrategyContract.connect(owner), election, lockedGold, voter, groupAddresses);
+        await prepareOverflow(
+          defaultStrategyContract.connect(owner),
+          election,
+          lockedGold,
+          voter,
+          groupAddresses
+        );
       });
 
       it("should return correct amount of receivable votes", async () => {
@@ -3257,7 +3334,13 @@ describe("Manager", () => {
     describe("When active groups", () => {
       const firstGroupCapacity = parseUnits("40.166666666666666666");
       beforeEach(async () => {
-        await prepareOverflow(defaultStrategyContract.connect(owner), election, lockedGold, voter, groupAddresses);
+        await prepareOverflow(
+          defaultStrategyContract.connect(owner),
+          election,
+          lockedGold,
+          voter,
+          groupAddresses
+        );
       });
 
       it("should revert when from group not overflowing", async () => {
@@ -3338,8 +3421,9 @@ describe("Manager", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(manager.connect(nonOwner).setPauser(nonOwner.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(manager.connect(nonOwner).setPauser(nonOwner.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -3351,8 +3435,7 @@ describe("Manager", () => {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(manager.connect(pauser).pause())
-        .to.emit(manager, "ContractPaused");
+      await expect(manager.connect(pauser).pause()).to.emit(manager, "ContractPaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -3380,8 +3463,7 @@ describe("Manager", () => {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(manager.connect(pauser).unpause())
-        .to.emit(manager, "ContractUnpaused");
+      await expect(manager.connect(pauser).unpause()).to.emit(manager, "ContractUnpaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -3403,15 +3485,11 @@ describe("Manager", () => {
     });
 
     it("can't call withdraw", async () => {
-      await expect(
-        manager.connect(nonOwner).withdraw(100)
-      ).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).withdraw(100)).revertedWith("Paused()");
     });
 
     it("can't call revokeVotes", async () => {
-      await expect(
-        manager.connect(nonOwner).revokeVotes(0, 0)
-      ).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).revokeVotes(0, 0)).revertedWith("Paused()");
     });
 
     it("can't call updateHistoryAndReturnLockedStCeloInVoting", async () => {
@@ -3421,21 +3499,17 @@ describe("Manager", () => {
     });
 
     it("can't call deposit", async () => {
-      await expect(
-        manager.connect(nonOwner).deposit({ value: 100 })
-      ).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).deposit({ value: 100 })).revertedWith("Paused()");
     });
 
     it("can't call changeStrategy", async () => {
-      await expect(
-        manager.connect(nonOwner).changeStrategy(ADDRESS_ZERO)
-      ).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).changeStrategy(ADDRESS_ZERO)).revertedWith("Paused()");
     });
 
     it("can't call rebalance", async () => {
-      await expect(
-        manager.connect(nonOwner).rebalance(ADDRESS_ZERO, ADDRESS_ZERO)
-      ).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).rebalance(ADDRESS_ZERO, ADDRESS_ZERO)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call rebalanceOverflow", async () => {
@@ -3445,8 +3519,7 @@ describe("Manager", () => {
     });
 
     it("can't call voteProposal", async () => {
-      await expect(
-        manager.connect(nonOwner).voteProposal(0, 0, 0, 0, 0)).revertedWith("Paused()");
+      await expect(manager.connect(nonOwner).voteProposal(0, 0, 0, 0, 0)).revertedWith("Paused()");
     });
   });
 });

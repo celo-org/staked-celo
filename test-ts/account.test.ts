@@ -2034,8 +2034,9 @@ describe("Account", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(account.connect(nonManager).setPauser(nonManager.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(account.connect(nonManager).setPauser(nonManager.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -2047,8 +2048,7 @@ describe("Account", () => {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(account.connect(pauser).pause())
-        .to.emit(account, "ContractPaused");
+      await expect(account.connect(pauser).pause()).to.emit(account, "ContractPaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -2076,8 +2076,7 @@ describe("Account", () => {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(account.connect(pauser).unpause())
-        .to.emit(account, "ContractUnpaused");
+      await expect(account.connect(pauser).unpause()).to.emit(account, "ContractUnpaused");
     });
 
     it("cannot be called by the owner", async () => {

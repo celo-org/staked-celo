@@ -112,26 +112,32 @@ describe("SpecificGroupStrategy", () => {
       ).connect(owner) as MockAccount__factory;
       account = await accountFactory.deploy();
 
-      await manager.connect(owner).setDependencies(
-        stakedCelo.address,
-        account.address,
-        voteContract.address,
-        groupHealthContract.address,
-        specificGroupStrategyContract.address,
-        defaultStrategyContract.address
-      );
+      await manager
+        .connect(owner)
+        .setDependencies(
+          stakedCelo.address,
+          account.address,
+          voteContract.address,
+          groupHealthContract.address,
+          specificGroupStrategyContract.address,
+          defaultStrategyContract.address
+        );
 
-      await specificGroupStrategyContract.connect(owner).setDependencies(
-        account.address,
-        groupHealthContract.address,
-        defaultStrategyContract.address
-      );
+      await specificGroupStrategyContract
+        .connect(owner)
+        .setDependencies(
+          account.address,
+          groupHealthContract.address,
+          defaultStrategyContract.address
+        );
 
-      await defaultStrategyContract.connect(owner).setDependencies(
-        account.address,
-        groupHealthContract.address,
-        specificGroupStrategyContract.address
-      );
+      await defaultStrategyContract
+        .connect(owner)
+        .setDependencies(
+          account.address,
+          groupHealthContract.address,
+          specificGroupStrategyContract.address
+        );
 
       const accounts = await hre.kit.contracts.getAccounts();
       await accounts.createAccount().sendAndWaitForReceipt({
@@ -254,9 +260,9 @@ describe("SpecificGroupStrategy", () => {
 
   describe("#blockGroup()", () => {
     it("reverts when no active groups", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[3])).revertedWith(
-        `NoActiveGroups()`
-      );
+      await expect(
+        specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[3])
+      ).revertedWith(`NoActiveGroups()`);
     });
 
     describe("When 2 active groups", () => {
@@ -265,7 +271,9 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groups[i].address, ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groups[i].address, ADDRESS_ZERO, head);
         }
       });
 
@@ -290,7 +298,9 @@ describe("SpecificGroupStrategy", () => {
         });
 
         it("adds the group to blocked groups array", async () => {
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategy.address);
           const activeGroups = await getDefaultGroups(defaultStrategyContract);
           const blockedGroups = await getBlockedSpecificGroupStrategies(
             specificGroupStrategyContract
@@ -302,13 +312,17 @@ describe("SpecificGroupStrategy", () => {
         });
 
         it("emits a StrategyBlocked event", async () => {
-          await expect(specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address))
+          await expect(
+            specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address)
+          )
             .to.emit(specificGroupStrategyContract, "GroupBlocked")
             .withArgs(specificGroupStrategy.address);
         });
 
         it("should add blocked strategy to blocked strategies", async () => {
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategy.address);
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(
             specificGroupStrategy.address
           );
@@ -319,7 +333,9 @@ describe("SpecificGroupStrategy", () => {
         });
 
         it("should update accounting correctly", async () => {
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategy.address);
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(
             specificGroupStrategy.address
           );
@@ -333,9 +349,9 @@ describe("SpecificGroupStrategy", () => {
 
         it("reverts when blocking already blocked strategy", async () => {
           await specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[3]);
-          await expect(specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[3])).revertedWith(
-            `GroupAlreadyBlocked("${groupAddresses[3]}")`
-          );
+          await expect(
+            specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[3])
+          ).revertedWith(`GroupAlreadyBlocked("${groupAddresses[3]}")`);
         });
 
         it("cannot be called by a non owner", async () => {
@@ -348,7 +364,9 @@ describe("SpecificGroupStrategy", () => {
 
         it("should schedule transfers to default strategy", async () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
-          await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+          await specificGroupStrategyContract
+            .connect(owner)
+            .blockGroup(specificGroupStrategy.address);
           await specificGroupStrategyContract.rebalanceWhenHealthChanged(
             specificGroupStrategy.address
           );
@@ -373,15 +391,15 @@ describe("SpecificGroupStrategy", () => {
     it("should revert when unhealthy group", async () => {
       await deregisterValidatorGroup(groups[0]);
       await groupHealthContract.updateGroupHealth(groupAddresses[0]);
-      await expect(specificGroupStrategyContract.connect(owner).unblockGroup(groupAddresses[0])).revertedWith(
-        `GroupNotEligible("${groupAddresses[0]}")`
-      );
+      await expect(
+        specificGroupStrategyContract.connect(owner).unblockGroup(groupAddresses[0])
+      ).revertedWith(`GroupNotEligible("${groupAddresses[0]}")`);
     });
 
     it("should revert when not blocked strategy", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).unblockGroup(groupAddresses[0])).revertedWith(
-        `FailedToUnblockGroup("${groupAddresses[0]}")`
-      );
+      await expect(
+        specificGroupStrategyContract.connect(owner).unblockGroup(groupAddresses[0])
+      ).revertedWith(`FailedToUnblockGroup("${groupAddresses[0]}")`);
     });
 
     describe("when the group is blocked", () => {
@@ -391,14 +409,18 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract.connect(owner).activateGroup(groups[i].address, ADDRESS_ZERO, head);
+          await defaultStrategyContract
+            .connect(owner)
+            .activateGroup(groups[i].address, ADDRESS_ZERO, head);
         }
 
         specificGroupStrategyDeposit = parseUnits("1");
         await account.setCeloForGroup(specificGroupStrategy.address, specificGroupStrategyDeposit);
         await manager.connect(depositor).changeStrategy(specificGroupStrategy.address);
         await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
-        await specificGroupStrategyContract.connect(owner).blockGroup(specificGroupStrategy.address);
+        await specificGroupStrategyContract
+          .connect(owner)
+          .blockGroup(specificGroupStrategy.address);
       });
 
       it("should have blocked strategy", async () => {
@@ -409,7 +431,9 @@ describe("SpecificGroupStrategy", () => {
       });
 
       it("should allow to unblock strategy", async () => {
-        await specificGroupStrategyContract.connect(owner).unblockGroup(specificGroupStrategy.address);
+        await specificGroupStrategyContract
+          .connect(owner)
+          .unblockGroup(specificGroupStrategy.address);
         const blockedGroups = await getBlockedSpecificGroupStrategies(
           specificGroupStrategyContract
         );
@@ -422,7 +446,13 @@ describe("SpecificGroupStrategy", () => {
     const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
     beforeEach(async () => {
-      await prepareOverflow(defaultStrategyContract.connect(owner), election, lockedGold, voter, groupAddresses);
+      await prepareOverflow(
+        defaultStrategyContract.connect(owner),
+        election,
+        lockedGold,
+        voter,
+        groupAddresses
+      );
     });
 
     it("should revert when from group is not overflowing", async () => {
@@ -838,7 +868,9 @@ describe("SpecificGroupStrategy", () => {
             let head: string;
             beforeEach(async () => {
               [head] = await defaultStrategyContract.getGroupsHead();
-              await specificGroupStrategyContract.connect(owner).unblockGroup(specificOverflowingGroup);
+              await specificGroupStrategyContract
+                .connect(owner)
+                .unblockGroup(specificOverflowingGroup);
               await updateGroupCeloBasedOnProtocolStCelo(
                 defaultStrategyContract,
                 specificGroupStrategyContract,
@@ -952,7 +984,9 @@ describe("SpecificGroupStrategy", () => {
             let previousToHead: string;
             beforeEach(async () => {
               [head, previousToHead] = await defaultStrategyContract.getGroupsHead();
-              await specificGroupStrategyContract.connect(owner).unblockGroup(specificOverflowingGroup);
+              await specificGroupStrategyContract
+                .connect(owner)
+                .unblockGroup(specificOverflowingGroup);
               await updateGroupCeloBasedOnProtocolStCelo(
                 defaultStrategyContract,
                 specificGroupStrategyContract,
@@ -1064,7 +1098,9 @@ describe("SpecificGroupStrategy", () => {
             let head: string;
             beforeEach(async () => {
               [head] = await defaultStrategyContract.getGroupsHead();
-              await specificGroupStrategyContract.connect(owner).unblockGroup(specificOverflowingGroup);
+              await specificGroupStrategyContract
+                .connect(owner)
+                .unblockGroup(specificOverflowingGroup);
               await updateGroupCeloBasedOnProtocolStCelo(
                 defaultStrategyContract,
                 specificGroupStrategyContract,
@@ -1123,8 +1159,9 @@ describe("SpecificGroupStrategy", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(specificGroupStrategyContract.connect(nonManager).setPauser(nonManager.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(
+        specificGroupStrategyContract.connect(nonManager).setPauser(nonManager.address)
+      ).revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -1136,18 +1173,24 @@ describe("SpecificGroupStrategy", () => {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(specificGroupStrategyContract.connect(pauser).pause())
-        .to.emit(specificGroupStrategyContract, "ContractPaused");
+      await expect(specificGroupStrategyContract.connect(pauser).pause()).to.emit(
+        specificGroupStrategyContract,
+        "ContractPaused"
+      );
     });
 
     it("cannot be called by the owner", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith(
+        "OnlyPauser()"
+      );
       const isPaused = await specificGroupStrategyContract.isPaused();
       expect(isPaused).to.be.false;
     });
 
     it("cannot be called by a random account", async () => {
-      await expect(specificGroupStrategyContract.connect(nonManager).pause()).revertedWith("OnlyPauser()");
+      await expect(specificGroupStrategyContract.connect(nonManager).pause()).revertedWith(
+        "OnlyPauser()"
+      );
       const isPaused = await specificGroupStrategyContract.isPaused();
       expect(isPaused).to.be.false;
     });
@@ -1165,18 +1208,24 @@ describe("SpecificGroupStrategy", () => {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(specificGroupStrategyContract.connect(pauser).unpause())
-        .to.emit(specificGroupStrategyContract, "ContractUnpaused");
+      await expect(specificGroupStrategyContract.connect(pauser).unpause()).to.emit(
+        specificGroupStrategyContract,
+        "ContractUnpaused"
+      );
     });
 
     it("cannot be called by the owner", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith(
+        "OnlyPauser()"
+      );
       const isPaused = await specificGroupStrategyContract.isPaused();
       expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {
-      await expect(specificGroupStrategyContract.connect(nonManager).unpause()).revertedWith("OnlyPauser()");
+      await expect(specificGroupStrategyContract.connect(nonManager).unpause()).revertedWith(
+        "OnlyPauser()"
+      );
       const isPaused = await specificGroupStrategyContract.isPaused();
       expect(isPaused).to.be.true;
     });

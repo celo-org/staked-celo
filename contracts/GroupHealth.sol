@@ -61,6 +61,14 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * @notice Returns the storage, major, minor, and patch version of the contract.
      * @return Storage version of the contract.
      * @return Major version of the contract.
@@ -78,14 +86,6 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
         )
     {
         return (1, 1, 0, 1);
-    }
-
-    /**
-     * @notice Sets that address permissioned to pause/unpause this contract.
-     * @param _pauser The address that can pause/unpause this contract.
-     */
-    function setPauser(address _pauser) external onlyOwner {
-        _setPauser(_pauser);
     }
 
     /**
@@ -113,7 +113,10 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
      * This array needs to have same length as all (even not elected) members of validator group.
      * Index of not elected member can be any uint256 number.
      */
-    function markGroupHealthy(address group, uint256[] calldata membersElectedIndex) public onlyWhenNotPaused {
+    function markGroupHealthy(address group, uint256[] calldata membersElectedIndex)
+        public
+        onlyWhenNotPaused
+    {
         if (isGroupValid[group] == true) {
             revert GroupHealthy(group);
         }

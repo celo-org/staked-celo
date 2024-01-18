@@ -270,8 +270,9 @@ describe("StakedCelo", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(stakedCelo.connect(nonManager).setPauser(nonManager.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(stakedCelo.connect(nonManager).setPauser(nonManager.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -283,8 +284,7 @@ describe("StakedCelo", () => {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(stakedCelo.connect(pauser).pause())
-        .to.emit(stakedCelo, "ContractPaused");
+      await expect(stakedCelo.connect(pauser).pause()).to.emit(stakedCelo, "ContractPaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -312,8 +312,7 @@ describe("StakedCelo", () => {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(stakedCelo.connect(pauser).unpause())
-        .to.emit(stakedCelo, "ContractUnpaused");
+      await expect(stakedCelo.connect(pauser).unpause()).to.emit(stakedCelo, "ContractUnpaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -336,21 +335,21 @@ describe("StakedCelo", () => {
     });
 
     it("can't call unlockVoteBalance", async () => {
-      await expect(
-        stakedCelo.connect(anAccount).unlockVoteBalance(anAccount.address)
-      ).revertedWith("Paused()");
+      await expect(stakedCelo.connect(anAccount).unlockVoteBalance(anAccount.address)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call transfer", async () => {
-      await expect(
-        stakedCelo.connect(nonManager).transfer(anAccount.address, 1)
-      ).revertedWith("Paused()");
+      await expect(stakedCelo.connect(nonManager).transfer(anAccount.address, 1)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call approve", async () => {
-      await expect(
-        stakedCelo.connect(nonManager).approve(anAccount.address, 1)
-      ).revertedWith("Paused()");
+      await expect(stakedCelo.connect(nonManager).approve(anAccount.address, 1)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call transferFrom", async () => {

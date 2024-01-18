@@ -23,7 +23,7 @@ describe("Pausable", () => {
       await pausableTest.connect(pauser).pause();
       const paused = await pausableTest.isPaused();
       expect(paused).to.be.true;
-    })
+    });
 
     it("emits a ContractPaused event", async () => {
       await expect(pausableTest.connect(pauser).pause()).to.emit(pausableTest, "ContractPaused()");
@@ -67,7 +67,10 @@ describe("Pausable", () => {
       });
 
       it("emits a ContractUnpaused event", async () => {
-        await expect(pausableTest.connect(pauser).unpause()).to.emit(pausableTest, "ContractUnpaused");
+        await expect(pausableTest.connect(pauser).unpause()).to.emit(
+          pausableTest,
+          "ContractUnpaused"
+        );
       });
 
       it("cannot be called by a non-pauser", async () => {
@@ -108,7 +111,9 @@ describe("Pausable", () => {
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(pausableTest.setPauser(nonPauser.address)).to.emit(pausableTest, "PauserSet").withArgs(nonPauser.address);
+      await expect(pausableTest.setPauser(nonPauser.address))
+        .to.emit(pausableTest, "PauserSet")
+        .withArgs(nonPauser.address);
     });
 
     describe("when the pauser is changed", () => {

@@ -348,8 +348,9 @@ describe("GroupHealth", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(groupHealthContract.connect(nonManager).setPauser(nonManager.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(
+        groupHealthContract.connect(nonManager).setPauser(nonManager.address)
+      ).revertedWith("Ownable: caller is not the owner");
     });
   });
 
@@ -361,8 +362,10 @@ describe("GroupHealth", () => {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(groupHealthContract.connect(pauser).pause())
-        .to.emit(groupHealthContract, "ContractPaused");
+      await expect(groupHealthContract.connect(pauser).pause()).to.emit(
+        groupHealthContract,
+        "ContractPaused"
+      );
     });
 
     it("cannot be called by the owner", async () => {
@@ -390,8 +393,10 @@ describe("GroupHealth", () => {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(groupHealthContract.connect(pauser).unpause())
-        .to.emit(groupHealthContract, "ContractUnpaused");
+      await expect(groupHealthContract.connect(pauser).unpause()).to.emit(
+        groupHealthContract,
+        "ContractUnpaused"
+      );
     });
 
     it("cannot be called by the owner", async () => {

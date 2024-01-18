@@ -270,7 +270,11 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable
         emit Transfer(from, to, amount);
     }
 
-    function _approve(address owner, address spender, uint256 amount) internal override onlyWhenNotPaused {
+    function _approve(
+        address owner,
+        address spender,
+        uint256 amount
+    ) internal override onlyWhenNotPaused {
         super._approve(owner, spender, amount);
     }
 }

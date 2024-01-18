@@ -1046,7 +1046,9 @@ describe("MultiSig", () => {
         owner1
       );
 
-      const txData = multiSig.interface.encodeFunctionData("setPauser", [mockPauserAddress.address]);
+      const txData = multiSig.interface.encodeFunctionData("setPauser", [
+        mockPauserAddress.address,
+      ]);
       await executeMultisigProposal(
         multiSig,
         [multiSig.address],
@@ -1060,19 +1062,27 @@ describe("MultiSig", () => {
     });
 
     it("can't call submitProposal", async () => {
-      await expect(multiSig.connect(owner1).submitProposal([nonOwner.address], [0], ["0x"])).revertedWith("Paused()");
+      await expect(
+        multiSig.connect(owner1).submitProposal([nonOwner.address], [0], ["0x"])
+      ).revertedWith("Paused()");
     });
 
     it("can't call confirmProposal", async () => {
-      await expect(multiSig.connect(owner2).confirmProposal(submittedProposal)).revertedWith("Paused()");
+      await expect(multiSig.connect(owner2).confirmProposal(submittedProposal)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call scheduleProposal", async () => {
-      await expect(multiSig.connect(owner2).scheduleProposal(submittedProposal)).revertedWith("Paused()");
+      await expect(multiSig.connect(owner2).scheduleProposal(submittedProposal)).revertedWith(
+        "Paused()"
+      );
     });
 
     it("can't call executeProposal", async () => {
-      await expect(multiSig.connect(owner2).executeProposal(submittedProposal)).revertedWith("Paused()");
+      await expect(multiSig.connect(owner2).executeProposal(submittedProposal)).revertedWith(
+        "Paused()"
+      );
     });
   });
 });

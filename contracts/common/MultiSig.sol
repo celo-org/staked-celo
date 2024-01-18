@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
 import "../interfaces/IPauser.sol";
-import { Pausable } from "../Pausable.sol";
+import {Pausable} from "../Pausable.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -589,7 +589,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
         address[] calldata destinations,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) onlyWhenNotPaused external returns (uint256 proposalId) {
+    ) external onlyWhenNotPaused returns (uint256 proposalId) {
         if (destinations.length != values.length) {
             revert ParamLengthsMismatch();
         }
