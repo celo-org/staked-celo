@@ -85,7 +85,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
             uint256
         )
     {
-        return (1, 1, 0, 1);
+        return (1, 1, 1, 0);
     }
 
     /**

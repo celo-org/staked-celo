@@ -337,7 +337,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
             uint256
         )
     {
-        return (1, 3, 0, 0);
+        return (1, 3, 1, 0);
     }
 
     /**

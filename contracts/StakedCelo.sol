@@ -132,7 +132,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
             uint256
         )
     {
-        return (1, 1, 2, 1);
+        return (1, 1, 3, 0);
     }
 
     /**
