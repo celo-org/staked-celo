@@ -9,11 +9,12 @@ import "./Managed.sol";
 
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "./Pausable.sol";
 
 /**
  * @title Handles governance voting for CELO in protocol.
  */
-contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
+contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, Pausable {
     /**
      * @notice Keeps track of total votes for proposal (votes of Account contract).
      * @param proposalId The proposal UUID.
@@ -168,6 +169,14 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract.
+     * @param _pauser The address that can pause/unpause this contract.
+     */
+    function setPauser(address _pauser) external onlyOwner {
+        _setPauser(_pauser);
+    }
+
+    /**
      * Deletes proposalId from voter's history if proposal expired.
      * @param voter The voter address.
      * @param proposalId The proposal id.
@@ -177,7 +186,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
         address voter,
         uint256 proposalId,
         uint256 index
-    ) external {
+    ) external onlyWhenNotPaused {
         Voter storage voterStruct = voters[voter];
 
         uint256 proposalIdOnChain = voterStruct.votedProposalIds[index];
@@ -332,6 +341,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      */
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         public
+        onlyWhenNotPaused
         returns (uint256)
     {
         Voter storage voter = voters[beneficiary];
@@ -376,7 +386,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed {
      * Deletes timestamp of expired proposal from storage.
      * @param proposalId The proposal Id.
      */
-    function deleteExpiredProposalTimestamp(uint256 proposalId) public {
+    function deleteExpiredProposalTimestamp(uint256 proposalId) public onlyWhenNotPaused {
         uint256 proposalTimestamp = proposalTimestamps[proposalId];
         if (block.timestamp <= proposalTimestamp + getGovernance().getReferendumStageDuration()) {
             revert ProposalNotExpired();

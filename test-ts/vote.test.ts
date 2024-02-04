@@ -48,6 +48,7 @@ describe("Vote", async function (this: any) {
   let nonStakedCelo: SignerWithAddress;
   let nonAccount: SignerWithAddress;
   let nonOwner: SignerWithAddress;
+  let pauser: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let activatedGroupAddresses: string[];
@@ -136,6 +137,8 @@ describe("Vote", async function (this: any) {
       [nonAccount] = await randomSigner(parseUnits("100"));
       multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
       [voter] = await randomSigner(parseUnits("300"));
+      [pauser] = await randomSigner(parseUnits("100"));
+
       const accounts = await hre.kit.contracts.getAccounts();
       await accounts.createAccount().sendAndWaitForReceipt({
         from: voter.address,
@@ -174,6 +177,8 @@ describe("Vote", async function (this: any) {
     voteContract = await hre.ethers.getContract("Vote");
     defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
     account = await hre.ethers.getContract("Account");
+
+    await voteContract.connect(owner).setPauser(pauser.address);
 
     const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
     const stakedCelo = await hre.ethers.getContract("StakedCelo");
@@ -876,6 +881,107 @@ describe("Vote", async function (this: any) {
         const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
         expect(proposalIds).to.have.deep.members([BigNumber.from(proposal2Id)]);
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address", async () => {
+      await voteContract.connect(owner).setPauser(nonOwner.address);
+      const newPauser = await voteContract.pauser();
+      expect(newPauser).to.eq(nonOwner.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(voteContract.connect(owner).setPauser(nonOwner.address))
+        .to.emit(voteContract, "PauserSet")
+        .withArgs(nonOwner.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(voteContract.connect(nonOwner).setPauser(nonOwner.address))
+        .revertedWith("Ownable: caller is not the owner");
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await voteContract.connect(pauser).pause();
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(voteContract.connect(pauser).pause())
+        .to.emit(voteContract, "ContractPaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(voteContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(voteContract.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await voteContract.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await voteContract.connect(pauser).unpause();
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(voteContract.connect(pauser).unpause())
+        .to.emit(voteContract, "ContractUnpaused");
+    });
+
+    it("cannot be called by the owner", async () => {
+      await expect(voteContract.connect(owner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(voteContract.connect(nonOwner).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe.only("when paused", () => {
+    beforeEach(async () => {
+      await voteContract.connect(pauser).pause();
+    });
+
+    it("can't call deleteExpiredVoterProposalId", async () => {
+      await expect(
+        voteContract.connect(depositor0).deleteExpiredVoterProposalId(
+          depositor0.address,
+          0,
+          0
+        )
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call updateHistoryAndReturnLockedStCeloInVoting", async () => {
+      await expect(
+        voteContract.connect(depositor0).updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call deleteExpiredProposalTimestamp", async () => {
+      await expect(
+        voteContract.connect(depositor0).deleteExpiredProposalTimestamp(0)
+      ).revertedWith("Paused()");
     });
   });
 });
