@@ -23,6 +23,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_test_specific_group_strategy";
-func.tags = ["FullTestManager", "TestSpecificGroupStrategy"];
+func.tags = ["FullTestManager", "TestSpecificGroupStrategy", "TestVote"];
 func.dependencies = ["TestManager"];
 export default func;

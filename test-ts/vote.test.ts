@@ -10,6 +10,7 @@ import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
+import { Account } from "../typechain-types/Account";
 import { Manager } from "../typechain-types/Manager";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
@@ -37,7 +38,9 @@ describe("Vote", async function (this: any) {
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
   let defaultStrategyContract: DefaultStrategy;
+  let account: Account;
 
+  let owner: SignerWithAddress;
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
   let multisigOwner0: SignerWithAddress;
@@ -74,11 +77,26 @@ describe("Vote", async function (this: any) {
     }
   }
 
-  async function depositAndActivate(despositor: Signer, value: BigNumberish) {
-    await managerContract.connect(despositor).deposit({ value });
-    await activateAndVoteTest();
+  async function depositAndActivate(depositor: Signer, value: BigNumberish) {
+    await managerContract.connect(depositor).deposit({ value });
+
+    const electionWrapper = await hre.kit.contracts.getElection();
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      const group = activatedGroupAddresses[i];
+      const scheduledVotes = await account.scheduledVotesForGroup(group);
+      const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
+        group,
+        // @ts-ignore: BigNumber types library conflict.
+        scheduledVotes.toString()
+      )
+      await account.connect(depositor).activateAndVote(activatedGroupAddresses[i], lesser, greater);
+    }
+
     await mineToNextEpoch(hre.web3);
-    await activateAndVoteTest();
+
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      await account.connect(depositor).activateAndVote(activatedGroupAddresses[i], ADDRESS_ZERO, ADDRESS_ZERO);
+    }
   }
 
   async function checkGovernanceTotalVotes(
@@ -110,6 +128,7 @@ describe("Vote", async function (this: any) {
         VALIDATOR_GROUPS: "",
       };
 
+      owner = await hre.ethers.getNamedSigner("owner");
       [depositor0] = await randomSigner(parseUnits("300"));
       [depositor1] = await randomSigner(parseUnits("300"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
@@ -148,30 +167,35 @@ describe("Vote", async function (this: any) {
   });
 
   beforeEach(async () => {
-    await hre.deployments.fixture("core");
+    await hre.deployments.fixture("TestVote");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
-    groupHealthContract = await hre.ethers.getContract("GroupHealth");
+    groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
-    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+    defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
+    account = await hre.ethers.getContract("Account");
 
-    groupHealthContract = await upgradeToMockGroupHealthE2E(
-      multisigOwner0,
-      groupHealthContract as unknown as GroupHealth
-    );
+    const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+    const stakedCelo = await hre.ethers.getContract("StakedCelo");
+
+    await defaultStrategyContract.connect(owner).setDependencies(account.address, groupHealthContract.address, specificGroupStrategy.address);
+    await managerContract.connect(owner).setDependencies(stakedCelo.address, account.address, voteContract.address, groupHealthContract.address, specificGroupStrategy.address, defaultStrategyContract.address);
+    await voteContract.connect(owner).setDependencies(stakedCelo.address, account.address);
+
     const validatorWrapper = await hre.kit.contracts.getValidators();
+
     await electMockValidatorGroupsAndUpdate(
       validatorWrapper,
       groupHealthContract,
       activatedGroupAddresses
     );
 
-    await activateValidators(
-      defaultStrategyContract,
-      groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
-      activatedGroupAddresses
-    );
+    let previousKey = ADDRESS_ZERO;
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      await defaultStrategyContract.connect(owner)
+        .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
+      previousKey = activatedGroupAddresses[i];
+    }
   });
 
   describe("#getVoteWeight()", () => {
