@@ -8,15 +8,12 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
-import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
-import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Account } from "../typechain-types/Account";
+import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { Manager } from "../typechain-types/Manager";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
-  activateAndVoteTest,
-  activateValidators,
   ADDRESS_ZERO,
   electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
@@ -27,7 +24,6 @@ import {
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
-  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
@@ -43,7 +39,6 @@ describe("Vote", async function (this: any) {
   let owner: SignerWithAddress;
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
-  let multisigOwner0: SignerWithAddress;
   let voter: SignerWithAddress;
   let nonStakedCelo: SignerWithAddress;
   let nonAccount: SignerWithAddress;
@@ -89,14 +84,16 @@ describe("Vote", async function (this: any) {
         group,
         // @ts-ignore: BigNumber types library conflict.
         scheduledVotes.toString()
-      )
+      );
       await account.connect(depositor).activateAndVote(activatedGroupAddresses[i], lesser, greater);
     }
 
     await mineToNextEpoch(hre.web3);
 
     for (let i = 0; i < activatedGroupAddresses.length; i++) {
-      await account.connect(depositor).activateAndVote(activatedGroupAddresses[i], ADDRESS_ZERO, ADDRESS_ZERO);
+      await account
+        .connect(depositor)
+        .activateAndVote(activatedGroupAddresses[i], ADDRESS_ZERO, ADDRESS_ZERO);
     }
   }
 
@@ -135,7 +132,6 @@ describe("Vote", async function (this: any) {
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
-      multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
       [voter] = await randomSigner(parseUnits("300"));
       [pauser] = await randomSigner(parseUnits("100"));
 
@@ -183,8 +179,19 @@ describe("Vote", async function (this: any) {
     const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
     const stakedCelo = await hre.ethers.getContract("StakedCelo");
 
-    await defaultStrategyContract.connect(owner).setDependencies(account.address, groupHealthContract.address, specificGroupStrategy.address);
-    await managerContract.connect(owner).setDependencies(stakedCelo.address, account.address, voteContract.address, groupHealthContract.address, specificGroupStrategy.address, defaultStrategyContract.address);
+    await defaultStrategyContract
+      .connect(owner)
+      .setDependencies(account.address, groupHealthContract.address, specificGroupStrategy.address);
+    await managerContract
+      .connect(owner)
+      .setDependencies(
+        stakedCelo.address,
+        account.address,
+        voteContract.address,
+        groupHealthContract.address,
+        specificGroupStrategy.address,
+        defaultStrategyContract.address
+      );
     await voteContract.connect(owner).setDependencies(stakedCelo.address, account.address);
 
     const validatorWrapper = await hre.kit.contracts.getValidators();
@@ -197,7 +204,8 @@ describe("Vote", async function (this: any) {
 
     let previousKey = ADDRESS_ZERO;
     for (let i = 0; i < activatedGroupAddresses.length; i++) {
-      await defaultStrategyContract.connect(owner)
+      await defaultStrategyContract
+        .connect(owner)
         .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
       previousKey = activatedGroupAddresses[i];
     }
@@ -898,8 +906,9 @@ describe("Vote", async function (this: any) {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(voteContract.connect(nonOwner).setPauser(nonOwner.address))
-        .revertedWith("Ownable: caller is not the owner");
+      await expect(voteContract.connect(nonOwner).setPauser(nonOwner.address)).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 
@@ -911,8 +920,7 @@ describe("Vote", async function (this: any) {
     });
 
     it("emits a ContractPaused event", async () => {
-      await expect(voteContract.connect(pauser).pause())
-        .to.emit(voteContract, "ContractPaused");
+      await expect(voteContract.connect(pauser).pause()).to.emit(voteContract, "ContractPaused");
     });
 
     it("cannot be called by the owner", async () => {
@@ -940,8 +948,10 @@ describe("Vote", async function (this: any) {
     });
 
     it("emits a ContractUnpaused event", async () => {
-      await expect(voteContract.connect(pauser).unpause())
-        .to.emit(voteContract, "ContractUnpaused");
+      await expect(voteContract.connect(pauser).unpause()).to.emit(
+        voteContract,
+        "ContractUnpaused"
+      );
     });
 
     it("cannot be called by the owner", async () => {
@@ -964,24 +974,22 @@ describe("Vote", async function (this: any) {
 
     it("can't call deleteExpiredVoterProposalId", async () => {
       await expect(
-        voteContract.connect(depositor0).deleteExpiredVoterProposalId(
-          depositor0.address,
-          0,
-          0
-        )
+        voteContract.connect(depositor0).deleteExpiredVoterProposalId(depositor0.address, 0, 0)
       ).revertedWith("Paused()");
     });
 
     it("can't call updateHistoryAndReturnLockedStCeloInVoting", async () => {
       await expect(
-        voteContract.connect(depositor0).updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+        voteContract
+          .connect(depositor0)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
       ).revertedWith("Paused()");
     });
 
     it("can't call deleteExpiredProposalTimestamp", async () => {
-      await expect(
-        voteContract.connect(depositor0).deleteExpiredProposalTimestamp(0)
-      ).revertedWith("Paused()");
+      await expect(voteContract.connect(depositor0).deleteExpiredProposalTimestamp(0)).revertedWith(
+        "Paused()"
+      );
     });
   });
 });
