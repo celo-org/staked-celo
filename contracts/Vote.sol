@@ -222,7 +222,7 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, Paus
             uint256
         )
     {
-        return (1, 1, 2, 1);
+        return (1, 1, 3, 0);
     }
 
     /**
