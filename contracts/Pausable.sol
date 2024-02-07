@@ -132,7 +132,7 @@ abstract contract Pausable is IPausable {
     /**
      * @notice Sets the address permissioned to pause this contract.
      * @param _pauser The new pauser.
-     * @dev This shuold be wrapped by the inheriting contract, likely in a
+     * @dev This should be wrapped by the inheriting contract, likely in a
      * permissioned function like `onlyOwner`.
      */
     function _setPauser(address _pauser) internal {
