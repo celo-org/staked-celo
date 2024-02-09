@@ -63,7 +63,7 @@ describe("RebasedStakedCelo", () => {
 
     it("should revert when the Rebase Staked CELO contract's allowance is too low", async () => {
       await expect(rebasedStakedCelo.connect(someone).deposit(150)).to.be.revertedWith(
-        "ERC20: transfer amount exceeds allowance"
+        "ERC20: insufficient allowance"
       );
     });
 
