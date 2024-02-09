@@ -22,7 +22,7 @@ jobs:
     ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
       - run: git config --global url."https://".insteadOf git://
       - name: Checkout commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v1
@@ -55,7 +55,7 @@ jobs:
       - run: git config --global url."https://".insteadOf git://
 
       - name: Checkout commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v1
@@ -89,7 +89,7 @@ jobs:
     ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
       - run: git config --global url."https://".insteadOf git://
       - name: Checkout commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v1
@@ -106,7 +106,7 @@ jobs:
         run: yarn generate:standard:artifacts
 
       - name: Checkout master
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: master
           ref: master
