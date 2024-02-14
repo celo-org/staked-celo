@@ -63,7 +63,7 @@ describe("GroupHealth", () => {
       [nonManager] = await randomSigner(parseUnits("100"));
       owner = await hre.ethers.getNamedSigner("owner");
       [mockSlasher] = await randomSigner(parseUnits("100"));
-      [pauser] = await randomSigner(parseUnits("100"));
+      pauser = owner;
 
       lockedGold = await hre.kit.contracts.getLockedGold();
       validatorsWrapper = await hre.kit.contracts.getValidators();
@@ -368,12 +368,6 @@ describe("GroupHealth", () => {
       );
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(groupHealthContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await groupHealthContract.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(groupHealthContract.connect(nonManager).pause()).revertedWith("OnlyPauser()");
       const isPaused = await groupHealthContract.isPaused();
@@ -397,12 +391,6 @@ describe("GroupHealth", () => {
         groupHealthContract,
         "ContractUnpaused"
       );
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(groupHealthContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await groupHealthContract.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

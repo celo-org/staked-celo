@@ -2,7 +2,6 @@
 pragma solidity 0.8.11;
 
 import "./interfaces/IPausable.sol";
-import "./Pauser.sol";
 
 /**
  * @title A helper contract to add pasuing functionality to a contract.

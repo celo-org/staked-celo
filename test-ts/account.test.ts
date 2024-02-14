@@ -54,7 +54,6 @@ describe("Account", () => {
 
     [manager] = await randomSigner(parseUnits("100"));
     [nonManager] = await randomSigner(parseUnits("100"));
-    [pauser] = await randomSigner(parseUnits("100"));
     [beneficiary] = await randomSigner(parseUnits("100"));
     [otherBeneficiary] = await randomSigner(parseUnits("100"));
     [nonBeneficiary] = await randomSigner(parseUnits("100"));
@@ -88,6 +87,7 @@ describe("Account", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestAccount");
     owner = await hre.ethers.getNamedSigner("owner");
+    pauser = owner;
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
     await account.connect(owner).setPauser(pauser.address);
@@ -2051,12 +2051,6 @@ describe("Account", () => {
       await expect(account.connect(pauser).pause()).to.emit(account, "ContractPaused");
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(account.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await account.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(account.connect(beneficiary).pause()).revertedWith("OnlyPauser()");
       const isPaused = await account.isPaused();
@@ -2077,12 +2071,6 @@ describe("Account", () => {
 
     it("emits a ContractUnpaused event", async () => {
       await expect(account.connect(pauser).unpause()).to.emit(account, "ContractUnpaused");
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(account.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await account.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

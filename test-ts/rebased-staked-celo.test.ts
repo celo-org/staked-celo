@@ -30,7 +30,7 @@ describe("RebasedStakedCelo", () => {
     account = await hre.ethers.getContract("MockAccount");
 
     owner = await hre.ethers.getNamedSigner("owner");
-    [pauser] = await randomSigner(parseUnits("100"));
+    pauser = owner;
     [alice] = await randomSigner(parseUnits("100"));
     [bob] = await randomSigner(parseUnits("100"));
     [someone] = await randomSigner(parseUnits("1000"));
@@ -669,12 +669,6 @@ describe("RebasedStakedCelo", () => {
       );
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(rebasedStakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await rebasedStakedCelo.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(rebasedStakedCelo.connect(someone).pause()).revertedWith("OnlyPauser()");
       const isPaused = await rebasedStakedCelo.isPaused();
@@ -698,12 +692,6 @@ describe("RebasedStakedCelo", () => {
         rebasedStakedCelo,
         "ContractUnpaused"
       );
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(rebasedStakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await rebasedStakedCelo.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

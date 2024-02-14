@@ -108,7 +108,7 @@ describe("Manager", () => {
       [nonVote] = await randomSigner(parseUnits("100000"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
-      [pauser] = await randomSigner(parseUnits("100"));
+      pauser = owner;
 
       const accountFactory: MockAccount__factory = (
         await hre.ethers.getContractFactory("MockAccount")
@@ -3438,12 +3438,6 @@ describe("Manager", () => {
       await expect(manager.connect(pauser).pause()).to.emit(manager, "ContractPaused");
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(manager.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await manager.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(manager.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await manager.isPaused();
@@ -3464,12 +3458,6 @@ describe("Manager", () => {
 
     it("emits a ContractUnpaused event", async () => {
       await expect(manager.connect(pauser).unpause()).to.emit(manager, "ContractUnpaused");
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(manager.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await manager.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

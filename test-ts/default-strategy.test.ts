@@ -102,7 +102,7 @@ describe("DefaultStrategy", () => {
 
       owner = await hre.ethers.getNamedSigner("owner");
       [nonOwner] = await randomSigner(parseUnits("100"));
-      [pauser] = await randomSigner(parseUnits("100"));
+      pauser = owner;
       [nonVote] = await randomSigner(parseUnits("100000"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
@@ -1613,12 +1613,6 @@ describe("DefaultStrategy", () => {
       );
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(defaultStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await defaultStrategyContract.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(defaultStrategyContract.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await defaultStrategyContract.isPaused();
@@ -1642,12 +1636,6 @@ describe("DefaultStrategy", () => {
         defaultStrategyContract,
         "ContractUnpaused"
       );
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(defaultStrategyContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await defaultStrategyContract.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

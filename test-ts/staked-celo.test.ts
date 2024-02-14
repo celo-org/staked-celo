@@ -20,7 +20,7 @@ describe("StakedCelo", () => {
   before(async () => {
     await resetNetwork();
     owner = await hre.ethers.getNamedSigner("owner");
-    [pauser] = await randomSigner(parseUnits("100"));
+    pauser = owner;
     [nonManager] = await randomSigner(parseUnits("100"));
     [anAccount] = await randomSigner(parseUnits("100"));
   });
@@ -287,12 +287,6 @@ describe("StakedCelo", () => {
       await expect(stakedCelo.connect(pauser).pause()).to.emit(stakedCelo, "ContractPaused");
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(stakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await stakedCelo.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(stakedCelo.connect(nonManager).pause()).revertedWith("OnlyPauser()");
       const isPaused = await stakedCelo.isPaused();
@@ -313,12 +307,6 @@ describe("StakedCelo", () => {
 
     it("emits a ContractUnpaused event", async () => {
       await expect(stakedCelo.connect(pauser).unpause()).to.emit(stakedCelo, "ContractUnpaused");
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(stakedCelo.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await stakedCelo.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

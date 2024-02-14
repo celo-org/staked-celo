@@ -133,7 +133,7 @@ describe("Vote", async function (this: any) {
       [nonOwner] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
       [voter] = await randomSigner(parseUnits("300"));
-      [pauser] = await randomSigner(parseUnits("100"));
+      pauser = owner;
 
       const accounts = await hre.kit.contracts.getAccounts();
       await accounts.createAccount().sendAndWaitForReceipt({
@@ -923,12 +923,6 @@ describe("Vote", async function (this: any) {
       await expect(voteContract.connect(pauser).pause()).to.emit(voteContract, "ContractPaused");
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(voteContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await voteContract.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(voteContract.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
       const isPaused = await voteContract.isPaused();
@@ -952,12 +946,6 @@ describe("Vote", async function (this: any) {
         voteContract,
         "ContractUnpaused"
       );
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(voteContract.connect(owner).pause()).revertedWith("OnlyPauser()");
-      const isPaused = await voteContract.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

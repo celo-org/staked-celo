@@ -6,7 +6,6 @@ import hre, { ethers } from "hardhat";
 import { ProposalTester__factory } from "../typechain-types/factories/ProposalTester__factory";
 import { MultiSig } from "../typechain-types/MultiSig";
 import { PausableTest } from "../typechain-types/PausableTest";
-import { Pauser } from "../typechain-types/Pauser";
 import { ProposalTester } from "../typechain-types/ProposalTester";
 import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
 
@@ -93,7 +92,6 @@ describe("MultiSig", () => {
   let owner2: SignerWithAddress;
   let nonOwner: SignerWithAddress;
 
-  let pauser: Pauser;
   let pausableTest: PausableTest;
   let mockPauserAddress: SignerWithAddress;
 
@@ -104,12 +102,10 @@ describe("MultiSig", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
-    pauser = await hre.ethers.getContract("Pauser");
     const owner = await hre.ethers.getNamedSigner("owner");
-    await pauser.connect(owner).transferOwnership(multiSig.address);
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
-    pausableTest.setPauser(pauser.address);
+    pausableTest.setPauser(multiSig.address);
     owner1 = await hre.ethers.getNamedSigner("multisigOwner0");
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
     [mockPauserAddress] = await randomSigner(parseUnits("100"));

@@ -85,7 +85,7 @@ describe("SpecificGroupStrategy", () => {
       election = await hre.kit.contracts.getElection();
 
       owner = await hre.ethers.getNamedSigner("owner");
-      [pauser] = await randomSigner(parseUnits("100"));
+      pauser = owner;
       [nonOwner] = await randomSigner(parseUnits("100"));
       [nonVote] = await randomSigner(parseUnits("100000"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
@@ -1179,14 +1179,6 @@ describe("SpecificGroupStrategy", () => {
       );
     });
 
-    it("cannot be called by the owner", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith(
-        "OnlyPauser()"
-      );
-      const isPaused = await specificGroupStrategyContract.isPaused();
-      expect(isPaused).to.be.false;
-    });
-
     it("cannot be called by a random account", async () => {
       await expect(specificGroupStrategyContract.connect(nonManager).pause()).revertedWith(
         "OnlyPauser()"
@@ -1212,14 +1204,6 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategyContract,
         "ContractUnpaused"
       );
-    });
-
-    it("cannot be called by the owner", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).pause()).revertedWith(
-        "OnlyPauser()"
-      );
-      const isPaused = await specificGroupStrategyContract.isPaused();
-      expect(isPaused).to.be.true;
     });
 
     it("cannot be called by a random account", async () => {

@@ -24,19 +24,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       },
     },
   });
-
-  // Setting the pauser via address impersonation. In a production envrionment,
-  // this needs to be done via a MultiSig proposal.
-  const pauser = await hre.ethers.getContract("Pauser");
-  const multiSig = await hre.ethers.getContract("MultiSig");
-  const multiSigSigner = await getImpersonatedSigner(multiSig.address, parseUnits("100"));
-  await multiSig.connect(multiSigSigner).setPauser(pauser.address);
-  // `getImpersonatedSigner above sets the balance of the MultiSig contract
-  // address. Need to reset it back to 0 so tests can expect a clean slate.
-  await setBalance(multiSig.address, BigNumber.from("0"));
 };
 
 func.id = "deploy_test_multisig";
 func.tags = ["TestMultiSig"];
-func.dependencies = ["TestPauser"];
+func.dependencies = [];
 export default func;
