@@ -967,7 +967,7 @@ describe("Vote", async function (this: any) {
     });
   });
 
-  describe.only("when paused", () => {
+  describe("when paused", () => {
     beforeEach(async () => {
       await voteContract.connect(pauser).pause();
     });
