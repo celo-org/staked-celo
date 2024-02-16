@@ -458,7 +458,7 @@ describe("RebasedStakedCelo", () => {
 
       await expect(
         rebasedStakedCelo.connect(bob).transferFrom(alice.address, ADDRESS_ZERO, 50)
-      ).to.be.revertedWith(`NullAddress()`);
+      ).to.be.revertedWith(`AddressZeroNotAllowed()`);
     });
 
     it("should increase the receiver's rstCELO balance", async () => {

@@ -222,7 +222,7 @@ describe("MultiSig", () => {
 
     it("should not allow an owner to submit a proposal to a null address", async () => {
       await expect(multiSig.submitProposal([ADDRESS_ZERO], [0], [txData])).revertedWith(
-        `NullAddress()`
+        `AddressZeroNotAllowed()`
       );
     });
 

@@ -9,6 +9,7 @@ import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
 import "../interfaces/IPausable.sol";
 import {Pausable} from "../Pausable.sol";
+import "./Errors.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -32,7 +33,7 @@ import {Pausable} from "../Pausable.sol";
  * Forked from
  * github.com/celo-org/celo-monorepo/blob/master/packages/protocol/contracts/common/MultiSig.sol
  */
-contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pausable {
+contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -224,11 +225,6 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
     error ProposalAlreadyExecuted(uint256 proposalId);
 
     /**
-     * @notice Used when a passed address is address(0).
-     */
-    error NullAddress();
-
-    /**
      * @notice Used when the set threshold values for owner and minimum
      * required confirmations are not met.
      * @param ownerCount The count of owners.
@@ -364,7 +360,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
      */
     modifier notNull(address addr) {
         if (addr == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
         _;
     }
@@ -376,7 +372,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
     modifier notNullBatch(address[] memory _addresses) {
         for (uint256 i = 0; i < _addresses.length; i++) {
             if (_addresses[i] == address(0)) {
-                revert NullAddress();
+                revert AddressZeroNotAllowed();
             }
         }
         _;
@@ -495,7 +491,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pau
             }
 
             if (initialOwners[i] == address(0)) {
-                revert NullAddress();
+                revert AddressZeroNotAllowed();
             }
 
             owners.add(initialOwners[i]);

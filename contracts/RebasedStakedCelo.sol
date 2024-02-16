@@ -7,6 +7,7 @@ import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title An ERC-20 wrapper contract that receives stCELO
@@ -14,7 +15,7 @@ import "./Pausable.sol";
  * @dev This contract depends on the Account and StakedCelo contracts
  * to calculate the amount of rstCELO held by depositors.
  */
-contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable {
+contract RebasedStakedCelo is Errors, ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable {
     /**
      * @notice Total amount of stCELO deposited in this contract.
      */
@@ -59,11 +60,6 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable
      * @param amount The amount of stCELO that is insufficient.
      */
     error InsufficientBalance(uint256 amount);
-
-    /**
-     * @notice Used when an null address is used.
-     */
-    error NullAddress();
 
     /**
      * @notice Used when deposit fails.
@@ -250,10 +246,10 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable
         uint256 amount
     ) internal override onlyWhenNotPaused {
         if (from == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
         if (to == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
 
         uint256 fromBalance = stakedCeloBalance[from];

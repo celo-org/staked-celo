@@ -111,8 +111,7 @@ describe("Pausable", () => {
     });
 
     it("doesn't allow address 0", async () => {
-      await expect(pausableTest.setPauser(ADDRESS_ZERO))
-        .revertedWith("AddressZeroNotAllowed()");
+      await expect(pausableTest.setPauser(ADDRESS_ZERO)).revertedWith("AddressZeroNotAllowed()");
     });
 
     it("emits a PauserSet event", async () => {
