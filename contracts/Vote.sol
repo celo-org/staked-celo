@@ -10,11 +10,12 @@ import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
 import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title Handles governance voting for CELO in protocol.
  */
-contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, Pausable {
+contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, Pausable {
     /**
      * @notice Keeps track of total votes for proposal (votes of Account contract).
      * @param proposalId The proposal UUID.
@@ -113,11 +114,6 @@ contract Vote is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, Paus
      * @param account The account's address.
      */
     error NotEnoughStakedCelo(address account);
-
-    /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
 
     /**
      * @notice Used when attempting to delete voter's proposal id with incorrect index.

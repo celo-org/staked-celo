@@ -11,12 +11,13 @@ import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
 import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
  * for accounts with specific strategy selected.
  */
-contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
+contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -122,11 +123,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
      * @param group The group's address.
      */
     error GroupNotEligible(address group);
-
-    /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
 
     /**
      * @notice Used when attempting to withdraw from specific group

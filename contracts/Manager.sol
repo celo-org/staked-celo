@@ -13,13 +13,14 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
  * of stCELO and implementing strategies for voting and unvoting of deposited or
  * withdrawn CELO.
  */
-contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
+contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -92,11 +93,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
      * @param group The group's address.
      */
     error GroupNotEligible(address group);
-
-    /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
 
     /**
      * @notice Used when an `onlyStCelo` function is called by a non-stCELO contract.

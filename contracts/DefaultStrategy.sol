@@ -12,12 +12,13 @@ import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./Managed.sol";
 import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
  * for accounts without any specific strategy.
  */
-contract DefaultStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
+contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using AddressSortedLinkedList for SortedLinkedList.List;
 
@@ -174,11 +175,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed, Pausable {
      * @param expectedCelo The expected stCELO value.
      */
     error RebalanceEnoughStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
-
-    /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
 
     /**
      *  @notice Used when a `managerOrStrategy` function is called
