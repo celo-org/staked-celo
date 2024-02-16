@@ -102,7 +102,6 @@ describe("MultiSig", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
-    const owner = await hre.ethers.getNamedSigner("owner");
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
     pausableTest.setPauser(multiSig.address);

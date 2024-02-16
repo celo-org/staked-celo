@@ -1,8 +1,6 @@
 import { DeployFunction } from "@celo/staked-celo-hardhat-deploy/types";
-import { parseUnits } from "ethers/lib/utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DAY, getImpersonatedSigner, setBalance } from "../../test-ts/utils";
-import { BigNumber } from "ethers";
+import { DAY } from "../../test-ts/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = hre.deployments;
