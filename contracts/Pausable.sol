@@ -2,13 +2,14 @@
 pragma solidity 0.8.11;
 
 import "./interfaces/IPausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title A helper contract to add pasuing functionality to a contract.
  * @notice Used to prevent/mitigate damage in case an exploit is found in the
  * extending contract.
  */
-abstract contract Pausable is IPausable {
+abstract contract Pausable is Errors, IPausable {
     /**
      * @notice The storage slot under which we store a boolean representing
      * whether or not the contract is currently paused.
@@ -135,6 +136,9 @@ abstract contract Pausable is IPausable {
      * permissioned function like `onlyOwner`.
      */
     function _setPauser(address _pauser) internal {
+        if (_pauser == address(0)) {
+            revert AddressZeroNotAllowed();
+        }
         bytes32 pauserPosition = PAUSER_POSITION;
         // solhint-disable-next-line no-inline-assembly
         assembly {

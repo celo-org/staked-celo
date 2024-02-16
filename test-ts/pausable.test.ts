@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { PausableTest } from "../typechain-types/PausableTest";
-import { randomSigner } from "./utils";
+import { ADDRESS_ZERO, randomSigner } from "./utils";
 
 describe("Pausable", () => {
   let pausableTest: PausableTest;
@@ -108,6 +108,11 @@ describe("Pausable", () => {
       await pausableTest.setPauser(nonPauser.address);
       const currentPauser = await pausableTest.pauser();
       expect(currentPauser).to.equal(nonPauser.address);
+    });
+
+    it("doesn't allow address 0", async () => {
+      await expect(pausableTest.setPauser(ADDRESS_ZERO))
+        .revertedWith("AddressZeroNotAllowed()");
     });
 
     it("emits a PauserSet event", async () => {
