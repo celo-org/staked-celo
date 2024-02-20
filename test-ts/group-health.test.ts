@@ -107,7 +107,7 @@ describe("GroupHealth", () => {
           await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
         }
 
-        await groupHealthContract.connect(owner).setPauser(pauser.address);
+        await groupHealthContract.connect(owner).setPauser();
       }
     } catch (error) {
       console.error(error);
@@ -335,22 +335,34 @@ describe("GroupHealth", () => {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await groupHealthContract.connect(owner).setPauser(nonManager.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await groupHealthContract.connect(owner).setPauser();
       const newPauser = await groupHealthContract.pauser();
-      expect(newPauser).to.eq(nonManager.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(groupHealthContract.connect(owner).setPauser(nonManager.address))
+      await expect(groupHealthContract.connect(owner).setPauser())
         .to.emit(groupHealthContract, "PauserSet")
-        .withArgs(nonManager.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
       await expect(
-        groupHealthContract.connect(nonManager).setPauser(nonManager.address)
+        groupHealthContract.connect(nonManager).setPauser()
       ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await groupHealthContract.connect(owner).transferOwnership(nonManager.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await groupHealthContract.connect(nonManager).setPauser();
+        const newPauser = await groupHealthContract.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
     });
   });
 

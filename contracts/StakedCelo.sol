@@ -69,11 +69,11 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
     }
 
     /**
-     * @notice Sets that address permissioned to pause/unpause this contract.
-     * @param _pauser The address that can pause/unpause this contract.
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
      */
-    function setPauser(address _pauser) external onlyOwner {
-        _setPauser(_pauser);
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
     }
 
     /**

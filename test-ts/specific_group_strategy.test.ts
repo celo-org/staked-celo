@@ -169,7 +169,7 @@ describe("SpecificGroupStrategy", () => {
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
 
-      await specificGroupStrategyContract.connect(owner).setPauser(pauser.address);
+      await specificGroupStrategyContract.connect(owner).setPauser();
     } catch (error) {
       console.error(error);
     }
@@ -1146,22 +1146,34 @@ describe("SpecificGroupStrategy", () => {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await specificGroupStrategyContract.connect(owner).setPauser(nonManager.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await specificGroupStrategyContract.connect(owner).setPauser();
       const newPauser = await specificGroupStrategyContract.pauser();
-      expect(newPauser).to.eq(nonManager.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(specificGroupStrategyContract.connect(owner).setPauser(nonManager.address))
+      await expect(specificGroupStrategyContract.connect(owner).setPauser())
         .to.emit(specificGroupStrategyContract, "PauserSet")
-        .withArgs(nonManager.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
       await expect(
-        specificGroupStrategyContract.connect(nonManager).setPauser(nonManager.address)
+        specificGroupStrategyContract.connect(nonManager).setPauser()
       ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await specificGroupStrategyContract.connect(owner).transferOwnership(nonManager.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await specificGroupStrategyContract.connect(nonManager).setPauser();
+        const newPauser = await specificGroupStrategyContract.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
     });
   });
 

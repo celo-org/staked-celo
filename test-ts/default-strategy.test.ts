@@ -190,7 +190,7 @@ describe("DefaultStrategy", () => {
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
 
-      await defaultStrategyContract.connect(owner).setPauser(pauser.address);
+      await defaultStrategyContract.connect(owner).setPauser();
     } catch (error) {
       console.error(error);
     }
@@ -1580,22 +1580,34 @@ describe("DefaultStrategy", () => {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await defaultStrategyContract.connect(owner).setPauser(nonManager.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await defaultStrategyContract.connect(owner).setPauser();
       const newPauser = await defaultStrategyContract.pauser();
-      expect(newPauser).to.eq(nonManager.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(defaultStrategyContract.connect(owner).setPauser(nonManager.address))
+      await expect(defaultStrategyContract.connect(owner).setPauser())
         .to.emit(defaultStrategyContract, "PauserSet")
-        .withArgs(nonManager.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).setPauser(nonManager.address)
+        defaultStrategyContract.connect(nonManager).setPauser()
       ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await defaultStrategyContract.connect(owner).transferOwnership(nonManager.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await defaultStrategyContract.connect(nonManager).setPauser();
+        const newPauser = await defaultStrategyContract.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
     });
   });
 

@@ -194,7 +194,7 @@ describe("Manager", () => {
 
       await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, groupAddresses);
 
-      await manager.connect(owner).setPauser(pauser.address);
+      await manager.connect(owner).setPauser();
     } catch (error) {
       console.error(error);
     }
@@ -3408,22 +3408,34 @@ describe("Manager", () => {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await manager.connect(owner).setPauser(nonOwner.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await manager.connect(owner).setPauser();
       const newPauser = await manager.pauser();
-      expect(newPauser).to.eq(nonOwner.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(manager.connect(owner).setPauser(nonOwner.address))
+      await expect(manager.connect(owner).setPauser())
         .to.emit(manager, "PauserSet")
-        .withArgs(nonOwner.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(manager.connect(nonOwner).setPauser(nonOwner.address)).revertedWith(
+      await expect(manager.connect(nonOwner).setPauser()).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await manager.connect(owner).transferOwnership(nonOwner.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await manager.connect(nonOwner).setPauser();
+        const newPauser = await manager.pauser();
+        expect(newPauser).to.eq(nonOwner.address);
+      });
     });
   });
 

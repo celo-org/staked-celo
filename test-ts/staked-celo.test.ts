@@ -41,7 +41,7 @@ describe("StakedCelo", () => {
       value: parseUnits("100").toString(),
     });
 
-    await stakedCelo.connect(owner).setPauser(pauser.address);
+    await stakedCelo.connect(owner).setPauser();
   });
 
   describe("#mint()", () => {
@@ -257,22 +257,34 @@ describe("StakedCelo", () => {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await stakedCelo.connect(owner).setPauser(nonManager.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await stakedCelo.connect(owner).setPauser();
       const newPauser = await stakedCelo.pauser();
-      expect(newPauser).to.eq(nonManager.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(stakedCelo.connect(owner).setPauser(nonManager.address))
+      await expect(stakedCelo.connect(owner).setPauser())
         .to.emit(stakedCelo, "PauserSet")
-        .withArgs(nonManager.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(stakedCelo.connect(nonManager).setPauser(nonManager.address)).revertedWith(
+      await expect(stakedCelo.connect(nonManager).setPauser()).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await stakedCelo.connect(owner).transferOwnership(nonManager.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await stakedCelo.connect(nonManager).setPauser();
+        const newPauser = await stakedCelo.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
     });
   });
 

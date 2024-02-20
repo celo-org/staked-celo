@@ -174,7 +174,7 @@ describe("Vote", async function (this: any) {
     defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
     account = await hre.ethers.getContract("Account");
 
-    await voteContract.connect(owner).setPauser(pauser.address);
+    await voteContract.connect(owner).setPauser();
 
     const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
     const stakedCelo = await hre.ethers.getContract("StakedCelo");
@@ -893,22 +893,34 @@ describe("Vote", async function (this: any) {
   });
 
   describe("#setPauser", () => {
-    it("sets the pauser address", async () => {
-      await voteContract.connect(owner).setPauser(nonOwner.address);
+    it("sets the pauser address to the owner of the contract", async () => {
+      await voteContract.connect(owner).setPauser();
       const newPauser = await voteContract.pauser();
-      expect(newPauser).to.eq(nonOwner.address);
+      expect(newPauser).to.eq(owner.address);
     });
 
     it("emits a PauserSet event", async () => {
-      await expect(voteContract.connect(owner).setPauser(nonOwner.address))
+      await expect(voteContract.connect(owner).setPauser())
         .to.emit(voteContract, "PauserSet")
-        .withArgs(nonOwner.address);
+        .withArgs(owner.address);
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(voteContract.connect(nonOwner).setPauser(nonOwner.address)).revertedWith(
+      await expect(voteContract.connect(nonOwner).setPauser()).revertedWith(
         "Ownable: caller is not the owner"
       );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await voteContract.connect(owner).transferOwnership(nonOwner.address)
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await voteContract.connect(nonOwner).setPauser();
+        const newPauser = await voteContract.pauser();
+        expect(newPauser).to.eq(nonOwner.address);
+      });
     });
   });
 
