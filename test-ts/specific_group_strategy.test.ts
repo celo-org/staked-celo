@@ -1159,14 +1159,14 @@ describe("SpecificGroupStrategy", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(
-        specificGroupStrategyContract.connect(nonManager).setPauser()
-      ).revertedWith("Ownable: caller is not the owner");
+      await expect(specificGroupStrategyContract.connect(nonManager).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await specificGroupStrategyContract.connect(owner).transferOwnership(nonManager.address)
+        await specificGroupStrategyContract.connect(owner).transferOwnership(nonManager.address);
       });
 
       it("sets the pauser to the new owner", async () => {

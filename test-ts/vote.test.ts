@@ -913,7 +913,7 @@ describe("Vote", async function (this: any) {
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await voteContract.connect(owner).transferOwnership(nonOwner.address)
+        await voteContract.connect(owner).transferOwnership(nonOwner.address);
       });
 
       it("sets the pauser to the new owner", async () => {

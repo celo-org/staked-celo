@@ -277,7 +277,7 @@ describe("StakedCelo", () => {
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await stakedCelo.connect(owner).transferOwnership(nonManager.address)
+        await stakedCelo.connect(owner).transferOwnership(nonManager.address);
       });
 
       it("sets the pauser to the new owner", async () => {

@@ -348,14 +348,14 @@ describe("GroupHealth", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(
-        groupHealthContract.connect(nonManager).setPauser()
-      ).revertedWith("Ownable: caller is not the owner");
+      await expect(groupHealthContract.connect(nonManager).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await groupHealthContract.connect(owner).transferOwnership(nonManager.address)
+        await groupHealthContract.connect(owner).transferOwnership(nonManager.address);
       });
 
       it("sets the pauser to the new owner", async () => {

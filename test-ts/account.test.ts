@@ -2041,7 +2041,7 @@ describe("Account", () => {
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await account.connect(owner).transferOwnership(nonManager.address)
+        await account.connect(owner).transferOwnership(nonManager.address);
       });
 
       it("sets the pauser to the new owner", async () => {

@@ -1593,14 +1593,14 @@ describe("DefaultStrategy", () => {
     });
 
     it("cannot be called by a non-owner", async () => {
-      await expect(
-        defaultStrategyContract.connect(nonManager).setPauser()
-      ).revertedWith("Ownable: caller is not the owner");
+      await expect(defaultStrategyContract.connect(nonManager).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
 
     describe("when the owner is changed", async () => {
       beforeEach(async () => {
-        await defaultStrategyContract.connect(owner).transferOwnership(nonManager.address)
+        await defaultStrategyContract.connect(owner).transferOwnership(nonManager.address);
       });
 
       it("sets the pauser to the new owner", async () => {
