@@ -276,6 +276,13 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
     error SenderNotGovernance(address sender);
 
     /**
+     * @notice Used when the caller should be either Governance or one of the
+     * multisig owners.
+     * @param sender The address that triggered this function.
+     */
+    error SenderNotGovernanceOrOwner(address sender);
+
+    /**
      * @notice Checks that only the multisig contract can execute a function.
      */
     modifier onlyWallet() {
@@ -757,7 +764,10 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
      * pause contracts. To be used to mitigate damage if a vulnerability is
      * found/exploited.
      */
-    function pauseContracts(address[] calldata contracts) external ownerExists(msg.sender) {
+    function pauseContracts(address[] calldata contracts) external {
+        if (!owners.contains(msg.sender) && msg.sender != address(getGovernance())) {
+            revert SenderNotGovernanceOrOwner(msg.sender);
+        }
         for (uint256 i = 0; i < contracts.length; i++) {
             IPausable(contracts[i]).pause();
         }

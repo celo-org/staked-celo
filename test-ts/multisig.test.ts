@@ -94,6 +94,7 @@ describe("MultiSig", () => {
 
   let pausableTest: PausableTest;
   let mockPauserAddress: SignerWithAddress;
+  let governance: SignerWithAddress;
 
   let owners: string[];
   const requiredSignatures = 2;
@@ -109,6 +110,12 @@ describe("MultiSig", () => {
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
     [mockPauserAddress] = await randomSigner(parseUnits("100"));
     [nonOwner] = await randomSigner(parseUnits("100"));
+
+    const governanceAddress = (await hre.kit.contracts.getGovernance()).address;
+    governance = await getImpersonatedSigner(
+      governanceAddress,
+      BigNumber.from("100000000000000000000")
+    );
 
     owners = [owner1.address, owner2.address];
   });
@@ -459,9 +466,15 @@ describe("MultiSig", () => {
       expect(isPaused).to.be.true;
     });
 
+    it("can be called by Governance to pause a contract", async () => {
+      await multiSig.connect(governance).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
     it("reverts when called by a non-owner", async () => {
       await expect(multiSig.connect(nonOwner).pauseContracts([pausableTest.address])).revertedWith(
-        `OwnerDoesNotExist("${nonOwner.address}")`
+        `SenderNotGovernanceOrOwner("${nonOwner.address}")`
       );
       const isPaused = await pausableTest.isPaused();
       expect(isPaused).to.be.false;
@@ -469,14 +482,7 @@ describe("MultiSig", () => {
   });
 
   describe("#unpauseContracts()", () => {
-    let governance: SignerWithAddress;
     beforeEach(async () => {
-      const governanceAddress = (await hre.kit.contracts.getGovernance()).address;
-      governance = await getImpersonatedSigner(
-        governanceAddress,
-        BigNumber.from("100000000000000000000")
-      );
-
       await multiSig.connect(owner1).pauseContracts([pausableTest.address]);
     });
 
