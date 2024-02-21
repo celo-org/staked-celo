@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@anders-t/ethers-ledger": "^1.0.4",
-    "@celo/celo-devchain": "^5.0.0",
+    "@celo/celo-devchain": "^6.0.3",
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^4.1.0",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
@@ -56,7 +56,7 @@
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
-    "devchain": "yarn run celo-devchain --port 7545 --file ./devChain/devchain.tar.gz",
+    "devchain": "yarn run celo-devchain --port 7545",
     "devchain:stCeloV1": "yarn run celo-devchain --port 7545 --file ./devChain/stCeloV1.tar.gz",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "eslint:ts": "yarn run eslint ./",

@@ -2543,6 +2543,15 @@ describe("Manager", () => {
         expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferFromVotes);
         expect([differentSpecificGroupStrategy]).to.deep.eq(lastTransferToGroups);
         expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferToVotes);
+        expect([specificGroupStrategyDeposit]).to.deep.eq(lastTransferToVotes);
+      });
+
+      it("should emit StrategyChanged event", async () => {
+        const differentSpecificGroupStrategy = groupAddresses[0];
+
+        await expect(manager.changeStrategy(differentSpecificGroupStrategy))
+          .to.emit(manager, "StrategyChanged")
+          .withArgs(differentSpecificGroupStrategy);
       });
 
       it("should schedule transfers when changing to default strategy", async () => {
