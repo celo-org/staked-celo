@@ -440,6 +440,21 @@ describe("MultiSig", () => {
       expect(currentPauser).to.equal(nonOwner.address);
     });
 
+    it("allows the MultiSig to set itself as the pauser", async () => {
+      const payload = multiSig.interface.encodeFunctionData("setPauser", [multiSig.address]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [payload],
+        delay,
+        owner1,
+        owner2
+      );
+      const currentPauser = await multiSig.pauser();
+      expect(currentPauser).to.equal(multiSig.address);
+    });
+
     it("does not allow an owner to set a pauser", async () => {
       await expect(multiSig.connect(owner1).setPauser(nonOwner.address)).revertedWith(
         `SenderMustBeMultisigWallet("${owner1.address}")`
