@@ -2116,7 +2116,6 @@ describe("Manager", () => {
         const differentSpecificGroupStrategyAddress = groupAddresses[0];
         await manager.connect(depositor2).changeStrategy(differentSpecificGroupStrategyAddress);
         await manager.connect(depositor2).deposit({ value: differentSpecificGroupStrategyDeposit });
-
         await updateGroupCeloBasedOnProtocolStCelo(
           defaultStrategyContract,
           specificGroupStrategyContract,
@@ -2124,7 +2123,6 @@ describe("Manager", () => {
           manager
         );
         await specificGroupStrategyContract.blockGroup(differentSpecificGroupStrategyAddress);
-
         await updateGroupCeloBasedOnProtocolStCelo(
           defaultStrategyContract,
           specificGroupStrategyContract,

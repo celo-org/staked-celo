@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "../libraries/ExternalCall.sol";
+import "./UsingRegistryNoStorage.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -29,23 +30,8 @@ import "../libraries/ExternalCall.sol";
  * Forked from
  * github.com/celo-org/celo-monorepo/blob/master/packages/protocol/contracts/common/MultiSig.sol
  */
-contract MultiSig is Initializable, UUPSUpgradeable {
+contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    /**
-     * @notice The maximum number of multisig owners.
-     */
-    uint256 public constant MAX_OWNER_COUNT = 50;
-
-    /**
-     * @notice The minimum time in seconds that must elapse before a proposal is executable.
-     */
-    uint256 public immutable minDelay;
-
-    /**
-     * @notice The value used to mark a proposal as executed.
-     */
-    uint256 internal constant DONE_TIMESTAMP = uint256(1);
 
     /**
      * @notice Used to keep track of a proposal.
@@ -65,6 +51,21 @@ contract MultiSig is Initializable, UUPSUpgradeable {
         uint256 timestampExecutable;
         mapping(address => bool) confirmations;
     }
+
+    /**
+     * @notice The maximum number of multisig owners.
+     */
+    uint256 public constant MAX_OWNER_COUNT = 50;
+
+    /**
+     * @notice The minimum time in seconds that must elapse before a proposal is executable.
+     */
+    uint256 public immutable minDelay;
+
+    /**
+     * @notice The value used to mark a proposal as executed.
+     */
+    uint256 internal constant DONE_TIMESTAMP = uint256(1);
 
     /**
      * @notice The delay that must elapse to be able to execute a proposal.
@@ -113,13 +114,6 @@ contract MultiSig is Initializable, UUPSUpgradeable {
     event ProposalAdded(uint256 indexed proposalId);
 
     /**
-     * @notice Emitted when a confirmed proposal is successfully executed.
-     * @param proposalId The ID of the proposal that was executed.
-     * @param returnData The response that was recieved from the external call.
-     */
-    event ProposalExecuted(uint256 indexed proposalId, bytes returnData);
-
-    /**
      * @notice Emitted when one of the transactions that make up a proposal is successfully
      * executed.
      * @param index The index of the transaction within the proposal.
@@ -127,6 +121,14 @@ contract MultiSig is Initializable, UUPSUpgradeable {
      * @param returnData The response that was recieved from the external call.
      */
     event TransactionExecuted(uint256 index, uint256 indexed proposalId, bytes returnData);
+
+    /**
+     * @notice Emitted when one of the transactions that make up a Governance
+     * proposal is successfully executed.
+     * @param index The index of the transaction within the proposal.
+     * @param returnData The response that was recieved from the external call.
+     */
+    event GovernanceTransactionExecuted(uint256 index, bytes returnData);
 
     /**
      * @notice Emitted when CELO is sent to this contract.
@@ -267,6 +269,8 @@ contract MultiSig is Initializable, UUPSUpgradeable {
      * when submitting a proposal.
      */
     error ParamLengthsMismatch();
+
+    error SenderNotGovernance(address sender);
 
     /**
      * @notice Checks that only the multisig contract can execute a function.
@@ -573,6 +577,29 @@ contract MultiSig is Initializable, UUPSUpgradeable {
     }
 
     /**
+     * @notice Executes a proposal made by Celo Governance.
+     * @dev Only callable by the Celo Governance contract, as defined in the
+     * Celo Registry. Thus, this function may be called via a Governance
+     * referendum or hotfix.
+     */
+    function governanceProposeAndExecute(
+        address[] calldata destinations,
+        uint256[] calldata values,
+        bytes[] calldata payloads
+    ) external {
+        address governanceAddress = address(getGovernance());
+
+        if (msg.sender != governanceAddress) {
+            revert SenderNotGovernance(msg.sender);
+        }
+
+        for (uint256 i = 0; i < destinations.length; i++) {
+            bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
+            emit GovernanceTransactionExecuted(i, returnData);
+        }
+    }
+
+    /**
      * @notice Get the list of multisig owners.
      * @return The list of owner addresses.
      */
@@ -619,6 +646,26 @@ contract MultiSig is Initializable, UUPSUpgradeable {
     {
         Proposal storage proposal = proposals[proposalId];
         return (proposal.destinations, proposal.values, proposal.payloads);
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 1, 0);
     }
 
     /**
@@ -840,24 +887,4 @@ contract MultiSig is Initializable, UUPSUpgradeable {
      */
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address) internal override onlyWallet {}
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 1, 0);
-    }
 }

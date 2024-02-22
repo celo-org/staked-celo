@@ -3,8 +3,10 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre, { ethers } from "hardhat";
+import { ProposalTester__factory } from "../typechain-types/factories/ProposalTester__factory";
 import { MultiSig } from "../typechain-types/MultiSig";
-import { ADDRESS_ZERO, DAY, randomSigner, timeTravel } from "./utils";
+import { ProposalTester } from "../typechain-types/ProposalTester";
+import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
 
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event
@@ -813,6 +815,114 @@ describe("MultiSig", () => {
     it("should return false for a scheduled proposal whose time lock has not elapsed", async () => {
       await multiSig.connect(owner2).confirmProposal(proposalId);
       expect(await multiSig.isProposalTimelockReached(proposalId)).to.be.false;
+    });
+  });
+
+  describe("#governanceProposeAndExecute()", () => {
+    describe("when sender is Governance", () => {
+      let governance: SignerWithAddress;
+      let proposalTester: ProposalTester;
+
+      beforeEach(async () => {
+        const governanceAddress = (await hre.kit.contracts.getGovernance()).address;
+        governance = await getImpersonatedSigner(
+          governanceAddress,
+          BigNumber.from("100000000000000000000")
+        );
+        const proposalTesterFactory: ProposalTester__factory = await hre.ethers.getContractFactory(
+          "ProposalTester"
+        );
+        proposalTester = await proposalTesterFactory.deploy();
+      });
+
+      it("succeeds for the Governance address", async () => {
+        await multiSig.connect(governance).governanceProposeAndExecute([], [], []);
+      });
+
+      it("allows Governance to call a contract", async () => {
+        const txData = proposalTester.interface.encodeFunctionData("testCall", [42]);
+        await multiSig
+          .connect(governance)
+          .governanceProposeAndExecute([proposalTester.address], [0], [txData]);
+        const result = await proposalTester.getCall(0);
+        expect(result[0]).to.equal(multiSig.address);
+        expect(result[1]).to.equal(0);
+        expect(result[2]).to.equal(42);
+      });
+
+      it("allows Governance to send value", async () => {
+        await owner1.sendTransaction({
+          to: multiSig.address,
+          value: 300,
+        });
+
+        const txData = proposalTester.interface.encodeFunctionData("testCall", [42]);
+
+        await multiSig
+          .connect(governance)
+          .governanceProposeAndExecute([proposalTester.address], [100], [txData]);
+        const multiSigBalance = await hre.ethers.provider.getBalance(multiSig.address);
+        const testerBalance = await hre.ethers.provider.getBalance(proposalTester.address);
+        const result = await proposalTester.getCall(0);
+        expect(result[0]).to.equal(multiSig.address);
+        expect(result[1]).to.equal(100);
+        expect(multiSigBalance).to.equal(200);
+        expect(testerBalance).to.equal(100);
+        expect(result[2]).to.equal(42);
+      });
+
+      it("allows Governance to call multiple functions atomically", async () => {
+        const txData1 = proposalTester.interface.encodeFunctionData("testCall", [42]);
+        const txData2 = proposalTester.interface.encodeFunctionData("testCall", [1337]);
+        await multiSig
+          .connect(governance)
+          .governanceProposeAndExecute(
+            [proposalTester.address, proposalTester.address],
+            [0, 0],
+            [txData1, txData2]
+          );
+        const result1 = await proposalTester.getCall(0);
+        const result2 = await proposalTester.getCall(1);
+        expect(result1[0]).to.equal(multiSig.address);
+        expect(result1[1]).to.equal(0);
+        expect(result1[2]).to.equal(42);
+        expect(result2[0]).to.equal(multiSig.address);
+        expect(result2[1]).to.equal(0);
+        expect(result2[2]).to.equal(1337);
+      });
+
+      it("allows Governance to execute a MultiSig function", async () => {
+        const txData = multiSig.interface.encodeFunctionData("addOwner", [nonOwner.address]);
+        await multiSig
+          .connect(governance)
+          .governanceProposeAndExecute([multiSig.address], [0], [txData]);
+
+        const isOwner = await multiSig.isOwner(nonOwner.address);
+        expect(isOwner).to.be.true;
+      });
+
+      it("emits a GovernanceTransactionExecuted event", async () => {
+        const txData = proposalTester.interface.encodeFunctionData("testCall", [42]);
+        await expect(
+          multiSig
+            .connect(governance)
+            .governanceProposeAndExecute([proposalTester.address], [0], [txData])
+        )
+          .to.emit(multiSig, "GovernanceTransactionExecuted")
+          .withArgs(0, "0x");
+      });
+    });
+
+    it("should revert for an owner address", async () => {
+      await expect(multiSig.connect(owner1).governanceProposeAndExecute([], [], [])).revertedWith(
+        "SenderNotGovernance"
+      );
+    });
+
+    it("should revert for a random address", async () => {
+      await expect(multiSig.connect(nonOwner).governanceProposeAndExecute([], [], [])).revertedWith(
+        "SenderNotGovernance"
+      );
     });
   });
 });

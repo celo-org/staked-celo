@@ -76,6 +76,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     event VoteContractSet(address indexed voteContract);
 
     /**
+     * @notice Emitted when the voting strategy changes.
+     * @param group The group's address.
+     */
+    event StrategyChanged(address indexed group);
+
+    /**
      * @notice Used when attempting to withdraw 0 value.
      */
     error ZeroWithdrawal();
@@ -360,6 +366,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         strategies[msg.sender] = newStrategy;
+        emit StrategyChanged(newStrategy);
     }
 
     /**
