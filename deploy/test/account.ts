@@ -22,6 +22,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 func.id = "deploy_test_account";
-func.tags = ["TestAccount"];
+func.tags = ["TestAccount", "TestVote"];
 func.dependencies = ["TestManager"];
 export default func;

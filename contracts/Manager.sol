@@ -12,13 +12,15 @@ import "./interfaces/IVote.sol";
 import "./interfaces/IGroupHealth.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./interfaces/IDefaultStrategy.sol";
+import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title Manages the StakedCelo system, by controlling the minting and burning
  * of stCELO and implementing strategies for voting and unvoting of deposited or
  * withdrawn CELO.
  */
-contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
+contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -76,6 +78,12 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     event VoteContractSet(address indexed voteContract);
 
     /**
+     * @notice Emitted when the voting strategy changes.
+     * @param group The group's address.
+     */
+    event StrategyChanged(address indexed group);
+
+    /**
      * @notice Used when attempting to withdraw 0 value.
      */
     error ZeroWithdrawal();
@@ -85,11 +93,6 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param group The group's address.
      */
     error GroupNotEligible(address group);
-
-    /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
 
     /**
      * @notice Used when an `onlyStCelo` function is called by a non-stCELO contract.
@@ -218,6 +221,14 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
+     */
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
+    }
+
+    /**
      * @notice Used to withdraw CELO from the system, in exchange for burning
      * stCELO.
      * @param stCeloAmount The amount of stCELO to burn.
@@ -227,7 +238,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @dev The funds need to be withdrawn using calls to `Account.withdraw` and
      * `Account.finishPendingWithdrawal`.
      */
-    function withdraw(uint256 stCeloAmount) external {
+    function withdraw(uint256 stCeloAmount) external onlyWhenNotPaused {
         (
             address[] memory groupsWithdrawn,
             uint256[] memory withdrawalsPerGroup
@@ -242,7 +253,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param proposalId The ID of the proposal to revoke from.
      * @param index The index of the proposal ID in `dequeued`.
      */
-    function revokeVotes(uint256 proposalId, uint256 index) external {
+    function revokeVotes(uint256 proposalId, uint256 index) external onlyWhenNotPaused {
         IVote vote = IVote(voteContract);
 
         (uint256 totalYesVotes, uint256 totalNoVotes, uint256 totalAbstainVotes) = vote.revokeVotes(
@@ -259,6 +270,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      */
     function updateHistoryAndReturnLockedStCeloInVoting(address beneficiary)
         external
+        onlyWhenNotPaused
         returns (uint256)
     {
         IVote vote = IVote(voteContract);
@@ -271,7 +283,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * will be scheduled to be voted for with the Account contract.
      * The CELO will be distributed based on address strategy.
      */
-    function deposit() external payable {
+    function deposit() external payable onlyWhenNotPaused {
         uint256 stCeloAmount = toStakedCelo(msg.value);
         (address[] memory finalGroups, uint256[] memory finalVotes) = distributeVotes(
             msg.value,
@@ -321,7 +333,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
             uint256
         )
     {
-        return (1, 3, 0, 0);
+        return (1, 3, 1, 0);
     }
 
     /**
@@ -345,7 +357,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * !address(0) = voting for allowed validator group. Group needs to be in allowed
      * @param newStrategy The from account.
      */
-    function changeStrategy(address newStrategy) public {
+    function changeStrategy(address newStrategy) public onlyWhenNotPaused {
         if (
             newStrategy != address(0) &&
             (specificGroupStrategy.isBlockedGroup(newStrategy) ||
@@ -360,6 +372,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         }
 
         strategies[msg.sender] = newStrategy;
+        emit StrategyChanged(newStrategy);
     }
 
     /**
@@ -377,7 +390,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param fromGroup The from group.
      * @param toGroup The to group.
      */
-    function rebalance(address fromGroup, address toGroup) public {
+    function rebalance(address fromGroup, address toGroup) public onlyWhenNotPaused {
         if (!defaultStrategy.isActive(toGroup) && specificGroupStrategy.isBlockedGroup(toGroup)) {
             // rebalancing to deactivated/non-existent group is not allowed
             revert InvalidToGroup(toGroup);
@@ -420,7 +433,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
      * @param fromGroup The group to unschedule votes from.
      * @param toGroup The group to schedule votes to.
      */
-    function rebalanceOverflow(address fromGroup, address toGroup) public {
+    function rebalanceOverflow(address fromGroup, address toGroup) public onlyWhenNotPaused {
         if (!defaultStrategy.isActive(toGroup)) {
             revert InvalidToGroup(toGroup);
         }
@@ -484,7 +497,7 @@ contract Manager is UUPSOwnableUpgradeable, UsingRegistryUpgradeable {
         uint256 yesVotes,
         uint256 noVotes,
         uint256 abstainVotes
-    ) public {
+    ) public onlyWhenNotPaused {
         IVote vote = IVote(voteContract);
 
         (

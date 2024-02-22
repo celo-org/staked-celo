@@ -76,6 +76,7 @@ module.exports = {
         url: "http://localhost:7545",
         blockNumber: 399,
       },
+      allowUnlimitedContractSize: true,
     },
     alfajores: {
       url: `https://alfajores-forno.celo-testnet.org/`,

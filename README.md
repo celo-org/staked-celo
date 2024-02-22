@@ -10,12 +10,15 @@ Users can deposit CELO to the Staked Celo smart contract and receive stCELO toke
 To run tests first fire up a terminal and start the `devchain`, this will need to be run only once and you should keep it running.  
 
 ```bash
+
+nvm use 18
 yarn devchain
 ```
 
 Then in another terminal run tests:
 
 ```bash
+nvm use 14
 yarn test # run all tests
 yarn test <path to file> # run a specific file
 ```

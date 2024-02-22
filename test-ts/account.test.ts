@@ -37,8 +37,10 @@ describe("Account", () => {
 
   let account: Account;
 
+  let owner: SignerWithAddress;
   let manager: SignerWithAddress;
   let nonManager: SignerWithAddress;
+  let pauser: SignerWithAddress;
   let beneficiary: SignerWithAddress;
   let otherBeneficiary: SignerWithAddress;
   let nonBeneficiary: SignerWithAddress;
@@ -84,9 +86,11 @@ describe("Account", () => {
 
   beforeEach(async () => {
     await hre.deployments.fixture("TestAccount");
-    const owner = await hre.ethers.getNamedSigner("owner");
+    owner = await hre.ethers.getNamedSigner("owner");
+    pauser = owner;
     account = await hre.ethers.getContract("Account");
     await account.connect(owner).setManager(manager.address);
+    await account.connect(owner).setPauser();
     governance = await hre.ethers.getContract("MockGovernance");
   });
 
@@ -2013,6 +2017,151 @@ describe("Account", () => {
       expect(await governance.yesVotes()).to.eq(yes);
       expect(await governance.noVotes()).to.eq(no);
       expect(await governance.abstainVotes()).to.eq(abstain);
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address to the owner of the contract", async () => {
+      await account.connect(owner).setPauser();
+      const newPauser = await account.pauser();
+      expect(newPauser).to.eq(owner.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(account.connect(owner).setPauser())
+        .to.emit(account, "PauserSet")
+        .withArgs(owner.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(account.connect(nonManager).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await account.connect(owner).transferOwnership(nonManager.address);
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await account.connect(nonManager).setPauser();
+        const newPauser = await account.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await account.connect(pauser).pause();
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(account.connect(pauser).pause()).to.emit(account, "ContractPaused");
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(account.connect(beneficiary).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await account.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await account.connect(pauser).unpause();
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(account.connect(pauser).unpause()).to.emit(account, "ContractUnpaused");
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(account.connect(beneficiary).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await account.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await account.connect(pauser).pause();
+    });
+
+    it("can't call scheduleVotes", async () => {
+      await expect(
+        account.connect(manager).scheduleVotes([groupAddresses[0]], [100], { value: "100" })
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call scheduleTransfer", async () => {
+      await expect(
+        account
+          .connect(manager)
+          .scheduleTransfer([groupAddresses[0]], [1], [groupAddresses[1]], [1])
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call scheduleWithdrawals", async () => {
+      await expect(
+        account
+          .connect(manager)
+          .scheduleWithdrawals(beneficiary.address, [groupAddresses[0]], [260])
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call withdraw", async () => {
+      await expect(
+        account
+          .connect(manager)
+          .withdraw(
+            beneficiary.address,
+            groupAddresses[0],
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
+            0
+          )
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call activateAndVote", async () => {
+      await expect(
+        account.activateAndVote(groupAddresses[0], groupAddresses[1], ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call finishPendingWithdrawal", async () => {
+      await expect(account.finishPendingWithdrawal(beneficiary.address, 0, 0)).revertedWith(
+        "Paused()"
+      );
+    });
+
+    it("can't call votePartially", async () => {
+      await expect(account.connect(manager).votePartially(0, 0, 1, 1, 1)).revertedWith("Paused()");
+    });
+
+    it("can't call revokeVotes", async () => {
+      await expect(
+        account.revokeVotes(
+          groupAddresses[0],
+          ADDRESS_ZERO,
+          ADDRESS_ZERO,
+          ADDRESS_ZERO,
+          ADDRESS_ZERO,
+          0
+        )
+      ).revertedWith("Paused()");
     });
   });
 });

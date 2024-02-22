@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@anders-t/ethers-ledger": "^1.0.4",
-    "@celo/celo-devchain": "^5.0.0",
+    "@celo/celo-devchain": "^6.0.3",
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^4.1.0",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
@@ -42,7 +42,7 @@
     "typechain": "^7.0.0",
     "typescript": "^4.5.5",
     "@celo/staked-celo-hardhat-deploy": "git+https://github.com/celo-org/staked-celo-hardhat-deploy.git",
-    "@celo/contract-compatibility-check": "git+https://github.com/celo-org/contract-compatibility-check.git",
+    "@celo/contract-compatibility-check": "git+https://github.com/celo-org/contract-compatibility-check.git#5b282d5274002db24c3251272ffca1bd38551632",
     "web3": "1.3.6",
     "web3-utils": "^1.3.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
@@ -56,7 +56,7 @@
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
-    "devchain": "yarn run celo-devchain --port 7545 --file ./devChain/devchain.tar.gz",
+    "devchain": "yarn run celo-devchain --port 7545",
     "devchain:stCeloV1": "yarn run celo-devchain --port 7545 --file ./devChain/stCeloV1.tar.gz",
     "lint": "yarn run lint:sol && yarn run lint:ts",
     "eslint:ts": "yarn run eslint ./",
@@ -72,7 +72,7 @@
     "verify:deploy": "hardhat sourcify",
     "tarchain": "ts-node scripts/tarchain.ts",
     "generate:standard:artifacts": "ts-node scripts/standardize-artifacts.ts run",
-    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -e \".*Test|Mock.*|I[A-Z].*|.*Proxy|MultiSig.*|ReleaseGold|SlasherUtil|UsingPrecompiles|^UsingRegistry|ERC20.*\""
+    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -e \".*Test|Mock.*|I[A-Z].*|.*Proxy|ReleaseGold|SlasherUtil|UsingPrecompiles|^UsingRegistry|ERC20.*\""
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",
