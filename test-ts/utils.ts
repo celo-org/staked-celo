@@ -285,7 +285,7 @@ function stripLeadingZero(hex: string): string {
   }
 }
 
-async function setBalance(address: string, balance: EthersBigNumber) {
+export async function setBalance(address: string, balance: EthersBigNumber) {
   await hre.network.provider.send("hardhat_setBalance", [
     address,
     stripLeadingZero(balance.toHexString()),

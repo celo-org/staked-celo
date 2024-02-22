@@ -4,11 +4,13 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+import "./common/Errors.sol";
+
 /**
  * @title Used via inheritance to grant special access control to the Manager
  * contract.
  */
-abstract contract Managed is Initializable, OwnableUpgradeable {
+abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
     address public manager;
 
     /**
@@ -22,11 +24,6 @@ abstract contract Managed is Initializable, OwnableUpgradeable {
      *  @param caller `msg.sender` that called the function.
      */
     error CallerNotManager(address caller);
-
-    /**
-     * @notice Used when a passed address is address(0).
-     */
-    error NullAddress();
 
     /**
      * @dev Throws if called by any account other than the manager.
@@ -61,7 +58,7 @@ abstract contract Managed is Initializable, OwnableUpgradeable {
      */
     function _setManager(address _manager) internal {
         if (_manager == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
         manager = _manager;
         emit ManagerSet(_manager);

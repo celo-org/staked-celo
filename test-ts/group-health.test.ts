@@ -13,6 +13,7 @@ import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import {
+  ADDRESS_ZERO,
   deregisterValidatorGroup,
   electMockValidatorGroupsAndUpdate,
   mineToNextEpoch,
@@ -33,6 +34,7 @@ after(() => {
 describe("GroupHealth", () => {
   let groupHealthContract: MockGroupHealth;
   let nonManager: SignerWithAddress;
+  let pauser: SignerWithAddress;
 
   let validatorsWrapper: ValidatorsWrapper;
   let accountsWrapper: AccountsWrapper;
@@ -55,12 +57,13 @@ describe("GroupHealth", () => {
 
   before(async function () {
     try {
-      this.timeout(100000);
+      this.timeout(0);
       await resetNetwork();
 
       [nonManager] = await randomSigner(parseUnits("100"));
-      [owner] = await randomSigner(parseUnits("100"));
+      owner = await hre.ethers.getNamedSigner("owner");
       [mockSlasher] = await randomSigner(parseUnits("100"));
+      pauser = owner;
 
       lockedGold = await hre.kit.contracts.getLockedGold();
       validatorsWrapper = await hre.kit.contracts.getValidators();
@@ -103,6 +106,8 @@ describe("GroupHealth", () => {
           validatorAddresses.push(validator.address);
           await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
         }
+
+        await groupHealthContract.connect(owner).setPauser();
       }
     } catch (error) {
       console.error(error);
@@ -326,6 +331,102 @@ describe("GroupHealth", () => {
         await groupHealthContract.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
         expect(await groupHealthContract.isGroupValid(groupAddresses[0])).to.be.false;
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address to the owner of the contract", async () => {
+      await groupHealthContract.connect(owner).setPauser();
+      const newPauser = await groupHealthContract.pauser();
+      expect(newPauser).to.eq(owner.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(groupHealthContract.connect(owner).setPauser())
+        .to.emit(groupHealthContract, "PauserSet")
+        .withArgs(owner.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(groupHealthContract.connect(nonManager).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await groupHealthContract.connect(owner).transferOwnership(nonManager.address);
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await groupHealthContract.connect(nonManager).setPauser();
+        const newPauser = await groupHealthContract.pauser();
+        expect(newPauser).to.eq(nonManager.address);
+      });
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await groupHealthContract.connect(pauser).pause();
+      const isPaused = await groupHealthContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(groupHealthContract.connect(pauser).pause()).to.emit(
+        groupHealthContract,
+        "ContractPaused"
+      );
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(groupHealthContract.connect(nonManager).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await groupHealthContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await groupHealthContract.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await groupHealthContract.connect(pauser).unpause();
+      const isPaused = await groupHealthContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(groupHealthContract.connect(pauser).unpause()).to.emit(
+        groupHealthContract,
+        "ContractUnpaused"
+      );
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(groupHealthContract.connect(nonManager).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await groupHealthContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await groupHealthContract.connect(pauser).pause();
+    });
+
+    it("can't call updateGroupHealth", async () => {
+      await expect(
+        groupHealthContract.connect(nonManager).updateGroupHealth(ADDRESS_ZERO)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call markGroupHealthy", async () => {
+      await expect(
+        groupHealthContract.connect(nonManager).markGroupHealthy(ADDRESS_ZERO, [0])
+      ).revertedWith("Paused()");
     });
   });
 });

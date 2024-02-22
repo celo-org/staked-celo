@@ -9,12 +9,13 @@ import "./common/UsingRegistryUpgradeable.sol";
 import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IManager.sol";
+import "./Pausable.sol";
 
 /**
  * @title An ERC-20 token that is a fungible and transferrable representation
  * of reward-earning voted LockedGold (i.e. locked CELO).
  */
-contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
+contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausable {
     mapping(address => uint256) private _lockedBalances;
 
     /**
@@ -65,6 +66,14 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
         __ERC20_init("Staked CELO", "stCELO");
         __Managed_init(_manager);
         _transferOwnership(_owner);
+    }
+
+    /**
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
+     */
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
     }
 
     /**
@@ -123,14 +132,14 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 2, 1);
+        return (1, 1, 3, 0);
     }
 
     /**
      * @notice Unlocks vote stCELO from an address.
      * @param beneficiary The address that will have its stCELO balance unlocked.
      */
-    function unlockVoteBalance(address beneficiary) public {
+    function unlockVoteBalance(address beneficiary) public onlyWhenNotPaused {
         uint256 previouslyLocked = _lockedBalances[beneficiary];
         if (previouslyLocked == 0) {
             revert NoLockedStakedCelo(beneficiary);
@@ -170,5 +179,21 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed {
             return;
         }
         IManager(manager).transfer(from, to, amount);
+    }
+
+    function _approve(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override onlyWhenNotPaused {
+        super._approve(from, to, amount);
+    }
+
+    function _transfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override onlyWhenNotPaused {
+        super._transfer(from, to, amount);
     }
 }

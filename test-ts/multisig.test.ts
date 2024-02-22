@@ -5,6 +5,7 @@ import { parseUnits } from "ethers/lib/utils";
 import hre, { ethers } from "hardhat";
 import { ProposalTester__factory } from "../typechain-types/factories/ProposalTester__factory";
 import { MultiSig } from "../typechain-types/MultiSig";
+import { PausableTest } from "../typechain-types/PausableTest";
 import { ProposalTester } from "../typechain-types/ProposalTester";
 import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
 
@@ -67,7 +68,7 @@ async function executeMultisigProposal(
     await multiSig.connect(signer2).confirmProposal(proposalId);
   }
 
-  timeTravel(delay);
+  await timeTravel(delay);
   await multiSig.connect(signer2).executeProposal(proposalId);
 }
 
@@ -91,6 +92,10 @@ describe("MultiSig", () => {
   let owner2: SignerWithAddress;
   let nonOwner: SignerWithAddress;
 
+  let pausableTest: PausableTest;
+  let mockPauserAddress: SignerWithAddress;
+  let governance: SignerWithAddress;
+
   let owners: string[];
   const requiredSignatures = 2;
   const delay = 7 * DAY;
@@ -98,9 +103,19 @@ describe("MultiSig", () => {
   beforeEach(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
+    await hre.deployments.fixture("TestPausable");
+    pausableTest = await hre.ethers.getContract("PausableTest");
+    pausableTest.setPauser(multiSig.address);
     owner1 = await hre.ethers.getNamedSigner("multisigOwner0");
     owner2 = await hre.ethers.getNamedSigner("multisigOwner1");
+    [mockPauserAddress] = await randomSigner(parseUnits("100"));
     [nonOwner] = await randomSigner(parseUnits("100"));
+
+    const governanceAddress = (await hre.kit.contracts.getGovernance()).address;
+    governance = await getImpersonatedSigner(
+      governanceAddress,
+      BigNumber.from("100000000000000000000")
+    );
 
     owners = [owner1.address, owner2.address];
   });
@@ -213,7 +228,7 @@ describe("MultiSig", () => {
 
     it("should not allow an owner to submit a proposal to a null address", async () => {
       await expect(multiSig.submitProposal([ADDRESS_ZERO], [0], [txData])).revertedWith(
-        `NullAddress()`
+        `AddressZeroNotAllowed()`
       );
     });
 
@@ -383,7 +398,7 @@ describe("MultiSig", () => {
     });
 
     it("should fail execute a proposal that is not scheduled", async () => {
-      timeTravel(delay);
+      await timeTravel(delay);
       await expect(multiSig.connect(owner1).executeProposal(proposalId)).revertedWith(
         "ProposalNotScheduled(0)"
       );
@@ -406,6 +421,115 @@ describe("MultiSig", () => {
 
       expect(await multiSig.delay()).to.be.equal(9 * DAY);
       expect(await multiSig.isOwner(nonOwner.address)).to.be.true;
+    });
+  });
+
+  describe("#setPauser()", () => {
+    it("allows the MultiSig to set a pauser", async () => {
+      const payload = multiSig.interface.encodeFunctionData("setPauser", [nonOwner.address]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [payload],
+        delay,
+        owner1,
+        owner2
+      );
+      const currentPauser = await multiSig.pauser();
+      expect(currentPauser).to.equal(nonOwner.address);
+    });
+
+    it("allows the MultiSig to set itself as the pauser", async () => {
+      const payload = multiSig.interface.encodeFunctionData("setPauser", [multiSig.address]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [payload],
+        delay,
+        owner1,
+        owner2
+      );
+      const currentPauser = await multiSig.pauser();
+      expect(currentPauser).to.equal(multiSig.address);
+    });
+
+    it("does not allow an owner to set a pauser", async () => {
+      await expect(multiSig.connect(owner1).setPauser(nonOwner.address)).revertedWith(
+        `SenderMustBeMultisigWallet("${owner1.address}")`
+      );
+    });
+
+    it("does not allow a non-owner to set a pauser", async () => {
+      await expect(multiSig.connect(nonOwner).setPauser(nonOwner.address)).revertedWith(
+        `SenderMustBeMultisigWallet("${nonOwner.address}")`
+      );
+    });
+  });
+
+  describe("#pauseContracts()", () => {
+    it("can be called by an owner to pause a contract", async () => {
+      await multiSig.connect(owner1).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("can be called by a different owner to pause a contract", async () => {
+      await multiSig.connect(owner2).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("can be called by Governance to pause a contract", async () => {
+      await multiSig.connect(governance).pauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by a non-owner", async () => {
+      await expect(multiSig.connect(nonOwner).pauseContracts([pausableTest.address])).revertedWith(
+        `SenderNotGovernanceOrOwner("${nonOwner.address}")`
+      );
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpauseContracts()", () => {
+    beforeEach(async () => {
+      await multiSig.connect(owner1).pauseContracts([pausableTest.address]);
+    });
+
+    it("can be called by Governance to unpause a contract", async () => {
+      await multiSig.connect(governance).unpauseContracts([pausableTest.address]);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("reverts when called by an owner", async () => {
+      await expect(multiSig.connect(owner1).unpauseContracts([pausableTest.address])).revertedWith(
+        `SenderNotGovernance("${owner1.address}")`
+      );
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by the MultiSig", async () => {
+      const multiSigSigner = await getImpersonatedSigner(multiSig.address, parseUnits("100"));
+      await expect(
+        multiSig.connect(multiSigSigner).unpauseContracts([pausableTest.address])
+      ).revertedWith(`SenderNotGovernance("${multiSig.address}")`);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("reverts when called by a non-owner", async () => {
+      await expect(
+        multiSig.connect(nonOwner).unpauseContracts([pausableTest.address])
+      ).revertedWith(`SenderNotGovernance("${nonOwner.address}")`);
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.true;
     });
   });
 
@@ -922,6 +1046,58 @@ describe("MultiSig", () => {
     it("should revert for a random address", async () => {
       await expect(multiSig.connect(nonOwner).governanceProposeAndExecute([], [], [])).revertedWith(
         "SenderNotGovernance"
+      );
+    });
+  });
+
+  describe("when paused", () => {
+    let submittedProposal: BigNumber;
+
+    beforeEach(async () => {
+      submittedProposal = await submitProposalAndWaitForConfirmationEvent(
+        multiSig,
+        [nonOwner.address],
+        [0],
+        ["0x"],
+        owner1
+      );
+
+      const txData = multiSig.interface.encodeFunctionData("setPauser", [
+        mockPauserAddress.address,
+      ]);
+      await executeMultisigProposal(
+        multiSig,
+        [multiSig.address],
+        [0],
+        [txData],
+        delay,
+        owner1,
+        owner2
+      );
+      await multiSig.connect(mockPauserAddress).pause();
+    });
+
+    it("can't call submitProposal", async () => {
+      await expect(
+        multiSig.connect(owner1).submitProposal([nonOwner.address], [0], ["0x"])
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call confirmProposal", async () => {
+      await expect(multiSig.connect(owner2).confirmProposal(submittedProposal)).revertedWith(
+        "Paused()"
+      );
+    });
+
+    it("can't call scheduleProposal", async () => {
+      await expect(multiSig.connect(owner2).scheduleProposal(submittedProposal)).revertedWith(
+        "Paused()"
+      );
+    });
+
+    it("can't call executeProposal", async () => {
+      await expect(multiSig.connect(owner2).executeProposal(submittedProposal)).revertedWith(
+        "Paused()"
       );
     });
   });

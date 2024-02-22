@@ -6,6 +6,8 @@ import "./common/UUPSOwnableUpgradeable.sol";
 import "./Managed.sol";
 import "./interfaces/IAccount.sol";
 import "./interfaces/IStakedCelo.sol";
+import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title An ERC-20 wrapper contract that receives stCELO
@@ -13,7 +15,7 @@ import "./interfaces/IStakedCelo.sol";
  * @dev This contract depends on the Account and StakedCelo contracts
  * to calculate the amount of rstCELO held by depositors.
  */
-contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
+contract RebasedStakedCelo is Errors, ERC20Upgradeable, UUPSOwnableUpgradeable, Pausable {
     /**
      * @notice Total amount of stCELO deposited in this contract.
      */
@@ -60,11 +62,6 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
     error InsufficientBalance(uint256 amount);
 
     /**
-     * @notice Used when an null address is used.
-     */
-    error NullAddress();
-
-    /**
      * @notice Used when deposit fails.
      * @param depositor The address of the depositor.
      * @param amount The amount of stCELO the depositor attempted to deposit.
@@ -108,12 +105,20 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
     }
 
     /**
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
+     */
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
+    }
+
+    /**
      * @notice Deposit stCELO in return for rstCELO.
      * @dev Although rstCELO is never minted to any account, the rstCELO balance
      * is calculated based on the account's deposited stCELO. See `balanceOf()` function below.
      * @param stCeloAmount The Amount of stCELO to be deposited.
      */
-    function deposit(uint256 stCeloAmount) external {
+    function deposit(uint256 stCeloAmount) external onlyWhenNotPaused {
         if (stCeloAmount == 0) {
             revert ZeroAmount();
         }
@@ -134,7 +139,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
      * previously deposited stCELO amount.
      * @param stCeloAmount The amount of stCELO to withdraw.
      */
-    function withdraw(uint256 stCeloAmount) external {
+    function withdraw(uint256 stCeloAmount) external onlyWhenNotPaused {
         if (stCeloAmount > stakedCeloBalance[msg.sender]) {
             revert InsufficientBalance(stCeloAmount);
         }
@@ -168,7 +173,7 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
             uint256
         )
     {
-        return (1, 1, 1, 2);
+        return (1, 1, 2, 0);
     }
 
     /**
@@ -239,12 +244,12 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal override onlyWhenNotPaused {
         if (from == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
         if (to == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
 
         uint256 fromBalance = stakedCeloBalance[from];
@@ -259,5 +264,13 @@ contract RebasedStakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable {
         stakedCeloBalance[to] += equivalentStakedCeloAmount;
 
         emit Transfer(from, to, amount);
+    }
+
+    function _approve(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override onlyWhenNotPaused {
+        super._approve(from, to, amount);
     }
 }

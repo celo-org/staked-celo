@@ -8,14 +8,12 @@ import { expect } from "chai";
 import { BigNumber, BigNumberish, Signer } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
-import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
-  activateAndVoteTest,
-  activateValidators,
   ADDRESS_ZERO,
   electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
@@ -26,7 +24,6 @@ import {
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
-  upgradeToMockGroupHealthE2E,
 } from "./utils";
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
@@ -37,14 +34,16 @@ describe("Vote", async function (this: any) {
   let voteContract: Vote;
   let governanceWrapper: GovernanceWrapper;
   let defaultStrategyContract: DefaultStrategy;
+  let account: Account;
 
+  let owner: SignerWithAddress;
   let depositor0: SignerWithAddress;
   let depositor1: SignerWithAddress;
-  let multisigOwner0: SignerWithAddress;
   let voter: SignerWithAddress;
   let nonStakedCelo: SignerWithAddress;
   let nonAccount: SignerWithAddress;
   let nonOwner: SignerWithAddress;
+  let pauser: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let activatedGroupAddresses: string[];
@@ -74,11 +73,28 @@ describe("Vote", async function (this: any) {
     }
   }
 
-  async function depositAndActivate(despositor: Signer, value: BigNumberish) {
-    await managerContract.connect(despositor).deposit({ value });
-    await activateAndVoteTest();
+  async function depositAndActivate(depositor: Signer, value: BigNumberish) {
+    await managerContract.connect(depositor).deposit({ value });
+
+    const electionWrapper = await hre.kit.contracts.getElection();
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      const group = activatedGroupAddresses[i];
+      const scheduledVotes = await account.scheduledVotesForGroup(group);
+      const { lesser, greater } = await electionWrapper.findLesserAndGreaterAfterVote(
+        group,
+        // @ts-ignore: BigNumber types library conflict.
+        scheduledVotes.toString()
+      );
+      await account.connect(depositor).activateAndVote(activatedGroupAddresses[i], lesser, greater);
+    }
+
     await mineToNextEpoch(hre.web3);
-    await activateAndVoteTest();
+
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      await account
+        .connect(depositor)
+        .activateAndVote(activatedGroupAddresses[i], ADDRESS_ZERO, ADDRESS_ZERO);
+    }
   }
 
   async function checkGovernanceTotalVotes(
@@ -110,13 +126,15 @@ describe("Vote", async function (this: any) {
         VALIDATOR_GROUPS: "",
       };
 
+      owner = await hre.ethers.getNamedSigner("owner");
       [depositor0] = await randomSigner(parseUnits("300"));
       [depositor1] = await randomSigner(parseUnits("300"));
       [nonStakedCelo] = await randomSigner(parseUnits("100"));
       [nonOwner] = await randomSigner(parseUnits("100"));
       [nonAccount] = await randomSigner(parseUnits("100"));
-      multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
       [voter] = await randomSigner(parseUnits("300"));
+      pauser = owner;
+
       const accounts = await hre.kit.contracts.getAccounts();
       await accounts.createAccount().sendAndWaitForReceipt({
         from: voter.address,
@@ -148,30 +166,49 @@ describe("Vote", async function (this: any) {
   });
 
   beforeEach(async () => {
-    await hre.deployments.fixture("core");
+    await hre.deployments.fixture("TestVote");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
-    groupHealthContract = await hre.ethers.getContract("GroupHealth");
+    groupHealthContract = await hre.ethers.getContract("MockGroupHealth");
     voteContract = await hre.ethers.getContract("Vote");
-    defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+    defaultStrategyContract = await hre.ethers.getContract("MockDefaultStrategy");
+    account = await hre.ethers.getContract("Account");
 
-    groupHealthContract = await upgradeToMockGroupHealthE2E(
-      multisigOwner0,
-      groupHealthContract as unknown as GroupHealth
-    );
+    await voteContract.connect(owner).setPauser();
+
+    const specificGroupStrategy = await hre.ethers.getContract("SpecificGroupStrategy");
+    const stakedCelo = await hre.ethers.getContract("StakedCelo");
+
+    await defaultStrategyContract
+      .connect(owner)
+      .setDependencies(account.address, groupHealthContract.address, specificGroupStrategy.address);
+    await managerContract
+      .connect(owner)
+      .setDependencies(
+        stakedCelo.address,
+        account.address,
+        voteContract.address,
+        groupHealthContract.address,
+        specificGroupStrategy.address,
+        defaultStrategyContract.address
+      );
+    await voteContract.connect(owner).setDependencies(stakedCelo.address, account.address);
+
     const validatorWrapper = await hre.kit.contracts.getValidators();
+
     await electMockValidatorGroupsAndUpdate(
       validatorWrapper,
       groupHealthContract,
       activatedGroupAddresses
     );
 
-    await activateValidators(
-      defaultStrategyContract,
-      groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
-      activatedGroupAddresses
-    );
+    let previousKey = ADDRESS_ZERO;
+    for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      await defaultStrategyContract
+        .connect(owner)
+        .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
+      previousKey = activatedGroupAddresses[i];
+    }
   });
 
   describe("#getVoteWeight()", () => {
@@ -852,6 +889,107 @@ describe("Vote", async function (this: any) {
         const proposalIds = await voteContract.getVotedStillRelevantProposals(depositor0.address);
         expect(proposalIds).to.have.deep.members([BigNumber.from(proposal2Id)]);
       });
+    });
+  });
+
+  describe("#setPauser", () => {
+    it("sets the pauser address to the owner of the contract", async () => {
+      await voteContract.connect(owner).setPauser();
+      const newPauser = await voteContract.pauser();
+      expect(newPauser).to.eq(owner.address);
+    });
+
+    it("emits a PauserSet event", async () => {
+      await expect(voteContract.connect(owner).setPauser())
+        .to.emit(voteContract, "PauserSet")
+        .withArgs(owner.address);
+    });
+
+    it("cannot be called by a non-owner", async () => {
+      await expect(voteContract.connect(nonOwner).setPauser()).revertedWith(
+        "Ownable: caller is not the owner"
+      );
+    });
+
+    describe("when the owner is changed", async () => {
+      beforeEach(async () => {
+        await voteContract.connect(owner).transferOwnership(nonOwner.address);
+      });
+
+      it("sets the pauser to the new owner", async () => {
+        await voteContract.connect(nonOwner).setPauser();
+        const newPauser = await voteContract.pauser();
+        expect(newPauser).to.eq(nonOwner.address);
+      });
+    });
+  });
+
+  describe("#pause", () => {
+    it("can be called by the pauser", async () => {
+      await voteContract.connect(pauser).pause();
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
+    it("emits a ContractPaused event", async () => {
+      await expect(voteContract.connect(pauser).pause()).to.emit(voteContract, "ContractPaused");
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(voteContract.connect(nonOwner).pause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+  });
+
+  describe("#unpause", () => {
+    beforeEach(async () => {
+      await voteContract.connect(pauser).pause();
+    });
+
+    it("can be called by the pauser", async () => {
+      await voteContract.connect(pauser).unpause();
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.false;
+    });
+
+    it("emits a ContractUnpaused event", async () => {
+      await expect(voteContract.connect(pauser).unpause()).to.emit(
+        voteContract,
+        "ContractUnpaused"
+      );
+    });
+
+    it("cannot be called by a random account", async () => {
+      await expect(voteContract.connect(nonOwner).unpause()).revertedWith("OnlyPauser()");
+      const isPaused = await voteContract.isPaused();
+      expect(isPaused).to.be.true;
+    });
+  });
+
+  describe("when paused", () => {
+    beforeEach(async () => {
+      await voteContract.connect(pauser).pause();
+    });
+
+    it("can't call deleteExpiredVoterProposalId", async () => {
+      await expect(
+        voteContract.connect(depositor0).deleteExpiredVoterProposalId(depositor0.address, 0, 0)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call updateHistoryAndReturnLockedStCeloInVoting", async () => {
+      await expect(
+        voteContract
+          .connect(depositor0)
+          .updateHistoryAndReturnLockedStCeloInVoting(depositor0.address)
+      ).revertedWith("Paused()");
+    });
+
+    it("can't call deleteExpiredProposalTimestamp", async () => {
+      await expect(voteContract.connect(depositor0).deleteExpiredProposalTimestamp(0)).revertedWith(
+        "Paused()"
+      );
     });
   });
 });
