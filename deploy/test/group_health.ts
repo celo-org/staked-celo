@@ -15,13 +15,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       proxyContract: "ERC1967Proxy",
       execute: {
         methodName: "initialize",
-        args: [hre.ethers.constants.AddressZero, deployer],
+        args: [hre.ethers.constants.AddressZero, owner],
       },
     },
   });
 };
 
 func.id = "deploy_test_group_health";
-func.tags = ["FullTestManager", "TestGroupHealth"];
+func.tags = ["FullTestManager", "TestGroupHealth", "TestVote"];
 func.dependencies = [];
 export default func;

@@ -10,12 +10,14 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IDefaultStrategy.sol";
 import "./Managed.sol";
+import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title SpecificGroupStrategy is responsible for handling any deposit/withdrawal
  * for accounts with specific strategy selected.
  */
-contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
+contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -123,11 +125,6 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
     error GroupNotEligible(address group);
 
     /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
-
-    /**
      * @notice Used when attempting to withdraw from specific group
      * but group does not have enough CELO. It is necessary to rebalance the group.
      * @param group The group's address.
@@ -210,6 +207,14 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
         account = IAccount(_account);
         groupHealth = IGroupHealth(_groupHealth);
         defaultStrategy = IDefaultStrategy(_defaultStrategy);
+    }
+
+    /**
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
+     */
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
     }
 
     /**
@@ -358,7 +363,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
      * @notice Used when validator gets unhealthy and we need to move funds to default strategy
      * @param group The group address.
      */
-    function rebalanceWhenHealthChanged(address group) external {
+    function rebalanceWhenHealthChanged(address group) external onlyWhenNotPaused {
         bool isGroupValid = groupHealth.isGroupValid(group);
         uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
 
@@ -455,7 +460,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 0, 0);
+        return (1, 1, 1, 0);
     }
 
     /**
@@ -464,7 +469,7 @@ contract SpecificGroupStrategy is UUPSOwnableUpgradeable, Managed {
      * makes sure to reschedule votes correctly for overflowing group.
      * @param group The group address.
      */
-    function rebalanceOverflowedGroup(address group) public {
+    function rebalanceOverflowedGroup(address group) public onlyWhenNotPaused {
         if (!groupHealth.isGroupValid(group) || blockedGroups.contains(group)) {
             revert GroupNotEligible(group);
         }

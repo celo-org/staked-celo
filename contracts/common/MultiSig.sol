@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "../libraries/ExternalCall.sol";
 import "./UsingRegistryNoStorage.sol";
+import "../interfaces/IPausable.sol";
+import {Pausable} from "../Pausable.sol";
+import "./Errors.sol";
 
 /**
  * @title Multisignature wallet - Allows multiple parties to agree on proposals before
@@ -30,7 +33,7 @@ import "./UsingRegistryNoStorage.sol";
  * Forked from
  * github.com/celo-org/celo-monorepo/blob/master/packages/protocol/contracts/common/MultiSig.sol
  */
-contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
+contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStorage, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
@@ -222,11 +225,6 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     error ProposalAlreadyExecuted(uint256 proposalId);
 
     /**
-     * @notice Used when a passed address is address(0).
-     */
-    error NullAddress();
-
-    /**
      * @notice Used when the set threshold values for owner and minimum
      * required confirmations are not met.
      * @param ownerCount The count of owners.
@@ -270,7 +268,19 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     error ParamLengthsMismatch();
 
+    /**
+     * @notice Used when the caller of an `onlyGovernance` function is not Celo
+     * Governance.
+     * @param sender The address that triggered this function.
+     */
     error SenderNotGovernance(address sender);
+
+    /**
+     * @notice Used when the caller should be either Governance or one of the
+     * multisig owners.
+     * @param sender The address that triggered this function.
+     */
+    error SenderNotGovernanceOrOwner(address sender);
 
     /**
      * @notice Checks that only the multisig contract can execute a function.
@@ -357,7 +367,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     modifier notNull(address addr) {
         if (addr == address(0)) {
-            revert NullAddress();
+            revert AddressZeroNotAllowed();
         }
         _;
     }
@@ -369,7 +379,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     modifier notNullBatch(address[] memory _addresses) {
         for (uint256 i = 0; i < _addresses.length; i++) {
             if (_addresses[i] == address(0)) {
-                revert NullAddress();
+                revert AddressZeroNotAllowed();
             }
         }
         _;
@@ -439,6 +449,19 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
     }
 
     /**
+     * @notice Checks that the caller is the Celo Governance contract.
+     */
+    modifier onlyGovernance() {
+        address governanceAddress = address(getGovernance());
+
+        if (msg.sender != governanceAddress) {
+            revert SenderNotGovernance(msg.sender);
+        }
+
+        _;
+    }
+
+    /**
      * @notice Sets `initialized` to  true on implementation contracts.
      * @param _minDelay The minimum time in seconds that must elapse before a
      * proposal is executable.
@@ -475,7 +498,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
             }
 
             if (initialOwners[i] == address(0)) {
-                revert NullAddress();
+                revert AddressZeroNotAllowed();
             }
 
             owners.add(initialOwners[i]);
@@ -564,7 +587,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         address[] calldata destinations,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) external returns (uint256 proposalId) {
+    ) external onlyWhenNotPaused returns (uint256 proposalId) {
         if (destinations.length != values.length) {
             revert ParamLengthsMismatch();
         }
@@ -656,6 +679,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     function confirmProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         ownerExists(msg.sender)
         proposalExists(proposalId)
         notConfirmed(proposalId, msg.sender)
@@ -673,6 +697,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     function scheduleProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         ownerExists(msg.sender)
         notExecuted(proposalId)
     {
@@ -688,6 +713,7 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
      */
     function executeProposal(uint256 proposalId)
         public
+        onlyWhenNotPaused
         scheduled(proposalId)
         notExecuted(proposalId)
         timeLockReached(proposalId)
@@ -715,16 +741,48 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
         address[] calldata destinations,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) external {
-        address governanceAddress = address(getGovernance());
-
-        if (msg.sender != governanceAddress) {
-            revert SenderNotGovernance(msg.sender);
-        }
-
+    ) external onlyGovernance {
         for (uint256 i = 0; i < destinations.length; i++) {
             bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
             emit GovernanceTransactionExecuted(i, returnData);
+        }
+    }
+
+    /**
+     * @notice Sets the address of the pauser address that will be used to
+     * pause StakedCelo protocol contracts.
+     * @param __pauser The address to set as the pauser.
+     */
+    function setPauser(address __pauser) external onlyWallet {
+        _setPauser(__pauser);
+    }
+
+    /**
+     * @notice Pauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to pause.
+     * @dev Can be called by any one of the MultiSig signers to immediately
+     * pause contracts. To be used to mitigate damage if a vulnerability is
+     * found/exploited.
+     */
+    function pauseContracts(address[] calldata contracts) external {
+        if (!owners.contains(msg.sender) && msg.sender != address(getGovernance())) {
+            revert SenderNotGovernanceOrOwner(msg.sender);
+        }
+        for (uint256 i = 0; i < contracts.length; i++) {
+            IPausable(contracts[i]).pause();
+        }
+    }
+
+    /**
+     * @notice Unpauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to unpause.
+     * @dev Can be called by Celo Governance (via hotfix or referendum). To be
+     * used after contracts have been paused with `pauseContracts`, and the
+     * related vulnerability have been patched.
+     */
+    function unpauseContracts(address[] calldata contracts) external onlyGovernance {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            IPausable(contracts[i]).unpause();
         }
     }
 
@@ -885,6 +943,6 @@ contract MultiSig is Initializable, UUPSUpgradeable, UsingRegistryNoStorage {
             uint256
         )
     {
-        return (1, 1, 1, 0);
+        return (1, 1, 2, 0);
     }
 }

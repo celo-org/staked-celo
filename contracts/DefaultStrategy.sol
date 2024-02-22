@@ -11,12 +11,14 @@ import "./interfaces/IGroupHealth.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/ISpecificGroupStrategy.sol";
 import "./Managed.sol";
+import "./Pausable.sol";
+import "./common/Errors.sol";
 
 /**
  * @title DefaultStrategy is responsible for handling any deposit/withdrawal
  * for accounts without any specific strategy.
  */
-contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
+contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using AddressSortedLinkedList for SortedLinkedList.List;
 
@@ -175,11 +177,6 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
     error RebalanceEnoughStCelo(address group, uint256 actualCelo, uint256 expectedCelo);
 
     /**
-     * @notice Used when attempting to pass in address zero where not allowed.
-     */
-    error AddressZeroNotAllowed();
-
-    /**
      *  @notice Used when a `managerOrStrategy` function is called
      *  by a non-manager or non-strategy.
      *  @param caller `msg.sender` that called the function.
@@ -216,6 +213,14 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
         sortingLoopLimit = 10;
         sorted = true;
         emit SortedFlagUpdated(sorted);
+    }
+
+    /**
+     * @notice Sets that address permissioned to pause/unpause this contract to
+     * the owner of this contract.
+     */
+    function setPauser() external onlyOwner {
+        _setPauser(owner());
     }
 
     /**
@@ -285,7 +290,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
         address group,
         address lesserKey,
         address greaterKey
-    ) external {
+    ) external onlyWhenNotPaused {
         if (!unsortedGroups.contains(group)) {
             revert NotUnsortedGroup();
         }
@@ -347,7 +352,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      * @param fromGroup The from group.
      * @param toGroup The to group.
      */
-    function rebalance(address fromGroup, address toGroup) external {
+    function rebalance(address fromGroup, address toGroup) external onlyWhenNotPaused {
         if (!activeGroups.contains(fromGroup)) {
             revert InvalidFromGroup(fromGroup);
         }
@@ -461,7 +466,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
      * @notice Deactivates an unhealthy group.
      * @param group The group to deactivate if unhealthy.
      */
-    function deactivateUnhealthyGroup(address group) external {
+    function deactivateUnhealthyGroup(address group) external onlyWhenNotPaused {
         if (groupHealth.isGroupValid(group)) {
             revert HealthyGroup(group);
         }
@@ -552,7 +557,7 @@ contract DefaultStrategy is UUPSOwnableUpgradeable, Managed {
             uint256
         )
     {
-        return (1, 1, 0, 0);
+        return (1, 1, 1, 0);
     }
 
     /**
