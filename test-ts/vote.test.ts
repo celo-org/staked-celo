@@ -32,6 +32,9 @@ after(() => {
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
@@ -170,6 +173,8 @@ describe("Vote", async function (this: any) {
   });
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+
     await hre.deployments.fixture("TestVote");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
@@ -213,6 +218,10 @@ describe("Vote", async function (this: any) {
         .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
       previousKey = activatedGroupAddresses[i];
     }
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#getVoteWeight()", () => {

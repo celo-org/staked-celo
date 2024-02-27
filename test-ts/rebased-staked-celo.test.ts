@@ -13,6 +13,9 @@ after(() => {
 });
 
 describe("RebasedStakedCelo", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let rebasedStakedCelo: RebasedStakedCelo;
   let stakedCelo: MockStakedCelo;
   let account: MockAccount;
@@ -28,6 +31,8 @@ describe("RebasedStakedCelo", () => {
   });
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+
     await hre.deployments.fixture("TestRebasedStakedCelo");
     rebasedStakedCelo = await hre.ethers.getContract("RebasedStakedCelo");
     stakedCelo = await hre.ethers.getContract("MockStakedCelo");
@@ -40,6 +45,10 @@ describe("RebasedStakedCelo", () => {
     [someone] = await randomSigner(parseUnits("1000"));
 
     await rebasedStakedCelo.connect(owner).setPauser();
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#initialize()", () => {

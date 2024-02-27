@@ -10,16 +10,25 @@ after(() => {
 });
 
 describe("Pausable", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let pausableTest: PausableTest;
   let pauser: SignerWithAddress;
   let nonPauser: SignerWithAddress;
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
     [pauser] = await randomSigner(parseUnits("100"));
     [nonPauser] = await randomSigner(parseUnits("100"));
     await pausableTest.setPauser(pauser.address);
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#pause", () => {

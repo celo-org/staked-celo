@@ -12,6 +12,9 @@ after(() => {
 });
 
 describe("AddressSortedLinkedList", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let addressSortedLinkedList: MockAddressSortedLinkedList;
   let accounts: string[] = [];
 
@@ -24,6 +27,8 @@ describe("AddressSortedLinkedList", () => {
   });
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+
     const Lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
     const lib = await Lib.deploy();
     await lib.deployed();
@@ -36,6 +41,10 @@ describe("AddressSortedLinkedList", () => {
       })) as MockAddressSortedLinkedList__factory;
     addressSortedLinkedList = await addressSortedLinkedListFactory.deploy();
     accounts = await hre.web3.eth.getAccounts();
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#insert()", () => {

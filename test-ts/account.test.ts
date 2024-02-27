@@ -29,6 +29,9 @@ after(() => {
 });
 
 describe("Account", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let accountsInstance: AccountsWrapper;
   let lockedGold: LockedGoldWrapper;
   let election: ElectionWrapper;
@@ -85,6 +88,7 @@ describe("Account", () => {
   });
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
     await hre.deployments.fixture("TestAccount");
     owner = await hre.ethers.getNamedSigner("owner");
     pauser = owner;
@@ -92,6 +96,10 @@ describe("Account", () => {
     await account.connect(owner).setManager(manager.address);
     await account.connect(owner).setPauser();
     governance = await hre.ethers.getContract("MockGovernance");
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   it("should create an account on the core Accounts contract", async () => {

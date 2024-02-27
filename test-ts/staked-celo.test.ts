@@ -11,6 +11,9 @@ after(() => {
 });
 
 describe("StakedCelo", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let stakedCelo: StakedCelo;
   let managerContract: MockManager;
 
@@ -30,6 +33,8 @@ describe("StakedCelo", () => {
   });
 
   beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+
     await hre.deployments.fixture("TestStakedCelo");
     stakedCelo = await hre.ethers.getContract("StakedCelo");
     managerContract = await hre.ethers.getContract("MockManager");
@@ -46,6 +51,10 @@ describe("StakedCelo", () => {
     });
 
     await stakedCelo.connect(owner).setPauser();
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#mint()", () => {
