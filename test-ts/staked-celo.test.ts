@@ -30,10 +30,6 @@ describe("StakedCelo", () => {
     pauser = owner;
     [nonManager] = await randomSigner(parseUnits("100"));
     [anAccount] = await randomSigner(parseUnits("100"));
-  });
-
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
 
     await hre.deployments.fixture("TestStakedCelo");
     stakedCelo = await hre.ethers.getContract("StakedCelo");
@@ -51,6 +47,10 @@ describe("StakedCelo", () => {
     });
 
     await stakedCelo.connect(owner).setPauser();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

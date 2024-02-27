@@ -24,10 +24,6 @@ describe("AddressSortedLinkedList", () => {
     } catch (error) {
       console.error(error);
     }
-  });
-
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
 
     const Lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
     const lib = await Lib.deploy();
@@ -41,6 +37,10 @@ describe("AddressSortedLinkedList", () => {
       })) as MockAddressSortedLinkedList__factory;
     addressSortedLinkedList = await addressSortedLinkedListFactory.deploy();
     accounts = await hre.web3.eth.getAccounts();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

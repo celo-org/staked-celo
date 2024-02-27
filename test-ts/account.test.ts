@@ -82,13 +82,6 @@ describe("Account", () => {
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
 
-    accountsInstance = await hre.kit.contracts.getAccounts();
-    lockedGold = await hre.kit.contracts.getLockedGold();
-    election = await hre.kit.contracts.getElection();
-  });
-
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
     await hre.deployments.fixture("TestAccount");
     owner = await hre.ethers.getNamedSigner("owner");
     pauser = owner;
@@ -96,6 +89,14 @@ describe("Account", () => {
     await account.connect(owner).setManager(manager.address);
     await account.connect(owner).setPauser();
     governance = await hre.ethers.getContract("MockGovernance");
+
+    accountsInstance = await hre.kit.contracts.getAccounts();
+    lockedGold = await hre.kit.contracts.getLockedGold();
+    election = await hre.kit.contracts.getElection();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

@@ -107,9 +107,7 @@ describe("MultiSig", () => {
   const requiredSignatures = 2;
   const delay = 7 * DAY;
 
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
-
+  before(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
     await hre.deployments.fixture("TestPausable");
@@ -127,6 +125,10 @@ describe("MultiSig", () => {
     );
 
     owners = [owner1.address, owner2.address];
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

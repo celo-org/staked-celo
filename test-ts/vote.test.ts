@@ -170,10 +170,6 @@ describe("Vote", async function (this: any) {
     } catch (error) {
       console.error(error);
     }
-  });
-
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
 
     await hre.deployments.fixture("TestVote");
     governanceWrapper = await hre.kit.contracts.getGovernance();
@@ -218,6 +214,10 @@ describe("Vote", async function (this: any) {
         .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
       previousKey = activatedGroupAddresses[i];
     }
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

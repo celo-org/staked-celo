@@ -28,10 +28,6 @@ describe("RebasedStakedCelo", () => {
 
   before(async () => {
     await resetNetwork();
-  });
-
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
 
     await hre.deployments.fixture("TestRebasedStakedCelo");
     rebasedStakedCelo = await hre.ethers.getContract("RebasedStakedCelo");
@@ -45,6 +41,10 @@ describe("RebasedStakedCelo", () => {
     [someone] = await randomSigner(parseUnits("1000"));
 
     await rebasedStakedCelo.connect(owner).setPauser();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {

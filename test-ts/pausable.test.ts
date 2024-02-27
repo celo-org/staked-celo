@@ -17,14 +17,16 @@ describe("Pausable", () => {
   let pauser: SignerWithAddress;
   let nonPauser: SignerWithAddress;
 
-  beforeEach(async () => {
-    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
-
+  before(async () => {
     await hre.deployments.fixture("TestPausable");
     pausableTest = await hre.ethers.getContract("PausableTest");
     [pauser] = await randomSigner(parseUnits("100"));
     [nonPauser] = await randomSigner(parseUnits("100"));
     await pausableTest.setPauser(pauser.address);
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
   });
 
   afterEach(async () => {
