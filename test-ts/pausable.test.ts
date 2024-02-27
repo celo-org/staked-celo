@@ -5,6 +5,10 @@ import hre from "hardhat";
 import { PausableTest } from "../typechain-types/PausableTest";
 import { ADDRESS_ZERO, randomSigner } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 describe("Pausable", () => {
   let pausableTest: PausableTest;
   let pauser: SignerWithAddress;

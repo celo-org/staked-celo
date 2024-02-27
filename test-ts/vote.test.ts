@@ -26,6 +26,10 @@ import {
   timeTravel,
 } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
   this.timeout(0); // Disable test timeout

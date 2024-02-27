@@ -6,6 +6,10 @@ import { MockManager } from "../typechain-types/MockManager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 describe("StakedCelo", () => {
   let stakedCelo: StakedCelo;
   let managerContract: MockManager;

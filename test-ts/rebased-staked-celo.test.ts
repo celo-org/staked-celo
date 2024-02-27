@@ -8,6 +8,10 @@ import { MockStakedCelo } from "../typechain-types/MockStakedCelo";
 import { RebasedStakedCelo } from "../typechain-types/RebasedStakedCelo";
 import { ADDRESS_ZERO, randomSigner, resetNetwork } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 describe("RebasedStakedCelo", () => {
   let rebasedStakedCelo: RebasedStakedCelo;
   let stakedCelo: MockStakedCelo;

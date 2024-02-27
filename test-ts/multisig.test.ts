@@ -9,6 +9,10 @@ import { PausableTest } from "../typechain-types/PausableTest";
 import { ProposalTester } from "../typechain-types/ProposalTester";
 import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event
  * and returns the generated proposalId.
