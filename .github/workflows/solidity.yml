@@ -115,7 +115,7 @@ jobs:
         run: yarn
         working-directory: ./release
 
-      - name: Compile master
+      - name: Compile release
         run: yarn compile
         working-directory: ./release
 
