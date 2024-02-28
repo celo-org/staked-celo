@@ -221,10 +221,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         await manager.connect(depositor).deposit({ value: 99 });
@@ -285,9 +283,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
@@ -695,9 +692,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
 
@@ -771,9 +767,8 @@ describe("Manager", () => {
         beforeEach(async () => {
           for (let i = 0; i < 2; i++) {
             const [head] = await defaultStrategyContract.getGroupsHead();
-            await defaultStrategyContract
-              .connect(owner)
-              .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+            await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+            await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
           }
           specificGroupStrategyAddress = groupAddresses[2];
@@ -800,9 +795,8 @@ describe("Manager", () => {
         beforeEach(async () => {
           for (let i = 0; i < 3; i++) {
             const [head] = await defaultStrategyContract.getGroupsHead();
-            await defaultStrategyContract
-              .connect(owner)
-              .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+            await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+            await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             await account.setCeloForGroup(groupAddresses[i], 100);
           }
           specificGroupStrategyAddress = groupAddresses[0];
@@ -830,9 +824,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
         }
       });
@@ -984,9 +977,8 @@ describe("Manager", () => {
         let nextGroup = ADDRESS_ZERO;
         for (let i = 0; i < 3; i++) {
           const [tail] = await defaultStrategyContract.getGroupsTail();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], nextGroup, tail);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], nextGroup, tail);
           nextGroup = groupAddresses[i];
           await account.setCeloForGroup(groupAddresses[i], 100);
           await manager.connect(depositor2).deposit({ value: 100 });
@@ -1082,9 +1074,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 3; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], 100);
           await defaultStrategyContract.addToStrategyTotalStCeloVotesPublic(groupAddresses[i], 100);
         }
@@ -1227,9 +1218,8 @@ describe("Manager", () => {
         specificGroupStrategy = groups[2];
         let nextGroup = ADDRESS_ZERO;
         for (let i = 0; i < 2; i++) {
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
           nextGroup = groupAddresses[i];
           await manager.connect(depositor2).deposit({ value: withdrawals[i] });
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
@@ -1361,9 +1351,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         await account.setCeloForGroup(
@@ -1973,9 +1962,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         defaultGroupDeposit = BigNumber.from(1000); //parseUnits("1");
@@ -2132,9 +2120,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2362,12 +2349,14 @@ describe("Manager", () => {
           groupAddresses.slice(0, 3),
           false
         );
-        await defaultStrategyContract
-          .connect(owner)
-          .activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
-        await defaultStrategyContract
-          .connect(owner)
-          .activateGroup(groupAddresses[2], ADDRESS_ZERO, groupAddresses[1]);
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[1]);
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[2]);
+        await defaultStrategyContract.activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+        await defaultStrategyContract.activateGroup(
+          groupAddresses[2],
+          ADDRESS_ZERO,
+          groupAddresses[1]
+        );
 
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         [originalHead] = await defaultStrategyContract.getGroupsHead();
@@ -2454,9 +2443,8 @@ describe("Manager", () => {
         specificGroupStrategyAddress = groupAddresses[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
         await manager.connect(depositor).changeStrategy(specificGroupStrategyAddress);
@@ -2508,9 +2496,8 @@ describe("Manager", () => {
       specificGroupStrategyAddress = groupAddresses[2];
       for (let i = 0; i < 2; i++) {
         const [head] = await defaultStrategyContract.getGroupsHead();
-        await defaultStrategyContract
-          .connect(owner)
-          .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+        await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
       }
     });
@@ -2755,9 +2742,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2792,12 +2778,14 @@ describe("Manager", () => {
           groupAddresses.slice(0, 3),
           false
         );
-        await defaultStrategyContract
-          .connect(owner)
-          .activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
-        await defaultStrategyContract
-          .connect(owner)
-          .activateGroup(groupAddresses[2], ADDRESS_ZERO, groupAddresses[1]);
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[1]);
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[2]);
+        await defaultStrategyContract.activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
+        await defaultStrategyContract.activateGroup(
+          groupAddresses[2],
+          ADDRESS_ZERO,
+          groupAddresses[1]
+        );
         [originalTail] = await defaultStrategyContract.getGroupsTail();
         await manager.connect(depositor).changeStrategy(specificGroup);
         await manager.connect(depositor).deposit({ value: deposit });
@@ -2866,9 +2854,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
 
@@ -2913,9 +2900,8 @@ describe("Manager", () => {
       beforeEach(async () => {
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
           await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
         }
       });
@@ -3037,9 +3023,8 @@ describe("Manager", () => {
         );
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
         }
       });
 
@@ -3171,9 +3156,8 @@ describe("Manager", () => {
           beforeEach(async () => {
             for (let i = 0; i < 2; i++) {
               const [head] = await defaultStrategyContract.getGroupsHead();
-              await defaultStrategyContract
-                .connect(owner)
-                .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+              await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+              await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
             await account.setCeloForGroup(groupAddresses[1], toGroupDepositedValue);
 
@@ -3181,24 +3165,6 @@ describe("Manager", () => {
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(groupAddresses[0]);
             await specificGroupStrategyContract.connect(owner).blockGroup(groupAddresses[1]);
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(groupAddresses[1]);
-          });
-
-          it("should schedule transfer from deactivated group", async () => {
-            await defaultStrategyContract.connect(owner).deactivateGroup(groupAddresses[0]);
-            const exRe0 = await manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
-            await manager.rebalance(groupAddresses[0], groupAddresses[1]);
-
-            const [
-              lastTransferFromGroups,
-              lastTransferFromVotes,
-              lastTransferToGroups,
-              lastTransferToVotes,
-            ] = await account.getLastTransferValues();
-
-            expect(lastTransferFromGroups).to.deep.eq([groupAddresses[0]]);
-            expect(lastTransferFromVotes).to.deep.eq([BigNumber.from(exRe0[1].sub(exRe0[0]))]);
-            expect(lastTransferToGroups).to.deep.eq([groupAddresses[1]]);
-            expect(lastTransferToVotes).to.deep.eq([BigNumber.from(exRe0[1].sub(exRe0[0]))]);
           });
 
           it("should revert when rebalance to deactivated group", async () => {
@@ -3213,9 +3179,8 @@ describe("Manager", () => {
           beforeEach(async () => {
             for (let i = 2; i < 4; i++) {
               const [head] = await defaultStrategyContract.getGroupsHead();
-              await defaultStrategyContract
-                .connect(owner)
-                .activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+              await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+              await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
             }
           });
 
