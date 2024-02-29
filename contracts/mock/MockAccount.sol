@@ -27,6 +27,7 @@ contract MockAccount {
     mapping(address => uint256) public scheduledVotesForGroup;
     mapping(address => uint256) public scheduledRevokeForGroup;
     mapping(address => uint256) public scheduledWithdrawalsForGroup;
+    mapping(address => uint256) public votesForGroup;
 
     uint256 public proposalIdVoted;
     uint256 public indexVoted;
@@ -70,6 +71,10 @@ contract MockAccount {
 
     function setScheduledWithdrawalsForGroup(address group, uint256 amount) external {
         scheduledWithdrawalsForGroup[group] = amount;
+    }
+
+    function setVotesForGroup(address group, uint256 amount) external {
+        votesForGroup[group] = amount;
     }
 
     function scheduleTransfer(
