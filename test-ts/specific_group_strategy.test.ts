@@ -271,9 +271,8 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groups[i].address, ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groups[i].address);
+          await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
         }
       });
 
@@ -409,9 +408,8 @@ describe("SpecificGroupStrategy", () => {
         specificGroupStrategy = groups[2];
         for (let i = 0; i < 2; i++) {
           const [head] = await defaultStrategyContract.getGroupsHead();
-          await defaultStrategyContract
-            .connect(owner)
-            .activateGroup(groups[i].address, ADDRESS_ZERO, head);
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groups[i].address);
+          await defaultStrategyContract.activateGroup(groups[i].address, ADDRESS_ZERO, head);
         }
 
         specificGroupStrategyDeposit = parseUnits("1");

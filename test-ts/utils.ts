@@ -182,6 +182,16 @@ export async function activateValidators(
       [defaultStrategyContract.address],
       ["0"],
       [
+        defaultStrategyContract.interface.encodeFunctionData("addActivatableGroup", [
+          groupAddresses[i],
+        ]),
+      ]
+    );
+    await submitAndExecuteProposal(
+      multisigOwner,
+      [defaultStrategyContract.address],
+      ["0"],
+      [
         defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
           groupAddresses[i],
           ADDRESS_ZERO,
@@ -799,6 +809,7 @@ export async function prepareOverflow(
   for (let i = 2; i >= 0; i--) {
     const [head] = await defaultStrategyContract.getGroupsHead();
     if (activateGroups) {
+      await defaultStrategyContract.addActivatableGroup(groupAddresses[i]);
       await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
     }
 

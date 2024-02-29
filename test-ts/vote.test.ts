@@ -204,6 +204,7 @@ describe("Vote", async function (this: any) {
 
     let previousKey = ADDRESS_ZERO;
     for (let i = 0; i < activatedGroupAddresses.length; i++) {
+      await defaultStrategyContract.connect(owner).addActivatableGroup(groups[i].address);
       await defaultStrategyContract
         .connect(owner)
         .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
