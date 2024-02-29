@@ -952,6 +952,9 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
     Object.keys(groups).map(async (key) => {
       const celoInGroup = await manager.toCelo(groups[key].toString());
       await account.setCeloForGroup(key, celoInGroup);
+      const halfCelo = celoInGroup.div(2);
+      await account.setScheduledVotes(key, halfCelo);
+      await account.setVotesForGroup(key, halfCelo);
     })
   );
 }
