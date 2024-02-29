@@ -692,7 +692,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     }
 
     /**
-     * @notice Schedules transfer of CELO between strategies.
+     * @notice Updates accounting of CELO between strategies.
      * @param fromStrategy The from validator group.
      * @param toStrategy The to validator group.
      * @param stCeloAmount The stCELO amount.
