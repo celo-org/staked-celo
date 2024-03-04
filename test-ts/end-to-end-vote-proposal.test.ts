@@ -17,18 +17,20 @@ import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
 import {
   activateAndVoteTest,
-  activateValidators,
   distributeEpochRewards,
-  electMockValidatorGroupsAndUpdate,
   impersonateAccount,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   timeTravel,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
+import {
+  activateValidators,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();

@@ -15,16 +15,18 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
   ADDRESS_ZERO,
-  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
 } from "./utils";
+import {
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();

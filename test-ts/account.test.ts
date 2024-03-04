@@ -17,12 +17,11 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
   timeTravel,
 } from "./utils";
+import { registerValidatorAndAddToGroupMembers, registerValidatorGroup } from "./utils-validators";
 
 after(() => {
   hre.kit.stop();

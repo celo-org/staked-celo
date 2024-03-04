@@ -20,20 +20,22 @@ import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import {
   ADDRESS_ZERO,
-  deregisterValidatorGroup,
-  electMockValidatorGroupsAndUpdate,
   getBlockedSpecificGroupStrategies,
   getDefaultGroups,
   getImpersonatedSigner,
   getSpecificGroups,
   prepareOverflow,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupCeloBasedOnProtocolStCelo,
 } from "./utils";
+import {
+  deregisterValidatorGroup,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();
