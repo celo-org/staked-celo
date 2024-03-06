@@ -478,10 +478,10 @@
   resolved "https://registry.yarnpkg.com/@celo/base/-/base-4.1.0.tgz#9cd45f1c7d0ac61b4e2e98c046066f9eb9e143e9"
   integrity sha512-Q9wKLa4JJw06FXpToZm5PYfFYjx+tvwIQlvFofx+GleX+uq+BT/gdxgTQ/c08OrxZUyc53TUdqSCs+88VlhmlA==
 
-"@celo/celo-devchain@^6.0.3":
-  version "6.0.3"
-  resolved "https://registry.yarnpkg.com/@celo/celo-devchain/-/celo-devchain-6.0.3.tgz#ccf1c9c02a1b40ff7b1ab2f180ec5829fb40b2c8"
-  integrity sha512-k282qgIJzKzTBcBqmarR8pq91SF/G85MuHI7iHEDNYNyHZKrZENjLoQ+V3zoqeLE67NQrVgRYNPGpJ2KCCzB9g==
+"@celo/celo-devchain@^7.0.0":
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/@celo/celo-devchain/-/celo-devchain-7.0.0.tgz#fef3f78ff441c685a7b4e303a27a500448764d41"
+  integrity sha512-fVn6in1u06RnSpZemyk4dJb6Rqn/QUVfgbJakp0ebhYswiKpw9zVQp4eb6HD2TIh/10vkbnO4X6y9+n9EzgtnQ==
   dependencies:
     commander "^10.0.0"
     ganache "npm:@celo/ganache@7.8.0-unofficial.0"
@@ -527,9 +527,9 @@
     debug "^4.1.1"
     utf8 "3.0.0"
 
-"@celo/contract-compatibility-check@git+https://github.com/celo-org/contract-compatibility-check.git":
-  version "1.0.0"
-  resolved "git+https://github.com/celo-org/contract-compatibility-check.git#e18a997811b318d875947cd38955b7f50c42f873"
+"@celo/contract-compatibility-check@git+https://github.com/celo-org/contract-compatibility-check.git#5b282d5274002db24c3251272ffca1bd38551632":
+  version "1.0.1"
+  resolved "git+https://github.com/celo-org/contract-compatibility-check.git#5b282d5274002db24c3251272ffca1bd38551632"
   dependencies:
     "@0x/sol-coverage" "^4.0.46"
     "@0x/sol-profiler" "^4.1.36"
