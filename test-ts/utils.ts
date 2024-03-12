@@ -462,25 +462,10 @@ export async function upgradeToMockGroupHealthE2E(
     multisigOwner.address,
     [groupHealthContract.address],
     ["0"],
-    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])]
+    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])],
   );
 
   return mockGroupHealthFactory.attach(groupHealthContract.address);
-}
-
-export async function getIndexesOfElectedValidatorGroupMembers(
-  election: ElectionWrapper,
-  validators: ValidatorsWrapper,
-  validatorGroup: string
-) {
-  const validatorGroupDetail = await validators.getValidatorGroup(validatorGroup);
-  const currentValidatorSigners = await election.getCurrentValidatorSigners();
-  const finalIndexes: number[] = [];
-  for (const member of validatorGroupDetail.members) {
-    const index = currentValidatorSigners.indexOf(member);
-    finalIndexes.push(index === -1 ? currentValidatorSigners.length : index);
-  }
-  return finalIndexes;
 }
 
 export async function getOrderedActiveGroups(
