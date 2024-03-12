@@ -8,14 +8,9 @@ contract ProposalTester {
         uint256 argument;
     }
 
-    Call[] calls;
+    Call[] public calls;
 
     error CallDoesNotExist(uint256 i);
-
-    function testCall(uint256 x) public payable {
-        Call memory newCall = Call(msg.sender, msg.value, x);
-        calls.push(newCall);
-    }
 
     function numberCalls() external view returns (uint256) {
         return calls.length;
@@ -36,5 +31,10 @@ contract ProposalTester {
 
         Call memory call = calls[i];
         return (call.caller, call.value, call.argument);
+    }
+
+    function testCall(uint256 x) public payable {
+        Call memory newCall = Call(msg.sender, msg.value, x);
+        calls.push(newCall);
     }
 }

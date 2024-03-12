@@ -447,9 +447,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         // The amount of unlocked CELO for group that we want to lock and vote with.
         (uint256 celoToVoteForGroup, ) = getAndUpdateToVoteAndToRevoke(group, 0, 0);
 
-        // Reset the unlocked CELO amount for group.
-        scheduledVotes[group].toVote = 0;
-
         // If there are activatable pending votes from this contract for group, activate them.
         if (election.hasActivatablePendingVotes(address(this), group)) {
             // Revert if the activation fails.
@@ -472,14 +469,21 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             ? 0
             : celoToVoteForGroup - accountLockedNonvotingCelo;
 
+        // There might not be enough of balance to lock because of unbalanced groups
+        uint256 availableToLock = Math.min(address(this).balance, toLock);
+
         // Lock up the unlockedCeloForGroup in LockedGold, which increments the
         // non-voting LockedGold balance for this contract.
-        if (toLock > 0) {
-            getLockedGold().lock{value: toLock}();
+        if (availableToLock > 0) {
+            getLockedGold().lock{value: availableToLock}();
         }
 
-        // Vote for group using the newly locked CELO, reverting if it fails.
-        if (!election.vote(group, celoToVoteForGroup, voteLesser, voteGreater)) {
+        uint256 finalVoteAmount = celoToVoteForGroup - (toLock - availableToLock);
+
+        // Update the CELO amount for group.
+        scheduledVotes[group].toVote -= finalVoteAmount;
+
+        if (!election.vote(group, finalVoteAmount, voteLesser, voteGreater)) {
             revert VoteFailed(group, celoToVoteForGroup);
         }
     }
@@ -641,11 +645,15 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @return The total amount of CELO directed towards `group`.
      */
     function getCeloForGroup(address group) external view returns (uint256) {
-        return
-            getElection().getTotalVotesForGroupByAccount(group, address(this)) +
-            scheduledVotes[group].toVote -
-            scheduledVotes[group].toRevoke -
-            scheduledVotes[group].toWithdraw;
+        uint256 combinedVotes = getElection().getTotalVotesForGroupByAccount(group, address(this)) +
+            scheduledVotes[group].toVote;
+        uint256 toBeRemoved = scheduledVotes[group].toRevoke + scheduledVotes[group].toWithdraw;
+
+        if (combinedVotes > toBeRemoved) {
+            return combinedVotes - toBeRemoved;
+        }
+
+        return 0;
     }
 
     /**
@@ -745,9 +753,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             return;
         }
 
+        uint256 revokable = Math.min(votesForGroup(group), revokeAmount);
+
         _revokeVotes(
             group,
-            revokeAmount,
+            revokable,
             lesserAfterPendingRevoke,
             greaterAfterPendingRevoke,
             lesserAfterActiveRevoke,
@@ -755,7 +765,16 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             index
         );
 
-        scheduledVotes[group].toRevoke -= revokeAmount;
+        scheduledVotes[group].toRevoke -= revokable;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO that's voted with for a group.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO voted with for `group`.
+     */
+    function votesForGroup(address group) public view returns (uint256) {
+        return getElection().getTotalVotesForGroupByAccount(group, address(this));
     }
 
     /**

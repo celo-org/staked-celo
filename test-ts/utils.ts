@@ -481,7 +481,7 @@ export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStra
 }
 
 export async function prepareOverflow(
-  defaultStrategyContract: DefaultGroupContract,
+  defaultStrategyContract: DefaultStrategy,
   election: ElectionWrapper,
   lockedGold: LockedGoldWrapper,
   voter: SignerWithAddress,
@@ -503,6 +503,7 @@ export async function prepareOverflow(
   for (let i = 2; i >= 0; i--) {
     const [head] = await defaultStrategyContract.getGroupsHead();
     if (activateGroups) {
+      await defaultStrategyContract.addActivatableGroup(groupAddresses[i]);
       await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
     }
 
@@ -645,6 +646,9 @@ export async function updateGroupCeloBasedOnProtocolStCelo(
     Object.keys(groups).map(async (key) => {
       const celoInGroup = await manager.toCelo(groups[key].toString());
       await account.setCeloForGroup(key, celoInGroup);
+      const halfCelo = celoInGroup.div(2);
+      await account.setScheduledVotes(key, halfCelo);
+      await account.setVotesForGroup(key, halfCelo);
     })
   );
 }

@@ -335,7 +335,11 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
                 // overflow
                 (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
                     .generateDepositVoteDistribution(celoAmount, group);
-                updateOverflowGroup(group, IManager(manager).toStakedCelo(celoAmount), true);
+                updateOverflowGroup(
+                    group,
+                    Math.min(IManager(manager).toStakedCelo(celoAmount), stCeloAmount),
+                    true
+                );
                 finalGroups = new address[](groups.length + 1);
                 finalVotes = new uint256[](groups.length + 1);
                 for (uint256 i = 0; i < groups.length; i++) {

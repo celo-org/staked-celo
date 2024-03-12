@@ -37,21 +37,6 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice The maximum number of multisig owners.
-     */
-    uint256 public constant MAX_OWNER_COUNT = 50;
-
-    /**
-     * @notice The minimum time in seconds that must elapse before a proposal is executable.
-     */
-    uint256 public immutable minDelay;
-
-    /**
-     * @notice The value used to mark a proposal as executed.
-     */
-    uint256 internal constant DONE_TIMESTAMP = uint256(1);
-
-    /**
      * @notice Used to keep track of a proposal.
      * @param destinations The addresses at which the proposal is directed to.
      * @param values The amounts of CELO involved.
@@ -69,6 +54,21 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
         uint256 timestampExecutable;
         mapping(address => bool) confirmations;
     }
+
+    /**
+     * @notice The maximum number of multisig owners.
+     */
+    uint256 public constant MAX_OWNER_COUNT = 50;
+
+    /**
+     * @notice The minimum time in seconds that must elapse before a proposal is executable.
+     */
+    uint256 public immutable minDelay;
+
+    /**
+     * @notice The value used to mark a proposal as executed.
+     */
+    uint256 internal constant DONE_TIMESTAMP = uint256(1);
 
     /**
      * @notice The delay that must elapse to be able to execute a proposal.
@@ -126,8 +126,8 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
     event TransactionExecuted(uint256 index, uint256 indexed proposalId, bytes returnData);
 
     /**
-     * @notice Emitted when one of the transactions that make up a Governance proposal is successfully
-     * executed.
+     * @notice Emitted when one of the transactions that make up a Governance
+     * proposal is successfully executed.
      * @param index The index of the transaction within the proposal.
      * @param returnData The response that was recieved from the external call.
      */
@@ -600,6 +600,61 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
     }
 
     /**
+     * @notice Executes a proposal made by Celo Governance.
+     * @dev Only callable by the Celo Governance contract, as defined in the
+     * Celo Registry. Thus, this function may be called via a Governance
+     * referendum or hotfix.
+     */
+    function governanceProposeAndExecute(
+        address[] calldata destinations,
+        uint256[] calldata values,
+        bytes[] calldata payloads
+    ) external onlyGovernance {
+        for (uint256 i = 0; i < destinations.length; i++) {
+            bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
+            emit GovernanceTransactionExecuted(i, returnData);
+        }
+    }
+
+    /**
+     * @notice Sets the address of the pauser address that will be used to
+     * pause StakedCelo protocol contracts.
+     * @param __pauser The address to set as the pauser.
+     */
+    function setPauser(address __pauser) external onlyWallet {
+        _setPauser(__pauser);
+    }
+
+    /**
+     * @notice Pauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to pause.
+     * @dev Can be called by any one of the MultiSig signers to immediately
+     * pause contracts. To be used to mitigate damage if a vulnerability is
+     * found/exploited.
+     */
+    function pauseContracts(address[] calldata contracts) external {
+        if (!owners.contains(msg.sender) && msg.sender != address(getGovernance())) {
+            revert SenderNotGovernanceOrOwner(msg.sender);
+        }
+        for (uint256 i = 0; i < contracts.length; i++) {
+            IPausable(contracts[i]).pause();
+        }
+    }
+
+    /**
+     * @notice Unpauses the given StakedCelo protocol contracts.
+     * @param contracts The list of contracts to unpause.
+     * @dev Can be called by Celo Governance (via hotfix or referendum). To be
+     * used after contracts have been paused with `pauseContracts`, and the
+     * related vulnerability have been patched.
+     */
+    function unpauseContracts(address[] calldata contracts) external onlyGovernance {
+        for (uint256 i = 0; i < contracts.length; i++) {
+            IPausable(contracts[i]).unpause();
+        }
+    }
+
+    /**
      * @notice Get the list of multisig owners.
      * @return The list of owner addresses.
      */
@@ -646,6 +701,26 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
     {
         Proposal storage proposal = proposals[proposalId];
         return (proposal.destinations, proposal.values, proposal.payloads);
+    }
+
+    /**
+     * @notice Returns the storage, major, minor, and patch version of the contract.
+     * @return Storage version of the contract.
+     * @return Major version of the contract.
+     * @return Minor version of the contract.
+     * @return Patch version of the contract.
+     */
+    function getVersionNumber()
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 2, 0);
     }
 
     /**
@@ -728,61 +803,6 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
                 proposal.payloads[i]
             );
             emit TransactionExecuted(i, proposalId, returnData);
-        }
-    }
-
-    /**
-     * @notice Executes a proposal made by Celo Governance.
-     * @dev Only callable by the Celo Governance contract, as defined in the
-     * Celo Registry. Thus, this function may be called via a Governance
-     * referendum or hotfix.
-     */
-    function governanceProposeAndExecute(
-        address[] calldata destinations,
-        uint256[] calldata values,
-        bytes[] calldata payloads
-    ) external onlyGovernance {
-        for (uint256 i = 0; i < destinations.length; i++) {
-            bytes memory returnData = ExternalCall.execute(destinations[i], values[i], payloads[i]);
-            emit GovernanceTransactionExecuted(i, returnData);
-        }
-    }
-
-    /**
-     * @notice Sets the address of the pauser address that will be used to
-     * pause StakedCelo protocol contracts.
-     * @param __pauser The address to set as the pauser.
-     */
-    function setPauser(address __pauser) external onlyWallet {
-        _setPauser(__pauser);
-    }
-
-    /**
-     * @notice Pauses the given StakedCelo protocol contracts.
-     * @param contracts The list of contracts to pause.
-     * @dev Can be called by any one of the MultiSig signers to immediately
-     * pause contracts. To be used to mitigate damage if a vulnerability is
-     * found/exploited.
-     */
-    function pauseContracts(address[] calldata contracts) external {
-        if (!owners.contains(msg.sender) && msg.sender != address(getGovernance())) {
-            revert SenderNotGovernanceOrOwner(msg.sender);
-        }
-        for (uint256 i = 0; i < contracts.length; i++) {
-            IPausable(contracts[i]).pause();
-        }
-    }
-
-    /**
-     * @notice Unpauses the given StakedCelo protocol contracts.
-     * @param contracts The list of contracts to unpause.
-     * @dev Can be called by Celo Governance (via hotfix or referendum). To be
-     * used after contracts have been paused with `pauseContracts`, and the
-     * related vulnerability have been patched.
-     */
-    function unpauseContracts(address[] calldata contracts) external onlyGovernance {
-        for (uint256 i = 0; i < contracts.length; i++) {
-            IPausable(contracts[i]).unpause();
         }
     }
 
@@ -925,24 +945,4 @@ contract MultiSig is Errors, Initializable, UUPSUpgradeable, UsingRegistryNoStor
      */
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address) internal override onlyWallet {}
-
-    /**
-     * @notice Returns the storage, major, minor, and patch version of the contract.
-     * @return Storage version of the contract.
-     * @return Major version of the contract.
-     * @return Minor version of the contract.
-     * @return Patch version of the contract.
-     */
-    function getVersionNumber()
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (1, 1, 2, 0);
-    }
 }

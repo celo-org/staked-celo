@@ -156,6 +156,16 @@ export async function activateValidators(
       [defaultStrategyContract.address],
       ["0"],
       [
+        defaultStrategyContract.interface.encodeFunctionData("addActivatableGroup", [
+          groupAddresses[i],
+        ]),
+      ],
+      multisigOwner
+    );
+    await submitAndExecuteMultiSigProposal(
+      [defaultStrategyContract.address],
+      ["0"],
+      [
         defaultStrategyContract.interface.encodeFunctionData("activateGroup", [
           groupAddresses[i],
           ADDRESS_ZERO,

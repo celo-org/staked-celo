@@ -34,4 +34,6 @@ interface IAccount {
     function scheduledRevokeForGroup(address group) external view returns (uint256);
 
     function scheduledWithdrawalsForGroup(address group) external view returns (uint256);
+
+    function votesForGroup(address group) external view returns (uint256);
 }

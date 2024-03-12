@@ -6,6 +6,7 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
+import { ACCOUNT_REVOKE } from "../lib/tasksNames";
 import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
@@ -16,6 +17,8 @@ import {
   activateAndVoteTest,
   prepareOverflow,
   randomSigner,
+  rebalanceDefaultGroups,
+  rebalanceGroups,
   resetNetwork,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
@@ -34,6 +37,7 @@ describe("e2e overflow test", () => {
   let accountContract: Account;
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
+  const deployerAccountName = "deployer";
   let specificGroupStrategyContract: SpecificGroupStrategy;
   let defaultStrategy: DefaultStrategy;
   let election: ElectionWrapper;
@@ -43,14 +47,17 @@ describe("e2e overflow test", () => {
   let depositor0: SignerWithAddress;
   // deposits to specific strategy with overflow, changes to different specific strategy and returns back to original one
   let depositor1: SignerWithAddress;
+  let depositor2: SignerWithAddress;
   let voter: SignerWithAddress;
 
   let groups: SignerWithAddress[];
   let activatedGroupAddresses: string[];
   let multisigOwner0: SignerWithAddress;
 
-  let specificGroupStrategyDifferentFromActive: SignerWithAddress;
-  let specificGroupStrategySameAsActive: SignerWithAddress;
+  let specGroupDifferentFromActive: SignerWithAddress;
+  let specGroupSameAsActive: SignerWithAddress;
+
+  const ZERO = BigNumber.from(0);
 
   // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
@@ -67,6 +74,7 @@ describe("e2e overflow test", () => {
 
     [depositor0] = await randomSigner(parseUnits("300"));
     [depositor1] = await randomSigner(parseUnits("300"));
+    [depositor2] = await randomSigner(parseUnits("300"));
     [voter] = await randomSigner(parseUnits("10000000000"));
     const accounts = await hre.kit.contracts.getAccounts();
     await accounts.createAccount().sendAndWaitForReceipt({
@@ -96,8 +104,8 @@ describe("e2e overflow test", () => {
       await registerValidatorAndAddToGroupMembers(groups[i], validator, validatorWallet);
     }
 
-    specificGroupStrategyDifferentFromActive = groups[5];
-    specificGroupStrategySameAsActive = groups[0];
+    specGroupDifferentFromActive = groups[5];
+    specGroupSameAsActive = groups[0];
   });
 
   beforeEach(async () => {
@@ -130,7 +138,7 @@ describe("e2e overflow test", () => {
     );
   });
 
-  const firstGroupCapacity = parseUnits("40.166666666666666666");
+  const firstGCapacity = parseUnits("40.166666666666666666");
   const secondGroupCapacity = parseUnits("99.25");
   const thirdGroupCapacity = parseUnits("200.166666666666666666");
 
@@ -143,161 +151,153 @@ describe("e2e overflow test", () => {
       activatedGroupAddresses,
       false
     );
-
-    await expectCeloForGroup(groups[0].address, BigNumber.from(0));
-    await expectCeloForGroup(groups[1].address, BigNumber.from(0));
-    await expectCeloForGroup(groups[2].address, BigNumber.from(0));
-    await expectCeloForGroup(specificGroupStrategyDifferentFromActive.address, BigNumber.from(0));
-
-    await expectReceivableVotes(groups[0].address, firstGroupCapacity);
+    await expectCeloForGroup(groups[0].address, ZERO);
+    await expectCeloForGroup(groups[1].address, ZERO);
+    await expectCeloForGroup(groups[2].address, ZERO);
+    await expectCeloForGroup(specGroupDifferentFromActive.address, ZERO);
+    await expectReceivableVotes(groups[0].address, firstGCapacity);
     await expectReceivableVotes(groups[1].address, secondGroupCapacity);
     await expectReceivableVotes(groups[2].address, thirdGroupCapacity);
+    const celoDeposit = hre.ethers.BigNumber.from(parseUnits("10"));
+    const overflow = celoDeposit;
 
-    const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("1"));
+    await managerContract.connect(depositor0).changeStrategy(specGroupSameAsActive.address);
+    await managerContract.connect(depositor1).changeStrategy(specGroupSameAsActive.address);
+    await managerContract.connect(depositor2).changeStrategy(groups[1].address);
 
-    await managerContract
-      .connect(depositor0)
-      .changeStrategy(specificGroupStrategySameAsActive.address);
-    await managerContract
-      .connect(depositor1)
-      .changeStrategy(specificGroupStrategySameAsActive.address);
-
-    await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
-    await expectCeloForGroup(groups[0].address, amountOfCeloToDeposit);
-    await expectReceivableVotes(groups[0].address, firstGroupCapacity.sub(amountOfCeloToDeposit));
-    await expectSpecificGroupOverflow(
-      specificGroupStrategySameAsActive.address,
-      amountOfCeloToDeposit,
-      BigNumber.from("0")
-    );
+    await managerContract.connect(depositor0).deposit({ value: celoDeposit });
+    await expectCeloForGroup(groups[0].address, celoDeposit);
+    await expectReceivableVotes(groups[0].address, firstGCapacity.sub(celoDeposit));
+    await expectSpecGStCelo(specGroupSameAsActive.address, celoDeposit, BigNumber.from("0"));
 
     const [tail] = await defaultStrategy.getGroupsTail();
     expect(tail).to.eq(groups[2].address);
 
-    await managerContract.connect(depositor1).deposit({ value: firstGroupCapacity });
-    await expectCeloForGroup(groups[0].address, firstGroupCapacity);
-    await expectReceivableVotes(groups[0].address, BigNumber.from(0));
-    const overflow = amountOfCeloToDeposit;
-    await expectSpecificGroupOverflow(
-      specificGroupStrategySameAsActive.address,
-      amountOfCeloToDeposit.add(firstGroupCapacity),
-      amountOfCeloToDeposit
+    await managerContract.connect(depositor1).deposit({ value: firstGCapacity });
+    await expectCeloForGroup(groups[0].address, firstGCapacity);
+    await expectReceivableVotes(groups[0].address, ZERO);
+    await expectSpecGStCelo(
+      specGroupSameAsActive.address,
+      celoDeposit.add(firstGCapacity),
+      celoDeposit
     );
-
-    await expectAccountVotes(
-      groups[0].address,
-      firstGroupCapacity,
-      BigNumber.from(0),
-      BigNumber.from(0)
-    );
-    await expectAccountVotes(
-      groups[1].address,
-      BigNumber.from(0),
-      BigNumber.from(0),
-      BigNumber.from(0)
-    );
-    await expectAccountVotes(groups[2].address, overflow, BigNumber.from(0), BigNumber.from(0));
+    await expectVotes(groups[0].address, ZERO, firstGCapacity, ZERO, ZERO);
+    await expectVotes(groups[1].address, ZERO, ZERO, ZERO, ZERO);
+    await expectVotes(groups[2].address, ZERO, overflow, ZERO, ZERO);
 
     const [head] = await defaultStrategy.getGroupsHead();
 
-    await managerContract
-      .connect(depositor1)
-      .changeStrategy(specificGroupStrategyDifferentFromActive.address);
-    await expectCeloForGroup(groups[0].address, amountOfCeloToDeposit);
+    await managerContract.connect(depositor1).changeStrategy(specGroupDifferentFromActive.address);
+    await rebalanceAllAndActivate();
+    await expectCeloForGroup(groups[0].address, celoDeposit);
 
-    await expectAccountVotes(
-      specificGroupStrategyDifferentFromActive.address,
-      firstGroupCapacity,
-      BigNumber.from(0),
-      BigNumber.from(0)
+    await expectVotes(specGroupDifferentFromActive.address, firstGCapacity, ZERO, ZERO, ZERO);
+    await expectVotes(groups[0].address, celoDeposit, ZERO, ZERO, ZERO);
+    await expectVotes(head, ZERO, ZERO, ZERO, ZERO);
+
+    const g0ReceivableVotes = await managerContract.getReceivableVotesForGroup(
+      specGroupSameAsActive.address
     );
-    await expectAccountVotes(
+    const g0ExpectedOverflow = firstGCapacity.sub(g0ReceivableVotes);
+    await managerContract.connect(depositor1).changeStrategy(specGroupSameAsActive.address);
+
+    await expectSpecGStCelo(specGroupDifferentFromActive.address, ZERO, ZERO);
+    await expectSpecGStCelo(
+      specGroupSameAsActive.address,
+      celoDeposit.add(firstGCapacity),
+      g0ExpectedOverflow
+    );
+
+    await rebalanceAllAndActivate();
+    await expectCeloForGroup(
       groups[0].address,
-      amountOfCeloToDeposit,
-      BigNumber.from(0),
-      BigNumber.from(0)
+      firstGCapacity.add(celoDeposit).sub(g0ExpectedOverflow)
     );
-    await expectAccountVotes(head, BigNumber.from(0), BigNumber.from(0), BigNumber.from(0));
-
-    const [newTail] = await defaultStrategy.getGroupsTail();
-    await managerContract
-      .connect(depositor1)
-      .changeStrategy(specificGroupStrategySameAsActive.address);
-
-    await expectCeloForGroup(groups[0].address, firstGroupCapacity);
-
-    await expectAccountVotes(
-      specificGroupStrategyDifferentFromActive.address,
-      BigNumber.from(0),
-      BigNumber.from(0),
-      BigNumber.from(0)
+    await expectVotes(
+      specGroupSameAsActive.address,
+      celoDeposit.add(g0ReceivableVotes),
+      ZERO,
+      ZERO,
+      ZERO
     );
-    await expectCeloForGroup(specificGroupStrategySameAsActive.address, firstGroupCapacity);
-    await expectAccountVotes(newTail, overflow, BigNumber.from(0), BigNumber.from(0));
+    await expectVotes(groups[1].address, g0ExpectedOverflow.div(3), ZERO, ZERO, ZERO);
+    await expectVotes(groups[2].address, g0ExpectedOverflow.div(3), ZERO, ZERO, ZERO);
+    // since default group[0] is overflowing - it is not possible to move Celo there
+    // this celo stays in the specific strategy
+    await expectVotes(
+      specGroupDifferentFromActive.address,
+      g0ExpectedOverflow.div(3),
+      ZERO,
+      ZERO,
+      ZERO
+    );
 
     await activateAndVoteTest();
 
     // since new CELO was deposited, capacity was changed
-    const newDeposit = parseUnits("6");
+    const newSecondGroupCapacity = await managerContract.getReceivableVotesForGroup(
+      groups[1].address
+    );
+    const newDeposit = newSecondGroupCapacity.div(2);
     await lockedGold.lock().sendAndWaitForReceipt({
       from: voter.address,
-      value: newDeposit.toString(),
+      value: newDeposit.mul(10).toString(),
     });
-    const newFirstGroupCapacity = parseUnits("7.861111111111111111");
-    await expectReceivableVotes(groups[0].address, newFirstGroupCapacity);
 
-    await managerContract.connect(depositor1).deposit({ value: newDeposit });
-
-    await expectReceivableVotes(groups[0].address, newFirstGroupCapacity.sub(newDeposit));
+    const newSecondGroupCapacityAfterLock = await managerContract.getReceivableVotesForGroup(
+      groups[1].address
+    );
+    await managerContract.connect(depositor2).deposit({ value: newDeposit });
+    await expectReceivableVotes(groups[1].address, newSecondGroupCapacityAfterLock.sub(newDeposit));
 
     // someone made deposit outside of the protocol and scheduled votes are not activatable anymore
+    const receivableByGroup1 = await managerContract.getReceivableVotesForGroup(groups[1].address);
+    const scheduledForGroup1 = await accountContract.scheduledVotesForGroup(groups[1].address);
 
-    const voteTx = await election.vote(groups[0].address, new BigNumberJs(newDeposit.toString()));
+    const voteTx = await election.vote(
+      groups[1].address,
+      new BigNumberJs(receivableByGroup1.add(scheduledForGroup1).toString())
+    );
     await voteTx.sendAndWaitForReceipt({ from: voter.address });
+    await expectVotes(groups[1].address, g0ExpectedOverflow.div(3), newDeposit, ZERO, ZERO);
+    await expectVotes(groups[2].address, g0ExpectedOverflow.div(3), ZERO, ZERO, ZERO);
 
-    await expectAccountVotes(groups[0].address, newDeposit, BigNumber.from(0), BigNumber.from(0));
-    await expectAccountVotes(
-      groups[1].address,
-      BigNumber.from(0),
-      BigNumber.from(0),
-      BigNumber.from(0)
-    );
+    await managerContract.rebalanceOverflow(groups[1].address, groups[2].address);
 
-    await managerContract.rebalanceOverflow(groups[0].address, groups[1].address);
-
-    await expectAccountVotes(
-      groups[0].address,
-      newFirstGroupCapacity.sub(newDeposit),
-      BigNumber.from(0),
-      BigNumber.from(0)
-    );
-    await expectAccountVotes(
-      groups[1].address,
-      newDeposit.sub(newFirstGroupCapacity.sub(newDeposit)),
-      BigNumber.from(0),
-      BigNumber.from(0)
-    );
+    await expectVotes(groups[1].address, g0ExpectedOverflow.div(3), ZERO, ZERO, ZERO);
+    await expectVotes(groups[2].address, g0ExpectedOverflow.div(3), scheduledForGroup1, ZERO, ZERO);
   });
 
-  async function expectAccountVotes(
+  async function expectVotes(
     group: string,
+    votes: BigNumber | null,
     toVote: BigNumber,
     toRevoke: BigNumber,
     toWithdraw: BigNumber
   ) {
-    const toVotePromise = await accountContract.scheduledVotesForGroup(group);
-    const toRevokePromise = await accountContract.scheduledRevokeForGroup(group);
-    const toWithdrawPromise = await accountContract.scheduledWithdrawalsForGroup(group);
+    const [actualVotes, scheduledVotes, actualToRevoke, actualToWithdraw] = await getVotes(group);
+    if (votes != null) {
+      expectBigNumberInRange(actualVotes, votes, `${group} actualVotes`);
+    }
+    expectBigNumberInRange(scheduledVotes, toVote, `${group} scheduledVotes`);
+    expectBigNumberInRange(actualToRevoke, toRevoke, `${group} actualToRevoke`);
+    expectBigNumberInRange(actualToWithdraw, toWithdraw, `${group} actualToWithdraw`);
+  }
 
-    const [actualToVote, actualToRevoke, actualToWithdraw] = await Promise.all([
+  async function getVotes(group: string) {
+    const votesPromise = accountContract.votesForGroup(group);
+    const toVotePromise = accountContract.scheduledVotesForGroup(group);
+    const toRevokePromise = accountContract.scheduledRevokeForGroup(group);
+    const toWithdrawPromise = accountContract.scheduledWithdrawalsForGroup(group);
+
+    const [actualVotes, scheduledVotes, actualToRevoke, actualToWithdraw] = await Promise.all([
+      votesPromise,
       toVotePromise,
       toRevokePromise,
       toWithdrawPromise,
     ]);
 
-    expect(actualToVote).to.deep.eq(toVote);
-    expect(actualToRevoke).to.deep.eq(toRevoke);
-    expect(actualToWithdraw).to.deep.eq(toWithdraw);
+    return [actualVotes, scheduledVotes, actualToRevoke, actualToWithdraw];
   }
 
   async function expectCeloForGroup(group: string, amount: BigNumber) {
@@ -310,11 +310,7 @@ describe("e2e overflow test", () => {
     expect(receivableAmount).to.deep.eq(amount);
   }
 
-  async function expectSpecificGroupOverflow(
-    strategy: string,
-    total?: BigNumber,
-    overflow?: BigNumber
-  ) {
+  async function expectSpecGStCelo(strategy: string, total?: BigNumber, overflow?: BigNumber) {
     const [totalActual, overflowActual] = await specificGroupStrategyContract.getStCeloInGroup(
       strategy
     );
@@ -324,5 +320,36 @@ describe("e2e overflow test", () => {
     if (overflow != undefined) {
       expect(overflowActual).to.deep.eq(overflow);
     }
+  }
+
+  async function rebalanceAllAndActivate() {
+    await rebalanceDefaultGroups(defaultStrategy);
+    await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategy);
+    await hre.run(ACCOUNT_REVOKE, {
+      account: deployerAccountName,
+      useNodeAccount: true,
+      logLevel: "info",
+    });
+    await activateAndVoteTest();
+  }
+
+  function expectBigNumberInRange(
+    real: BigNumber,
+    expected: BigNumber,
+    message?: string,
+    range = 1
+  ) {
+    expect(
+      real.add(range).gte(expected),
+      `${message} Number ${real.toString()} is not ${expected.toString()} in range <${expected
+        .sub(range)
+        .toString()}, ${expected.add(range).toString()}>}`
+    ).to.be.true;
+    expect(
+      real.sub(range).lte(expected),
+      `${message} Number ${real.toString()} is not ${expected.toString()}  in range <${expected
+        .sub(range)
+        .toString()}, ${expected.add(range).toString()}>}`
+    ).to.be.true;
   }
 });

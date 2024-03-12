@@ -7,6 +7,13 @@ contract MockGroupHealth is GroupHealth {
     mapping(uint256 => address) public electedValidators;
     uint256 public numberOfValidators;
 
+    /**
+     * @notice Mock group validity.
+     */
+    function setGroupValidity(address group, bool valid) external {
+        isGroupValid[group] = valid;
+    }
+
     function setElectedValidator(uint256 index, address validator) public {
         if (electedValidators[index] == address(0) && validator != address(0)) {
             numberOfValidators++;

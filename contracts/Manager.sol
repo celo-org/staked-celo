@@ -523,7 +523,15 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         view
         returns (uint256 expectedCelo, uint256 actualCelo)
     {
-        actualCelo = account.getCeloForGroup(group);
+        uint256 celoScheduled = account.votesForGroup(group) +
+            account.scheduledVotesForGroup(group);
+        uint256 celoToRemove = account.scheduledRevokeForGroup(group) +
+            account.scheduledWithdrawalsForGroup(group);
+        if (celoToRemove > celoScheduled) {
+            return (celoToRemove - celoScheduled, 0);
+        }
+
+        actualCelo = celoScheduled - celoToRemove;
 
         bool isSpecificGroupStrategy = !specificGroupStrategy.isBlockedGroup(group);
         bool isActiveGroup = defaultStrategy.isActive(group);
@@ -537,13 +545,13 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             (stCeloFromSpecificStrategy, overflow, unhealthy) = specificGroupStrategy
                 .getStCeloInGroup(group);
 
-            stCeloFromSpecificStrategy -= overflow + unhealthy;
+            uint256 toSubtract = overflow + unhealthy;
+            stCeloFromSpecificStrategy -= Math.min(stCeloFromSpecificStrategy, toSubtract);
         }
 
         if (isActiveGroup) {
             stCeloFromDefaultStrategy = defaultStrategy.stCeloInGroup(group);
         }
-
         expectedCelo = toCelo(stCeloFromSpecificStrategy + stCeloFromDefaultStrategy);
     }
 
@@ -684,7 +692,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     }
 
     /**
-     * @notice Schedules transfer of CELO between strategies.
+     * @notice Updates accounting of CELO between strategies.
      * @param fromStrategy The from validator group.
      * @param toStrategy The to validator group.
      * @param stCeloAmount The stCELO amount.
@@ -694,15 +702,8 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         address toStrategy,
         uint256 stCeloAmount
     ) private {
-        address[] memory fromGroups;
-        uint256[] memory fromVotes;
-        (fromGroups, fromVotes) = distributeWithdrawals(stCeloAmount, fromStrategy, true);
-
-        address[] memory toGroups;
-        uint256[] memory toVotes;
-        (toGroups, toVotes) = distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
-
-        account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+        distributeWithdrawals(stCeloAmount, fromStrategy, true);
+        distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
     }
 
     /**
