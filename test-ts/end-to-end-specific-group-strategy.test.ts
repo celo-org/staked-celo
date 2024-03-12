@@ -156,7 +156,7 @@ describe("e2e specific group strategy voting", () => {
     await activateValidators(
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
+      multisigOwner0,
       activatedGroupAddresses
     );
   });

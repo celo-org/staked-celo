@@ -125,7 +125,7 @@ describe("e2e overflow test", () => {
     await activateValidators(
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
+      multisigOwner0,
       activatedGroupAddresses
     );
   });

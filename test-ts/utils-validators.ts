@@ -3,7 +3,7 @@ import { stringToSolidityBytes } from "@celo/contractkit/lib/wrappers/BaseWrappe
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumber, default as BigNumberJs } from "bignumber.js";
-import { BigNumber as EthersBigNumber, Wallet } from "ethers";
+import { BigNumber as EthersBigNumber, Signer, Wallet } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre, { kit } from "hardhat";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
@@ -18,9 +18,11 @@ import {
   impersonateAccount,
   mineToNextEpoch,
   MIN_VALIDATOR_LOCKED_CELO,
-  submitAndExecuteProposal,
   timeTravel,
 } from "./utils";
+import {
+  submitAndExecuteMultiSigProposal,
+} from "./utils-multisig";
 
 // Locks the required CELO and registers as a validator group.
 export async function registerValidatorGroup(account: SignerWithAddress, members = 1) {
@@ -141,7 +143,7 @@ export async function deregisterValidatorGroup(group: SignerWithAddress) {
 export async function activateValidators(
   defaultStrategyContract: DefaultStrategy,
   groupHealthContract: GroupHealth,
-  multisigOwner: string,
+  multisigOwner: Signer,
   groupAddresses: string[]
 ) {
   let [nextGroup] = await defaultStrategyContract.getGroupsTail();
@@ -150,8 +152,7 @@ export async function activateValidators(
     if (!isGroupValid) {
       throw new Error(`Group ${groupAddresses[i]} is not valid group!`);
     }
-    await submitAndExecuteProposal(
-      multisigOwner,
+    await submitAndExecuteMultiSigProposal(
       [defaultStrategyContract.address],
       ["0"],
       [
@@ -160,7 +161,8 @@ export async function activateValidators(
           ADDRESS_ZERO,
           nextGroup,
         ]),
-      ]
+      ],
+      multisigOwner
     );
     nextGroup = groupAddresses[i];
   }

@@ -219,26 +219,6 @@ export async function submitAndExecuteProposal(
   }
 }
 
-export async function waitForEvent(
-  contract: Contract,
-  eventName: string,
-  expectedValue: string,
-  timeout = 10000
-) {
-  await new Promise<void>((resolve, reject) => {
-    setTimeout(() => {
-      reject(
-        `Event ${eventName} with expectedValue: ${expectedValue} wasn't emitted in timely manner.`
-      );
-    }, timeout);
-    contract.on(eventName, (implementation) => {
-      if (implementation == expectedValue) {
-        resolve();
-      }
-    });
-  });
-}
-
 export async function activateAndVoteTest(deployerAccountName = "deployer") {
   try {
     await hre.run(ACCOUNT_ACTIVATE_AND_VOTE, {
