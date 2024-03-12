@@ -25,7 +25,6 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import electionContractData from "./code/abi/electionAbi.json";
 import {
-  DefaultGroupContract,
   ExpectVsReal,
   OrderedGroup,
   RebalanceContract,
@@ -253,7 +252,7 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getDefaultGroups(defaultStrategy: DefaultGroupContract): Promise<string[]> {
+export async function getDefaultGroups(defaultStrategy: DefaultStrategy | MockDefaultStrategy): Promise<string[]> {
   const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
   let [key] = await defaultStrategy.getGroupsHead();
 
@@ -481,7 +480,7 @@ export async function getUnsortedGroups(defaultStrategyContract: MockDefaultStra
 }
 
 export async function prepareOverflow(
-  defaultStrategyContract: DefaultStrategy,
+  defaultStrategyContract: DefaultStrategy | MockDefaultStrategy,
   election: ElectionWrapper,
   lockedGold: LockedGoldWrapper,
   voter: SignerWithAddress,
