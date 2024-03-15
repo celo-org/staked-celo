@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-unused-vars */
-import {
-  BaseContract,
-  BigNumber as EthersBigNumber,
-  CallOverrides,
-  ContractTransaction,
-  Overrides,
-} from "ethers";
+import { BaseContract, BigNumber as EthersBigNumber, ContractTransaction, Overrides } from "ethers";
 
 export interface RebalanceContract extends BaseContract {
   rebalance(

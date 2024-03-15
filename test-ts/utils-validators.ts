@@ -20,9 +20,7 @@ import {
   MIN_VALIDATOR_LOCKED_CELO,
   timeTravel,
 } from "./utils";
-import {
-  submitAndExecuteMultiSigProposal,
-} from "./utils-multisig";
+import { submitAndExecuteMultiSigProposal } from "./utils-multisig";
 
 // Locks the required CELO and registers as a validator group.
 export async function registerValidatorGroup(account: SignerWithAddress, members = 1) {

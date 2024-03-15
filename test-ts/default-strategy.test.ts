@@ -43,7 +43,6 @@ import {
   electGroup,
   electMockValidatorGroupsAndUpdate,
   registerValidatorAndAddToGroupMembers,
-  registerValidatorAndOnlyAffiliateToGroup,
   registerValidatorGroup,
   removeMembersFromGroup,
   updateGroupSlashingMultiplier,

@@ -118,12 +118,14 @@ describe("Contract deployed via proxy", () => {
             const newImplementation = (await contractFactory.deploy()).address;
             const theProxy = await hre.ethers.getContract(`${test.contractName}_Proxy`);
 
-            await expect(submitAndExecuteMultiSigProposal(
-              [contract.address],
-              ["0"],
-              [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])],
-              multisigOwner0
-            )).to.emit(theProxy, "Upgraded");
+            await expect(
+              submitAndExecuteMultiSigProposal(
+                [contract.address],
+                ["0"],
+                [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])],
+                multisigOwner0
+              )
+            ).to.emit(theProxy, "Upgraded");
           });
         });
 

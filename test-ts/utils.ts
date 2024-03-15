@@ -4,7 +4,7 @@ import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { default as BigNumberJs } from "bignumber.js";
-import { BigNumber as EthersBigNumber, Contract, Wallet } from "ethers";
+import { BigNumber as EthersBigNumber, Wallet } from "ethers";
 import { formatEther, parseUnits } from "ethers/lib/utils";
 import hre, { ethers } from "hardhat";
 import Web3 from "web3";
@@ -24,11 +24,7 @@ import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import electionContractData from "./code/abi/electionAbi.json";
-import {
-  ExpectVsReal,
-  OrderedGroup,
-  RebalanceContract,
-} from "./utils-interfaces";
+import { ExpectVsReal, OrderedGroup, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const REGISTRY_ADDRESS = "0x000000000000000000000000000000000000ce10";
@@ -252,7 +248,9 @@ export async function setGovernanceConcurrentProposals(count: number) {
   });
 }
 
-export async function getDefaultGroups(defaultStrategy: DefaultStrategy | MockDefaultStrategy): Promise<string[]> {
+export async function getDefaultGroups(
+  defaultStrategy: DefaultStrategy | MockDefaultStrategy
+): Promise<string[]> {
   const activeGroupsLengthPromise = defaultStrategy.getNumberOfGroups();
   let [key] = await defaultStrategy.getGroupsHead();
 
@@ -441,7 +439,7 @@ export async function upgradeToMockGroupHealthE2E(
     multisigOwner.address,
     [groupHealthContract.address],
     ["0"],
-    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])],
+    [groupHealthContract.interface.encodeFunctionData("upgradeTo", [mockGroupHealth.address])]
   );
 
   return mockGroupHealthFactory.attach(groupHealthContract.address);
