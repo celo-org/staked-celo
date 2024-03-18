@@ -25,7 +25,6 @@ import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import {
   ADDRESS_ZERO,
-  electMockValidatorGroupsAndUpdate,
   getDefaultGroups,
   getImpersonatedSigner,
   getSpecificGroups,
@@ -33,14 +32,17 @@ import {
   prepareOverflow,
   randomSigner,
   rebalanceDefaultGroups,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupCeloBasedOnProtocolStCelo,
-  updateGroupSlashingMultiplier,
 } from "./utils";
+import {
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+  updateGroupSlashingMultiplier,
+} from "./utils-validators";
 
 const sum = (xs: BigNumber[]): BigNumber => xs.reduce((a, b) => a.add(b));
 

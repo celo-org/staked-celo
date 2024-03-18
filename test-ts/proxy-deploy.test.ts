@@ -4,7 +4,8 @@ import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
-import { randomAddress, randomSigner, submitAndExecuteProposal, waitForEvent } from "./utils";
+import { randomAddress, randomSigner } from "./utils";
+import { submitAndExecuteMultiSigProposal } from "./utils-multisig";
 
 interface ProxyDeployTestData {
   contractName: string;
@@ -103,11 +104,11 @@ describe("Contract deployed via proxy", () => {
 
         describe("when called by the owner", () => {
           it("can transfer ownership", async () => {
-            await submitAndExecuteProposal(
-              multisigOwner0.address,
+            await submitAndExecuteMultiSigProposal(
               [contract.address],
               ["0"],
-              [contract.interface.encodeFunctionData("transferOwnership", [newOwner.address])]
+              [contract.interface.encodeFunctionData("transferOwnership", [newOwner.address])],
+              multisigOwner0
             );
 
             expect(await contract.owner()).to.eq(newOwner.address);
@@ -115,15 +116,16 @@ describe("Contract deployed via proxy", () => {
 
           it("can update the implementation", async () => {
             const newImplementation = (await contractFactory.deploy()).address;
+            const theProxy = await hre.ethers.getContract(`${test.contractName}_Proxy`);
 
-            await submitAndExecuteProposal(
-              multisigOwner0.address,
-              [contract.address],
-              ["0"],
-              [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])]
-            );
-
-            await waitForEvent(contract, "Upgraded", newImplementation);
+            await expect(
+              submitAndExecuteMultiSigProposal(
+                [contract.address],
+                ["0"],
+                [contract.interface.encodeFunctionData("upgradeTo", [newImplementation])],
+                multisigOwner0
+              )
+            ).to.emit(theProxy, "Upgraded");
           });
         });
 

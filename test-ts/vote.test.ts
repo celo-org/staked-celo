@@ -15,19 +15,28 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { Vote } from "../typechain-types/Vote";
 import {
   ADDRESS_ZERO,
-  electMockValidatorGroupsAndUpdate,
   getImpersonatedSigner,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   setGovernanceConcurrentProposals,
   timeTravel,
 } from "./utils";
+import {
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
+
+after(() => {
+  hre.kit.stop();
+});
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
 describe("Vote", async function (this: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   this.timeout(0); // Disable test timeout
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
@@ -163,9 +172,7 @@ describe("Vote", async function (this: any) {
     } catch (error) {
       console.error(error);
     }
-  });
 
-  beforeEach(async () => {
     await hre.deployments.fixture("TestVote");
     governanceWrapper = await hre.kit.contracts.getGovernance();
     managerContract = await hre.ethers.getContract("Manager");
@@ -210,6 +217,14 @@ describe("Vote", async function (this: any) {
         .activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
       previousKey = activatedGroupAddresses[i];
     }
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#getVoteWeight()", () => {

@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-unused-vars */
-import {
-  BaseContract,
-  BigNumber as EthersBigNumber,
-  CallOverrides,
-  ContractTransaction,
-  Overrides,
-} from "ethers";
+import { BaseContract, BigNumber as EthersBigNumber, ContractTransaction, Overrides } from "ethers";
 
 export interface RebalanceContract extends BaseContract {
   rebalance(
@@ -21,27 +15,6 @@ export interface ExpectVsReal {
   expected: EthersBigNumber;
   real: EthersBigNumber;
   diff: EthersBigNumber;
-}
-
-export interface DefaultGroupContract extends BaseContract {
-  getNumberOfGroups(overrides?: CallOverrides): Promise<EthersBigNumber>;
-  getGroupsHead(
-    overrides?: CallOverrides
-  ): Promise<[string, string] & { head: string; previousAddress: string }>;
-  getGroupPreviousAndNext(
-    key: string,
-    overrides?: CallOverrides
-  ): Promise<[string, string] & { previousAddress: string; nextAddress: string }>;
-  activateGroup(
-    group: string,
-    lesser: string,
-    greater: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-  addActivatableGroup(
-    group: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
 }
 
 export interface OrderedGroup {
