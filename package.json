@@ -44,7 +44,7 @@
     "@celo/staked-celo-hardhat-deploy": "git+https://github.com/celo-org/staked-celo-hardhat-deploy.git",
     "@celo/contract-compatibility-check": "git+https://github.com/celo-org/contract-compatibility-check.git#5b282d5274002db24c3251272ffca1bd38551632",
     "web3": "1.3.6",
-    "web3-utils": "^1.3.0",
+    "web3-utils": "^4.0.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "eslint": "^8.28.0",
