@@ -286,6 +286,10 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 totalToVotes;
 
         for (uint256 i = 0; i < fromGroups.length; i++) {
+            uint256 celoAvailableForGroup = getCeloForGroup(fromGroups[i]);
+
+            if (celoAvailableForGroup < fromVotes[i]) revert TransferAmountMisalignment();
+
             getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
             totalFromVotes += fromVotes[i];
         }
@@ -319,7 +323,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 totalWithdrawalsDelta;
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            uint256 celoAvailableForGroup = this.getCeloForGroup(groups[i]);
+            uint256 celoAvailableForGroup = getCeloForGroup(groups[i]);
             if (celoAvailableForGroup < withdrawals[i]) {
                 revert WithdrawalAmountTooHigh(groups[i], celoAvailableForGroup, withdrawals[i]);
             }
@@ -638,25 +642,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
-     * @notice Returns the total amount of CELO directed towards `group`. This is
-     * the Unlocked CELO balance for `group` plus the combined amount in pending
-     * and active votes made by this contract.
-     * @param group The address of the validator group.
-     * @return The total amount of CELO directed towards `group`.
-     */
-    function getCeloForGroup(address group) external view returns (uint256) {
-        uint256 combinedVotes = getElection().getTotalVotesForGroupByAccount(group, address(this)) +
-            scheduledVotes[group].toVote;
-        uint256 toBeRemoved = scheduledVotes[group].toRevoke + scheduledVotes[group].toWithdraw;
-
-        if (combinedVotes > toBeRemoved) {
-            return combinedVotes - toBeRemoved;
-        }
-
-        return 0;
-    }
-
-    /**
      * @notice Returns the total amount of CELO that's scheduled to vote for a group.
      * @param group The address of the validator group.
      * @return The total amount of CELO directed towards `group`.
@@ -766,6 +751,25 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         );
 
         scheduledVotes[group].toRevoke -= revokable;
+    }
+
+    /**
+     * @notice Returns the total amount of CELO directed towards `group`. This is
+     * the Unlocked CELO balance for `group` plus the combined amount in pending
+     * and active votes made by this contract.
+     * @param group The address of the validator group.
+     * @return The total amount of CELO directed towards `group`.
+     */
+    function getCeloForGroup(address group) public view returns (uint256) {
+        uint256 combinedVotes = getElection().getTotalVotesForGroupByAccount(group, address(this)) +
+            scheduledVotes[group].toVote;
+        uint256 toBeRemoved = scheduledVotes[group].toRevoke + scheduledVotes[group].toWithdraw;
+
+        if (combinedVotes > toBeRemoved) {
+            return combinedVotes - toBeRemoved;
+        }
+
+        return 0;
     }
 
     /**
