@@ -286,6 +286,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         uint256 totalToVotes;
 
         for (uint256 i = 0; i < fromGroups.length; i++) {
+            uint256 celoAvailableForGroup = this.getCeloForGroup(fromGroups[i]);
+
+            if (celoAvailableForGroup < fromVotes[i]) revert TransferAmountMisalignment();
             getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
             totalFromVotes += fromVotes[i];
         }
