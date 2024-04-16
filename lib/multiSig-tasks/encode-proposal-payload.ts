@@ -34,10 +34,9 @@ task(MULTISIG_ENCODE_PROPOSAL_PAYLOAD, MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DES
           throw new Error(`Contract ${args.contract} not found!`);
         }
 
-        const encodedFunction = contract.interface.encodeFunctionData(
-          args.function,
-          args.args.split(",")
-        );
+        const functionArg = args.args.length == 0 ? undefined : args.args.split(",");
+
+        const encodedFunction = contract.interface.encodeFunctionData(args.function, functionArg);
         taskLogger.info("encoded payload:", encodedFunction);
 
         return encodedFunction;

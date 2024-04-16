@@ -83,5 +83,7 @@ export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD_TASK_DESCRIPTION =
   "Encodes function payload on contract for proposal.";
 export const MULTISIG_UPDATE_V1_V2_DESCRIPTION =
   "Prepares proposal for update V1 to V2";
+export const MULTISIG_UPDATE_V2_V3_DESCRIPTION =
+  "Prepares proposal for update V2 to V3";
 export const MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES_DESCRIPTION =
   "Encodes manager set dependencies";
