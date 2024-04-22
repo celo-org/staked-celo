@@ -10,8 +10,6 @@ import {
   ACCOUNT,
   ACCOUNT_DESCRIPTION,
   MULTISIG_UPDATE_V2_V3_DESCRIPTION,
-  OWNER_ADDRESS,
-  OWNER_ADDRESS_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
 import {
@@ -23,7 +21,7 @@ import {
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 
 task(MULTISIG_UPDATE_V2_V3, MULTISIG_UPDATE_V2_V3_DESCRIPTION)
-  .addParam(OWNER_ADDRESS, OWNER_ADDRESS_DESCRIPTION, undefined, types.string)
+  // .addParam(OWNER_ADDRESS, OWNER_ADDRESS_DESCRIPTION, undefined, types.string)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
@@ -57,7 +55,13 @@ task(MULTISIG_UPDATE_V2_V3, MULTISIG_UPDATE_V2_V3_DESCRIPTION)
       await generateSetPauser(hre, "RebasedStakedCelo", destinations, values, payloads);
 
       await generateSetMinCountOfActiveGroups(hre, destinations, values, payloads);
-      await generateMultiSigAddOwner(hre, args.ownerAddress!, destinations, values, payloads);
+      await generateMultiSigAddOwner(
+        hre,
+        "0x01AAe13F65fB90B490E6614adE0bffFA57AC5bbc",
+        destinations,
+        values,
+        payloads
+      );
 
       taskLogger.info("--destinations", destinations.join(","));
       taskLogger.info("--values", values.join(","));
@@ -144,6 +148,9 @@ async function generateMultiSigAddOwner(
   values: number[],
   payloads: string[]
 ) {
+  if (hre.network.name === "alfajores") {
+    return;
+  }
   if (ownerAddress === ADDRESS_ZERO || !hre.ethers.utils.isAddress(ownerAddress)) {
     throw `Invalid Owner address ${ownerAddress}`;
   }
