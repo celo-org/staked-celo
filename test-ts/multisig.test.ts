@@ -9,6 +9,10 @@ import { PausableTest } from "../typechain-types/PausableTest";
 import { ProposalTester } from "../typechain-types/ProposalTester";
 import { ADDRESS_ZERO, DAY, getImpersonatedSigner, randomSigner, timeTravel } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 /**
  * Invokes the multisig's submitProposal, waits for the confirmation event
  * and returns the generated proposalId.
@@ -87,6 +91,9 @@ async function multiSigInitialize(owners: string[], requiredSignatures: number) 
 }
 
 describe("MultiSig", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let multiSig: MultiSig;
   let owner1: SignerWithAddress;
   let owner2: SignerWithAddress;
@@ -101,7 +108,7 @@ describe("MultiSig", () => {
   const requiredSignatures = 2;
   const delay = 7 * DAY;
 
-  beforeEach(async () => {
+  before(async () => {
     await hre.deployments.fixture("TestMultiSig");
     multiSig = await hre.ethers.getContract("MultiSig");
     await hre.deployments.fixture("TestPausable");
@@ -123,6 +130,14 @@ describe("MultiSig", () => {
     );
 
     owners = [owner1.address, owner2.address];
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#constructor", () => {

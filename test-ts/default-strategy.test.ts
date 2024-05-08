@@ -25,26 +25,28 @@ import { MockVote } from "../typechain-types/MockVote";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import {
   ADDRESS_ZERO,
-  deregisterValidatorGroup,
-  electGroup,
-  electMockValidatorGroupsAndUpdate,
   getDefaultGroups,
   getOrderedActiveGroups,
   getUnsortedGroups,
   mineToNextEpoch,
   prepareOverflow,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   REGISTRY_ADDRESS,
-  removeMembersFromGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   updateGroupCeloBasedOnProtocolStCelo,
-  updateGroupSlashingMultiplier,
   updateMaxNumberOfGroups,
 } from "./utils";
 import { OrderedGroup } from "./utils-interfaces";
+import {
+  deregisterValidatorGroup,
+  electGroup,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+  removeMembersFromGroup,
+  updateGroupSlashingMultiplier,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();

@@ -17,18 +17,20 @@ import {
   LOCKED_GOLD_UNLOCKING_PERIOD,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   REGISTRY_ADDRESS,
   resetNetwork,
   timeTravel,
 } from "./utils";
+import { registerValidatorAndAddToGroupMembers, registerValidatorGroup } from "./utils-validators";
 
 after(() => {
   hre.kit.stop();
 });
 
 describe("Account", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let accountsInstance: AccountsWrapper;
   let lockedGold: LockedGoldWrapper;
   let election: ElectionWrapper;
@@ -79,12 +81,6 @@ describe("Account", () => {
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
 
-    accountsInstance = await hre.kit.contracts.getAccounts();
-    lockedGold = await hre.kit.contracts.getLockedGold();
-    election = await hre.kit.contracts.getElection();
-  });
-
-  beforeEach(async () => {
     await hre.deployments.fixture("TestAccount");
     owner = await hre.ethers.getNamedSigner("owner");
     pauser = owner;
@@ -92,6 +88,18 @@ describe("Account", () => {
     await account.connect(owner).setManager(manager.address);
     await account.connect(owner).setPauser();
     governance = await hre.ethers.getContract("MockGovernance");
+
+    accountsInstance = await hre.kit.contracts.getAccounts();
+    lockedGold = await hre.kit.contracts.getLockedGold();
+    election = await hre.kit.contracts.getElection();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   it("should create an account on the core Accounts contract", async () => {

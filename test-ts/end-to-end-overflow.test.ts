@@ -15,17 +15,19 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import {
   activateAndVoteTest,
-  activateValidators,
-  electMockValidatorGroupsAndUpdate,
   prepareOverflow,
   randomSigner,
   rebalanceDefaultGroups,
   rebalanceGroups,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
+import {
+  activateValidators,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();
@@ -131,7 +133,7 @@ describe("e2e overflow test", () => {
     await activateValidators(
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
+      multisigOwner0,
       activatedGroupAddresses
     );
   });

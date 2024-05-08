@@ -15,9 +15,7 @@ import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy"
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
-  activateValidators,
   distributeEpochRewards,
-  electMockValidatorGroupsAndUpdate,
   getGroupsOfAllStrategies,
   getRealVsExpectedCeloForGroups,
   LOCKED_GOLD_UNLOCKING_PERIOD,
@@ -25,13 +23,17 @@ import {
   randomSigner,
   rebalanceDefaultGroups,
   rebalanceGroups,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
   timeTravel,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
+import {
+  activateValidators,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();
@@ -154,7 +156,7 @@ describe("e2e specific group strategy voting", () => {
     await activateValidators(
       defaultStrategy,
       groupHealthContract as unknown as GroupHealth,
-      multisigOwner0.address,
+      multisigOwner0,
       activatedGroupAddresses
     );
   });

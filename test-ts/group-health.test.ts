@@ -14,18 +14,20 @@ import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
 import {
   ADDRESS_ZERO,
-  deregisterValidatorGroup,
-  electMockValidatorGroupsAndUpdate,
   mineToNextEpoch,
   randomSigner,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
   REGISTRY_ADDRESS,
-  removeMembersFromGroup,
   resetNetwork,
   revokeElectionOnMockValidatorGroupsAndUpdate,
-  updateGroupSlashingMultiplier,
 } from "./utils";
+import {
+  deregisterValidatorGroup,
+  electMockValidatorGroupsAndUpdate,
+  registerValidatorAndAddToGroupMembers,
+  registerValidatorGroup,
+  removeMembersFromGroup,
+  updateGroupSlashingMultiplier,
+} from "./utils-validators";
 
 after(() => {
   hre.kit.stop();

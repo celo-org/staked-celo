@@ -6,7 +6,14 @@ import { MockManager } from "../typechain-types/MockManager";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { ADDRESS_ZERO, impersonateAccount, randomSigner, resetNetwork } from "./utils";
 
+after(() => {
+  hre.kit.stop();
+});
+
 describe("StakedCelo", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let snapshotId: any;
+
   let stakedCelo: StakedCelo;
   let managerContract: MockManager;
 
@@ -23,9 +30,7 @@ describe("StakedCelo", () => {
     pauser = owner;
     [nonManager] = await randomSigner(parseUnits("100"));
     [anAccount] = await randomSigner(parseUnits("100"));
-  });
 
-  beforeEach(async () => {
     await hre.deployments.fixture("TestStakedCelo");
     stakedCelo = await hre.ethers.getContract("StakedCelo");
     managerContract = await hre.ethers.getContract("MockManager");
@@ -42,6 +47,14 @@ describe("StakedCelo", () => {
     });
 
     await stakedCelo.connect(owner).setPauser();
+  });
+
+  beforeEach(async () => {
+    snapshotId = await hre.ethers.provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async () => {
+    await hre.ethers.provider.send("evm_revert", [snapshotId]);
   });
 
   describe("#mint()", () => {
