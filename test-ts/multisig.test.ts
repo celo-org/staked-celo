@@ -124,10 +124,6 @@ describe("MultiSig", () => {
       governanceAddress,
       BigNumber.from("100000000000000000000")
     );
-    multisigImpersonator = await getImpersonatedSigner(
-      multiSig.address,
-      BigNumber.from("100000000000000000000")
-    );
 
     owners = [owner1.address, owner2.address];
   });
@@ -496,7 +492,11 @@ describe("MultiSig", () => {
     });
 
     it("can be called by an owner to pause Multisig contract contract", async () => {
-      multiSig.connect(multisigImpersonator).setPauser(multiSig.address);
+      multisigImpersonator = await getImpersonatedSigner(
+        multiSig.address,
+        BigNumber.from("100000000000000000000")
+      );
+      await multiSig.connect(multisigImpersonator).setPauser(multiSig.address);
 
       await multiSig.connect(owner1).pauseContracts([multiSig.address]);
       const isPaused = await multiSig.isPaused();
@@ -516,6 +516,11 @@ describe("MultiSig", () => {
     });
 
     it("reverts when MultiSig Pauser is not MultiSig", async () => {
+      multisigImpersonator = await getImpersonatedSigner(
+        multiSig.address,
+        BigNumber.from("100000000000000000000")
+      );
+
       multiSig.connect(multisigImpersonator).setPauser(governance.address);
       await expect(multiSig.connect(owner1).pauseContracts([multiSig.address])).revertedWith(
         `OnlyPauser()`
