@@ -7,14 +7,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
   // Fetch deployed library
-  const libraryAddresses = (await hre.deployments.get("DefaultStrategy_Implementation")).libraries!;
+  let addressSortedLinkedListAddress;
+  const defaultStrategyImplementationContract = await hre.deployments.getOrNull(
+    "DefaultStrategy_Implementation"
+  );
+
+  if (defaultStrategyImplementationContract == null) {
+    // Library deployment
+    const lib = await hre.ethers.getContractFactory("AddressSortedLinkedList");
+    const libInstance = await lib.deploy();
+    await libInstance.deployed();
+    addressSortedLinkedListAddress = libInstance.address;
+  } else {
+    // Reuse deployed library
+    const defaultStrategyLibraries = defaultStrategyImplementationContract.libraries!;
+    addressSortedLinkedListAddress = defaultStrategyLibraries["AddressSortedLinkedList"];
+  }
 
   const managerAddress = (await hre.deployments.get("Manager")).address;
   await catchNotOwnerForProxy(
     deploy("DefaultStrategy", {
       from: deployer,
       log: true,
-      libraries: { AddressSortedLinkedList: libraryAddresses["AddressSortedLinkedList"] },
+      libraries: { AddressSortedLinkedList: addressSortedLinkedListAddress },
       proxy: {
         proxyArgs: ["{implementation}", "{data}"],
         proxyContract: "ERC1967Proxy",
