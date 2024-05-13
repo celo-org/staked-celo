@@ -100,19 +100,6 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
     error GroupAlreadyBlocked(address group);
 
     /**
-     * @notice Used when an attempt to add an specific group to the EnumerableSet
-     * fails.
-     * @param group The group's address.
-     */
-    error FailedToAddGroup(address group);
-
-    /**
-     * @notice Used when attempting to block a group failed.
-     * @param group The group's address.
-     */
-    error FailedToBlockGroup(address group);
-
-    /**
      * @notice Used when attempting to unblock a group that is not blocked.
      * @param group The group's address.
      */

@@ -634,6 +634,19 @@ describe("Account", () => {
           expect(returnedAmountGroup2).to.eq(amountTransferred / 2);
         });
       });
+
+      it("should revert when transferring more then current group has", async () => {
+        await expect(
+          account
+            .connect(manager)
+            .scheduleTransfer(
+              [groupAddresses[0]],
+              [originalGroupAmount * 2],
+              [groupAddresses[1]],
+              [originalGroupAmount * 2]
+            )
+        ).revertedWith(`TransferAmountMisalignment()`);
+      });
     });
 
     describe("When multiple groups have activated votes", () => {
@@ -1083,36 +1096,6 @@ describe("Account", () => {
       it("should return scheduled votes for original group", async () => {
         const scheduled = await account.scheduledVotesForGroup(groupAddresses[0]);
         expect(scheduled).to.eq(originalAmount);
-      });
-
-      describe("When transferred more then current group has", () => {
-        beforeEach(async () => {
-          await account
-            .connect(manager)
-            .scheduleTransfer(
-              [groupAddresses[0]],
-              [originalAmount * 2],
-              [groupAddresses[1]],
-              [originalAmount * 2]
-            );
-
-          await account.revokeVotes(
-            groupAddresses[0],
-            groupAddresses[1],
-            ADDRESS_ZERO,
-            groupAddresses[1],
-            ADDRESS_ZERO,
-            0
-          );
-        });
-
-        it("should return still pending revoke for first group", async () => {
-          expect(await account.scheduledRevokeForGroup(groupAddresses[0])).to.eq(originalAmount);
-        });
-
-        it("should return votes in second group", async () => {
-          expect(await account.scheduledVotesForGroup(groupAddresses[1])).to.eq(originalAmount * 2);
-        });
       });
 
       describe("When there is transfer to new group", () => {
@@ -1782,38 +1765,6 @@ describe("Account", () => {
           it("reports only the remaining votes", async () => {
             const votes = await account.getCeloForGroup(groupAddresses[1]);
             expect(votes).to.eq(10);
-          });
-        });
-      });
-
-      describe("When there is not enough stCelo locked from previous transfers", () => {
-        beforeEach(async () => {
-          await account
-            .connect(manager)
-            .scheduleTransfer([groupAddresses[0]], [30], [groupAddresses[1]], [30]);
-        });
-
-        it("reports correctly", async () => {
-          const votesGroupFrom = await account.getCeloForGroup(groupAddresses[0]);
-          expect(votesGroupFrom).to.eq(0);
-
-          const votesGroupTo = await account.getCeloForGroup(groupAddresses[1]);
-          expect(votesGroupTo).to.eq(30);
-        });
-
-        describe("When scheduled new votes", () => {
-          beforeEach(async () => {
-            await account
-              .connect(manager)
-              .scheduleVotes([groupAddresses[0]], [31], { value: "31" });
-          });
-
-          it("reports correctly", async () => {
-            const votesGroupFrom = await account.getCeloForGroup(groupAddresses[0]);
-            expect(votesGroupFrom).to.eq(1);
-
-            const votesGroupTo = await account.getCeloForGroup(groupAddresses[1]);
-            expect(votesGroupTo).to.eq(30);
           });
         });
       });
