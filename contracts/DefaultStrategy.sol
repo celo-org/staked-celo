@@ -394,8 +394,8 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             expectedToStCelo - actualToStCelo
         );
 
-        updateGroupStCelo(fromGroup, toMove, false);
-        updateGroupStCelo(toGroup, toMove, true);
+        _updateGroupStCelo(fromGroup, toMove, false);
+        _updateGroupStCelo(toGroup, toMove, true);
 
         trySort(fromGroup, stCeloInGroup[fromGroup], false);
         trySort(toGroup, stCeloInGroup[toGroup], true);
@@ -436,7 +436,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
 
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
-            updateGroupStCelo(
+            _updateGroupStCelo(
                 votedGroup,
                 IManager(manager).toStakedCelo(votes[groupsIndex]),
                 false
@@ -506,6 +506,20 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         }
 
         activatableGroups.add(group);
+    }
+
+    /**
+     * @notice Updates the total stCELO in default group strategy.
+     * @param group The group address.
+     * @param stCeloAmount The amount of stCELO.
+     * @param add Whether to add or subtract.
+     */
+    function updateGroupStCelo(
+        address group,
+        uint256 stCeloAmount,
+        bool add
+    ) external onlyOwner {
+        _updateGroupStCelo(group, stCeloAmount, add);
     }
 
     /**
@@ -644,7 +658,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @param stCeloAmount The amount of stCELO.
      * @param add Whether to add or substract.
      */
-    function updateGroupStCelo(
+    function _updateGroupStCelo(
         address group,
         uint256 stCeloAmount,
         bool add
@@ -677,7 +691,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         uint256 groupTotalStCeloVotes = stCeloInGroup[group];
 
         if (groupTotalStCeloVotes > 0) {
-            updateGroupStCelo(group, groupTotalStCeloVotes, false);
+            _updateGroupStCelo(group, groupTotalStCeloVotes, false);
             _generateDepositVoteDistribution(
                 IManager(manager).toCelo(groupTotalStCeloVotes),
                 address(0)
@@ -721,7 +735,11 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             votes[groupsIndex] = Math.min(receivableVotes, celoAmount);
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
-            updateGroupStCelo(votedGroup, IManager(manager).toStakedCelo(votes[groupsIndex]), true);
+            _updateGroupStCelo(
+                votedGroup,
+                IManager(manager).toStakedCelo(votes[groupsIndex]),
+                true
+            );
             trySort(votedGroup, stCeloInGroup[votedGroup], true);
 
             if (sorted) {

@@ -1610,4 +1610,29 @@ describe("DefaultStrategy", () => {
       );
     });
   });
+
+  describe("#updateGroupStCelo", () => {
+    it("should revert when not owner", async () => {
+      await expect(
+        defaultStrategyContract.updateGroupStCelo(groupAddresses[0], 100, true)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should add group stCelo", async () => {
+      await defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 100, true);
+      const stCelo = await defaultStrategyContract.stCeloInGroup(groupAddresses[0]);
+      expect(stCelo).to.eq(100);
+      const totalStCelo = await defaultStrategyContract.totalStCeloInStrategy();
+      expect(totalStCelo).to.eq(100);
+    });
+
+    it("should subtract group stCelo", async () => {
+      await defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 100, true);
+      await defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 50, false);
+      const stCelo = await defaultStrategyContract.stCeloInGroup(groupAddresses[0]);
+      expect(stCelo).to.eq(50);
+      const totalStCelo = await defaultStrategyContract.totalStCeloInStrategy();
+      expect(totalStCelo).to.eq(50);
+    });
+  });
 });
