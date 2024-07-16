@@ -13,6 +13,7 @@ import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
+import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import { Vote } from "../typechain-types/Vote";
 import {
@@ -52,9 +53,12 @@ describe("e2e governance vote", () => {
   let activatedGroupAddresses: string[];
   let validators: SignerWithAddress[];
   let validatorAddresses: string[];
+  let specificGroupStrategyContract: SpecificGroupStrategy;
 
   let stakedCeloContract: StakedCelo;
   let defaultStrategyContract: DefaultStrategy;
+
+  let specificGroupStrategyDifferentFromActive: SignerWithAddress;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unused-vars
   before(async function (this: any) {
@@ -96,6 +100,8 @@ describe("e2e governance vote", () => {
       await registerValidatorGroup(groups[i]);
       await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
     }
+
+    specificGroupStrategyDifferentFromActive = groups[5];
   });
 
   beforeEach(async () => {
@@ -107,6 +113,7 @@ describe("e2e governance vote", () => {
     voteContract = await hre.ethers.getContract("Vote");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
     defaultStrategyContract = await hre.ethers.getContract("DefaultStrategy");
+    specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
 
     const approver = await governanceWrapper.getApprover();
     impersonateAccount(approver);
@@ -124,11 +131,10 @@ describe("e2e governance vote", () => {
       groupHealthContract as unknown as GroupHealth
     );
     const validatorWrapper = await hre.kit.contracts.getValidators();
-    await electMockValidatorGroupsAndUpdate(
-      validatorWrapper,
-      groupHealthContract,
-      activatedGroupAddresses
-    );
+    await electMockValidatorGroupsAndUpdate(validatorWrapper, groupHealthContract, [
+      ...activatedGroupAddresses,
+      specificGroupStrategyDifferentFromActive.address,
+    ]);
 
     await activateValidators(
       defaultStrategyContract,
@@ -296,5 +302,83 @@ describe("e2e governance vote", () => {
 
     const depositor0StCeloVotedWith = await managerContract.toStakedCelo(depositor0VotedWeight);
     expect(lockedStakedCeloDepositor0).to.eq(depositor0StCeloVotedWith);
+  });
+
+  it("vote proposal and change strategy", async () => {
+    const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("6"));
+    const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("100"));
+    const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("150"));
+    const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("200"));
+
+    await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
+    await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
+    const depositor1StakedCeloBalance = await stakedCeloContract.balanceOf(depositor1.address);
+    expect(depositor1StakedCeloBalance).to.eq(amountOfCeloToDeposit);
+
+    await activateAndVoteTest();
+    await mineToNextEpoch(hre.web3);
+    await activateAndVoteTest();
+
+    await distributeEpochRewards(groups[0].address, rewardsGroup0.toString());
+    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
+    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
+
+    const minDeposit = await governanceWrapper.minDeposit();
+
+    const ownertx: ProposalTransaction = {
+      value: "0",
+      to: managerContract.address,
+      input: managerContract.interface.encodeFunctionData("owner"),
+    };
+
+    const ownertx2: ProposalTransaction = {
+      value: "0",
+      to: accountContract.address,
+      input: accountContract.interface.encodeFunctionData("owner"),
+    };
+
+    const proposal: Proposal = [ownertx];
+    const proposal2: Proposal = [ownertx2];
+
+    const dequeueFrequency = await governanceWrapper.dequeueFrequency();
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx = await governanceWrapper.propose(proposal, "http://www.descriptionUrl.com");
+    await tx.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx2 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    await tx2.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+
+    const tx3 = await governanceWrapper.propose(proposal2, "http://www.descriptionUrl2.com");
+    await tx3.send({ from: depositor1.address, value: minDeposit.toString() });
+
+    await timeTravel(dequeueFrequency.toNumber() + 1);
+    const dequeueProposalIfReadyTx = await governanceWrapper.dequeueProposalsIfReady();
+    await dequeueProposalIfReadyTx.send({ from: depositor1.address });
+
+    const proposalId = 1;
+    const index = 0;
+
+    const depositor1VotingPower = await voteContract.getVoteWeight(depositor1.address);
+
+    const voteProposalTx = await managerContract
+      .connect(depositor1)
+      .functions.voteProposal(proposalId, index, depositor1VotingPower, 0, 0);
+    await voteProposalTx.wait();
+
+    await managerContract
+      .connect(depositor1)
+      .changeStrategy(specificGroupStrategyDifferentFromActive.address);
+
+    const [stCeloInStrategyBeforeChangeStrategy] =
+      await specificGroupStrategyContract.getStCeloInGroup(
+        specificGroupStrategyDifferentFromActive.address
+      );
+    expect(stCeloInStrategyBeforeChangeStrategy).to.eq(amountOfCeloToDeposit);
   });
 });
