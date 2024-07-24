@@ -357,7 +357,7 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
             }
 
             if (
-                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+                block.timestamp <= proposalTimestamp + getGovernance().getReferendumStageDuration()
             ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(
@@ -429,7 +429,7 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
             }
 
             if (
-                block.timestamp < proposalTimestamp + getGovernance().getReferendumStageDuration()
+                block.timestamp <= proposalTimestamp + getGovernance().getReferendumStageDuration()
             ) {
                 VoterRecord storage voterRecord = voter.proposalVotes[proposalId];
                 lockedAmount = Math.max(

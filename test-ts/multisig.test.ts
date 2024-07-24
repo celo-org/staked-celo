@@ -102,6 +102,7 @@ describe("MultiSig", () => {
   let pausableTest: PausableTest;
   let mockPauserAddress: SignerWithAddress;
   let governance: SignerWithAddress;
+  let multisigImpersonator: SignerWithAddress;
 
   let owners: string[];
   const requiredSignatures = 2;
@@ -490,6 +491,18 @@ describe("MultiSig", () => {
       expect(isPaused).to.be.true;
     });
 
+    it("can be called by an owner to pause Multisig contract contract", async () => {
+      multisigImpersonator = await getImpersonatedSigner(
+        multiSig.address,
+        BigNumber.from("100000000000000000000")
+      );
+      await multiSig.connect(multisigImpersonator).setPauser(multiSig.address);
+
+      await multiSig.connect(owner1).pauseContracts([multiSig.address]);
+      const isPaused = await multiSig.isPaused();
+      expect(isPaused).to.be.true;
+    });
+
     it("can be called by a different owner to pause a contract", async () => {
       await multiSig.connect(owner2).pauseContracts([pausableTest.address]);
       const isPaused = await pausableTest.isPaused();
@@ -500,6 +513,20 @@ describe("MultiSig", () => {
       await multiSig.connect(governance).pauseContracts([pausableTest.address]);
       const isPaused = await pausableTest.isPaused();
       expect(isPaused).to.be.true;
+    });
+
+    it("reverts when MultiSig Pauser is not MultiSig", async () => {
+      multisigImpersonator = await getImpersonatedSigner(
+        multiSig.address,
+        BigNumber.from("100000000000000000000")
+      );
+
+      multiSig.connect(multisigImpersonator).setPauser(governance.address);
+      await expect(multiSig.connect(owner1).pauseContracts([multiSig.address])).revertedWith(
+        `OnlyPauser()`
+      );
+      const isPaused = await pausableTest.isPaused();
+      expect(isPaused).to.be.false;
     });
 
     it("reverts when called by a non-owner", async () => {

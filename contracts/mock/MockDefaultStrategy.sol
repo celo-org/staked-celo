@@ -8,12 +8,12 @@ contract MockDefaultStrategy is DefaultStrategy {
     receive() external payable {}
 
     function addToStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount) public {
-        updateGroupStCelo(strategy, stCeloAmount, true);
+        _updateGroupStCelo(strategy, stCeloAmount, true);
     }
 
     function subtractFromStrategyTotalStCeloVotesPublic(address strategy, uint256 stCeloAmount)
         internal
     {
-        updateGroupStCelo(strategy, stCeloAmount, false);
+        _updateGroupStCelo(strategy, stCeloAmount, false);
     }
 }
