@@ -18,6 +18,7 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
     address public unlockedBalanceFor;
     address public overrideFor;
     uint256 public overrideBalance;
+    mapping(address => uint256) private _lockedBalances;
 
     receive() external payable {
         // solhint-disable-previous-line no-empty-blocks
@@ -45,5 +46,13 @@ contract MockStakedCelo is ERC20("Staked CELO", "stCELO") {
 
     function unlockVoteBalance(address beneficiary) public {
         unlockedBalanceFor = beneficiary;
+    }
+
+    function setLockedBalance(address account, uint256 amount) public {
+        _lockedBalances[account] = amount;
+    }
+
+    function lockedVoteBalanceOf(address account) public view returns (uint256) {
+        return _lockedBalances[account];
     }
 }

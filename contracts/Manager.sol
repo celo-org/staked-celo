@@ -366,7 +366,8 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             revert GroupNotEligible(newStrategy);
         }
 
-        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender);
+        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender) +
+            stakedCelo.lockedVoteBalanceOf(msg.sender);
         if (stCeloAmount != 0) {
             _transfer(strategies[msg.sender], newStrategy, stCeloAmount);
         }
