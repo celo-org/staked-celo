@@ -230,6 +230,20 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
     }
 
     /**
+     * @notice Updates the total stCELO in specific group strategy.
+     * @param group The group address.
+     * @param stCeloAmount The amount of stCELO.
+     * @param add Whether to add or subtract.
+     */
+    function updateGroupStCelo(
+        address group,
+        uint256 stCeloAmount,
+        bool add
+    ) external onlyOwner {
+        _updateGroupStCelo(group, stCeloAmount, add);
+    }
+
+    /**
      * @notice Used to withdraw CELO from a specific group
      * that account voted for previously. It is expected that strategy will be balanced.
      * For balancing use `rebalance` function.
@@ -253,7 +267,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             revert CantWithdrawAccordingToStrategy(group);
         }
 
-        updateGroupStCelo(group, stCeloWithdrawalAmount, false);
+        _updateGroupStCelo(group, stCeloWithdrawalAmount, false);
 
         uint256 overflowingStCelo = stCeloInGroupOverflowed[group];
         uint256 unhealthyStCelo = stCeloInGroupUnhealthy[group];
@@ -311,7 +325,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         uint256 stCeloAmount
     ) external onlyManager returns (address[] memory finalGroups, uint256[] memory finalVotes) {
         votedGroups.add(group);
-        updateGroupStCelo(group, stCeloAmount, true);
+        _updateGroupStCelo(group, stCeloAmount, true);
 
         if (groupHealth.isGroupValid(group) && !blockedGroups.contains(group)) {
             uint256 receivableVotes = IManager(manager).getReceivableVotesForGroup(group);
@@ -509,7 +523,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
      * @param stCeloAmount The amount of stCELO.
      * @param add Whether to add or substract.
      */
-    function updateGroupStCelo(
+    function _updateGroupStCelo(
         address group,
         uint256 stCeloAmount,
         bool add

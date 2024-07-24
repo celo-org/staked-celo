@@ -1244,4 +1244,35 @@ describe("SpecificGroupStrategy", () => {
       ).revertedWith("Paused()");
     });
   });
+
+  describe("#updateGroupStCelo", () => {
+    it("should revert when not owner", async () => {
+      await expect(
+        specificGroupStrategyContract.updateGroupStCelo(groupAddresses[0], 100, true)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should add group stCelo", async () => {
+      await specificGroupStrategyContract
+        .connect(owner)
+        .updateGroupStCelo(groupAddresses[0], 100, true);
+      const stCelo = await specificGroupStrategyContract.stCeloInGroup(groupAddresses[0]);
+      expect(stCelo).to.eq(100);
+      const totalStCelo = await specificGroupStrategyContract.totalStCeloLocked();
+      expect(totalStCelo).to.eq(100);
+    });
+
+    it("should subtract group stCelo", async () => {
+      await specificGroupStrategyContract
+        .connect(owner)
+        .updateGroupStCelo(groupAddresses[0], 100, true);
+      await specificGroupStrategyContract
+        .connect(owner)
+        .updateGroupStCelo(groupAddresses[0], 50, false);
+      const stCelo = await specificGroupStrategyContract.stCeloInGroup(groupAddresses[0]);
+      expect(stCelo).to.eq(50);
+      const totalStCelo = await specificGroupStrategyContract.totalStCeloLocked();
+      expect(totalStCelo).to.eq(50);
+    });
+  });
 });
