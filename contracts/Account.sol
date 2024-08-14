@@ -194,7 +194,13 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Scheduling transfer was not successfull since
      * total amount of "from" and "to" are not the same.
      */
-    error TransferAmountMisalignment();
+    error TransferAmountMisalignment(uint256 totalFromVotes, uint256 totalToVotes);
+
+
+    /**
+     * @notice When scheduling transfer and the from group doesn't have enough CELO.
+     */
+    error NotEnoughCeloInGroup(address group, uint256 expectedAmount, uint256 realAmount);
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -288,7 +294,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         for (uint256 i = 0; i < fromGroups.length; i++) {
             uint256 celoAvailableForGroup = getCeloForGroup(fromGroups[i]);
 
-            if (celoAvailableForGroup < fromVotes[i]) revert TransferAmountMisalignment();
+        if (celoAvailableForGroup < fromVotes[i]) revert NotEnoughCeloInGroup(fromGroups[i], fromVotes[i], celoAvailableForGroup);
             getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
             totalFromVotes += fromVotes[i];
         }
@@ -299,7 +305,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         if (totalFromVotes != totalToVotes) {
-            revert TransferAmountMisalignment();
+            revert TransferAmountMisalignment(totalFromVotes, totalToVotes);
         }
     }
 

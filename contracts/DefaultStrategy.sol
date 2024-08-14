@@ -291,12 +291,12 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function generateDepositVoteDistribution(uint256 celoAmount, address depositGroupToIgnore)
+    function generateDepositVoteDistribution(uint256 celoAmount, uint256 stCeloAmount, address depositGroupToIgnore)
         external
         managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        return _generateDepositVoteDistribution(celoAmount, depositGroupToIgnore);
+        return _generateDepositVoteDistribution(celoAmount, stCeloAmount, depositGroupToIgnore);
     }
 
     /**
@@ -694,6 +694,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             _updateGroupStCelo(group, groupTotalStCeloVotes, false);
             _generateDepositVoteDistribution(
                 IManager(manager).toCelo(groupTotalStCeloVotes),
+                groupTotalStCeloVotes,
                 address(0)
             );
         }
@@ -709,7 +710,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function _generateDepositVoteDistribution(uint256 celoAmount, address depositGroupToIgnore)
+    function _generateDepositVoteDistribution(uint256 celoAmount, uint256 stCeloAmount, address depositGroupToIgnore)
         private
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
@@ -735,11 +736,9 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             votes[groupsIndex] = Math.min(receivableVotes, celoAmount);
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
-            _updateGroupStCelo(
-                votedGroup,
-                IManager(manager).toStakedCelo(votes[groupsIndex]),
-                true
-            );
+            uint256 stCelo = IManager(manager).toStakedCelo(votes[groupsIndex]);
+            stCeloAmount = stCeloAmount >= stCelo ? stCeloAmount - stCelo : 0;
+            _updateGroupStCelo(votedGroup, stCelo, true);
             trySort(votedGroup, stCeloInGroup[votedGroup], true);
 
             if (sorted) {
@@ -752,6 +751,11 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
 
         if (celoAmount != 0) {
             revert NotAbleToDistributeVotes();
+        }
+
+        if (stCeloAmount != 0) {
+            _updateGroupStCelo(votedGroup, stCeloAmount, true);
+            trySort(votedGroup, stCeloInGroup[votedGroup], true);
         }
 
         finalGroups = new address[](groupsIndex);

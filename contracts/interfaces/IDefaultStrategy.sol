@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 interface IDefaultStrategy {
-    function generateDepositVoteDistribution(uint256 celoAmount, address depositGroupToIgnore)
+    function generateDepositVoteDistribution(uint256 celoAmount, uint256 stCeloAmount, address depositGroupToIgnore)
         external
         returns (address[] memory finalGroups, uint256[] memory finalVotes);
 

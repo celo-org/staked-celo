@@ -722,10 +722,11 @@ describe("SpecificGroupStrategy", () => {
               groupAddresses
             );
             [tail] = await defaultStrategyContract.getGroupsTail();
-            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
           });
 
           it("should have stCelo unhealthy stCelo in strategy", async () => {
+            await account.setCeloForGroup(specificGroupAddress, deposit);
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
             const [total, overflow, unhealthy] =
               await specificGroupStrategyContract.getStCeloInGroup(specificGroupAddress);
             expect(total).to.deep.eq(deposit);
@@ -734,6 +735,8 @@ describe("SpecificGroupStrategy", () => {
           });
 
           it("should schedule transfers", async () => {
+            await account.setCeloForGroup(specificGroupAddress, deposit);
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
             const [
               lastTransferFromGroups,
               lastTransferFromVotes,
@@ -748,7 +751,25 @@ describe("SpecificGroupStrategy", () => {
             expect(lastTransferToVotes).to.deep.eq([deposit]);
           });
 
+          it("should not schedule transfers if group doesn't have enough of Celo", async () => {
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
+            const [
+              lastTransferFromGroups,
+              lastTransferFromVotes,
+              lastTransferToGroups,
+              lastTransferToVotes,
+            ] = await account.getLastTransferValues();
+
+            expect(lastTransferFromGroups).to.have.deep.members([specificGroupAddress]);
+            expect(lastTransferFromVotes).to.deep.eq([parseUnits("0")]);
+
+            expect(lastTransferToGroups).to.have.deep.members([]);
+            expect(lastTransferToVotes).to.deep.eq([]);
+          });
+
           it("should update stCelo in Default strategy", async () => {
+            await account.setCeloForGroup(specificGroupAddress, deposit);
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
             const stCeloInDefault = await defaultStrategyContract.stCeloInGroup(tail);
             expect(stCeloInDefault).to.deep.eq(deposit);
           });
@@ -756,6 +777,9 @@ describe("SpecificGroupStrategy", () => {
           describe("When group becomes healthy again", () => {
             let head: string;
             beforeEach(async () => {
+              await account.setCeloForGroup(specificGroupAddress, deposit);
+              await specificGroupStrategyContract.rebalanceWhenHealthChanged(specificGroupAddress);
+
               [head] = await defaultStrategyContract.getGroupsHead();
               await electMockValidatorGroupsAndUpdate(validatorsWrapper, groupHealthContract, [
                 specificGroupAddress,
@@ -805,7 +829,7 @@ describe("SpecificGroupStrategy", () => {
       const firstGroupCapacity = parseUnits("40.166666666666666666");
       const depositOverCapacity = parseUnits("10");
       let deposit: BigNumber;
-      let tail: string;
+      let nextToTail: string;
       let specificOverflowingGroup: string;
 
       describe("When different ratio of CELO vs stCELO", () => {
@@ -855,7 +879,7 @@ describe("SpecificGroupStrategy", () => {
             expect(lastTransferFromGroups).to.have.deep.members([specificOverflowingGroup]);
             expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity]);
 
-            expect(lastTransferToGroups).to.have.deep.members([tail]);
+            expect(lastTransferToGroups).to.have.deep.members([nextToTail]);
             expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity]);
           });
 
@@ -935,7 +959,7 @@ describe("SpecificGroupStrategy", () => {
               manager
             );
             await specificGroupStrategyContract.connect(owner).blockGroup(specificOverflowingGroup);
-            await account.setCeloForGroup(specificOverflowingGroup, BigNumber.from("0"));
+            await account.setCeloForGroup(specificOverflowingGroup, firstGroupCapacity.mul(2));
 
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(
               specificOverflowingGroup
@@ -968,8 +992,8 @@ describe("SpecificGroupStrategy", () => {
             expect(lastTransferFromGroups).to.have.deep.members([specificOverflowingGroup]);
             expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity.mul(2)]);
 
-            expect(lastTransferToGroups.length).to.eq(2);
-            expect(lastTransferToVotes[0].add(lastTransferToVotes[1])).to.deep.eq(
+            expect(lastTransferToGroups.length).to.eq(1);
+            expect(lastTransferToVotes[0]).to.deep.eq(
               firstGroupCapacity.mul(2)
             );
           });
@@ -981,9 +1005,8 @@ describe("SpecificGroupStrategy", () => {
 
           describe("When group becomes unblocked again", () => {
             let head: string;
-            let previousToHead: string;
             beforeEach(async () => {
-              [head, previousToHead] = await defaultStrategyContract.getGroupsHead();
+              [head] = await defaultStrategyContract.getGroupsHead();
               await specificGroupStrategyContract
                 .connect(owner)
                 .unblockGroup(specificOverflowingGroup);
@@ -993,6 +1016,7 @@ describe("SpecificGroupStrategy", () => {
                 account,
                 manager
               );
+              await account.setCeloForGroup(specificOverflowingGroup, deposit);
               await specificGroupStrategyContract.rebalanceWhenHealthChanged(
                 specificOverflowingGroup
               );
@@ -1014,8 +1038,8 @@ describe("SpecificGroupStrategy", () => {
                 lastTransferToVotes,
               ] = await account.getLastTransferValues();
 
-              expect(lastTransferFromGroups).to.have.deep.members([head, previousToHead]);
-              expect(lastTransferFromVotes[0].add(lastTransferFromVotes[1])).to.deep.eq(
+              expect(lastTransferFromGroups).to.have.deep.members([head]);
+              expect(lastTransferFromVotes[0]).to.deep.eq(
                 firstGroupCapacity.mul(2)
               );
 
@@ -1053,7 +1077,10 @@ describe("SpecificGroupStrategy", () => {
               manager
             );
             await specificGroupStrategyContract.connect(owner).blockGroup(specificOverflowingGroup);
-
+            await account.setCeloForGroup(
+              specificOverflowingGroup,
+              deposit
+            );
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(
               specificOverflowingGroup
             );

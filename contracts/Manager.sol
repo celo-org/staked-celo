@@ -532,6 +532,8 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             return (celoToRemove - celoScheduled, 0);
         }
 
+        // TODO: check if we could rebalance to unhealthy group if needed
+
         actualCelo = celoScheduled - celoToRemove;
 
         bool isSpecificGroupStrategy = !specificGroupStrategy.isBlockedGroup(group);
@@ -635,6 +637,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         } else {
             (finalGroups, finalVotes) = defaultStrategy.generateDepositVoteDistribution(
                 votes,
+                stCeloAmount,
                 address(0)
             );
         }

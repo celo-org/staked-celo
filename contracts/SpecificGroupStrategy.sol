@@ -333,12 +333,13 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
 
             celoAmount -= votesToBeScheduledForSpecificGroup;
             if (celoAmount > 0) {
+                uint256 stCeloAmountOverflow =  Math.min(IManager(manager).toStakedCelo(celoAmount), stCeloAmount);
                 // overflow
                 (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
-                    .generateDepositVoteDistribution(celoAmount, group);
+                    .generateDepositVoteDistribution(celoAmount, stCeloAmountOverflow, group);
                 updateOverflowGroup(
                     group,
-                    Math.min(IManager(manager).toStakedCelo(celoAmount), stCeloAmount),
+                    stCeloAmountOverflow,
                     true
                 );
                 finalGroups = new address[](groups.length + 1);
@@ -358,6 +359,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         } else {
             (finalGroups, finalVotes) = defaultStrategy.generateDepositVoteDistribution(
                 celoAmount,
+                stCeloAmount,
                 group
             );
             updateUnhealthyGroupStCelo(group, stCeloAmount, true);
@@ -391,10 +393,10 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             }
 
             uint256 overflow = stCeloInGroupOverflowed[group];
-            uint256 toMove = totalStCeloInGroup - unhealthyStCelo - overflow;
+            uint256 toMoveStCelo = totalStCeloInGroup - unhealthyStCelo - overflow;
 
-            transferToDefaultStrategy(group, toMove);
-            updateUnhealthyGroupStCelo(group, toMove, true);
+            transferToDefaultStrategy(group, toMoveStCelo);
+            updateUnhealthyGroupStCelo(group, toMoveStCelo, true);
         }
     }
 
@@ -602,13 +604,13 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
      * @param stCeloToMove StCelo amount to be moved.
      */
     function transferToDefaultStrategy(address group, uint256 stCeloToMove) private {
-        uint256 toMoveCelo = IManager(manager).toCelo(stCeloToMove);
+        uint256 toMoveCelo = Math.min(account.getCeloForGroup(group), IManager(manager).toCelo(stCeloToMove));
         address[] memory fromGroups = new address[](1);
         uint256[] memory fromVotes = new uint256[](1);
         fromGroups[0] = group;
         fromVotes[0] = toMoveCelo;
         (address[] memory toGroups, uint256[] memory toVotes) = defaultStrategy
-            .generateDepositVoteDistribution(toMoveCelo, address(0));
+            .generateDepositVoteDistribution(toMoveCelo, stCeloToMove, address(0));
         IManager(manager).scheduleTransferWithinStrategy(fromGroups, toGroups, fromVotes, toVotes);
     }
 
