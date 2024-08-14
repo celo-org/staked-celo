@@ -846,7 +846,9 @@ describe("SpecificGroupStrategy", () => {
               groupAddresses
             );
             await manager.connect(depositor).deposit({ value: deposit });
+            await account.setCeloForGroup(specificOverflowingGroup, deposit);
             await specificGroupStrategyContract.connect(owner).blockGroup(specificOverflowingGroup);
+            [, nextToTail] = await defaultStrategyContract.getGroupsTail();
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(
               specificOverflowingGroup
             );
