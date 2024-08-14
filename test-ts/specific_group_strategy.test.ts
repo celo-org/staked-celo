@@ -845,7 +845,6 @@ describe("SpecificGroupStrategy", () => {
               voter,
               groupAddresses
             );
-            [tail] = await defaultStrategyContract.getGroupsTail();
             await manager.connect(depositor).deposit({ value: deposit });
             await specificGroupStrategyContract.connect(owner).blockGroup(specificOverflowingGroup);
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(
@@ -948,7 +947,6 @@ describe("SpecificGroupStrategy", () => {
               voter,
               groupAddresses
             );
-            [tail] = await defaultStrategyContract.getGroupsTail();
             await manager.connect(depositor).deposit({ value: deposit });
 
             await account.setTotalCelo(deposit.mul(2));
@@ -1062,7 +1060,6 @@ describe("SpecificGroupStrategy", () => {
               voter,
               groupAddresses
             );
-            [tail] = await defaultStrategyContract.getGroupsTail();
             await manager.connect(depositor).deposit({ value: deposit });
 
             await account.setTotalCelo(deposit.div(2));
