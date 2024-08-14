@@ -333,15 +333,14 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
 
             celoAmount -= votesToBeScheduledForSpecificGroup;
             if (celoAmount > 0) {
-                uint256 stCeloAmountOverflow =  Math.min(IManager(manager).toStakedCelo(celoAmount), stCeloAmount);
+                uint256 stCeloAmountOverflow = Math.min(
+                    IManager(manager).toStakedCelo(celoAmount),
+                    stCeloAmount
+                );
                 // overflow
                 (address[] memory groups, uint256[] memory votesForGroups) = defaultStrategy
                     .generateDepositVoteDistribution(celoAmount, stCeloAmountOverflow, group);
-                updateOverflowGroup(
-                    group,
-                    stCeloAmountOverflow,
-                    true
-                );
+                updateOverflowGroup(group, stCeloAmountOverflow, true);
                 finalGroups = new address[](groups.length + 1);
                 finalVotes = new uint256[](groups.length + 1);
                 for (uint256 i = 0; i < groups.length; i++) {
@@ -604,7 +603,10 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
      * @param stCeloToMove StCelo amount to be moved.
      */
     function transferToDefaultStrategy(address group, uint256 stCeloToMove) private {
-        uint256 toMoveCelo = Math.min(account.getCeloForGroup(group), IManager(manager).toCelo(stCeloToMove));
+        uint256 toMoveCelo = Math.min(
+            account.getCeloForGroup(group),
+            IManager(manager).toCelo(stCeloToMove)
+        );
         address[] memory fromGroups = new address[](1);
         uint256[] memory fromVotes = new uint256[](1);
         fromGroups[0] = group;

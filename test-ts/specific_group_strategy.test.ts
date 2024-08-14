@@ -993,9 +993,7 @@ describe("SpecificGroupStrategy", () => {
             expect(lastTransferFromVotes).to.deep.eq([firstGroupCapacity.mul(2)]);
 
             expect(lastTransferToGroups.length).to.eq(1);
-            expect(lastTransferToVotes[0]).to.deep.eq(
-              firstGroupCapacity.mul(2)
-            );
+            expect(lastTransferToVotes[0]).to.deep.eq(firstGroupCapacity.mul(2));
           });
 
           it("should update stCelo in Default strategy", async () => {
@@ -1039,9 +1037,7 @@ describe("SpecificGroupStrategy", () => {
               ] = await account.getLastTransferValues();
 
               expect(lastTransferFromGroups).to.have.deep.members([head]);
-              expect(lastTransferFromVotes[0]).to.deep.eq(
-                firstGroupCapacity.mul(2)
-              );
+              expect(lastTransferFromVotes[0]).to.deep.eq(firstGroupCapacity.mul(2));
 
               expect(lastTransferToGroups).to.have.deep.members([specificOverflowingGroup]);
               expect(lastTransferToVotes).to.deep.eq([firstGroupCapacity.mul(2)]);
@@ -1077,10 +1073,7 @@ describe("SpecificGroupStrategy", () => {
               manager
             );
             await specificGroupStrategyContract.connect(owner).blockGroup(specificOverflowingGroup);
-            await account.setCeloForGroup(
-              specificOverflowingGroup,
-              deposit
-            );
+            await account.setCeloForGroup(specificOverflowingGroup, deposit);
             await specificGroupStrategyContract.rebalanceWhenHealthChanged(
               specificOverflowingGroup
             );

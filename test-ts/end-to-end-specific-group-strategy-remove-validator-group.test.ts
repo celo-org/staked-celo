@@ -145,8 +145,6 @@ describe("e2e specific group strategy voting removed validator group", () => {
     await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
 
-    console.log("celoForGroup", (await accountContract.getCeloForGroup(specificGroupStrategyDifferentFromActive.address)).toString());
-
     await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
 
     await activateAndVoteTest();
@@ -167,18 +165,18 @@ describe("e2e specific group strategy voting removed validator group", () => {
 
     await deregisterValidatorGroup(specificGroupStrategyDifferentFromActive);
 
-    await specificGroupStrategyContract.getStCeloInGroup(specificGroupStrategyDifferentFromActive.address);
+    await specificGroupStrategyContract.getStCeloInGroup(
+      specificGroupStrategyDifferentFromActive.address
+    );
 
     await groupHealthContract.updateGroupHealth(specificGroupStrategyDifferentFromActive.address);
-
 
     await specificGroupStrategyContract.rebalanceWhenHealthChanged(
       specificGroupStrategyDifferentFromActive.address
     );
 
-
     await expectSumOfExpectedAndRealCeloInGroupsToEqual(defaultStrategy);
-    
+
     await rebalanceAllAndActivate();
   });
 
@@ -207,8 +205,8 @@ describe("e2e specific group strategy voting removed validator group", () => {
     );
   }
 
-   // We use range because of possible rounding errors when withdrawing
-   function expectBigNumberInRange(real: BigNumber, expected: BigNumber, range = 10) {
+  // We use range because of possible rounding errors when withdrawing
+  function expectBigNumberInRange(real: BigNumber, expected: BigNumber, range = 10) {
     expect(
       real.add(range).gte(expected),
       `Number ${real.toString()} is not in range <${expected.sub(range).toString()}, ${expected

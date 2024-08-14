@@ -196,7 +196,6 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     error TransferAmountMisalignment(uint256 totalFromVotes, uint256 totalToVotes);
 
-
     /**
      * @notice When scheduling transfer and the from group doesn't have enough CELO.
      */
@@ -294,7 +293,8 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         for (uint256 i = 0; i < fromGroups.length; i++) {
             uint256 celoAvailableForGroup = getCeloForGroup(fromGroups[i]);
 
-        if (celoAvailableForGroup < fromVotes[i]) revert NotEnoughCeloInGroup(fromGroups[i], fromVotes[i], celoAvailableForGroup);
+            if (celoAvailableForGroup < fromVotes[i])
+                revert NotEnoughCeloInGroup(fromGroups[i], fromVotes[i], celoAvailableForGroup);
             getAndUpdateToVoteAndToRevoke(fromGroups[i], 0, fromVotes[i]);
             totalFromVotes += fromVotes[i];
         }
