@@ -333,7 +333,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             uint256
         )
     {
-        return (1, 3, 1, 0);
+        return (1, 4, 0, 0);
     }
 
     /**
@@ -366,14 +366,18 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             revert GroupNotEligible(newStrategy);
         }
 
-        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender) +
-            stakedCelo.lockedVoteBalanceOf(msg.sender);
-        if (stCeloAmount != 0) {
-            _transfer(strategies[msg.sender], newStrategy, stCeloAmount);
-        }
+        _changeStrategy(msg.sender, newStrategy);
+    }
 
-        strategies[msg.sender] = newStrategy;
-        emit StrategyChanged(newStrategy);
+    /**
+     * @notice Allows owner to change strategy for account.
+     * address(0) = default strategy
+     * !address(0) = voting for validator group.
+     * @param account The account to change strategy for.
+     * @param newStrategy The new strategy.
+     */
+    function changeStrategyForce(address account, address newStrategy) public onlyOwner {
+        _changeStrategy(account, newStrategy);
     }
 
     /**
@@ -732,6 +736,24 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         toVotes[0] = fromVotes[0];
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * @notice Allows strategy to change strategy for account.
+     * address(0) = default strategy
+     * !address(0) = voting for validator group.
+     * @param account The account to change strategy for.
+     * @param newStrategy The new strategy.
+     */
+    function _changeStrategy(address account, address newStrategy) private {
+        uint256 stCeloAmount = stakedCelo.balanceOf(account) +
+            stakedCelo.lockedVoteBalanceOf(account);
+        if (stCeloAmount != 0) {
+            _transfer(strategies[account], newStrategy, stCeloAmount);
+        }
+
+        strategies[account] = newStrategy;
+        emit StrategyChanged(newStrategy);
     }
 
     /**
