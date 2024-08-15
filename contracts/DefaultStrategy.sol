@@ -291,11 +291,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function generateDepositVoteDistribution(
-        uint256 celoAmount,
-        uint256 stCeloAmount,
-        address depositGroupToIgnore
-    )
+    function generateDepositVoteDistribution(uint256 celoAmount, uint256 stCeloAmount, address depositGroupToIgnore)
         external
         managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
@@ -714,11 +710,10 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @return finalGroups The groups that were chosen for distribution.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function _generateDepositVoteDistribution(
-        uint256 celoAmount,
-        uint256 stCeloAmount,
-        address depositGroupToIgnore
-    ) private returns (address[] memory finalGroups, uint256[] memory finalVotes) {
+    function _generateDepositVoteDistribution(uint256 celoAmount, uint256 stCeloAmount, address depositGroupToIgnore)
+        private
+        returns (address[] memory finalGroups, uint256[] memory finalVotes)
+    {
         if (activeGroups.getNumElements() == 0) {
             revert NoActiveGroups();
         }
@@ -759,6 +754,9 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         }
 
         if (stCeloAmount != 0) {
+            if (votedGroup == address(0)) {
+                votedGroup = activeGroups.getTail();
+            }
             _updateGroupStCelo(votedGroup, stCeloAmount, true);
             trySort(votedGroup, stCeloInGroup[votedGroup], true);
         }
