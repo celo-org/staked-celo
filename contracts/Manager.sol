@@ -333,7 +333,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             uint256
         )
     {
-        return (1, 4, 1, 0);
+        return (1, 4, 0, 0);
     }
 
     /**
