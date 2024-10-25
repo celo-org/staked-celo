@@ -7,7 +7,6 @@ import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
-import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
@@ -20,11 +19,9 @@ import {
   rebalanceGroups,
   setBalanceAnvil,
   timeTravel,
-  upgradeToMockGroupHealthE2E,
 } from "./utils";
 import {
   activateValidators,
-  electMockValidatorGroupsAndUpdate,
 } from "./utils-validators";
 import { BigNumber, ContractReceipt } from "ethers";
 
@@ -36,7 +33,7 @@ describe("e2e", () => {
   let accountContract: Account;
   let managerContract: Manager;
   let defaultStrategyContract: DefaultStrategy;
-  let groupHealthContract: MockGroupHealth;
+  let groupHealthContract: GroupHealth;
   let specificGroupStrategyContract: SpecificGroupStrategy;
 
   const deployerAccountName = "deployer";
@@ -99,16 +96,10 @@ describe("e2e", () => {
     specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-    groupHealthContract = await upgradeToMockGroupHealthE2E(
-      multisigOwner0,
-      groupHealthContract as unknown as GroupHealth
-    );
-    const validatorWrapper = await hre.kit.contracts.getValidators();
-    await electMockValidatorGroupsAndUpdate(
-      validatorWrapper,
-      groupHealthContract,
-      activatedGroupAddresses
-    );
+
+    for (const group of activatedGroupAddresses) {
+      await groupHealthContract.updateGroupHealth(group);
+    }
 
     await activateValidators(
       defaultStrategyContract,
@@ -123,14 +114,8 @@ describe("e2e", () => {
     const celoUnreleasedTreasuryAddress = await hre.kit.registry.addressFor("CeloUnreleasedTreasury" as any)
     await setBalanceAnvil(celoUnreleasedTreasuryAddress, parseUnits("900000000"));
 
-    console.log("celoUnreleasedTreasuryAddress balance", (await hre.ethers.provider.getBalance(celoUnreleasedTreasuryAddress)).toString());
-
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-    console.log("balance of depositor1", (await depositor1.getBalance()).toString());
     await (await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit })).wait();
-    console.log("balance of depositor1 after", (await depositor1.getBalance()).toString());
-    console.log("amountOfCeloToDeposit", amountOfCeloToDeposit.toString());
-    console.log("stCelo depositor1 balance", (await stakedCeloContract.balanceOf(depositor1.address)).toString());
     await (await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit })).wait();
 
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
@@ -157,7 +142,6 @@ describe("e2e", () => {
       useNodeAccount: true,
     });
     const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
-    console.log("depositor1BeforeWithdrawalBalance", depositor1BeforeWithdrawalBalance.toString());
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
     const txs = await finishPendingWithdrawals(depositor1.address);
