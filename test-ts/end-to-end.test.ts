@@ -12,22 +12,21 @@ import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy"
 import { StakedCelo } from "../typechain-types/StakedCelo";
 import {
   activateAndVoteTest,
-  distributeEpochRewards,
+  mineToNextEpochL2,
+  getValidatorGroupsL2,
   LOCKED_GOLD_UNLOCKING_PERIOD,
-  mineToNextEpoch,
   randomSigner,
   rebalanceDefaultGroups,
   rebalanceGroups,
-  resetNetwork,
+  setBalanceAnvil,
   timeTravel,
   upgradeToMockGroupHealthE2E,
 } from "./utils";
 import {
   activateValidators,
   electMockValidatorGroupsAndUpdate,
-  registerValidatorAndAddToGroupMembers,
-  registerValidatorGroup,
 } from "./utils-validators";
+import { BigNumber, ContractReceipt } from "ethers";
 
 after(() => {
   hre.kit.stop();
@@ -49,9 +48,9 @@ describe("e2e", () => {
   let depositor2: SignerWithAddress;
   let voter: SignerWithAddress;
 
-  let groups: SignerWithAddress[];
+  let groups: string[];
   let activatedGroupAddresses: string[];
-  let validators: SignerWithAddress[];
+  // let validators: SignerWithAddress[];
   let validatorAddresses: string[];
 
   let stakedCeloContract: StakedCelo;
@@ -59,7 +58,8 @@ describe("e2e", () => {
   // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
   before(async function (this: any) {
     this.timeout(0); // Disable test timeout
-    await resetNetwork();
+    this.timeout(100000);
+    // await resetNetwork();
 
     process.env = {
       ...process.env,
@@ -79,21 +79,14 @@ describe("e2e", () => {
     });
     groups = [];
     activatedGroupAddresses = [];
-    validators = [];
     validatorAddresses = [];
-    for (let i = 0; i < 10; i++) {
-      const [group] = await randomSigner(parseUnits("11000"));
-      groups.push(group);
-      if (i < 3) {
-        activatedGroupAddresses.push(groups[i].address);
-      }
-      const [validator, validatorWallet] = await randomSigner(parseUnits("11000"));
-      validators.push(validator);
-      validatorAddresses.push(validators[i].address);
 
-      await registerValidatorGroup(groups[i]);
-      await registerValidatorAndAddToGroupMembers(groups[i], validators[i], validatorWallet);
-    }
+
+    [groups, validatorAddresses] = await getValidatorGroupsL2()
+    activatedGroupAddresses = groups
+
+    setBalanceAnvil(depositor0.address, parseUnits("300"));
+    setBalanceAnvil(depositor1.address, parseUnits("300"));
   });
 
   beforeEach(async () => {
@@ -106,7 +99,6 @@ describe("e2e", () => {
     specificGroupStrategyContract = await hre.ethers.getContract("SpecificGroupStrategy");
 
     const multisigOwner0 = await hre.ethers.getNamedSigner("multisigOwner0");
-
     groupHealthContract = await upgradeToMockGroupHealthE2E(
       multisigOwner0,
       groupHealthContract as unknown as GroupHealth
@@ -126,22 +118,29 @@ describe("e2e", () => {
     );
   });
 
-  const rewardsGroup0 = hre.ethers.BigNumber.from(parseUnits("100"));
-  const rewardsGroup1 = hre.ethers.BigNumber.from(parseUnits("2"));
-  const rewardsGroup2 = hre.ethers.BigNumber.from(parseUnits("3.5"));
+  it.only("deposit and withdraw", async () => {
 
-  it("deposit and withdraw", async () => {
+    const celoUnreleasedTreasuryAddress = await hre.kit.registry.addressFor("CeloUnreleasedTreasury" as any)
+    await setBalanceAnvil(celoUnreleasedTreasuryAddress, parseUnits("900000000"));
+
+    console.log("celoUnreleasedTreasuryAddress balance", (await hre.ethers.provider.getBalance(celoUnreleasedTreasuryAddress)).toString());
+
     const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-    await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit });
-    await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit });
+    console.log("balance of depositor1", (await depositor1.getBalance()).toString());
+    await (await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit })).wait();
+    console.log("balance of depositor1 after", (await depositor1.getBalance()).toString());
+    console.log("amountOfCeloToDeposit", amountOfCeloToDeposit.toString());
+    console.log("stCelo depositor1 balance", (await stakedCeloContract.balanceOf(depositor1.address)).toString());
+    await (await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit })).wait();
 
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
 
     await activateAndVoteTest();
-    await mineToNextEpoch(hre.web3);
+    await mineToNextEpochL2()
     await activateAndVoteTest();
 
-    await distributeAllRewards();
+    await distributeAllRewardsL2();
+    await distributeAllRewardsL2();
     await rebalanceDefaultGroups(defaultStrategyContract);
     await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
     await hre.run(ACCOUNT_REVOKE, {
@@ -150,51 +149,78 @@ describe("e2e", () => {
       logLevel: "info",
     });
     await activateAndVoteTest();
-
     await managerContract.connect(depositor1).withdraw(amountOfCeloToDeposit);
     expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(0);
-
     await hre.run(ACCOUNT_WITHDRAW, {
       beneficiary: depositor1.address,
       account: deployerAccountName,
       useNodeAccount: true,
     });
-
     const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
+    console.log("depositor1BeforeWithdrawalBalance", depositor1BeforeWithdrawalBalance.toString());
 
     await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
+    const txs = await finishPendingWithdrawals(depositor1.address);
 
-    await finishPendingWithdrawals(depositor1.address);
+    expect(txs.length).to.eq(2);
+
+    const firstPartOfAmount = BigNumber.from(3333333333333332);
+    const secondPartOfAmount = BigNumber.from(6666666666666668);
+    const total = firstPartOfAmount.add(secondPartOfAmount);
+    expect(total).to.eq(amountOfCeloToDeposit);
+
+    const firstPartAmountInCelo = await managerContract.toCelo(firstPartOfAmount);
+    const secondPartAmountInCelo = await managerContract.toCelo(secondPartOfAmount);
+
+    expect(firstPartAmountInCelo.gt(firstPartOfAmount), `firstPartAmountInCelo ${firstPartAmountInCelo} firstPartOfAmount ${firstPartOfAmount}`).to.be.true;
+    expect(secondPartAmountInCelo.gt(secondPartOfAmount), `secondPartAmountInCelo ${secondPartAmountInCelo} secondPartOfAmount ${secondPartOfAmount}`).to.be.true;
+
+    const value1 = getTransferEventValue(txs[1], depositor1.address);
+    const value2 = getTransferEventValue(txs[0], depositor1.address);
 
     await managerContract.connect(depositor2).deposit({ value: amountOfCeloToDeposit });
-
     expect(await stakedCeloContract.balanceOf(depositor2.address)).to.eq(
       await managerContract.toStakedCelo(amountOfCeloToDeposit)
     );
 
-    expect(await stakedCeloContract.balanceOf(depositor0.address)).to.eq(amountOfCeloToDeposit);
-
-    const depositor1AfterWithdrawalBalance = await depositor1.getBalance();
-    expect(depositor1AfterWithdrawalBalance.gt(depositor1BeforeWithdrawalBalance)).to.be.true;
-
-    const rewardsReceived = depositor1AfterWithdrawalBalance
-      .sub(depositor1BeforeWithdrawalBalance)
-      .sub(amountOfCeloToDeposit);
-
-    expect(rewardsReceived).to.deep.eq(rewardsGroup0.add(rewardsGroup1).add(rewardsGroup2).div(2));
+    expect(value1.add(value2)).to.gt(amountOfCeloToDeposit);
   });
 
-  async function distributeAllRewards() {
-    await distributeEpochRewards(groups[1].address, rewardsGroup0.toString());
-    await distributeEpochRewards(groups[1].address, rewardsGroup1.toString());
-    await distributeEpochRewards(groups[2].address, rewardsGroup2.toString());
+  async function distributeAllRewardsL2() {
+    await mineToNextEpochL2(validatorAddresses)
   }
 
   async function finishPendingWithdrawals(address: string) {
-    const { timestamps } = await accountContract.getPendingWithdrawals(address);
+    const { values, timestamps } = await accountContract.getPendingWithdrawals(address);
+    const [values2, timestamps2] = await accountContract.getPendingWithdrawals(address);
+
+    const res = []
 
     for (let i = 0; i < timestamps.length; i++) {
-      await accountContract.finishPendingWithdrawal(address, 0, 0);
+      const tx = await (await accountContract.finishPendingWithdrawal(address, 0, 0)).wait();
+      res.push(tx)
     }
+    return res
+  }
+
+  function getTransferEventValue(receipt: ContractReceipt, to: string): BigNumber {
+    // Wait for the transaction to be mined and get the receipt
+    // Find the Transfer event in the logs
+    const transferEvent = receipt.logs.find((log) => {
+      return log.topics[0] === hre.ethers.utils.id("Transfer(address,address,uint256)");
+    });
+
+    // Check if the event is found
+    if (!transferEvent) {
+      throw new Error("Transfer event not found");
+    }
+
+    // Decode the event data
+    const iface = new hre.ethers.utils.Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
+    const decodedLog = iface.decodeEventLog("Transfer", transferEvent.data, transferEvent.topics);
+
+    // Assert the values
+    expect(decodedLog.to).to.equal(to);
+    return decodedLog.value;
   }
 });

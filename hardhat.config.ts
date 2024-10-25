@@ -63,6 +63,11 @@ module.exports = {
       gas: 13000000,
       gasPrice: 100000000000,
     },
+    anvil: {
+      url: "http://127.0.0.1:8546",
+      gas: 13000000,
+      gasPrice: 100000000000,
+    },
     devchain: {
       url: "http://localhost:7545",
       // Having to set a default value for gas, as the provider does not estimate
@@ -74,7 +79,7 @@ module.exports = {
       forking: {
         // Local ganache
         url: "http://localhost:7545",
-        blockNumber: 399,
+        // blockNumber: 399,
       },
       allowUnlimitedContractSize: true,
     },

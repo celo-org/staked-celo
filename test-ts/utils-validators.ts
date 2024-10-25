@@ -12,6 +12,7 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
+import validatorsContractData from "./code/abi/validatorsAbi.json";
 import {
   ADDRESS_ZERO,
   DAY,
@@ -57,6 +58,15 @@ export async function registerValidatorAndAddToGroupMembers(
   await addValidatorToGroupMembers(group, validator);
 }
 
+export async function registerValidatorAndAddToGroupMembersL2(
+  group: SignerWithAddress,
+  validator: SignerWithAddress,
+  validatorWallet: Wallet
+) {
+  await registerValidatorAndOnlyAffiliateToGroupL2(group, validator, validatorWallet);
+  await addValidatorToGroupMembers(group, validator);
+}
+
 export async function registerValidatorAndOnlyAffiliateToGroup(
   group: SignerWithAddress,
   validator: SignerWithAddress,
@@ -97,6 +107,53 @@ export async function registerValidatorAndOnlyAffiliateToGroup(
     from: validator.address,
   });
 }
+
+export async function registerValidatorAndOnlyAffiliateToGroupL2(
+  group: SignerWithAddress,
+  validator: SignerWithAddress,
+  validatorWallet: Wallet
+) {
+  console.log("registerValidatorAndOnlyAffiliateToGroupL2");
+  const accounts = await kit.contracts.getAccounts();
+
+  await accounts.createAccount().sendAndWaitForReceipt({
+    from: validator.address,
+  });
+
+  const lockedGold = await kit.contracts.getLockedGold();
+
+  // lock up the 10k minimum
+  await lockedGold.lock().sendAndWaitForReceipt({
+    from: validator.address,
+    value: MIN_VALIDATOR_LOCKED_CELO,
+  });
+
+  const validatorsOld = await kit.contracts.getValidators();
+
+  const validators = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validatorsContractData.abi as any,
+    validatorsOld.address
+  );
+
+  
+
+  // Validators.sol needs a 64 byte public key, the one stored in a Wallet is 65
+  // bytes. The first byte is unnecessary, and we also want to strip the leading
+  // 0x, so we `.slice(4)`.
+  const publicKey = stringToSolidityBytes(validatorWallet.publicKey.slice(4));
+  // A random 64 byte hex string. Taken from the monorepo.
+
+  await validators.methods.registerValidatorNoBls(publicKey).send({
+    from: validator.address,
+  });
+    
+    // Affiliate validator with the group
+    await validators.methods.affiliate(group.address).send({
+      from: validator.address,
+    });
+}
+
 
 export async function addValidatorToGroupMembers(
   group: SignerWithAddress,

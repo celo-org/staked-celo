@@ -48,7 +48,8 @@
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "eslint": "^8.28.0",
-    "prettier-plugin-organize-imports": "^3.2.1"
+    "prettier-plugin-organize-imports": "^3.2.1",
+    "@celo/devchain-anvil": "12.0.0-canary.33"
   },
   "scripts": {
     "compile": "yarn run hardhat compile",
