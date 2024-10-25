@@ -79,7 +79,7 @@ module.exports = {
       forking: {
         // Local ganache
         url: "http://localhost:7545",
-        // blockNumber: 399,
+        blockNumber: 399,
       },
       allowUnlimitedContractSize: true,
     },
