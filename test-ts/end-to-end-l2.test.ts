@@ -28,8 +28,8 @@ after(() => {
   hre.kit.stop();
 });
 
-testWithAnvilL2("e2e-L2", async () => {
-  describe("e2e-L2", () => {
+testWithAnvilL2("e2e [L2]", async () => {
+  describe("e2e [L2]", () => {
     let accountContract: Account;
     let managerContract: Manager;
     let defaultStrategyContract: DefaultStrategy;
@@ -104,7 +104,7 @@ testWithAnvilL2("e2e-L2", async () => {
       );
     });
 
-    it("deposit and withdraw L2", async () => {
+    it("deposit and withdraw [L2]", async () => {
       const celoUnreleasedTreasuryAddress = await hre.kit.registry.addressFor(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         "CeloUnreleasedTreasury" as any

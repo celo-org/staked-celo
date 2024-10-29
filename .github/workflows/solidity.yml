@@ -66,6 +66,9 @@ jobs:
 
       - name: Test
         run: yarn test:ci
+      
+      - name: Test Anvil L2
+        run: yarn test:anvil
 
       # Cache or reuse node_modules from earlier completed job.
       - name: Cache NPM

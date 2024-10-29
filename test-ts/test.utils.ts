@@ -156,8 +156,7 @@ function testWithAnvil(stateFilePath: string, name: string, fn: (web3: Web3) => 
 
   // for each test suite, we start and stop a new anvil instance
   return testWithWeb3(name, `http://127.0.0.1:${anvil.port}`, fn, {
-    runIf:
-      process.env.RUN_ANVIL_TESTS === "true" || typeof process.env.RUN_ANVIL_TESTS === "undefined",
+    runIf: process.env.RUN_ANVIL_TESTS === "true",
     hooks: {
       before: async () => {
         console.log("starting anvil");
