@@ -136,8 +136,6 @@ export async function registerValidatorAndOnlyAffiliateToGroupL2(
     validatorsOld.address
   );
 
-  
-
   // Validators.sol needs a 64 byte public key, the one stored in a Wallet is 65
   // bytes. The first byte is unnecessary, and we also want to strip the leading
   // 0x, so we `.slice(4)`.
@@ -147,13 +145,12 @@ export async function registerValidatorAndOnlyAffiliateToGroupL2(
   await validators.methods.registerValidatorNoBls(publicKey).send({
     from: validator.address,
   });
-    
-    // Affiliate validator with the group
-    await validators.methods.affiliate(group.address).send({
-      from: validator.address,
-    });
-}
 
+  // Affiliate validator with the group
+  await validators.methods.affiliate(group.address).send({
+    from: validator.address,
+  });
+}
 
 export async function addValidatorToGroupMembers(
   group: SignerWithAddress,

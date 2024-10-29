@@ -1,5 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { BigNumber, ContractReceipt } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { ACCOUNT_REVOKE, ACCOUNT_WITHDRAW } from "../lib/tasksNames";
@@ -9,29 +10,25 @@ import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
 import { StakedCelo } from "../typechain-types/StakedCelo";
+import { testWithAnvilL2 } from "./test.utils";
 import {
   activateAndVoteTest,
-  mineToNextEpochL2,
   getValidatorGroupsL2,
   LOCKED_GOLD_UNLOCKING_PERIOD,
+  mineToNextEpochL2,
   randomSigner,
   rebalanceDefaultGroups,
   rebalanceGroups,
   setBalanceAnvil,
   timeTravel,
 } from "./utils";
-import {
-  activateValidators,
-} from "./utils-validators";
-import { BigNumber, ContractReceipt } from "ethers";
-import { testWithAnvilL2 } from "./test.utils";
+import { activateValidators } from "./utils-validators";
 
 after(() => {
   hre.kit.stop();
 });
 
-testWithAnvilL2("e2e-L2", async (anvil) => {
-
+testWithAnvilL2("e2e-L2", async () => {
   describe("e2e-L2", () => {
     let accountContract: Account;
     let managerContract: Manager;
@@ -77,9 +74,8 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
       activatedGroupAddresses = [];
       validatorAddresses = [];
 
-
-      [groups, validatorAddresses] = await getValidatorGroupsL2()
-      activatedGroupAddresses = groups
+      [groups, validatorAddresses] = await getValidatorGroupsL2();
+      activatedGroupAddresses = groups;
 
       setBalanceAnvil(depositor0.address, parseUnits("300"));
       setBalanceAnvil(depositor1.address, parseUnits("300"));
@@ -108,25 +104,35 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
       );
     });
 
-    it.only("deposit and withdraw", async () => {
-
-      const celoUnreleasedTreasuryAddress = await hre.kit.registry.addressFor("CeloUnreleasedTreasury" as any)
+    it("deposit and withdraw L2", async () => {
+      const celoUnreleasedTreasuryAddress = await hre.kit.registry.addressFor(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        "CeloUnreleasedTreasury" as any
+      );
       await setBalanceAnvil(celoUnreleasedTreasuryAddress, parseUnits("900000000"));
 
       const amountOfCeloToDeposit = hre.ethers.BigNumber.from(parseUnits("0.01"));
-      await (await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit })).wait();
-      await (await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit })).wait();
+      await (
+        await managerContract.connect(depositor1).deposit({ value: amountOfCeloToDeposit })
+      ).wait();
+      await (
+        await managerContract.connect(depositor0).deposit({ value: amountOfCeloToDeposit })
+      ).wait();
 
       expect(await stakedCeloContract.balanceOf(depositor1.address)).to.eq(amountOfCeloToDeposit);
 
       await activateAndVoteTest();
-      await mineToNextEpochL2()
+      await mineToNextEpochL2();
       await activateAndVoteTest();
 
       await distributeAllRewardsL2();
       await distributeAllRewardsL2();
       await rebalanceDefaultGroups(defaultStrategyContract);
-      await rebalanceGroups(managerContract, specificGroupStrategyContract, defaultStrategyContract);
+      await rebalanceGroups(
+        managerContract,
+        specificGroupStrategyContract,
+        defaultStrategyContract
+      );
       await hre.run(ACCOUNT_REVOKE, {
         account: deployerAccountName,
         useNodeAccount: true,
@@ -140,7 +146,6 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
         account: deployerAccountName,
         useNodeAccount: true,
       });
-      const depositor1BeforeWithdrawalBalance = await depositor1.getBalance();
 
       await timeTravel(LOCKED_GOLD_UNLOCKING_PERIOD);
       const txs = await finishPendingWithdrawals(depositor1.address);
@@ -155,8 +160,14 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
       const firstPartAmountInCelo = await managerContract.toCelo(firstPartOfAmount);
       const secondPartAmountInCelo = await managerContract.toCelo(secondPartOfAmount);
 
-      expect(firstPartAmountInCelo.gt(firstPartOfAmount), `firstPartAmountInCelo ${firstPartAmountInCelo} firstPartOfAmount ${firstPartOfAmount}`).to.be.true;
-      expect(secondPartAmountInCelo.gt(secondPartOfAmount), `secondPartAmountInCelo ${secondPartAmountInCelo} secondPartOfAmount ${secondPartOfAmount}`).to.be.true;
+      expect(
+        firstPartAmountInCelo.gt(firstPartOfAmount),
+        `firstPartAmountInCelo ${firstPartAmountInCelo} firstPartOfAmount ${firstPartOfAmount}`
+      ).to.be.true;
+      expect(
+        secondPartAmountInCelo.gt(secondPartOfAmount),
+        `secondPartAmountInCelo ${secondPartAmountInCelo} secondPartOfAmount ${secondPartOfAmount}`
+      ).to.be.true;
 
       const value1 = getTransferEventValue(txs[1], depositor1.address);
       const value2 = getTransferEventValue(txs[0], depositor1.address);
@@ -170,20 +181,19 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
     });
 
     async function distributeAllRewardsL2() {
-      await mineToNextEpochL2(validatorAddresses)
+      await mineToNextEpochL2(validatorAddresses);
     }
 
     async function finishPendingWithdrawals(address: string) {
-      const { values, timestamps } = await accountContract.getPendingWithdrawals(address);
-      const [values2, timestamps2] = await accountContract.getPendingWithdrawals(address);
+      const { timestamps } = await accountContract.getPendingWithdrawals(address);
 
-      const res = []
+      const res = [];
 
       for (let i = 0; i < timestamps.length; i++) {
         const tx = await (await accountContract.finishPendingWithdrawal(address, 0, 0)).wait();
-        res.push(tx)
+        res.push(tx);
       }
-      return res
+      return res;
     }
 
     function getTransferEventValue(receipt: ContractReceipt, to: string): BigNumber {
@@ -199,7 +209,9 @@ testWithAnvilL2("e2e-L2", async (anvil) => {
       }
 
       // Decode the event data
-      const iface = new hre.ethers.utils.Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
+      const iface = new hre.ethers.utils.Interface([
+        "event Transfer(address indexed from, address indexed to, uint256 value)",
+      ]);
       const decodedLog = iface.decodeEventLog("Transfer", transferEvent.data, transferEvent.topics);
 
       // Assert the values
