@@ -106,7 +106,6 @@ describe("e2e specific group strategy voting removed validator group", () => {
 
   beforeEach(async () => {
     await hre.deployments.fixture("core");
-    accountContract = await hre.ethers.getContract("Account");
     managerContract = await hre.ethers.getContract("Manager");
     stakedCeloContract = await hre.ethers.getContract("StakedCelo");
     groupHealthContract = await hre.ethers.getContract("GroupHealth");
