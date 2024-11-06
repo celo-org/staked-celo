@@ -745,7 +745,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @param account The account to change strategy for.
      * @param newStrategy The new strategy.
      */
-    function _changeStrategy(address account, address newStrategy) private {
+    function _changeStrategy(address _account, address newStrategy) private {
         uint256 stCeloAmount = stakedCelo.balanceOf(account) +
             stakedCelo.lockedVoteBalanceOf(account);
         if (stCeloAmount != 0) {
