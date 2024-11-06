@@ -1,0 +1,2237 @@
+{
+    "abi": [
+      {
+        "type": "constructor",
+        "inputs": [
+          {
+            "name": "test",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "addFirstMember",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lesser",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "greater",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "addMember",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "affiliate",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "calculateEpochScore",
+        "inputs": [
+          {
+            "name": "uptime",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "calculateGroupEpochScore",
+        "inputs": [
+          {
+            "name": "uptimes",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "checkProofOfPossession",
+        "inputs": [
+          {
+            "name": "sender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "blsKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPop",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "commissionUpdateDelay",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "computeEpochReward",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "score",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPayment",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "deaffiliate",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "deregisterValidator",
+        "inputs": [
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "deregisterValidatorGroup",
+        "inputs": [
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "distributeEpochPaymentsFromSigner",
+        "inputs": [
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxPayment",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "downtimeGracePeriod",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "forceDeaffiliateIfValidator",
+        "inputs": [
+          {
+            "name": "validatorAccount",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "fractionMulExp",
+        "inputs": [
+          {
+            "name": "aNumerator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "aDenominator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "bNumerator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "bDenominator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "exponent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "_decimals",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getAccountLockedGoldRequirement",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getBlockNumberFromHeader",
+        "inputs": [
+          {
+            "name": "header",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getCommissionUpdateDelay",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getEpochNumber",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getEpochNumberOfBlock",
+        "inputs": [
+          {
+            "name": "blockNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getEpochSize",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getGroupLockedGoldRequirements",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getGroupNumMembers",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getGroupsNumMembers",
+        "inputs": [
+          {
+            "name": "accounts",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getMaxGroupSize",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getMembershipHistory",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          },
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getMembershipHistoryLength",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getMembershipInLastEpoch",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getMembershipInLastEpochFromSigner",
+        "inputs": [
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getNumRegisteredValidators",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getParentSealBitmap",
+        "inputs": [
+          {
+            "name": "blockNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getRegisteredValidatorGroups",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getRegisteredValidatorSigners",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getRegisteredValidators",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getTopGroupValidators",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "n",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getTopGroupValidatorsAccounts",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "n",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidator",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "affiliation",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "score",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorBlsPublicKeyFromSigner",
+        "inputs": [
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorGroup",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorGroupSlashingMultiplier",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorLockedGoldRequirements",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorScoreParameters",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getValidatorsGroup",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getVerifiedSealBitmapFromHeader",
+        "inputs": [
+          {
+            "name": "header",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "getVersionNumber",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "pure"
+      },
+      {
+        "type": "function",
+        "name": "groupLockedGoldRequirements",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "groupMembershipInEpoch",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "epochNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "halveSlashingMultiplier",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "hashHeader",
+        "inputs": [
+          {
+            "name": "header",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "initialize",
+        "inputs": [
+          {
+            "name": "registryAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "groupRequirementValue",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "groupRequirementDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "validatorRequirementValue",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "validatorRequirementDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "validatorScoreExponent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "validatorScoreAdjustmentSpeed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "_membershipHistoryLength",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "_slashingMultiplierResetPeriod",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "_maxGroupSize",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "initParams",
+            "type": "tuple",
+            "internalType": "struct Validators.InitParams",
+            "components": [
+              {
+                "name": "commissionUpdateDelay",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "downtimeGracePeriod",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "initialized",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "isValidator",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "isValidatorGroup",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "maxGroupSize",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "meetsAccountLockedGoldRequirements",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "membershipHistoryLength",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "minQuorumSize",
+        "inputs": [
+          {
+            "name": "blockNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "minQuorumSizeInCurrentSet",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "mintStableToEpochManager",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "numberValidatorsInCurrentSet",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "numberValidatorsInSet",
+        "inputs": [
+          {
+            "name": "blockNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "owner",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "registerValidator",
+        "inputs": [
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPop",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "registerValidatorGroup",
+        "inputs": [
+          {
+            "name": "commission",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "registerValidatorNoBls",
+        "inputs": [
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "registry",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "contract IRegistry"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "removeMember",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "renounceOwnership",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "reorderMember",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "lesserMember",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "greaterMember",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "resetSlashingMultiplier",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setCommissionUpdateDelay",
+        "inputs": [
+          {
+            "name": "delay",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setDowntimeGracePeriod",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setGroupLockedGoldRequirements",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setMaxGroupSize",
+        "inputs": [
+          {
+            "name": "size",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setMembershipHistoryLength",
+        "inputs": [
+          {
+            "name": "length",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setNextCommissionUpdate",
+        "inputs": [
+          {
+            "name": "commission",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setRegistry",
+        "inputs": [
+          {
+            "name": "registryAddress",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setSlashingMultiplierResetPeriod",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setValidatorLockedGoldRequirements",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "setValidatorScoreParameters",
+        "inputs": [
+          {
+            "name": "exponent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "adjustmentSpeed",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "slashingMultiplierResetPeriod",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "transferOwnership",
+        "inputs": [
+          {
+            "name": "newOwner",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "updateBlsPublicKey",
+        "inputs": [
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPop",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "updateCommission",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "updateEcdsaPublicKey",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "updatePublicKeys",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "blsPop",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "updateValidatorScoreFromSigner",
+        "inputs": [
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "uptime",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "type": "function",
+        "name": "validatorAddressFromCurrentSet",
+        "inputs": [
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "validatorLockedGoldRequirements",
+        "inputs": [],
+        "outputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "validatorSignerAddressFromCurrentSet",
+        "inputs": [
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "validatorSignerAddressFromSet",
+        "inputs": [
+          {
+            "name": "index",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "blockNumber",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "",
+            "type": "address",
+            "internalType": "address"
+          }
+        ],
+        "stateMutability": "view"
+      },
+      {
+        "type": "event",
+        "name": "CommissionUpdateDelaySet",
+        "inputs": [
+          {
+            "name": "delay",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "GroupLockedGoldRequirementsSet",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "MaxGroupSizeSet",
+        "inputs": [
+          {
+            "name": "size",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "MembershipHistoryLengthSet",
+        "inputs": [
+          {
+            "name": "length",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "OwnershipTransferred",
+        "inputs": [
+          {
+            "name": "previousOwner",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "newOwner",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "RegistrySet",
+        "inputs": [
+          {
+            "name": "registryAddress",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorAffiliated",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorBlsPublicKeyUpdated",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "blsPublicKey",
+            "type": "bytes",
+            "indexed": false,
+            "internalType": "bytes"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorDeaffiliated",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorDeregistered",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorEcdsaPublicKeyUpdated",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "ecdsaPublicKey",
+            "type": "bytes",
+            "indexed": false,
+            "internalType": "bytes"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorEpochPaymentDistributed",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "validatorPayment",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "groupPayment",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupCommissionUpdateQueued",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "commission",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "activationBlock",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupCommissionUpdated",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "commission",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupDeregistered",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupMemberAdded",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupMemberRemoved",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupMemberReordered",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorGroupRegistered",
+        "inputs": [
+          {
+            "name": "group",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "commission",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorLockedGoldRequirementsSet",
+        "inputs": [
+          {
+            "name": "value",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "duration",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorRegistered",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorScoreParametersSet",
+        "inputs": [
+          {
+            "name": "exponent",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "adjustmentSpeed",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      },
+      {
+        "type": "event",
+        "name": "ValidatorScoreUpdated",
+        "inputs": [
+          {
+            "name": "validator",
+            "type": "address",
+            "indexed": true,
+            "internalType": "address"
+          },
+          {
+            "name": "score",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          },
+          {
+            "name": "epochScore",
+            "type": "uint256",
+            "indexed": false,
+            "internalType": "uint256"
+          }
+        ],
+        "anonymous": false
+      }
+    ]
+}
