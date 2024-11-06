@@ -377,7 +377,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @param newStrategy The new strategy.
      */
     function changeStrategyForce(address account, address newStrategy) public onlyOwner {
-        _changeStrategy(account, newStrategy);
+        _changeStrategy(_account, newStrategy);
     }
 
     /**
