@@ -5,7 +5,6 @@ import { BigNumber, BigNumberish } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import hre from "hardhat";
 import { ACCOUNT_REVOKE } from "../lib/tasksNames";
-import { Account } from "../typechain-types/Account";
 import { DefaultStrategy } from "../typechain-types/DefaultStrategy";
 import { GroupHealth } from "../typechain-types/GroupHealth";
 import { Manager } from "../typechain-types/Manager";
@@ -37,7 +36,6 @@ after(() => {
 });
 
 describe("e2e specific group strategy voting removed validator group", () => {
-  let accountContract: Account;
   let managerContract: Manager;
   let groupHealthContract: MockGroupHealth;
   let validatorsWrapper: ValidatorsWrapper;

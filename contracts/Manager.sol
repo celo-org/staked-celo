@@ -373,10 +373,10 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @notice Allows owner to change strategy for account.
      * address(0) = default strategy
      * !address(0) = voting for validator group.
-     * @param account The account to change strategy for.
+     * @param _account The account to change strategy for.
      * @param newStrategy The new strategy.
      */
-    function forceChangeStrategy(address account, address newStrategy) public onlyOwner {
+    function forceChangeStrategy(address _account, address newStrategy) public onlyOwner {
         _changeStrategy(_account, newStrategy);
     }
 
@@ -742,17 +742,17 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @notice Allows strategy to change strategy for account.
      * address(0) = default strategy
      * !address(0) = voting for validator group.
-     * @param account The account to change strategy for.
+     * @param _account The account to change strategy for.
      * @param newStrategy The new strategy.
      */
     function _changeStrategy(address _account, address newStrategy) private {
-        uint256 stCeloAmount = stakedCelo.balanceOf(account) +
-            stakedCelo.lockedVoteBalanceOf(account);
+        uint256 stCeloAmount = stakedCelo.balanceOf(_account) +
+            stakedCelo.lockedVoteBalanceOf(_account);
         if (stCeloAmount != 0) {
-            _transfer(strategies[account], newStrategy, stCeloAmount);
+            _transfer(strategies[_account], newStrategy, stCeloAmount);
         }
 
-        strategies[account] = newStrategy;
+        strategies[_account] = newStrategy;
         emit StrategyChanged(newStrategy);
     }
 

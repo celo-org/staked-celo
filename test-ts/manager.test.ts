@@ -2559,7 +2559,7 @@ describe("Manager", () => {
     });
   });
 
-  describe("#changeStrategyForce()", () => {
+  describe("#forceChangeStrategy()", () => {
     const withdrawals = [40, 50];
     let specificGroupStrategyAddress: string;
 
@@ -2587,13 +2587,13 @@ describe("Manager", () => {
         slashedGroup.address,
       ]);
       await expect(
-        manager.connect(nonOwner).changeStrategyForce(depositor.address, slashedGroup.address)
+        manager.connect(nonOwner).forceChangeStrategy(depositor.address, slashedGroup.address)
       ).revertedWith("Ownable: caller is not the owner");
     });
 
     describe("When changing with no previous stCelo", () => {
       beforeEach(async () => {
-        await manager.connect(owner).changeStrategyForce(depositor.address, groupAddresses[0]);
+        await manager.connect(owner).forceChangeStrategy(depositor.address, groupAddresses[0]);
       });
 
       it("should add group to voted strategies", async () => {
@@ -2615,7 +2615,7 @@ describe("Manager", () => {
         specificGroupStrategyDeposit = parseUnits("2");
         await manager
           .connect(owner)
-          .changeStrategyForce(depositor.address, specificGroupStrategyAddress);
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
         await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
         await account.setCeloForGroup(specificGroupStrategyAddress, specificGroupStrategyDeposit);
       });
@@ -2623,7 +2623,7 @@ describe("Manager", () => {
       it("should schedule nothing when trying to change to same specific strategy", async () => {
         await manager
           .connect(owner)
-          .changeStrategyForce(depositor.address, specificGroupStrategyAddress);
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
         const [
           lastTransferFromGroups,
           lastTransferFromVotes,
@@ -2639,7 +2639,7 @@ describe("Manager", () => {
 
       it("should schedule transfers when changing to different specific strategy", async () => {
         const differentSpecificGroupStrategy = groupAddresses[0];
-        await manager.connect(owner).changeStrategyForce(depositor.address, ADDRESS_ZERO);
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
 
         const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
           specificGroupStrategyAddress
@@ -2656,7 +2656,7 @@ describe("Manager", () => {
 
       it("should schedule transfers when changing to default strategy", async () => {
         const [tail] = await defaultStrategyContract.getGroupsTail();
-        await manager.connect(owner).changeStrategyForce(depositor.address, ADDRESS_ZERO);
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
 
         const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
           specificGroupStrategyAddress
@@ -2690,7 +2690,7 @@ describe("Manager", () => {
           const differentSpecificGroupStrategy = groupAddresses[0];
           await manager
             .connect(owner)
-            .changeStrategyForce(depositor.address, differentSpecificGroupStrategy);
+            .forceChangeStrategy(depositor.address, differentSpecificGroupStrategy);
 
           const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
             specificGroupStrategyAddress
@@ -2717,7 +2717,7 @@ describe("Manager", () => {
 
           it("should schedule transfers when changing to default strategy", async () => {
             const [tail] = await defaultStrategyContract.getGroupsTail();
-            await manager.connect(owner).changeStrategyForce(depositor.address, ADDRESS_ZERO);
+            await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
 
             const [stCeloInSpecificStrategy, stCeloOverflow, stCeloUnhealthy] =
               await specificGroupStrategyContract.getStCeloInGroup(specificGroupStrategyAddress);
@@ -2732,7 +2732,7 @@ describe("Manager", () => {
 
         it("should schedule transfers when changing to default strategy", async () => {
           const [tail] = await defaultStrategyContract.getGroupsTail();
-          await manager.connect(owner).changeStrategyForce(depositor.address, ADDRESS_ZERO);
+          await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
 
           const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
             specificGroupStrategyAddress
@@ -2767,7 +2767,7 @@ describe("Manager", () => {
       });
 
       it("should schedule nothing when changing to default strategy", async () => {
-        await manager.connect(owner).changeStrategyForce(depositor.address, ADDRESS_ZERO);
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
 
         const [
           lastTransferFromGroups,
@@ -2785,7 +2785,7 @@ describe("Manager", () => {
       it("should schedule transfers when changing to specific strategy", async () => {
         await manager
           .connect(owner)
-          .changeStrategyForce(depositor.address, specificGroupStrategyAddress);
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
 
         const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
           specificGroupStrategyAddress
