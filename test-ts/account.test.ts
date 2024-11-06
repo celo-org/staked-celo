@@ -520,7 +520,7 @@ describe("Account", () => {
         account
           .connect(manager)
           .scheduleTransfer(groupAddresses, [100, 30, 80], groupAddresses, [30, 70, 100])
-      ).revertedWith(`TransferAmountMisalignment()`);
+      ).revertedWith(`'NotEnoughCeloInGroup("${groupAddresses[0]}", 100, 0)`);
     });
 
     it("should revert when incorrect vote sum 2", async () => {
@@ -528,7 +528,7 @@ describe("Account", () => {
         account
           .connect(manager)
           .scheduleTransfer(groupAddresses, [100, 30, 60], groupAddresses, [30, 70, 100])
-      ).revertedWith(`TransferAmountMisalignment()`);
+      ).revertedWith(`NotEnoughCeloInGroup("${groupAddresses[0]}", 100, 0)`);
     });
 
     describe("When group has activated votes", () => {
@@ -645,7 +645,7 @@ describe("Account", () => {
               [groupAddresses[1]],
               [originalGroupAmount * 2]
             )
-        ).revertedWith(`TransferAmountMisalignment()`);
+        ).revertedWith(`NotEnoughCeloInGroup("${groupAddresses[0]}", 200, 100)`);
       });
     });
 

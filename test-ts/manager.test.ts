@@ -2559,6 +2559,251 @@ describe("Manager", () => {
     });
   });
 
+  describe("#forceChangeStrategy()", () => {
+    const withdrawals = [40, 50];
+    let specificGroupStrategyAddress: string;
+
+    beforeEach(async () => {
+      specificGroupStrategyAddress = groupAddresses[2];
+      for (let i = 0; i < 2; i++) {
+        const [head] = await defaultStrategyContract.getGroupsHead();
+        await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+        await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        await account.setCeloForGroup(groupAddresses[i], withdrawals[i]);
+      }
+    });
+
+    it("should revert when called by non-owner", async () => {
+      const slashedGroup = groups[0];
+      await updateGroupSlashingMultiplier(
+        registryContract,
+        lockedGoldContract,
+        validatorsContract,
+        slashedGroup,
+        mockSlasher
+      );
+      await mineToNextEpoch(hre.web3);
+      await electMockValidatorGroupsAndUpdate(validators, groupHealthContract, [
+        slashedGroup.address,
+      ]);
+      await expect(
+        manager.connect(nonOwner).forceChangeStrategy(depositor.address, slashedGroup.address)
+      ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    describe("When changing with no previous stCelo", () => {
+      beforeEach(async () => {
+        await manager.connect(owner).forceChangeStrategy(depositor.address, groupAddresses[0]);
+      });
+
+      it("should add group to voted strategies", async () => {
+        await manager.connect(depositor).deposit({ value: 100 });
+        const specificStrategies = await getSpecificGroups(specificGroupStrategyContract);
+        expect([groupAddresses[0]]).to.deep.eq(specificStrategies);
+      });
+
+      it("should change account strategy ", async () => {
+        const strategy = await manager.connect(depositor).getAddressStrategy(depositor.address);
+        expect(groupAddresses[0]).to.eq(strategy);
+      });
+    });
+
+    describe("When depositor chose specific strategy", () => {
+      let specificGroupStrategyDeposit: BigNumber;
+
+      beforeEach(async () => {
+        specificGroupStrategyDeposit = parseUnits("2");
+        await manager
+          .connect(owner)
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
+        await manager.connect(depositor).deposit({ value: specificGroupStrategyDeposit });
+        await account.setCeloForGroup(specificGroupStrategyAddress, specificGroupStrategyDeposit);
+      });
+
+      it("should schedule nothing when trying to change to same specific strategy", async () => {
+        await manager
+          .connect(owner)
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups).to.deep.eq([]);
+        expect(lastTransferFromVotes).to.deep.eq([]);
+        expect(lastTransferToGroups).to.deep.eq([]);
+        expect(lastTransferToVotes).to.deep.eq([]);
+      });
+
+      it("should schedule transfers when changing to different specific strategy", async () => {
+        const differentSpecificGroupStrategy = groupAddresses[0];
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
+
+        const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
+          specificGroupStrategyAddress
+        );
+        const stCeloInDifferentSpecificGroupStrategy = await defaultStrategyContract.stCeloInGroup(
+          differentSpecificGroupStrategy
+        );
+
+        expect(stCeloInSpecificStrategy).to.deep.eq(parseUnits("0"));
+        expect(stCeloInDifferentSpecificGroupStrategy).to.deep.eq(
+          stCeloInDifferentSpecificGroupStrategy
+        );
+      });
+
+      it("should schedule transfers when changing to default strategy", async () => {
+        const [tail] = await defaultStrategyContract.getGroupsTail();
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
+
+        const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
+          specificGroupStrategyAddress
+        );
+        const stCeloInFirstDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+          groupAddresses[0]
+        );
+        const stCeloInSecondDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+          groupAddresses[1]
+        );
+
+        expect(stCeloInSpecificStrategy).to.deep.eq(parseUnits("0"));
+        expect(stCeloInFirstDefaultGroup).to.deep.eq(parseUnits("0"));
+        expect(tail).to.deep.eq(groupAddresses[1]);
+        expect(stCeloInSecondDefaultGroup).to.deep.eq(specificGroupStrategyDeposit);
+      });
+
+      describe("When chosen group is unhealthy", () => {
+        beforeEach(async () => {
+          await updateGroupSlashingMultiplier(
+            registryContract,
+            lockedGoldContract,
+            validatorsContract,
+            groups[2],
+            mockSlasher
+          );
+          await groupHealthContract.updateGroupHealth(specificGroupStrategyAddress);
+        });
+
+        it("should schedule transfers from group (since group was not rebalanced) when changing to different specific strategy", async () => {
+          const differentSpecificGroupStrategy = groupAddresses[0];
+          await manager
+            .connect(owner)
+            .forceChangeStrategy(depositor.address, differentSpecificGroupStrategy);
+
+          const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
+            specificGroupStrategyAddress
+          );
+          const stCeloInDifferentSpecificGroupStrategy =
+            await specificGroupStrategyContract.stCeloInGroup(differentSpecificGroupStrategy);
+
+          expect(stCeloInSpecificStrategy).to.deep.eq(parseUnits("0"));
+          expect(stCeloInDifferentSpecificGroupStrategy).to.deep.eq(specificGroupStrategyDeposit);
+        });
+
+        describe("When rebalanced", () => {
+          beforeEach(async () => {
+            await specificGroupStrategyContract.rebalanceWhenHealthChanged(
+              specificGroupStrategyAddress
+            );
+            await updateGroupCeloBasedOnProtocolStCelo(
+              defaultStrategyContract,
+              specificGroupStrategyContract,
+              account,
+              manager
+            );
+          });
+
+          it("should schedule transfers when changing to default strategy", async () => {
+            const [tail] = await defaultStrategyContract.getGroupsTail();
+            await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
+
+            const [stCeloInSpecificStrategy, stCeloOverflow, stCeloUnhealthy] =
+              await specificGroupStrategyContract.getStCeloInGroup(specificGroupStrategyAddress);
+            const stCeloInTail = await defaultStrategyContract.stCeloInGroup(tail);
+
+            expect(stCeloInSpecificStrategy).to.deep.eq(parseUnits("0"));
+            expect(stCeloOverflow).to.deep.eq(parseUnits("0"));
+            expect(stCeloUnhealthy).to.deep.eq(parseUnits("0"));
+            expect(stCeloInTail).to.deep.eq(specificGroupStrategyDeposit);
+          });
+        });
+
+        it("should schedule transfers when changing to default strategy", async () => {
+          const [tail] = await defaultStrategyContract.getGroupsTail();
+          await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
+
+          const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
+            specificGroupStrategyAddress
+          );
+          const stCeloInFirstDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+            groupAddresses[0]
+          );
+          const stCeloInSecondDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+            groupAddresses[1]
+          );
+
+          expect(stCeloInSpecificStrategy).to.deep.eq(parseUnits("0"));
+          expect(stCeloInFirstDefaultGroup).to.deep.eq(parseUnits("0"));
+          expect(tail).to.deep.eq(groupAddresses[1]);
+          expect(stCeloInSecondDefaultGroup).to.deep.eq(specificGroupStrategyDeposit);
+        });
+      });
+    });
+
+    describe("When depositor chose default strategy", () => {
+      let defaultGroupDeposit: BigNumber;
+
+      beforeEach(async () => {
+        defaultGroupDeposit = parseUnits("2");
+        await manager.connect(depositor).deposit({ value: defaultGroupDeposit });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
+      });
+
+      it("should schedule nothing when changing to default strategy", async () => {
+        await manager.connect(owner).forceChangeStrategy(depositor.address, ADDRESS_ZERO);
+
+        const [
+          lastTransferFromGroups,
+          lastTransferFromVotes,
+          lastTransferToGroups,
+          lastTransferToVotes,
+        ] = await account.getLastTransferValues();
+
+        expect(lastTransferFromGroups).to.deep.eq([]);
+        expect(lastTransferFromVotes).to.deep.eq([]);
+        expect(lastTransferToGroups).to.deep.eq([]);
+        expect(lastTransferToVotes).to.deep.eq([]);
+      });
+
+      it("should schedule transfers when changing to specific strategy", async () => {
+        await manager
+          .connect(owner)
+          .forceChangeStrategy(depositor.address, specificGroupStrategyAddress);
+
+        const stCeloInSpecificStrategy = await specificGroupStrategyContract.stCeloInGroup(
+          specificGroupStrategyAddress
+        );
+        const stCeloInFirstDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+          groupAddresses[0]
+        );
+        const stCeloInSecondDefaultGroup = await defaultStrategyContract.stCeloInGroup(
+          groupAddresses[1]
+        );
+
+        expect(stCeloInSpecificStrategy).to.deep.eq(defaultGroupDeposit);
+        expect(stCeloInFirstDefaultGroup).to.deep.eq(parseUnits("0"));
+        expect(stCeloInSecondDefaultGroup).to.deep.eq(parseUnits("0"));
+      });
+    });
+  });
+
   describe("#getExpectedAndActualCeloForGroup()", () => {
     describe("When strategy is blocked", () => {
       const withdrawals = [50, 50];
