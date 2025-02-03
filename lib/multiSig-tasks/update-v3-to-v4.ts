@@ -9,21 +9,21 @@ import {
 import {
   ACCOUNT,
   ACCOUNT_DESCRIPTION,
-  MULTISIG_UPDATE_V2_V3_DESCRIPTION,
+  MULTISIG_UPDATE_V3_V4_DESCRIPTION,
 } from "../helpers/staticVariables";
 import { taskLogger } from "../logger";
 import {
   MULTISIG_ENCODE_PROPOSAL_PAYLOAD,
   MULTISIG_SUBMIT_PROPOSAL,
-  MULTISIG_UPDATE_V2_V3,
+  MULTISIG_UPDATE_V3_V4,
 } from "../tasksNames";
 
-task(MULTISIG_UPDATE_V2_V3, MULTISIG_UPDATE_V2_V3_DESCRIPTION)
+task(MULTISIG_UPDATE_V3_V4, MULTISIG_UPDATE_V3_V4_DESCRIPTION)
   .addOptionalParam(ACCOUNT, ACCOUNT_DESCRIPTION, undefined, types.string)
   .setAction(async (args: TransactionArguments, hre) => {
     try {
       taskLogger.setLogLevel("info");
-      taskLogger.info(`${MULTISIG_UPDATE_V2_V3} task...`);
+      taskLogger.info(`${MULTISIG_UPDATE_V3_V4} task...`);
       await setLocalNodeDeploymentPath(hre);
       const destinations: string[] = [];
       const values: number[] = [];
@@ -35,6 +35,7 @@ task(MULTISIG_UPDATE_V2_V3, MULTISIG_UPDATE_V2_V3_DESCRIPTION)
       await generateContractUpdate(hre, "SpecificGroupStrategy", destinations, values, payloads);
       await generateContractUpdate(hre, "DefaultStrategy", destinations, values, payloads);
       await generateContractUpdate(hre, "Account", destinations, values, payloads);
+      await generateContractUpdate(hre, "Vote", destinations, values, payloads);
 
       taskLogger.info("--destinations", destinations.join(","));
       taskLogger.info("--values", values.join(","));
