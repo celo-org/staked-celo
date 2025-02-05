@@ -16,6 +16,7 @@ export const MULTISIG_IS_CONFIRMED_BY = "stakedCelo:multiSig:isConfirmedBy";
 export const MULTISIG_ENCODE_PROPOSAL_PAYLOAD = "stakedCelo:multiSig:encode:proposal:payload";
 export const MULTISIG_UPDATE_V1_V2 = "stakedCelo:multiSig:update:v1:v2";
 export const MULTISIG_UPDATE_V2_V3 = "stakedCelo:multiSig:update:v2:v3";
+export const MULTISIG_UPDATE_V3_V4 = "stakedCelo:multiSig:update:v3:v4";
 export const MULTISIG_ENCODE_SET_MANAGER_DEPENDENCIES =
   "stakedCelo:multisig:encode:managerSetDependencies";
 
