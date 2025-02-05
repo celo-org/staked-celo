@@ -35,7 +35,6 @@ task(MULTISIG_UPDATE_V3_V4, MULTISIG_UPDATE_V3_V4_DESCRIPTION)
       await generateContractUpdate(hre, "SpecificGroupStrategy", destinations, values, payloads);
       await generateContractUpdate(hre, "DefaultStrategy", destinations, values, payloads);
       await generateContractUpdate(hre, "Account", destinations, values, payloads);
-      await generateContractUpdate(hre, "Vote", destinations, values, payloads);
 
       taskLogger.info("--destinations", destinations.join(","));
       taskLogger.info("--values", values.join(","));
