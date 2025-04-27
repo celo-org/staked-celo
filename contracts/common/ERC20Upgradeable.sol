@@ -3,10 +3,10 @@
 
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/openzeppelin-contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 // Only change is in that _balances have internal modifier instead of private modifier
 
