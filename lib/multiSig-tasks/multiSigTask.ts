@@ -16,3 +16,4 @@ import "./encode-proposal-payload";
 import "./encodeProposalSetDependencies";
 import "./update-v1-to-v2";
 import "./update-v2-to-v3";
+import "./update-v3-to-v4";
