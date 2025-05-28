@@ -433,12 +433,12 @@ describe("e2e specific group strategy voting", () => {
       specificGroupStrategyContract
     );
     const expectedVsReal = await getRealVsExpectedCeloForGroups(managerContract, allGroups);
-    const expectedSum = hre.ethers.BigNumber.from(0);
-    const realSum = hre.ethers.BigNumber.from(0);
+    let expectedSum = hre.ethers.BigNumber.from(0);
+    let realSum = hre.ethers.BigNumber.from(0);
     for (const group of expectedVsReal) {
-      expectedSum.add(group.expected);
-      realSum.add(group.real);
+      expectedSum = expectedSum.add(group.expected);
+      realSum = realSum.add(group.real);
     }
-    expect(expectedSum).to.deep.eq(realSum);
+    expectBigNumberInRange(realSum, expectedSum);
   }
 });

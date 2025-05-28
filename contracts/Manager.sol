@@ -366,14 +366,18 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             revert GroupNotEligible(newStrategy);
         }
 
-        uint256 stCeloAmount = stakedCelo.balanceOf(msg.sender) +
-            stakedCelo.lockedVoteBalanceOf(msg.sender);
-        if (stCeloAmount != 0) {
-            _transfer(strategies[msg.sender], newStrategy, stCeloAmount);
-        }
+        _changeStrategy(msg.sender, newStrategy);
+    }
 
-        strategies[msg.sender] = newStrategy;
-        emit StrategyChanged(newStrategy);
+    /**
+     * @notice Allows owner to change strategy for account.
+     * address(0) = default strategy
+     * !address(0) = voting for validator group.
+     * @param _account The account to change strategy for.
+     * @param newStrategy The new strategy.
+     */
+    function forceChangeStrategy(address _account, address newStrategy) public onlyOwner {
+        _changeStrategy(_account, newStrategy);
     }
 
     /**
@@ -635,6 +639,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         } else {
             (finalGroups, finalVotes) = defaultStrategy.generateDepositVoteDistribution(
                 votes,
+                stCeloAmount,
                 address(0)
             );
         }
@@ -729,6 +734,24 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         toVotes[0] = fromVotes[0];
 
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+    }
+
+    /**
+     * @notice Allows strategy to change strategy for account.
+     * address(0) = default strategy
+     * !address(0) = voting for validator group.
+     * @param _account The account to change strategy for.
+     * @param newStrategy The new strategy.
+     */
+    function _changeStrategy(address _account, address newStrategy) private {
+        uint256 stCeloAmount = stakedCelo.balanceOf(_account) +
+            stakedCelo.lockedVoteBalanceOf(_account);
+        if (stCeloAmount != 0) {
+            _transfer(strategies[_account], newStrategy, stCeloAmount);
+        }
+
+        strategies[_account] = newStrategy;
+        emit StrategyChanged(newStrategy);
     }
 
     /**
