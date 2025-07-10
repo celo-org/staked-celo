@@ -12,7 +12,7 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
-import validatorsContractData from "./code/abi/validatorsAbi.json";
+import { validatorsABI } from "@celo/abis";
 import {
   ADDRESS_ZERO,
   DAY,
@@ -132,7 +132,7 @@ export async function registerValidatorAndOnlyAffiliateToGroupL2(
 
   const validators = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validatorsContractData.abi as any,
+    validatorsABI as any,
     validatorsOld.address
   );
 

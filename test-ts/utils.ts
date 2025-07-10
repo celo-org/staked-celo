@@ -23,10 +23,7 @@ import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
-import epochMangerContractData from "./code/abi/epochMangerAbi.json";
-import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
-import validatorsContractData from "./code/abi/validatorsAbi.json";
+import { electionABI, epochManagerABI, scoreManagerABI, validatorsABI } from "@celo/abis";
 import { ExpectVsReal, OrderedGroup, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -204,14 +201,14 @@ export async function getValidatorGroupsL2() {
   const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
   const epochManagerContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    epochMangerContractData.abi as any,
+    epochManagerABI as any,
     epochManagerAddress
   );
 
   const validatorsWrapper = await hre.kit.contracts.getValidators();
   const validatorsContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validatorsContractData.abi as any,
+    validatorsABI as any,
     validatorsWrapper.address
   );
 
@@ -234,7 +231,7 @@ export async function mineToNextEpochL2(validators?: string[]) {
   const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
   const epochManagerContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    epochMangerContractData.abi as any,
+    epochManagerABI as any,
     epochManagerAddress
   );
 
@@ -271,19 +268,19 @@ async function getLessersAndGreaters(groups: string[]) {
   const electionWrapper = await hre.kit.contracts.getElection();
   const electionContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    electionContractData.abi as any,
+    electionABI as any,
     electionWrapper.address
   );
 
   const epochMangerContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    epochMangerContractData.abi as any,
+    epochManagerABI as any,
     epochManagerAddress
   );
 
   const scoreMangerContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    scoreManagerContractData.abi as any,
+    scoreManagerABI as any,
     scoreMangerAddress
   );
 
@@ -681,7 +678,7 @@ export async function updateMaxNumberOfGroups(
   // TODO: once contractkit updated - use just election contract from contractkit
   const electionContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    electionContractData.abi as any,
+    electionABI as any,
     election.address
   );
   const setAllowedToVoteOverMaxNumberOfGroupsTxObject =

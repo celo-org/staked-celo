@@ -3,9 +3,7 @@ import { BigNumber } from "bignumber.js";
 import hre from "hardhat";
 import { JsonRpcResponse } from "hardhat/types";
 import Web3 from "web3";
-import electionContractData from "./code/abi/electionAbi.json";
-import epochMangerContractData from "./code/abi/epochMangerAbi.json";
-import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
+import { electionABI, epochManagerABI, scoreManagerABI } from "@celo/abis";
 import { ValidatorGroupVote } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -183,7 +181,7 @@ const getEpochProcessingStatus = async () => {
   const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
   const epochMangerContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    epochMangerContractData.abi as any,
+    epochManagerABI as any,
     epochManagerAddress
   );
   const state = await epochMangerContract.methods.getEpochProcessingState().call();
@@ -195,13 +193,13 @@ export const getLessersAndGreaters = async (groups: string[]) => {
   const scoreMangerAddress = await hre.kit.registry.addressFor("ScoreManager" as any);
   const scoreManager = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    scoreManagerContractData.abi as any,
+    scoreManagerABI as any,
     scoreMangerAddress
   );
   const election = await hre.kit.contracts.getElection();
   const electionContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    electionContractData.abi as any,
+    electionABI as any,
     election.address
   );
 
