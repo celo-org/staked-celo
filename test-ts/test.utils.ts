@@ -1,9 +1,9 @@
+import { electionABI, epochManagerABI, scoreManagerABI } from "@celo/abis";
 import { Anvil, createAnvil, CreateAnvilOptions } from "@viem/anvil";
 import { BigNumber } from "bignumber.js";
 import hre from "hardhat";
 import { JsonRpcResponse } from "hardhat/types";
 import Web3 from "web3";
-import { electionABI, epochManagerABI, scoreManagerABI } from "@celo/abis";
 import { ValidatorGroupVote } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";

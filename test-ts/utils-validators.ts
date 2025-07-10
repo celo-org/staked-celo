@@ -1,3 +1,4 @@
+import { validatorsABI } from "@celo/abis";
 import { CeloTxReceipt } from "@celo/connect";
 import { stringToSolidityBytes } from "@celo/contractkit/lib/wrappers/BaseWrapper";
 import { ValidatorsWrapper } from "@celo/contractkit/lib/wrappers/Validators";
@@ -12,7 +13,6 @@ import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { MockLockedGold } from "../typechain-types/MockLockedGold";
 import { MockRegistry } from "../typechain-types/MockRegistry";
 import { MockValidators } from "../typechain-types/MockValidators";
-import { validatorsABI } from "@celo/abis";
 import {
   ADDRESS_ZERO,
   DAY,

@@ -1,3 +1,4 @@
+import { electionABI, epochManagerABI, scoreManagerABI, validatorsABI } from "@celo/abis";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -23,7 +24,6 @@ import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import { electionABI, epochManagerABI, scoreManagerABI, validatorsABI } from "@celo/abis";
 import { ExpectVsReal, OrderedGroup, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
