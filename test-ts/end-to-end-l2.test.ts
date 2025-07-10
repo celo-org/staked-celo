@@ -76,8 +76,8 @@ testWithAnvilL2("e2e [L2]", async () => {
       [groups, validatorAddresses] = await getValidatorGroupsL2();
       activatedGroupAddresses = groups;
 
-      setBalanceAnvil(depositor0.address, parseUnits("300"));
-      setBalanceAnvil(depositor1.address, parseUnits("300"));
+      await setBalanceAnvil(depositor0.address, parseUnits("300"));
+      await setBalanceAnvil(depositor1.address, parseUnits("300"));
     });
 
     beforeEach(async () => {
