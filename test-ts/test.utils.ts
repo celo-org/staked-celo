@@ -2,7 +2,13 @@ import { Anvil, createAnvil, CreateAnvilOptions } from "@viem/anvil";
 import hre from "hardhat";
 import { JsonRpcResponse } from "hardhat/types";
 import Web3 from "web3";
+import { BigNumber } from "bignumber.js";
+import { ValidatorGroupVote } from "./utils-interfaces";
+import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
+import epochMangerContractData from "./code/abi/epochMangerAbi.json";
+import electionContractData from "./code/abi/electionAbi.json";
 
+export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const MINUTE = 60;
 export const HOUR = 60 * 60;
 export const DAY = 24 * HOUR;
@@ -141,6 +147,7 @@ function createInstance(stateFilePath: string): Anvil {
     codeSizeLimit: CODE_SIZE_LIMIT,
     blockBaseFeePerGas: 0,
     stopTimeout: 1000,
+    silent: false,
   };
   console.log("stateFilePath", stateFilePath);
   console.log("options", options);
@@ -175,3 +182,84 @@ function testWithAnvil(stateFilePath: string, name: string, fn: (web3: Web3) => 
 export function testWithAnvilL2(name: string, fn: (web3: Web3) => void) {
   return testWithAnvil(require.resolve("@celo/devchain-anvil/l2-devchain.json"), name, fn);
 }
+
+const getEpochProcessingStatus = async () => {
+  const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
+  const epochMangerContract = new hre.kit.web3.eth.Contract(
+    epochMangerContractData.abi as any,
+    epochManagerAddress
+  );
+  const state = await epochMangerContract.methods.getEpochProcessingState().call();
+  return { totalRewardsVoter: state[2] };
+};
+
+export const getLessersAndGreaters = async (groups: string[]) => {
+    const scoreMangerAddress = await hre.kit.registry.addressFor("ScoreManager" as any);
+    const scoreManager = new hre.kit.web3.eth.Contract(
+      scoreManagerContractData.abi as any,
+      scoreMangerAddress
+    );
+    const election = await hre.kit.contracts.getElection();
+    const electionContract = new hre.kit.web3.eth.Contract(
+      electionContractData.abi as any,
+      election.address
+    );
+
+    const processingStatusPromise = getEpochProcessingStatus()
+    const groupWithVotesPromise = election.getEligibleValidatorGroupsVotes()
+
+    const lessers: string[] = new Array(groups.length)
+    const greaters: string[] = new Array(groups.length)
+    const rewards = await Promise.all(
+      groups.map(async (group) => {
+        const groupScore = await scoreManager.methods.getGroupScore(group).call();
+        const status = await processingStatusPromise;
+        const reward = await electionContract.methods
+          .getGroupEpochRewards(group, status.totalRewardsVoter, groupScore)
+          .call();
+        return new BigNumber(reward);
+      })
+    );
+
+    const groupWithVotes: ValidatorGroupVote[] = await groupWithVotesPromise
+    const groupWithVotesMap = new Map<string, ValidatorGroupVote>(
+      groupWithVotes.map((group) => [group.address, group])
+    )
+
+    const missingGroups = groups.filter((group) => !groupWithVotesMap.has(group))
+
+    const missingGroupsLoaded = await Promise.all(
+      missingGroups.map(async (group) => {
+        const votes = await election.getTotalVotesForGroup(group)
+        return { group, votes }
+      })
+    )
+
+    for (const group of missingGroupsLoaded) {
+      groupWithVotes.push({ address: group.group, votes: group.votes } as ValidatorGroupVote)
+    }
+
+    for (let i = 0; i < groups.length; i++) {
+      const reward = rewards[i]
+
+      for (let j = 0; j < groupWithVotes.length; j++) {
+        if (groupWithVotes[j].address === groups[i]) {
+          groupWithVotes[j].votes = groupWithVotes[j].votes.plus(reward)
+          break
+        }
+      }
+
+      groupWithVotes.sort((a, b) => (b.votes.gt(a.votes) ? 1 : b.votes.lt(a.votes) ? -1 : 0))
+
+      for (let j = 0; j < groupWithVotes.length; j++) {
+        if (groupWithVotes[j].address === groups[i]) {
+          greaters[i] = j === 0 ? ADDRESS_ZERO : groupWithVotes[j - 1].address
+          lessers[i] =
+            j === groupWithVotes.length - 1 ? ADDRESS_ZERO : groupWithVotes[j + 1].address
+          break
+        }
+      }
+    }
+
+    return [lessers, greaters]
+  }
