@@ -9,11 +9,6 @@ import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
 import { ValidatorGroupVote } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
-export const MINUTE = 60;
-export const HOUR = 60 * 60;
-export const DAY = 24 * HOUR;
-export const MONTH = 30 * DAY;
-export const UNLOCKING_PERIOD = 3 * DAY;
 
 export const TEST_MNEMONIC = "test test test test test test test test test test test junk";
 export const TEST_BALANCE = 1000000;
