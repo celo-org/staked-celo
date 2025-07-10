@@ -113,7 +113,6 @@ export async function registerValidatorAndOnlyAffiliateToGroupL2(
   validator: SignerWithAddress,
   validatorWallet: Wallet
 ) {
-  console.log("registerValidatorAndOnlyAffiliateToGroupL2");
   const accounts = await kit.contracts.getAccounts();
 
   await accounts.createAccount().sendAndWaitForReceipt({

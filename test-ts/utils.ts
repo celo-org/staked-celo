@@ -225,7 +225,6 @@ export async function getValidatorGroupsL2() {
 }
 
 export async function mineToNextEpochL2(validators?: string[]) {
-  console.log("distributeEpochRewardsL2");
   const defaultAnvilAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
