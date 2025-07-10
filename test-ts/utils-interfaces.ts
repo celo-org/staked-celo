@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-unused-vars */
-import { BaseContract, BigNumber as EthersBigNumber, ContractTransaction, Overrides } from "ethers";
 import BigNumber from "bignumber.js";
+import { BaseContract, BigNumber as EthersBigNumber, ContractTransaction, Overrides } from "ethers";
 
 export interface ValidatorGroupVote {
   address: string;

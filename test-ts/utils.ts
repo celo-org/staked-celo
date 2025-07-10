@@ -237,13 +237,6 @@ export async function mineToNextEpochL2(validators?: string[]) {
     epochMangerContractData.abi as any,
     epochManagerAddress
   );
-  const electedAccounts: [] = await epochManagerContract.methods.getElectedAccounts().call();
-  const validatorsWrapper = await hre.kit.contracts.getValidators();
-  const validatorsContract = new hre.kit.web3.eth.Contract(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validatorsContractData.abi as any,
-    validatorsWrapper.address
-  );
 
   let groups = [];
   [groups] = await getValidatorGroupsL2();
@@ -256,10 +249,10 @@ export async function mineToNextEpochL2(validators?: string[]) {
 
   const [lessers, greaters] = await getLessersAndGreaters(groups);
 
-   await epochManagerContract.methods.finishNextEpochProcess(groups, lessers, greaters).send({
-      from: defaultAnvilAddress,
-    });
-  
+  await epochManagerContract.methods.finishNextEpochProcess(groups, lessers, greaters).send({
+    from: defaultAnvilAddress,
+  });
+
   if (validators == null) {
     return;
   }
@@ -304,11 +297,9 @@ async function getLessersAndGreaters(groups: string[]) {
   const rewards = await Promise.all(
     groups.map(async (group) => {
       const groupScore = await scoreMangerContract.methods.getGroupScore(group).call();
-      return await electionContract.methods.getGroupEpochRewardsBasedOnScore(
-        group,
-        totalRewardsVoter,
-        groupScore
-      ).call();
+      return await electionContract.methods
+        .getGroupEpochRewardsBasedOnScore(group, totalRewardsVoter, groupScore)
+        .call();
     })
   );
   const groupWithVotes = await groupWithVotesPromise;

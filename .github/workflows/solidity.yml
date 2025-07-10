@@ -70,7 +70,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 'nightly-fa0e0c2ca3ae75895dd19173a02faf88509c0608'
+          version: '1.2.3-stable'
 
       - name: Test Anvil L2
         run: yarn test:anvil

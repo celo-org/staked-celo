@@ -51,7 +51,6 @@ testWithAnvilL2("e2e [L2]", async () => {
 
     // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-explicit-any
     before(async function (this: any) {
-      this.timeout(0); // Disable test timeout
       this.timeout(100000);
 
       process.env = {

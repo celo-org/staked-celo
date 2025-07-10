@@ -1,12 +1,12 @@
 import { Anvil, createAnvil, CreateAnvilOptions } from "@viem/anvil";
+import { BigNumber } from "bignumber.js";
 import hre from "hardhat";
 import { JsonRpcResponse } from "hardhat/types";
 import Web3 from "web3";
-import { BigNumber } from "bignumber.js";
-import { ValidatorGroupVote } from "./utils-interfaces";
-import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
-import epochMangerContractData from "./code/abi/epochMangerAbi.json";
 import electionContractData from "./code/abi/electionAbi.json";
+import epochMangerContractData from "./code/abi/epochMangerAbi.json";
+import scoreManagerContractData from "./code/abi/scoreManagerAbi.json";
+import { ValidatorGroupVote } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
 export const MINUTE = 60;
@@ -184,8 +184,10 @@ export function testWithAnvilL2(name: string, fn: (web3: Web3) => void) {
 }
 
 const getEpochProcessingStatus = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
   const epochMangerContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     epochMangerContractData.abi as any,
     epochManagerAddress
   );
@@ -194,72 +196,74 @@ const getEpochProcessingStatus = async () => {
 };
 
 export const getLessersAndGreaters = async (groups: string[]) => {
-    const scoreMangerAddress = await hre.kit.registry.addressFor("ScoreManager" as any);
-    const scoreManager = new hre.kit.web3.eth.Contract(
-      scoreManagerContractData.abi as any,
-      scoreMangerAddress
-    );
-    const election = await hre.kit.contracts.getElection();
-    const electionContract = new hre.kit.web3.eth.Contract(
-      electionContractData.abi as any,
-      election.address
-    );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scoreMangerAddress = await hre.kit.registry.addressFor("ScoreManager" as any);
+  const scoreManager = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    scoreManagerContractData.abi as any,
+    scoreMangerAddress
+  );
+  const election = await hre.kit.contracts.getElection();
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionContractData.abi as any,
+    election.address
+  );
 
-    const processingStatusPromise = getEpochProcessingStatus()
-    const groupWithVotesPromise = election.getEligibleValidatorGroupsVotes()
+  const processingStatusPromise = getEpochProcessingStatus();
+  const groupWithVotesPromise = election.getEligibleValidatorGroupsVotes();
 
-    const lessers: string[] = new Array(groups.length)
-    const greaters: string[] = new Array(groups.length)
-    const rewards = await Promise.all(
-      groups.map(async (group) => {
-        const groupScore = await scoreManager.methods.getGroupScore(group).call();
-        const status = await processingStatusPromise;
-        const reward = await electionContract.methods
-          .getGroupEpochRewards(group, status.totalRewardsVoter, groupScore)
-          .call();
-        return new BigNumber(reward);
-      })
-    );
+  const lessers: string[] = new Array(groups.length);
+  const greaters: string[] = new Array(groups.length);
+  const rewards = await Promise.all(
+    groups.map(async (group) => {
+      const groupScore = await scoreManager.methods.getGroupScore(group).call();
+      const status = await processingStatusPromise;
+      const reward = await electionContract.methods
+        .getGroupEpochRewards(group, status.totalRewardsVoter, groupScore)
+        .call();
+      return new BigNumber(reward);
+    })
+  );
 
-    const groupWithVotes: ValidatorGroupVote[] = await groupWithVotesPromise
-    const groupWithVotesMap = new Map<string, ValidatorGroupVote>(
-      groupWithVotes.map((group) => [group.address, group])
-    )
+  const groupWithVotes: ValidatorGroupVote[] = await groupWithVotesPromise;
+  const groupWithVotesMap = new Map<string, ValidatorGroupVote>(
+    groupWithVotes.map((group) => [group.address, group])
+  );
 
-    const missingGroups = groups.filter((group) => !groupWithVotesMap.has(group))
+  const missingGroups = groups.filter((group) => !groupWithVotesMap.has(group));
 
-    const missingGroupsLoaded = await Promise.all(
-      missingGroups.map(async (group) => {
-        const votes = await election.getTotalVotesForGroup(group)
-        return { group, votes }
-      })
-    )
+  const missingGroupsLoaded = await Promise.all(
+    missingGroups.map(async (group) => {
+      const votes = await election.getTotalVotesForGroup(group);
+      return { group, votes };
+    })
+  );
 
-    for (const group of missingGroupsLoaded) {
-      groupWithVotes.push({ address: group.group, votes: group.votes } as ValidatorGroupVote)
-    }
-
-    for (let i = 0; i < groups.length; i++) {
-      const reward = rewards[i]
-
-      for (let j = 0; j < groupWithVotes.length; j++) {
-        if (groupWithVotes[j].address === groups[i]) {
-          groupWithVotes[j].votes = groupWithVotes[j].votes.plus(reward)
-          break
-        }
-      }
-
-      groupWithVotes.sort((a, b) => (b.votes.gt(a.votes) ? 1 : b.votes.lt(a.votes) ? -1 : 0))
-
-      for (let j = 0; j < groupWithVotes.length; j++) {
-        if (groupWithVotes[j].address === groups[i]) {
-          greaters[i] = j === 0 ? ADDRESS_ZERO : groupWithVotes[j - 1].address
-          lessers[i] =
-            j === groupWithVotes.length - 1 ? ADDRESS_ZERO : groupWithVotes[j + 1].address
-          break
-        }
-      }
-    }
-
-    return [lessers, greaters]
+  for (const group of missingGroupsLoaded) {
+    groupWithVotes.push({ address: group.group, votes: group.votes } as ValidatorGroupVote);
   }
+
+  for (let i = 0; i < groups.length; i++) {
+    const reward = rewards[i];
+
+    for (let j = 0; j < groupWithVotes.length; j++) {
+      if (groupWithVotes[j].address === groups[i]) {
+        groupWithVotes[j].votes = groupWithVotes[j].votes.plus(reward);
+        break;
+      }
+    }
+
+    groupWithVotes.sort((a, b) => (b.votes.gt(a.votes) ? 1 : b.votes.lt(a.votes) ? -1 : 0));
+
+    for (let j = 0; j < groupWithVotes.length; j++) {
+      if (groupWithVotes[j].address === groups[i]) {
+        greaters[i] = j === 0 ? ADDRESS_ZERO : groupWithVotes[j - 1].address;
+        lessers[i] = j === groupWithVotes.length - 1 ? ADDRESS_ZERO : groupWithVotes[j + 1].address;
+        break;
+      }
+    }
+  }
+
+  return [lessers, greaters];
+};
