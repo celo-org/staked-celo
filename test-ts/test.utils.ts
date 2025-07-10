@@ -213,7 +213,7 @@ export const getLessersAndGreaters = async (groups: string[]) => {
       const groupScore = await scoreManager.methods.getGroupScore(group).call();
       const status = await processingStatusPromise;
       const reward = await electionContract.methods
-        .getGroupEpochRewards(group, status.totalRewardsVoter, groupScore)
+        .getGroupEpochRewardsBasedOnScore(group, status.totalRewardsVoter, groupScore)
         .call();
       return new BigNumber(reward);
     })
