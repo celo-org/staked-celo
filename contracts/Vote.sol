@@ -454,7 +454,8 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
      * @param beneficiary The account.
      */
     function getVoteWeight(address beneficiary) public view returns (uint256) {
-        uint256 stakedCeloBalance = stakedCelo.balanceOf(beneficiary);
+        uint256 stakedCeloBalance = stakedCelo.balanceOf(beneficiary) +
+            stakedCelo.lockedVoteBalanceOf(beneficiary);
         return toCelo(stakedCeloBalance);
     }
 
