@@ -698,7 +698,13 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     }
 
     /**
-     * @notice Updates accounting of CELO between strategies.
+     * @notice Updates accounting of CELO between strategies without scheduling transfers.
+     * @dev This function intentionally does NOT schedule transfers on-chain. Instead, it only
+     * updates internal accounting (via distributeWithdrawals and distributeVotes). The actual
+     * vote transfers are scheduled later via the rebalance() function, which is called
+     * periodically by the StakedCelo bot. This design batches multiple strategy changes into
+     * fewer on-chain transactions, reducing gas costs and operational complexity.
+     *
      * @param fromStrategy The from validator group.
      * @param toStrategy The to validator group.
      * @param stCeloAmount The stCELO amount.
