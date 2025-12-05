@@ -10,7 +10,6 @@ Users can deposit CELO to the Staked Celo smart contract and receive stCELO toke
 To run tests first fire up a terminal and start the `devchain`, this will need to be run only once and you should keep it running.  
 
 ```bash
-
 nvm use 18
 yarn devchain
 ```
@@ -30,87 +29,98 @@ yarn lint
 ```
 
 ## Test debugging
+
 For visualizing and debugging tests in VS code install following two extensions:
 
 [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
 
 [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter)
 
-
 ## Deploying to remote networks
-Requirement: `gcloud` must be set up and user account must have access staked-celo-alfajores and staked-celo-staging on GCP. 
+
+Requirement: `gcloud` must be set up and user account must have access staked-celo-alfajores and staked-celo-staging on GCP.
 Next, ensure the environment variables have been decrypted, using `yarn keys:decrypt`.
 Then use the following commands to deploy depending on the desired target environment.
-For example, the below command will deploy to the Alfajores network, using the decrypted private key, the default Alfajores rpc url and the other variables in `.env.alfajores`. 
+For example, the below command will deploy to the Alfajores network, using the decrypted private key, the default Alfajores rpc url and the other variables in `.env.alfajores`.
 
-Alfajores : 
-```
+Alfajores:
+
+```bash
 yarn deploy --network alfajores
 ```
 
 You may immediately verify the deployment, with the following commands.
 
-Alfajores : 
-```
+Alfajores :
+
+```bash
 yarn verify:deploy --network alfajores
 ```
 
 ## Verify on CeloScan
+
 1. Get CeloScan api key
-1. Update api key in hardhat.config.ts (etherscan.apiKey)
-1. Get constructor arguments of deployed smart contract
-  * Find contract in `deployments/[network]` (example deployments/celo/MultiSig_Proxy.json)
-  * In root level there are constructur arguments in `args`
+2. Update api key in hardhat.config.ts (etherscan.apiKey)
+3. Get constructor arguments of deployed smart contract
+    * Find contract in `deployments/[network]` (example deployments/celo/MultiSig_Proxy.json)
+    * In root level there are constructur arguments in `args`
 4. Save constructor arguments into js file
-```
-module.exports = [
-    "0xb78AB3f89C97C0291B747C3Ba8814b5AA47AEcF1",
-    "4814d6b8a8394fe8b363a892b6618b21",
-  ];
-```
+
+    ```bash
+    module.exports = [
+        "0xb78AB3f89C97C0291B747C3Ba8814b5AA47AEcF1",
+        "4814d6b8a8394fe8b363a892b6618b21",
+      ];
+    ```
+
 5. Verify smart contract
-```
+
+```bash
 yarn hardhat verify --network [network] --constructor-args [path_to_js_file] [contract_address]
 ```
+
 example
-```
+
+```bash
 yarn hardhat verify --network celo --constructor-args arguments.js 0x78daa21fce4d30e74ff745da3204764a0ad40179
 ```
 
 ## Deploying to local CELO node
+
 You may desire to deploy using an unlocked account in a private node. In that case, you can use the following commands :
 
-```
+```bash
 yarn hardhat [GLOBAL OPTIONS] stakedCelo:deploy --from <STRING> --tags <STRING> --url <STRING> [--use-private-key]
 ```
 
 example
-```
+
+```bash
 yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags core  --url "http://localhost:8545" --from "0xff2694d968246F27093D095D8160E005D5f31e5f" --use-private-key
 ```
- 
+
 Run `yarn hardhat help stakedCelo:deploy` for more information.
 
-### Steps to Run a light node:
+### Steps to Run a light node
 
 Step 1: Create and fund an account.
 In your terminal, run the below command
 
-```
+```bash
 export ALFAJORES_CELO_IMAGE=us.gcr.io/celo-org/geth:alfajores
 ```
 
 Then create a directory called `celo-data-dir` , cd into it and run the below command:
 
-```
+``` bash
 docker run -v $PWD:/root/.celo --rm -it $ALFAJORES_CELO_IMAGE account new
 ```
 
 Choose a passphrase or hit enter twice to choose an empty phrase. Once done, it should output the address of the newly created account. Copy this address and export it to your shell as `$CELO_ACCOUNT_ADDRESS`.
 
-i.e 
+i.e
 
-```
+```bash
 export CELO_ACCOUNT_ADDRESS=<YOUR-ACCOUNT-ADDRESS>
 ```
 
@@ -118,9 +128,10 @@ Step 2: Run the light node.
 
 From within the `celo-data-dir` created above, run:
 
-```
+```bash
 docker run --name celo-node -it -v $(pwd):/root/.celo -p 8545:8545 $ALFAJORES_CELO_IMAGE --syncmode lightest --rpc --rpcaddr 0.0.0.0 --rpcapi personal,eth,net --unlock $CELO_ACCOUNT_ADDRESS --allow-insecure-unlock --alfajores --datadir /root/.celo
 ```
+
 Observe the command line output for the prompt to specify the passphrase chosen in step 1. Enter your passphrase and hit enter to continue, if everything goes well, you should observe the node running and mining blocks successfully.
 
 Now if you point any network URL to `:8545`, it should route RPC calls to your port-forwarded light node, using the unlocked account you created in step 1 to sign transactions.
@@ -134,9 +145,9 @@ If you are signing a transaction, make sure to pass the `--account` flag with th
 Examples:
 
 ```bash
-$ yarn run hardhat stakedCelo:multiSig:submitProposal --help
+yarn run hardhat stakedCelo:multiSig:submitProposal --help
 
-$ yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --account '<YOUR_ACCOUNT_ADDRESS>'
+yarn run hardhat --network local stakedCelo:multiSig:submitProposal --destinations '0xFC88f1406af22D522A74E922E8AaB170D723a665' --values '0' --payloads '0x7065cb480000000000000000000000006ecbe1db9ef729cbe972c83fb886247691fb6beb' --account '<YOUR_ACCOUNT_ADDRESS>'
 ```
 
 ### Signing transactions with Ledger wallet
@@ -239,7 +250,6 @@ Withdrawal flow:
    withdrawal that was created in the previous step. This will finalize the
    LockedGold withdrawal and return the remaining CELO to the user.
 
-
 ## Updating Devchain Chain Data with Staked CELO Contracts
 
 This section will walk you through how to generate a new devchain tarball containing deployed staked CELO contracts.
@@ -258,7 +268,7 @@ In a separate terminal, deploy all staked CELO contracts to the current local ne
 yarn deploy:devchain
 ```
 
-This will create `deployments/devchain/` directory that contains functions to easily access deployments using hardhat-deploy. 
+This will create `deployments/devchain/` directory that contains functions to easily access deployments using hardhat-deploy.
 
 See [hardhat-deploy](https://github.com/wighawag/hardhat-deploy#migrating-existing-deployment-to-hardhat-deploy) for more details on how to use existing deployments.
 
@@ -266,7 +276,7 @@ Once deployed, devchain can safely be stopped.
 
 ### Generating New Chain Data Tar
 
-Once the contracts are successfully deployed to the network, compress the chain data. 
+Once the contracts are successfully deployed to the network, compress the chain data.
 
 **NB:** This next part assumes that you already have a local copy of [celo-monorepo](https://github.com/celo-org/celo-monorepo) on your machine. If not, follow the instructions on how to get setup [here](https://github.com/celo-org/celo-monorepo/blob/master/SETUP.md).
 
@@ -288,13 +298,13 @@ Once ganache has started, run the test script to ensure all contracts were deplo
 yarn test scripts/test/devchain.test.ts
 ```
 
-## Develop Against Unreleased Staked CELO Contracts.
+## Develop Against Unreleased Staked CELO Contracts
 
 **NB:** The following assumes that you are using [celo-devchain](https://www.npmjs.com/package/@terminal-fi/celo-devchain) & [hardhat-deploy](https://www.npmjs.com/package/hardhat-deploy) packages.
 
 In order to use the tarball containing the staked CELO contracts, you will need to add the external deployments files and configure the hardhat network  in `hardhat.config.ts` accordingly.
 
-``` ts 
+``` ts
 external: {
     deployments: {
       // Specify path to deployment data
@@ -329,79 +339,107 @@ networks: {
     },
   },
 ```
+
 ## Upgrade contract
+
 1. Make your changes to smart contract (eg Manager.sol)
+
 2. Run command
-``` bash
-yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployer address]" --use-private-key
-``` 
-Example
-``` bash
-> yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags proxy --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key
-```
-Since contracts are owned by MultiSig, proxy implementations will be deployed but upgrade itself will not go through (see example below).
 
-Example of change in Manager.sol deployment
+    ``` bash
+    yarn hardhat stakedCelo:deploy  --network [network] --show-stack-traces --tags [tag of deploy script] --from "[deployer address]" --use-private-key
+    ```
 
-``` bash
-reusing "MultiSig_Implementation" at 0xF2549E83Fdb86bebe7e1E2c64FB3a2BB2bBeb333
-deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e4a2b735918b2dd78707db19cd1)...: deployed at 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 with 3825742 gas
-Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually.
-```
+    Example:
 
-From above example we can see that our new implementation address is `0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000`
+    ``` bash
+    > yarn hardhat stakedCelo:deploy  --network alfajores --show-stack-traces --tags proxy --from "0x5bC1C4C1D67C5E4384189302BC653A611568a788" --use-private-key
+    ```
+
+    Since contracts are owned by MultiSig, proxy implementations will be deployed but upgrade itself will not go through (see example below).
+
+    Example of change in Manager.sol deployment
+
+    ``` bash
+    reusing "MultiSig_Implementation" at 0xF2549E83Fdb86bebe7e1E2c64FB3a2BB2bBeb333
+    deploying "Manager_Implementation" (tx: 0xf0e99332761b1c4cf52f2280b14adcf873535e4a2b735918b2dd78707db19cd1)...: deployed at 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 with 3825742 gas
+    Transaction was reverted since caller is not an owner. Please make sure to update the proxy implementation manually.
+    ```
+
+    From above example we can see that our new implementation address is `0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000`
 
 3. Verify deployed smart contracts (It will verify whatever is in deployments/[network] folder)
-``` bash
-> yarn verify:deploy --network [network]
-```
+
+    ``` bash
+    > yarn verify:deploy --network [network]
+    ```
+
 4. Generate payload for proposal
 
-Please note that this script expects to have particular contract present in deployments/[network] folder
+    Using the script that generates the command needed to submit the `submitProposal` transaction.
 
-``` bash
-> yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract [contract name] --function [function name] --args [arguments separated by ,] --network [network]
+    ``` bash
+    # note that you will need to add the private key of the account you use in the `env.celo` file for this command to work.
 
-# example
-> yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
-```
+    yarn hardhat stakedCelo:multiSig:update:v3:v4 --account [ACCOUNT_ADDRESS] --network [DEPLOYMENT_NETWORK]
+    ```
 
-Please note that args are from step 2
+    This will generate the command you need for step 5.
 
-Example of encoded proposal payload
-``` bash
-encoded payload:
-0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418
-```
+    Alternatively, you could do this process manually, by running the following command for each contracts that needs to be updated.
+
+    **Please note that this script expects to have particular contract present in deployments/[network] folder**
+
+    ``` bash
+    > yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract [contract name] --function [function name] --args [arguments separated by ,] --network [network]
+
+    # example
+    > yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract Manager --function upgradeTo --args 0x1B8Ee2E0A7fC6d880BA86eD7925a473eA7C28000 --network alfajores
+    ```
+
+    Please note that args are from step 2
+
+    Example of encoded proposal payload
+
+    ``` bash
+    encoded payload:
+    0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418
+    ```
 
 5. Submit multisig proposal to change implementation of proxy
-``` bash
-> yarn hardhat stakedCelo:multiSig:submitProposal --destinations [destinations separated by ,] --values [transaction values separated by ,] --payloads [payloads separated by , from previous step] --account [address] --network [network]
 
-# example
-> yarn hardhat stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
-```
+    ``` bash
+    > yarn hardhat stakedCelo:multiSig:submitProposal --destinations [destinations separated by ,] --values [transaction values separated by ,] --payloads [payloads separated by , from previous step] --account [address] --network [network]
 
-Note: `--destinations` is the target proxy contract whose implementation is being upgraded.
+    # example
+    > yarn hardhat stakedCelo:multiSig:submitProposal --destinations 0xf68665Ad492065d7d6f2ea26d180f86A585455Ab --values 0 --payloads 0x3659cfe60000000000000000000000007e71fb21d0b30f5669f8f387d4a1114294f8e418 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788 --network alfajores
+    ```
+
+    Note: `--destinations` is the target proxy contract whose implementation is being upgraded.
 
 6. Execute proposal once it is approved
 
-``` bash
-> yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposal-id [index of proposal] --account [address]
+    ``` bash
+    > yarn hardhat stakedCelo:multiSig:executeProposal --network [network] --proposal-id [index of proposal] --account [address]
 
-# example
-> yarn hardhat stakedCelo:multiSig:executeProposal --network alfajores --proposal-id 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
-```
+    # example
+    > yarn hardhat stakedCelo:multiSig:executeProposal --network alfajores --proposal-id 0 --account 0x5bC1C4C1D67C5E4384189302BC653A611568a788
+    ```
 
 ## Vote deploy when rest of contracts is already deployed
+
 1. Run only deploy scripts related to Vote contract
-``` bash
-> yarn hardhat stakedCelo:deploy --show-stack-traces --network alfajores --tags core
-```
+
+      ``` bash
+      > yarn hardhat stakedCelo:deploy --show-stack-traces --network alfajores --tags core
+      ```
+
 2. Run task to set Vote address in Manager contract
-``` bash
-> yarn hardhat stakedCelo:multisig:encode:managerSetDependencies --network alfajores
-```
+
+    ``` bash
+    > yarn hardhat stakedCelo:multisig:encode:managerSetDependencies --network alfajores
+    ```
+
 3. Insert returned values into submitProposal task (it can be found few lines above)
 
 ## Vote for governance proposal
