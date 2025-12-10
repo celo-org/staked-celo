@@ -714,7 +714,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             uint256
         )
     {
-        return (1, 3, 0, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
