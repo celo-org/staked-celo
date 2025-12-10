@@ -173,13 +173,6 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
     }
 
     /**
-     * @notice Disables renouncing ownership. Ownership should never be renounced.
-     */
-    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
-        revert RenounceOwnershipDisabled();
-    }
-
-    /**
      * Deletes proposalId from voter's history if proposal expired.
      * @param voter The voter address.
      * @param proposalId The proposal id.
@@ -506,6 +499,13 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
         }
 
         return (stCeloAmount * celoBalance) / stCeloSupply;
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

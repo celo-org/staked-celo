@@ -77,13 +77,6 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
     }
 
     /**
-     * @notice Disables renouncing ownership. Ownership should never be renounced.
-     */
-    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
-        revert RenounceOwnershipDisabled();
-    }
-
-    /**
      * @notice Mints new stCELO to an address.
      * @param to The address that will receive the new stCELO.
      * @param amount The amount of stCELO to mint.
@@ -171,6 +164,13 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
      */
     function lockedVoteBalanceOf(address account) public view returns (uint256) {
         return _lockedBalances[account];
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

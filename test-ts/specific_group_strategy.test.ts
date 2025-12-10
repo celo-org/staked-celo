@@ -258,9 +258,9 @@ describe("SpecificGroupStrategy", () => {
     });
 
     it("reverts for any caller", async () => {
-      await expect(specificGroupStrategyContract.connect(nonOwner).renounceOwnership()).revertedWith(
-        "RenounceOwnershipDisabled()"
-      );
+      await expect(
+        specificGroupStrategyContract.connect(nonOwner).renounceOwnership()
+      ).revertedWith("RenounceOwnershipDisabled()");
     });
   });
 
@@ -322,9 +322,10 @@ describe("SpecificGroupStrategy", () => {
       });
 
       it("emits DepositVoteDistributionGenerated event", async () => {
-        await expect(
-          manager.connect(depositor).deposit({ value: parseUnits("1") })
-        ).to.emit(specificGroupStrategyContract, "DepositVoteDistributionGenerated");
+        await expect(manager.connect(depositor).deposit({ value: parseUnits("1") })).to.emit(
+          specificGroupStrategyContract,
+          "DepositVoteDistributionGenerated"
+        );
       });
     });
   });

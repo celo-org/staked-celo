@@ -269,7 +269,9 @@ describe("DefaultStrategy", () => {
       const withdrawFrom = 3;
       const loopLimit = 10;
       await expect(
-        defaultStrategyContract.connect(owner).setSortingParams(distributeTo, withdrawFrom, loopLimit)
+        defaultStrategyContract
+          .connect(owner)
+          .setSortingParams(distributeTo, withdrawFrom, loopLimit)
       )
         .to.emit(defaultStrategyContract, "SortingParamsSet")
         .withArgs(distributeTo, withdrawFrom, loopLimit);
