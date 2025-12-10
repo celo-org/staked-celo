@@ -272,6 +272,33 @@ describe("SpecificGroupStrategy", () => {
           .generateWithdrawalVoteDistribution(nonVote.address, 10, 10, false)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
     });
+
+    describe("when called through manager withdraw with specific strategy", () => {
+      beforeEach(async () => {
+        for (let i = 0; i < 2; i++) {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        }
+        // Set up a specific group strategy and deposit
+        await account.setCeloForGroup(groupAddresses[2], parseUnits("1"));
+        await manager.connect(depositor).changeStrategy(groupAddresses[2]);
+        await manager.connect(depositor).deposit({ value: parseUnits("1") });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
+      });
+
+      it("emits WithdrawalVoteDistributionGenerated event", async () => {
+        await expect(manager.connect(depositor).withdraw(parseUnits("0.5"))).to.emit(
+          specificGroupStrategyContract,
+          "WithdrawalVoteDistributionGenerated"
+        );
+      });
+    });
   });
 
   describe("#generateDepositVoteDistribution()", () => {
@@ -281,6 +308,24 @@ describe("SpecificGroupStrategy", () => {
           .connect(nonManager)
           .generateDepositVoteDistribution(nonVote.address, 10, 10)
       ).revertedWith(`CallerNotManager("${nonManager.address}")`);
+    });
+
+    describe("when called through manager deposit with specific strategy", () => {
+      beforeEach(async () => {
+        for (let i = 0; i < 2; i++) {
+          const [head] = await defaultStrategyContract.getGroupsHead();
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
+        }
+        await account.setCeloForGroup(groupAddresses[2], parseUnits("1"));
+        await manager.connect(depositor).changeStrategy(groupAddresses[2]);
+      });
+
+      it("emits DepositVoteDistributionGenerated event", async () => {
+        await expect(
+          manager.connect(depositor).deposit({ value: parseUnits("1") })
+        ).to.emit(specificGroupStrategyContract, "DepositVoteDistributionGenerated");
+      });
     });
   });
 

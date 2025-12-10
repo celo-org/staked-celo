@@ -792,6 +792,12 @@ describe("DefaultStrategy", () => {
         expect(await defaultStrategyContract.sorted()).to.be.true;
       });
 
+      it("emits Rebalanced event", async () => {
+        await expect(defaultStrategyContract.rebalance(groupAddresses[1], groupAddresses[0]))
+          .to.emit(defaultStrategyContract, "Rebalanced")
+          .withArgs(groupAddresses[1], groupAddresses[0], 17);
+      });
+
       it("should revert when rebalancing from empty group", async () => {
         await expect(
           defaultStrategyContract.rebalance(groupAddresses[0], currentHead)
@@ -1302,6 +1308,24 @@ describe("DefaultStrategy", () => {
           .generateDepositVoteDistribution(10, 10, ADDRESS_ZERO)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
+
+    describe("when called through manager deposit", () => {
+      beforeEach(async () => {
+        let nextGroup = ADDRESS_ZERO;
+        for (let i = 0; i < 3; i++) {
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          nextGroup = groupAddresses[i];
+        }
+      });
+
+      it("emits DepositVoteDistributionGenerated event", async () => {
+        await expect(manager.deposit({ value: 100 })).to.emit(
+          defaultStrategyContract,
+          "DepositVoteDistributionGenerated"
+        );
+      });
+    });
   });
 
   describe("#generateWithdrawalVoteDistribution", () => {
@@ -1309,6 +1333,32 @@ describe("DefaultStrategy", () => {
       await expect(
         defaultStrategyContract.connect(nonManager).generateWithdrawalVoteDistribution(10)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
+    });
+
+    describe("when called through manager withdraw", () => {
+      beforeEach(async () => {
+        let nextGroup = ADDRESS_ZERO;
+        for (let i = 0; i < 3; i++) {
+          await defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[i]);
+          await defaultStrategyContract.activateGroup(groupAddresses[i], ADDRESS_ZERO, nextGroup);
+          nextGroup = groupAddresses[i];
+        }
+        // Deposit first so we have something to withdraw
+        await manager.deposit({ value: 300 });
+        await updateGroupCeloBasedOnProtocolStCelo(
+          defaultStrategyContract,
+          specificGroupStrategyContract,
+          account,
+          manager
+        );
+      });
+
+      it("emits WithdrawalVoteDistributionGenerated event", async () => {
+        await expect(manager.withdraw(100)).to.emit(
+          defaultStrategyContract,
+          "WithdrawalVoteDistributionGenerated"
+        );
+      });
     });
   });
 
@@ -1682,6 +1732,23 @@ describe("DefaultStrategy", () => {
       expect(stCelo).to.eq(50);
       const totalStCelo = await defaultStrategyContract.totalStCeloInStrategy();
       expect(totalStCelo).to.eq(50);
+    });
+
+    it("emits GroupStCeloUpdated event when adding", async () => {
+      await expect(
+        defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 100, true)
+      )
+        .to.emit(defaultStrategyContract, "GroupStCeloUpdated")
+        .withArgs(groupAddresses[0], 100, true);
+    });
+
+    it("emits GroupStCeloUpdated event when subtracting", async () => {
+      await defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 100, true);
+      await expect(
+        defaultStrategyContract.connect(owner).updateGroupStCelo(groupAddresses[0], 50, false)
+      )
+        .to.emit(defaultStrategyContract, "GroupStCeloUpdated")
+        .withArgs(groupAddresses[0], 50, false);
     });
   });
 });

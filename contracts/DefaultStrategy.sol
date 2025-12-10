@@ -176,6 +176,20 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     event Rebalanced(address indexed fromGroup, address indexed toGroup, uint256 stCeloAmount);
 
     /**
+     * @notice Emitted when deposit vote distribution is generated.
+     * @param groups The groups that were chosen for distribution.
+     * @param votes The votes for each group.
+     */
+    event DepositVoteDistributionGenerated(address[] groups, uint256[] votes);
+
+    /**
+     * @notice Emitted when withdrawal vote distribution is generated.
+     * @param groups The groups that were chosen for withdrawal.
+     * @param votes The votes for each group.
+     */
+    event WithdrawalVoteDistributionGenerated(address[] groups, uint256[] votes);
+
+    /**
      * @notice Used when attempting to activate a group that is already active.
      * @param group The group's address.
      */
@@ -359,7 +373,13 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        return _generateDepositVoteDistribution(celoAmount, stCeloAmount, depositGroupToIgnore);
+        (finalGroups, finalVotes) = _generateDepositVoteDistribution(
+            celoAmount,
+            stCeloAmount,
+            depositGroupToIgnore
+        );
+        emit DepositVoteDistributionGenerated(finalGroups, finalVotes);
+        return (finalGroups, finalVotes);
     }
 
     /**
@@ -528,6 +548,8 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             finalGroups[i] = groups[i];
             finalVotes[i] = votes[i];
         }
+
+        emit WithdrawalVoteDistributionGenerated(finalGroups, finalVotes);
     }
 
     /**

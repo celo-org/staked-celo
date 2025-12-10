@@ -134,6 +134,30 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
     event DependenciesSet(address account, address groupHealth, address defaultStrategy);
 
     /**
+     * @notice Emitted when deposit vote distribution is generated.
+     * @param group The specific group for the strategy.
+     * @param groups The groups that were chosen for distribution.
+     * @param votes The votes for each group.
+     */
+    event DepositVoteDistributionGenerated(
+        address indexed group,
+        address[] groups,
+        uint256[] votes
+    );
+
+    /**
+     * @notice Emitted when withdrawal vote distribution is generated.
+     * @param group The specific group for the strategy.
+     * @param groups The groups that were chosen for withdrawal.
+     * @param votes The votes for each group.
+     */
+    event WithdrawalVoteDistributionGenerated(
+        address indexed group,
+        address[] groups,
+        uint256[] votes
+    );
+
+    /**
      * @notice Used when attempting to block a group that is not allowed.
      * @param group The group's address.
      */
@@ -352,6 +376,8 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             groups[0] = group;
             votes[0] = celoWithdrawalAmount;
         }
+
+        emit WithdrawalVoteDistributionGenerated(group, groups, votes);
     }
 
     /**
@@ -406,6 +432,8 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             );
             updateUnhealthyGroupStCelo(group, stCeloAmount, true);
         }
+
+        emit DepositVoteDistributionGenerated(group, finalGroups, finalVotes);
     }
 
     /**
