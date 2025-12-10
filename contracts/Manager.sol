@@ -72,6 +72,11 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     mapping(address => address) public strategies;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when the vote contract is initially set or later modified.
      * @param voteContract The new vote contract address.
      */
@@ -82,6 +87,102 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @param group The group's address.
      */
     event StrategyChanged(address indexed group);
+
+    /**
+     * @notice Emitted when CELO is deposited.
+     * @param depositor The address that deposited.
+     * @param celoAmount The amount of CELO deposited.
+     * @param stCeloAmount The amount of stCELO minted.
+     */
+    event CeloDeposited(address indexed depositor, uint256 celoAmount, uint256 stCeloAmount);
+
+    /**
+     * @notice Emitted when stCELO is withdrawn.
+     * @param withdrawer The address that withdrew.
+     * @param stCeloAmount The amount of stCELO burned.
+     * @param celoAmount The amount of CELO scheduled for withdrawal.
+     */
+    event CeloWithdrawn(address indexed withdrawer, uint256 stCeloAmount, uint256 celoAmount);
+
+    /**
+     * @notice Emitted when votes are revoked from a proposal.
+     * @param revoker The address that revoked.
+     * @param proposalId The ID of the proposal.
+     * @param totalYesVotes Total yes votes after revocation.
+     * @param totalNoVotes Total no votes after revocation.
+     * @param totalAbstainVotes Total abstain votes after revocation.
+     */
+    event VotesRevoked(
+        address indexed revoker,
+        uint256 indexed proposalId,
+        uint256 totalYesVotes,
+        uint256 totalNoVotes,
+        uint256 totalAbstainVotes
+    );
+
+    /**
+     * @notice Emitted when vote history is updated.
+     * @param beneficiary The address whose history was updated.
+     * @param lockedStCelo The amount of locked stCELO.
+     */
+    event VoteHistoryUpdated(address indexed beneficiary, uint256 lockedStCelo);
+
+    /**
+     * @notice Emitted when stCELO is transferred between different strategies.
+     * @param from The sender address.
+     * @param to The receiver address.
+     * @param stCeloAmount The amount transferred.
+     */
+    event StCeloTransferred(address indexed from, address indexed to, uint256 stCeloAmount);
+
+    /**
+     * @notice Emitted when vote balance is unlocked.
+     * @param accountAddress The address whose balance was unlocked.
+     */
+    event VoteBalanceUnlocked(address indexed accountAddress);
+
+    /**
+     * @notice Emitted when rebalance occurs between groups.
+     * @param fromGroup The group CELO is rebalanced from.
+     * @param toGroup The group CELO is rebalanced to.
+     * @param celoAmount The amount of CELO moved.
+     */
+    event Rebalanced(address indexed fromGroup, address indexed toGroup, uint256 celoAmount);
+
+    /**
+     * @notice Emitted when overflow rebalance occurs between groups.
+     * @param fromGroup The group CELO is rebalanced from.
+     * @param toGroup The group CELO is rebalanced to.
+     * @param celoAmount The amount of CELO moved.
+     */
+    event RebalancedOverflow(
+        address indexed fromGroup,
+        address indexed toGroup,
+        uint256 celoAmount
+    );
+
+    /**
+     * @notice Emitted when transfer is scheduled within strategy.
+     * @param fromGroupsCount The number of from groups.
+     * @param toGroupsCount The number of to groups.
+     */
+    event TransferWithinStrategyScheduled(uint256 fromGroupsCount, uint256 toGroupsCount);
+
+    /**
+     * @notice Emitted when a vote is cast on a proposal.
+     * @param voter The address that voted.
+     * @param proposalId The ID of the proposal.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    event ProposalVoted(
+        address indexed voter,
+        uint256 indexed proposalId,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    );
 
     /**
      * @notice Used when attempting to withdraw 0 value.
@@ -140,6 +241,9 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @param group The group's address.
      */
     error ToGroupOverflowing(address group);
+
+    /// @notice Used when attempting to renounce ownership.
+    error RenounceOwnershipDisabled();
 
     /**
      * @dev Throws if called by any address other than StakedCelo.
@@ -245,7 +349,9 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         ) = distributeWithdrawals(stCeloAmount, strategies[msg.sender], false);
         account.scheduleWithdrawals(msg.sender, groupsWithdrawn, withdrawalsPerGroup);
 
+        uint256 celoAmount = toCelo(stCeloAmount);
         stakedCelo.burn(msg.sender, stCeloAmount);
+        emit CeloWithdrawn(msg.sender, stCeloAmount, celoAmount);
     }
 
     /**
@@ -262,6 +368,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         );
 
         account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+        emit VotesRevoked(msg.sender, proposalId, totalYesVotes, totalNoVotes, totalAbstainVotes);
     }
 
     /**
@@ -274,7 +381,9 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         returns (uint256)
     {
         IVote vote = IVote(voteContract);
-        return vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
+        uint256 lockedStCelo = vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
+        emit VoteHistoryUpdated(beneficiary, lockedStCelo);
+        return lockedStCelo;
     }
 
     /**
@@ -293,6 +402,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
 
         stakedCelo.mint(msg.sender, stCeloAmount);
         account.scheduleVotes{value: msg.value}(finalGroups, finalVotes);
+        emit CeloDeposited(msg.sender, msg.value, stCeloAmount);
     }
 
     /**
@@ -349,6 +459,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         uint256 stCeloAmount
     ) public onlyStakedCelo {
         _transfer(strategies[from], strategies[to], stCeloAmount);
+        emit StCeloTransferred(from, to, stCeloAmount);
     }
 
     /**
@@ -386,6 +497,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      */
     function unlockBalance(address accountAddress) public {
         stakedCelo.unlockVoteBalance(accountAddress);
+        emit VoteBalanceUnlocked(accountAddress);
     }
 
     /**
@@ -428,6 +540,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         );
 
         scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
+        emit Rebalanced(fromGroup, toGroup, toMove);
     }
 
     /**
@@ -468,6 +581,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
 
         uint256 toMove = Math.min(overflowingCelo, toReceivableVotes);
         scheduleRebalanceTransfer(fromGroup, toGroup, toMove);
+        emit RebalancedOverflow(fromGroup, toGroup, toMove);
     }
 
     /**
@@ -486,6 +600,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         uint256[] calldata toVotes
     ) public onlyStrategy {
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
+        emit TransferWithinStrategyScheduled(fromGroups.length, toGroups.length);
     }
 
     /**
@@ -514,6 +629,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
 
         stakedCelo.lockVoteBalance(msg.sender, stCeloUsedForVoting);
         account.votePartially(proposalId, index, totalYesVotes, totalNoVotes, totalAbstainVotes);
+        emit ProposalVoted(msg.sender, proposalId, yesVotes, noVotes, abstainVotes);
     }
 
     /**
@@ -617,6 +733,13 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         }
 
         return receivableVotes - votesForGroupByAccountInProtocol;
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

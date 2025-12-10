@@ -82,6 +82,11 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
     IAccount public account;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when a group was unblocked.
      * @param group The group's address.
      */
@@ -92,6 +97,41 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
      * @param group The group's address.
      */
     event GroupBlocked(address group);
+
+    /**
+     * @notice Emitted when group stCELO is updated.
+     * @param group The group's address.
+     * @param stCeloAmount The amount of stCELO.
+     * @param add Whether it was added or subtracted.
+     */
+    event GroupStCeloUpdated(address indexed group, uint256 stCeloAmount, bool add);
+
+    /**
+     * @notice Emitted when rebalance occurs due to health change.
+     * @param group The group that was rebalanced.
+     * @param stCeloAmount The amount of stCELO moved.
+     * @param toDefaultStrategy Whether moved to default strategy (true) or from it (false).
+     */
+    event RebalancedWhenHealthChanged(
+        address indexed group,
+        uint256 stCeloAmount,
+        bool toDefaultStrategy
+    );
+
+    /**
+     * @notice Emitted when overflowed group is rebalanced.
+     * @param group The group that was rebalanced.
+     * @param stCeloAmount The amount of stCELO moved from overflow.
+     */
+    event OverflowedGroupRebalanced(address indexed group, uint256 stCeloAmount);
+
+    /**
+     * @notice Emitted when the contract dependencies are set.
+     * @param account The address of the Account contract.
+     * @param groupHealth The address of the GroupHealth contract.
+     * @param defaultStrategy The address of the DefaultStrategy contract.
+     */
+    event DependenciesSet(address account, address groupHealth, address defaultStrategy);
 
     /**
      * @notice Used when attempting to block a group that is not allowed.
@@ -194,6 +234,8 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         account = IAccount(_account);
         groupHealth = IGroupHealth(_groupHealth);
         defaultStrategy = IDefaultStrategy(_defaultStrategy);
+
+        emit DependenciesSet(_account, _groupHealth, _defaultStrategy);
     }
 
     /**
@@ -241,6 +283,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         bool add
     ) external onlyOwner {
         _updateGroupStCelo(group, stCeloAmount, add);
+        emit GroupStCeloUpdated(group, stCeloAmount, add);
     }
 
     /**
@@ -381,6 +424,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
 
             transferFromDefaultStrategy(group, toMove);
             updateUnhealthyGroupStCelo(group, toMove, false);
+            emit RebalancedWhenHealthChanged(group, toMove, false);
         } else {
             uint256 totalStCeloInGroup = stCeloInGroup[group];
             if (totalStCeloInGroup == unhealthyStCelo) {
@@ -396,6 +440,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
 
             transferToDefaultStrategy(group, toMoveStCelo);
             updateUnhealthyGroupStCelo(group, toMoveStCelo, true);
+            emit RebalancedWhenHealthChanged(group, toMoveStCelo, true);
         }
     }
 
@@ -494,6 +539,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         uint256 toMove = Math.min(receivableStCelo, overflowingStCelo);
         transferFromDefaultStrategy(group, toMove);
         updateOverflowGroup(group, toMove, false);
+        emit OverflowedGroupRebalanced(group, toMove);
     }
 
     /**
@@ -515,6 +561,13 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
         total = stCeloInGroup[group];
         overflow = stCeloInGroupOverflowed[group];
         unhealthy = stCeloInGroupUnhealthy[group];
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

@@ -238,6 +238,30 @@ describe("SpecificGroupStrategy", () => {
           .setDependencies(nonStakedCelo.address, nonAccount.address, nonAccount.address)
       ).revertedWith("Ownable: caller is not the owner");
     });
+
+    it("emits DependenciesSet event", async () => {
+      await expect(
+        specificGroupStrategyContract
+          .connect(ownerSigner)
+          .setDependencies(nonAccount.address, nonStakedCelo.address, nonOwner.address)
+      )
+        .to.emit(specificGroupStrategyContract, "DependenciesSet")
+        .withArgs(nonAccount.address, nonStakedCelo.address, nonOwner.address);
+    });
+  });
+
+  describe("#renounceOwnership", () => {
+    it("reverts with RenounceOwnershipDisabled", async () => {
+      await expect(specificGroupStrategyContract.connect(owner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+
+    it("reverts for any caller", async () => {
+      await expect(specificGroupStrategyContract.connect(nonOwner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
   });
 
   describe("#generateWithdrawalVoteDistribution()", () => {

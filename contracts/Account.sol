@@ -66,6 +66,11 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     uint256 public totalScheduledWithdrawals;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when CELO is scheduled for voting for a given group.
      * @param group The validator group the CELO is intended to vote for.
      * @param amount The amount of CELO scheduled.
@@ -112,6 +117,26 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @param timestamp The timestamp of the pending withdrawal.
      */
     event CeloWithdrawalFinished(address indexed beneficiary, uint256 amount, uint256 timestamp);
+
+    /**
+     * @notice Emitted when the allowed to vote over max number of groups setting is changed.
+     * @param flag The new flag value.
+     */
+    event AllowedToVoteOverMaxNumberOfGroupsSet(bool flag);
+
+    /**
+     * @notice Emitted when a partial vote is cast on a governance proposal.
+     * @param proposalId The ID of the proposal.
+     * @param yesVotes The yes votes weight.
+     * @param noVotes The no votes weight.
+     * @param abstainVotes The abstain votes weight.
+     */
+    event VotedPartially(
+        uint256 indexed proposalId,
+        uint256 yesVotes,
+        uint256 noVotes,
+        uint256 abstainVotes
+    );
 
     /// @notice Used when the creation of an account with Accounts.sol fails.
     error AccountCreationFailed();
@@ -551,6 +576,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     function setAllowedToVoteOverMaxNumberOfGroups(bool flag) external onlyOwner {
         getElection().setAllowedToVoteOverMaxNumberOfGroups(flag);
+        emit AllowedToVoteOverMaxNumberOfGroupsSet(flag);
     }
 
     /**
@@ -578,6 +604,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         if (!voteResult) {
             revert VotingNotSuccessful(proposalId);
         }
+        emit VotedPartially(proposalId, yesVotes, noVotes, abstainVotes);
     }
 
     /**
@@ -784,6 +811,13 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      */
     function votesForGroup(address group) public view returns (uint256) {
         return getElection().getTotalVotesForGroupByAccount(group, address(this));
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

@@ -25,6 +25,9 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
      */
     error CallerNotManager(address caller);
 
+    /// @notice Used when attempting to renounce ownership.
+    error RenounceOwnershipDisabled();
+
     /**
      * @dev Throws if called by any account other than the manager.
      */
@@ -41,6 +44,13 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
      */
     function setManager(address _manager) external onlyOwner {
         _setManager(_manager);
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure virtual override {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

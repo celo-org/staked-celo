@@ -251,12 +251,41 @@ describe("DefaultStrategy", () => {
           .setDependencies(nonStakedCelo.address, nonAccount.address, nonVote.address)
       ).revertedWith("Ownable: caller is not the owner");
     });
+
+    it("emits DependenciesSet event", async () => {
+      await expect(
+        defaultStrategyContract
+          .connect(owner)
+          .setDependencies(nonAccount.address, nonStakedCelo.address, nonVote.address)
+      )
+        .to.emit(defaultStrategyContract, "DependenciesSet")
+        .withArgs(nonAccount.address, nonStakedCelo.address, nonVote.address);
+    });
+  });
+
+  describe("#setSortingParams", () => {
+    it("emits SortingParamsSet event", async () => {
+      const distributeTo = 5;
+      const withdrawFrom = 3;
+      const loopLimit = 10;
+      await expect(
+        defaultStrategyContract.connect(owner).setSortingParams(distributeTo, withdrawFrom, loopLimit)
+      )
+        .to.emit(defaultStrategyContract, "SortingParamsSet")
+        .withArgs(distributeTo, withdrawFrom, loopLimit);
+    });
   });
 
   describe("#setMinCountOfActiveGroups", () => {
     it("should set minimum count of active groups", async () => {
       await defaultStrategyContract.connect(owner).setMinCountOfActiveGroups(5);
       expect(await defaultStrategyContract.minCountOfActiveGroups()).to.eq(5);
+    });
+
+    it("emits MinCountOfActiveGroupsSet event", async () => {
+      await expect(defaultStrategyContract.connect(owner).setMinCountOfActiveGroups(5))
+        .to.emit(defaultStrategyContract, "MinCountOfActiveGroupsSet")
+        .withArgs(5);
     });
   });
 
@@ -292,6 +321,26 @@ describe("DefaultStrategy", () => {
       await expect(
         defaultStrategyContract.connect(nonOwner).addActivatableGroup(groupAddresses[0])
       ).revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("emits ActivatableGroupAdded event", async () => {
+      await expect(defaultStrategyContract.connect(owner).addActivatableGroup(groupAddresses[0]))
+        .to.emit(defaultStrategyContract, "ActivatableGroupAdded")
+        .withArgs(groupAddresses[0]);
+    });
+  });
+
+  describe("#renounceOwnership", () => {
+    it("reverts with RenounceOwnershipDisabled", async () => {
+      await expect(defaultStrategyContract.connect(owner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+
+    it("reverts for any caller", async () => {
+      await expect(defaultStrategyContract.connect(nonOwner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
     });
   });
 
