@@ -532,6 +532,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
     function getVersionNumber()
         external
         pure
+        override
         returns (
             uint256,
             uint256,

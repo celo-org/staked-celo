@@ -211,6 +211,7 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
     function getVersionNumber()
         external
         pure
+        override
         returns (
             uint256,
             uint256,

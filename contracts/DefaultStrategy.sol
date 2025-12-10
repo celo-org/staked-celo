@@ -706,6 +706,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     function getVersionNumber()
         external
         pure
+        override
         returns (
             uint256,
             uint256,
