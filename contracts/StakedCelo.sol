@@ -125,7 +125,6 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
     function getVersionNumber()
         external
         pure
-        override
         returns (
             uint256,
             uint256,
