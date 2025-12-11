@@ -223,7 +223,7 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
             uint256
         )
     {
-        return (1, 3, 0, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
