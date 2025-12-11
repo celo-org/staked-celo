@@ -14,6 +14,12 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
     address public manager;
 
     /**
+     * @dev Note: A storage gap cannot be added to this contract because it would
+     * break the storage layout of all contracts that inherit from it. Any future
+     * storage variables should be added to the inheriting contracts directly.
+     */
+
+    /**
      * @notice Emitted when the manager is initially set or later modified.
      * @param manager The new managing account address.
      */
