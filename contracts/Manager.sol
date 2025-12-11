@@ -345,11 +345,11 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     function withdraw(uint256 stCeloAmount) external onlyWhenNotPaused {
         (
             address[] memory groupsWithdrawn,
-            uint256[] memory withdrawalsPerGroup
+            uint256[] memory withdrawalsPerGroup,
+            uint256 celoAmount
         ) = distributeWithdrawals(stCeloAmount, strategies[msg.sender], false);
         account.scheduleWithdrawals(msg.sender, groupsWithdrawn, withdrawalsPerGroup);
 
-        uint256 celoAmount = toCelo(stCeloAmount);
         stakedCelo.burn(msg.sender, stCeloAmount);
         emit CeloWithdrawn(msg.sender, stCeloAmount, celoAmount);
     }
@@ -775,12 +775,22 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
      * @param stCeloAmount The amount of stCELO to be withdrawn.
      * @param strategy The strategy that will be used for withdrawal distribution.
      * @param isTransfer Whether or not withdrawal is calculated for transfer.
+     * @return groupsWithdrawn The groups from which CELO was withdrawn.
+     * @return withdrawalsPerGroup The amount withdrawn from each group.
+     * @return celoAmount The total CELO amount being withdrawn.
      **/
     function distributeWithdrawals(
         uint256 stCeloAmount,
         address strategy,
         bool isTransfer
-    ) private returns (address[] memory, uint256[] memory) {
+    )
+        private
+        returns (
+            address[] memory,
+            uint256[] memory,
+            uint256
+        )
+    {
         uint256 celoAmount = toCelo(stCeloAmount);
         if (celoAmount == 0) {
             revert ZeroWithdrawal();
@@ -797,7 +807,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
                 .generateWithdrawalVoteDistribution(celoAmount);
         }
 
-        return (groupsWithdrawn, withdrawalsPerGroup);
+        return (groupsWithdrawn, withdrawalsPerGroup, celoAmount);
     }
 
     /**
@@ -831,8 +841,8 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
         address toStrategy,
         uint256 stCeloAmount
     ) private {
-        distributeWithdrawals(stCeloAmount, fromStrategy, true);
-        distributeVotes(toCelo(stCeloAmount), stCeloAmount, toStrategy);
+        (, , uint256 celoAmount) = distributeWithdrawals(stCeloAmount, fromStrategy, true);
+        distributeVotes(celoAmount, stCeloAmount, toStrategy);
     }
 
     /**
