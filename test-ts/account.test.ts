@@ -1,3 +1,4 @@
+import { electionABI } from "@celo/abis";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -10,7 +11,6 @@ import { Account } from "../typechain-types/Account";
 import { MockRegistry__factory } from "../typechain-types/factories/MockRegistry__factory";
 import { MockGovernance } from "../typechain-types/MockGovernance";
 import { MockRegistry } from "../typechain-types/MockRegistry";
-import electionContractData from "./code/abi/electionAbi.json";
 import {
   ADDRESS_ZERO,
   getImpersonatedSigner,
@@ -2030,7 +2030,7 @@ describe("Account", () => {
       // TODO: once contractkit updated - use just election contract from contractkit
       const electionContract = new hre.kit.web3.eth.Contract(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        electionContractData.abi as any,
+        electionABI as any,
         election.address
       );
       const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
