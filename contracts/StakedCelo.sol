@@ -19,6 +19,11 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
     mapping(address => uint256) private _lockedBalances;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when stCELO is locked.
      * @param account The owner of locked stCELO.
      * @param amount The amount of locked stCELO.
