@@ -324,6 +324,12 @@ describe("Manager", () => {
           const stCelo = await stakedCelo.balanceOf(depositor.address);
           expect(stCelo).to.eq(10);
         });
+
+        it("emits CeloDeposited event", async () => {
+          await expect(manager.connect(depositor).deposit({ value: 100 }))
+            .to.emit(manager, "CeloDeposited")
+            .withArgs(depositor.address, 100, 100);
+        });
       });
 
       describe("when there are equal amount of CELO and stCELO in the system", () => {
@@ -1038,6 +1044,13 @@ describe("Manager", () => {
             ).toNumber();
             expect(totalStCeloInDefault).to.eq(146);
           });
+        });
+
+        it("emits CeloWithdrawn event", async () => {
+          // When withdrawing 77 stCELO with 1:1 ratio, should emit event with stCeloAmount=77, celoAmount=77
+          await expect(manager.connect(depositor2).withdraw(50))
+            .to.emit(manager, "CeloWithdrawn")
+            .withArgs(depositor2.address, 50, 50);
         });
       });
 
@@ -3634,6 +3647,20 @@ describe("Manager", () => {
 
     it("can't call voteProposal", async () => {
       await expect(manager.connect(nonOwner).voteProposal(0, 0, 0, 0, 0)).revertedWith("Paused()");
+    });
+  });
+
+  describe("#renounceOwnership", () => {
+    it("reverts with RenounceOwnershipDisabled", async () => {
+      await expect(manager.connect(owner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+
+    it("reverts for any caller", async () => {
+      await expect(manager.connect(nonOwner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
     });
   });
 });

@@ -19,6 +19,11 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
     mapping(address => uint256) private _lockedBalances;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when stCELO is locked.
      * @param account The owner of locked stCELO.
      * @param amount The amount of locked stCELO.
@@ -132,7 +137,7 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
             uint256
         )
     {
-        return (1, 1, 3, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
@@ -164,6 +169,13 @@ contract StakedCelo is ERC20Upgradeable, UUPSOwnableUpgradeable, Managed, Pausab
      */
     function lockedVoteBalanceOf(address account) public view returns (uint256) {
         return _lockedBalances[account];
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**
