@@ -2055,6 +2055,19 @@ describe("Account", () => {
         "allowedToVoteOverMaxNumberOfGroups not set correctly"
       ).to.be.true;
     });
+
+    it("emits AllowedToVoteOverMaxNumberOfGroupsSet event when set to true", async () => {
+      await expect(account.connect(owner).setAllowedToVoteOverMaxNumberOfGroups(true))
+        .to.emit(account, "AllowedToVoteOverMaxNumberOfGroupsSet")
+        .withArgs(true);
+    });
+
+    it("emits AllowedToVoteOverMaxNumberOfGroupsSet event when set to false", async () => {
+      await account.connect(owner).setAllowedToVoteOverMaxNumberOfGroups(true);
+      await expect(account.connect(owner).setAllowedToVoteOverMaxNumberOfGroups(false))
+        .to.emit(account, "AllowedToVoteOverMaxNumberOfGroupsSet")
+        .withArgs(false);
+    });
   });
 
   describe("#voteProposal", () => {
@@ -2093,6 +2106,26 @@ describe("Account", () => {
       expect(await governance.noVotes()).to.eq(no);
       expect(await governance.abstainVotes()).to.eq(abstain);
     });
+
+    it("emits VotedPartially event with correct parameters", async () => {
+      const registryOwner = await registryContract.owner();
+      const registryOwnerSigner = await getImpersonatedSigner(registryOwner);
+
+      const setAddressTx = await registryContract
+        .connect(registryOwnerSigner)
+        .setAddressFor("Governance", governance.address);
+      await setAddressTx.wait();
+
+      const proposalId = 1;
+      const index = 0;
+      const yes = 100;
+      const no = 50;
+      const abstain = 25;
+
+      await expect(account.connect(manager).votePartially(proposalId, index, yes, no, abstain))
+        .to.emit(account, "VotedPartially")
+        .withArgs(proposalId, yes, no, abstain);
+    });
   });
 
   describe("#setPauser", () => {
@@ -2124,6 +2157,20 @@ describe("Account", () => {
         const newPauser = await account.pauser();
         expect(newPauser).to.eq(nonManager.address);
       });
+    });
+  });
+
+  describe("#renounceOwnership", () => {
+    it("reverts with RenounceOwnershipDisabled", async () => {
+      await expect(account.connect(owner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+
+    it("reverts for any caller", async () => {
+      await expect(account.connect(nonManager).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
     });
   });
 

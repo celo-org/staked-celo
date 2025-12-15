@@ -101,6 +101,11 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
     EnumerableSet.AddressSet private activatableGroups;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when a group is deactivated.
      * @param group The group's address.
      */
@@ -117,6 +122,72 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @param update The new value.
      */
     event SortedFlagUpdated(bool update);
+
+    /**
+     * @notice Emitted when dependencies are set.
+     * @param account The Account contract address.
+     * @param groupHealth The GroupHealth contract address.
+     * @param specificGroupStrategy The SpecificGroupStrategy contract address.
+     */
+    event DependenciesSet(
+        address indexed account,
+        address indexed groupHealth,
+        address indexed specificGroupStrategy
+    );
+
+    /**
+     * @notice Emitted when sorting parameters are updated.
+     * @param maxGroupsToDistributeTo Maximum groups to distribute to.
+     * @param maxGroupsToWithdrawFrom Maximum groups to withdraw from.
+     * @param sortingLoopLimit The sorting loop limit.
+     */
+    event SortingParamsSet(
+        uint256 maxGroupsToDistributeTo,
+        uint256 maxGroupsToWithdrawFrom,
+        uint256 sortingLoopLimit
+    );
+
+    /**
+     * @notice Emitted when minimum count of active groups is set.
+     * @param minCount The minimum count.
+     */
+    event MinCountOfActiveGroupsSet(uint256 minCount);
+
+    /**
+     * @notice Emitted when a group is added to activatable groups.
+     * @param group The group's address.
+     */
+    event ActivatableGroupAdded(address indexed group);
+
+    /**
+     * @notice Emitted when group stCELO is updated.
+     * @param group The group's address.
+     * @param stCeloAmount The amount of stCELO.
+     * @param add Whether it was added or subtracted.
+     */
+    event GroupStCeloUpdated(address indexed group, uint256 stCeloAmount, bool add);
+
+    /**
+     * @notice Emitted when rebalance occurs between groups.
+     * @param fromGroup The group CELO is rebalanced from.
+     * @param toGroup The group CELO is rebalanced to.
+     * @param stCeloAmount The amount of stCELO moved.
+     */
+    event Rebalanced(address indexed fromGroup, address indexed toGroup, uint256 stCeloAmount);
+
+    /**
+     * @notice Emitted when deposit vote distribution is generated.
+     * @param groups The groups that were chosen for distribution.
+     * @param votes The votes for each group.
+     */
+    event DepositVoteDistributionGenerated(address[] groups, uint256[] votes);
+
+    /**
+     * @notice Emitted when withdrawal vote distribution is generated.
+     * @param groups The groups that were chosen for withdrawal.
+     * @param votes The votes for each group.
+     */
+    event WithdrawalVoteDistributionGenerated(address[] groups, uint256[] votes);
 
     /**
      * @notice Used when attempting to activate a group that is already active.
@@ -265,6 +336,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         groupHealth = IGroupHealth(_groupHealth);
         specificGroupStrategy = ISpecificGroupStrategy(_specificGroupStrategy);
         account = IAccount(_account);
+        emit DependenciesSet(_account, _groupHealth, _specificGroupStrategy);
     }
 
     /**
@@ -281,6 +353,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         maxGroupsToDistributeTo = distributeTo;
         maxGroupsToWithdrawFrom = withdrawFrom;
         sortingLoopLimit = loopLimit;
+        emit SortingParamsSet(distributeTo, withdrawFrom, loopLimit);
     }
 
     /**
@@ -300,7 +373,13 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
     {
-        return _generateDepositVoteDistribution(celoAmount, stCeloAmount, depositGroupToIgnore);
+        (finalGroups, finalVotes) = _generateDepositVoteDistribution(
+            celoAmount,
+            stCeloAmount,
+            depositGroupToIgnore
+        );
+        emit DepositVoteDistributionGenerated(finalGroups, finalVotes);
+        return (finalGroups, finalVotes);
     }
 
     /**
@@ -403,6 +482,8 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
 
         trySort(fromGroup, stCeloInGroup[fromGroup], false);
         trySort(toGroup, stCeloInGroup[toGroup], true);
+
+        emit Rebalanced(fromGroup, toGroup, toMove);
     }
 
     /**
@@ -467,6 +548,8 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             finalGroups[i] = groups[i];
             finalVotes[i] = votes[i];
         }
+
+        emit WithdrawalVoteDistributionGenerated(finalGroups, finalVotes);
     }
 
     /**
@@ -483,6 +566,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      */
     function setMinCountOfActiveGroups(uint256 minCount) external onlyOwner {
         minCountOfActiveGroups = minCount;
+        emit MinCountOfActiveGroupsSet(minCount);
     }
 
     /**
@@ -510,6 +594,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         }
 
         activatableGroups.add(group);
+        emit ActivatableGroupAdded(group);
     }
 
     /**
@@ -524,6 +609,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         bool add
     ) external onlyOwner {
         _updateGroupStCelo(group, stCeloAmount, add);
+        emit GroupStCeloUpdated(group, stCeloAmount, add);
     }
 
     /**
@@ -627,7 +713,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             uint256
         )
     {
-        return (1, 2, 0, 0);
+        return (1, 3, 0, 0);
     }
 
     /**
@@ -653,6 +739,13 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         }
 
         actualStCelo = stCeloInGroup[group];
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

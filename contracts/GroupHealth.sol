@@ -25,6 +25,11 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
     mapping(address => bool) private membersMappingHelper;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when `updateGroupHealth` called.
      * @param group The group's address.
      * @param healthy Whether or not group is healthy.
@@ -42,6 +47,9 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
      * @param group The group's address.
      */
     error GroupHealthy(address group);
+
+    /// @notice Used when attempting to renounce ownership.
+    error RenounceOwnershipDisabled();
 
     /**
      * @notice Empty constructor for proxy implementation, `initializer` modifer ensures the
@@ -85,7 +93,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
             uint256
         )
     {
-        return (1, 1, 1, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
@@ -151,6 +159,13 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
     }
 
     /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override {
+        revert RenounceOwnershipDisabled();
+    }
+
+    /**
      * @notice Gets a validator address from the current validator set.
      * @param index Index of requested validator in the validator set.
      * @return Address of validator at the requested index.
@@ -184,7 +199,7 @@ contract GroupHealth is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pausab
         uint256 index,
         uint256 currentNumberOfElectedValidators
     ) internal view returns (bool) {
-        if (index > currentNumberOfElectedValidators) {
+        if (index >= currentNumberOfElectedValidators) {
             return false;
         }
         return validatorSignerAddressFromCurrentSet(index) == groupMember;

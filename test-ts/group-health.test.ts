@@ -368,6 +368,61 @@ describe("GroupHealth", () => {
     });
   });
 
+  describe("#renounceOwnership", () => {
+    it("reverts with RenounceOwnershipDisabled", async () => {
+      await expect(groupHealthContract.connect(owner).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+
+    it("reverts for any caller", async () => {
+      await expect(groupHealthContract.connect(nonManager).renounceOwnership()).revertedWith(
+        "RenounceOwnershipDisabled()"
+      );
+    });
+  });
+
+  describe("#isGroupMemberElected (off-by-one fix)", () => {
+    // This tests the fix for L-03: isGroupMemberElected boundary condition
+    // The fix changed: if (index > currentNumberOfElectedValidators)
+    // to: if (index >= currentNumberOfElectedValidators)
+    // We test this indirectly through markGroupHealthy which uses isGroupMemberElected
+
+    it("should not mark group healthy when index equals numberOfElectedValidators (boundary)", async () => {
+      // Set up exactly 3 elected validators (indices 0, 1, 2)
+      for (let i = 0; i < 3; i++) {
+        await groupHealthContract.setElectedValidator(i, validatorAddresses[i]);
+      }
+
+      // Use index 3 (equals numberOfValidators), which should be out of bounds
+      // Before the fix: if (index > 3) would pass for index=3, causing potential issues
+      // After the fix: if (index >= 3) correctly returns false for index=3
+      await groupHealthContract.markGroupHealthy(activatedGroupAddresses[0], [3, 3, 3]);
+
+      // Group should remain invalid because the index is out of bounds
+      const valid = await groupHealthContract.isGroupValid(activatedGroupAddresses[0]);
+      expect(valid).to.be.false;
+    });
+
+    it("should mark group healthy when index is within valid bounds", async () => {
+      // Elect the validators from the activated group
+      const mockedIndexes = await electMockValidatorGroupsAndUpdate(
+        validatorsWrapper,
+        groupHealthContract,
+        [activatedGroupAddresses[0]],
+        false,
+        false
+      );
+
+      // Mark the group as healthy with valid indices
+      await groupHealthContract.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
+
+      // Group should be valid
+      const valid = await groupHealthContract.isGroupValid(activatedGroupAddresses[0]);
+      expect(valid).to.be.true;
+    });
+  });
+
   describe("#pause", () => {
     it("can be called by the pauser", async () => {
       await groupHealthContract.connect(pauser).pause();
