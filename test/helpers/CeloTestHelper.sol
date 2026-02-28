@@ -929,28 +929,17 @@ abstract contract CeloTestHelper {
         require(a == b, "Assertion failed: addresses not equal");
     }
 
-
-
     /// @notice Assert that two addresses are not equal.
-
     function assertNotEq(address a, address b) internal pure {
-
         require(a != b, "Assertion failed: addresses are equal");
-
     }
 
-
-
     /// @notice Assert that two uint256 values are not equal.
-
     function assertNotEq(uint256 a, uint256 b) internal pure {
-
         require(a != b, "Assertion failed: values are equal");
-
     }
 
     // =========================================================================
-    //               HARDHAT-TASK STUBS & GOVERNANCE
     //               HARDHAT-TASK STUBS & GOVERNANCE
     // =========================================================================
     //
