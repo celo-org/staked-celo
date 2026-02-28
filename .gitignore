@@ -24,3 +24,7 @@ typechain-types
 
 #devchain
 db
+
+# Foundry
+out/
+cache_forge/
