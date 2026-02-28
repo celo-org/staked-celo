@@ -45,6 +45,12 @@ interface CeloTestVm {
     function addr(uint256 privateKey) external pure returns (address);
     function label(address account, string calldata newLabel) external;
     function toString(uint256 value) external pure returns (string memory);
+    function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData) external;
+    function expectRevert(bytes memory revertData) external;
+
+    function expectRevert() external;
+
+    function load(address account, bytes32 slot) external view returns (bytes32);
 }
 
 /// @dev Minimal interface for contracts with a rebalance(address,address) function.
@@ -900,6 +906,51 @@ abstract contract CeloTestHelper {
     }
 
     // =========================================================================
+    //                        ASSERTION HELPERS
+    // =========================================================================
+
+    /// @notice Assert that two uint256 values are equal.
+    function assertEq(uint256 a, uint256 b) internal pure {
+        require(a == b, "Assertion failed: values not equal");
+    }
+
+    /// @notice Assert that a boolean is true.
+    function assertTrue(bool condition) internal pure {
+        require(condition, "Assertion failed: condition is false");
+    }
+
+    /// @notice Assert that a boolean is false.
+    function assertFalse(bool condition) internal pure {
+        require(!condition, "Assertion failed: condition is true");
+    }
+
+    /// @notice Assert that two addresses are equal.
+    function assertEq(address a, address b) internal pure {
+        require(a == b, "Assertion failed: addresses not equal");
+    }
+
+
+
+    /// @notice Assert that two addresses are not equal.
+
+    function assertNotEq(address a, address b) internal pure {
+
+        require(a != b, "Assertion failed: addresses are equal");
+
+    }
+
+
+
+    /// @notice Assert that two uint256 values are not equal.
+
+    function assertNotEq(uint256 a, uint256 b) internal pure {
+
+        require(a != b, "Assertion failed: values are equal");
+
+    }
+
+    // =========================================================================
+    //               HARDHAT-TASK STUBS & GOVERNANCE
     //               HARDHAT-TASK STUBS & GOVERNANCE
     // =========================================================================
     //
