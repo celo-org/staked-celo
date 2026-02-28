@@ -237,7 +237,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
             "initialize(address[],uint256,uint256)",
             owners,
             uint256(1), // required confirmations
-            uint256(DAY) // delay
+            uint256(3 * DAY) // delay (must be >= minDelay of 3 * DAY)
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(msImpl, msInit);
