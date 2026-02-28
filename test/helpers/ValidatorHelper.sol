@@ -1,50 +1,15 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
-// Safe imports: these contracts do NOT bring in Initializable
-import "../../contracts/mock/MockValidators.sol";
-import "../../contracts/mock/MockElection.sol";
-import "../../contracts/mock/MockLockedGold.sol";
+import "./interfaces/IMultiSig.sol";
+import "./MultiSigHelper.sol";
 
-// ---------------------------------------------------------------------------
-// Minimal interfaces to avoid Initializable name collision between
-// @openzeppelin/contracts (used by MultiSig, MockRegistry) and
-// @openzeppelin/contracts-upgradeable (used by GroupHealth, DefaultStrategy).
-// ---------------------------------------------------------------------------
-
-/// @dev Foundry cheatcode VM interface (minimal).
-interface IVmForValidator {
-    function prank(address) external;
-    function warp(uint256) external;
-}
-
-/// @dev Minimal interface for MockRegistry methods used in this helper.
+// Minimal interface for MockRegistry methods used in this helper.
+// Avoids importing MockRegistry.sol directly to prevent Initializable
+// name collision between OZ contracts and OZ contracts-upgradeable.
 interface IMockRegistryForValidator {
     function owner() external view returns (address);
     function setAddressFor(string calldata identifier, address addr) external;
-}
-
-/// @dev Minimal interface for MockGroupHealth methods used in this helper.
-interface IMockGroupHealthForValidator {
-    function setElectedValidator(uint256 index, address validator) external;
-    function updateGroupHealth(address group) external;
-    function isGroupValid(address group) external view returns (bool);
-}
-
-/// @dev Minimal interface for DefaultStrategy methods used in this helper.
-interface IDefaultStrategyForValidator {
-    function getGroupsTail() external view returns (address tail, address nextAddress);
-}
-
-/// @dev Minimal interface for MultiSig methods used in this helper.
-interface IMultiSigForValidator {
-    function submitProposal(
-        address[] calldata destinations,
-        uint256[] calldata values,
-        bytes[] calldata payloads
-    ) external returns (uint256 proposalId);
-    function delay() external view returns (uint256);
-    function executeProposal(uint256 proposalId) external;
 }
 
 /**
@@ -56,17 +21,7 @@ interface IMultiSigForValidator {
  *      has no public member getter. Always use addValidatorToGroupMembers() from
  *      this helper rather than calling mockValidators.setMembers() directly.
  */
-abstract contract ValidatorHelper {
-    /// @dev Foundry cheatcode VM (same address as forge-std)
-    IVmForValidator private constant _vm =
-        IVmForValidator(address(uint160(uint256(keccak256("hevm cheat code")))));
-
-    /// @notice Minimum locked CELO required per validator (10,000 CELO)
-    uint256 internal constant MIN_VALIDATOR_LOCKED_CELO = 10_000 ether;
-
-    /// @notice Seconds in a day
-    uint256 internal constant DAY = 86_400;
-
+abstract contract ValidatorHelper is MultiSigHelper {
     /// @dev BLS public key test fixture (hardcoded, not real crypto)
     bytes internal constant BLS_PUBLIC_KEY =
         hex"4fa3f67fc913878b068d1fa1cdddc54913d3bf988dbe5a36a20fa888f20d4894c408a6773f3d7bde11154f2a3076b700d345a42fd25a0e5e83f4db5586ac7979ac2053cd95d8f2efd3e959571ceccaa743e02cf4be3f5d7aaddb0b06fc9aff00";
@@ -138,7 +93,7 @@ abstract contract ValidatorHelper {
         // Lock minimum CELO
         mockLockedGold.setAccountTotalLockedGold(validator, MIN_VALIDATOR_LOCKED_CELO);
         // Affiliate with group (must be called by validator)
-        _vm.prank(validator);
+        vm.prank(validator);
         mockValidators.affiliate(group);
     }
 
@@ -190,8 +145,8 @@ abstract contract ValidatorHelper {
     function deregisterValidatorGroup(MockValidators mockValidators, address group) internal {
         removeMembersFromGroup(mockValidators, group);
         // Time travel past group locked gold requirement duration (3 days + margin)
-        _vm.warp(block.timestamp + 5 * DAY);
-        _vm.prank(group);
+        vm.warp(block.timestamp + 5 * DAY);
+        vm.prank(group);
         mockValidators.deregisterValidatorGroup(0);
     }
 
@@ -217,9 +172,9 @@ abstract contract ValidatorHelper {
         address multisigSigner,
         address[] memory groupAddresses
     ) internal {
-        IDefaultStrategyForValidator ds = IDefaultStrategyForValidator(defaultStrategy);
-        IMockGroupHealthForValidator gh = IMockGroupHealthForValidator(groupHealth);
-        IMultiSigForValidator ms = IMultiSigForValidator(multiSig);
+        DefaultStrategy ds = DefaultStrategy(defaultStrategy);
+        MockGroupHealth gh = MockGroupHealth(groupHealth);
+        IMultiSig ms = IMultiSig(multiSig);
 
         (address nextGroup, ) = ds.getGroupsTail();
 
@@ -237,7 +192,7 @@ abstract contract ValidatorHelper {
                 "addActivatableGroup(address)",
                 groupAddresses[i]
             );
-            _submitAndExecuteMultiSigProposal(ms, destinations, values, payloads, multisigSigner);
+            submitAndExecuteMultiSigProposal(ms, destinations, values, payloads, multisigSigner);
 
             // Submit + execute activateGroup
             payloads[0] = abi.encodeWithSignature(
@@ -246,7 +201,7 @@ abstract contract ValidatorHelper {
                 address(0),
                 nextGroup
             );
-            _submitAndExecuteMultiSigProposal(ms, destinations, values, payloads, multisigSigner);
+            submitAndExecuteMultiSigProposal(ms, destinations, values, payloads, multisigSigner);
 
             nextGroup = groupAddresses[i];
         }
@@ -275,7 +230,7 @@ abstract contract ValidatorHelper {
         uint256 currentLocked = mockLockedGold.accountTotalLockedGold(voter);
         mockLockedGold.setAccountTotalLockedGold(voter, currentLocked + 1 ether);
         // Cast vote
-        _vm.prank(voter);
+        vm.prank(voter);
         mockElection.vote(group, 1 ether, address(0), address(0));
     }
 
@@ -286,7 +241,7 @@ abstract contract ValidatorHelper {
      * @param voter The voter address.
      */
     function activateVotesForGroup(MockElection mockElection, address voter) internal {
-        _vm.prank(voter);
+        vm.prank(voter);
         mockElection.activate(voter);
     }
 
@@ -307,7 +262,7 @@ abstract contract ValidatorHelper {
     ) internal {
         voteForGroup(mockLockedGold, mockElection, group, voter);
         // Simulate epoch change
-        _vm.warp(block.timestamp + DAY);
+        vm.warp(block.timestamp + DAY);
         activateVotesForGroup(mockElection, voter);
     }
 
@@ -334,17 +289,17 @@ abstract contract ValidatorHelper {
         IMockRegistryForValidator registry = IMockRegistryForValidator(mockRegistry);
         address coreContractsOwner = registry.owner();
 
-        _vm.prank(coreContractsOwner);
+        vm.prank(coreContractsOwner);
         registry.setAddressFor("MockSlasher", mockSlasher);
 
-        _vm.prank(coreContractsOwner);
+        vm.prank(coreContractsOwner);
         mockLockedGold.addSlasher("MockSlasher");
 
-        _vm.prank(mockSlasher);
+        vm.prank(mockSlasher);
         mockValidators.halveSlashingMultiplier(group);
 
         // Simulate epoch change
-        _vm.warp(block.timestamp + DAY);
+        vm.warp(block.timestamp + DAY);
     }
 
     // =========================================================================
@@ -370,7 +325,7 @@ abstract contract ValidatorHelper {
         bool revoke,
         bool update
     ) internal returns (uint256[] memory) {
-        IMockGroupHealthForValidator gh = IMockGroupHealthForValidator(mockGroupHealth);
+        MockGroupHealth gh = MockGroupHealth(mockGroupHealth);
         uint256 validatorsProcessed = 0;
 
         // Count total members for array sizing
@@ -408,7 +363,7 @@ abstract contract ValidatorHelper {
     }
 
     // =========================================================================
-    // Internal helpers
+    // Internal view helpers
     // =========================================================================
 
     /**
@@ -418,33 +373,5 @@ abstract contract ValidatorHelper {
      */
     function getGroupMembers(address group) internal view returns (address[] memory) {
         return _groupMembers[group];
-    }
-
-    /**
-     * @notice Submits and executes a MultiSig proposal.
-     * @dev Inlined from MultiSigHelper to avoid import conflicts.
-     * @param multiSig The MultiSig contract interface.
-     * @param destinations The proposal destination addresses.
-     * @param values The CELO values.
-     * @param payloads The proposal payloads.
-     * @param signer The signer submitting the proposal.
-     */
-    function _submitAndExecuteMultiSigProposal(
-        IMultiSigForValidator multiSig,
-        address[] memory destinations,
-        uint256[] memory values,
-        bytes[] memory payloads,
-        address signer
-    ) internal {
-        _vm.prank(signer);
-        uint256 proposalId = multiSig.submitProposal(destinations, values, payloads);
-
-        // Time travel past the delay (submitProposal auto-confirms and schedules
-        // when required == 1, which is common in tests)
-        uint256 msDelay = multiSig.delay();
-        _vm.warp(block.timestamp + msDelay + 1);
-
-        _vm.prank(signer);
-        multiSig.executeProposal(proposalId);
     }
 }

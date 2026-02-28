@@ -682,11 +682,11 @@ abstract contract CeloTestHelper {
         view
         returns (OrderedGroup[] memory)
     {
-        return getOrderedActiveGroups(defaultStrategy, Account(payable(address(0))));
+        return getOrderedActiveGroups(defaultStrategy, address(0));
     }
 
     /// @notice Get ordered active groups with stCELO and CELO amounts.
-    function getOrderedActiveGroups(DefaultStrategy defaultStrategy, Account account)
+    function getOrderedActiveGroups(DefaultStrategy defaultStrategy, address accountAddr)
         internal
         view
         returns (OrderedGroup[] memory)
@@ -703,8 +703,8 @@ abstract contract CeloTestHelper {
             uint256 stCelo = defaultStrategy.stCeloInGroup(head);
             uint256 realCelo = 0;
 
-            if (address(account) != address(0)) {
-                realCelo = account.getCeloForGroup(head);
+            if (accountAddr != address(0)) {
+                realCelo = Account(payable(accountAddr)).getCeloForGroup(head);
             }
 
             // Store in reverse order (matching TS unshift / prepend)
