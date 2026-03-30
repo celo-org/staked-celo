@@ -261,7 +261,7 @@ anvil \
     --gas-limit 50000000 \
     --code-size-limit 250000 \
     --accounts 10 \
-    --balance 100000 \
+    --balance 1000000 \
     &> /tmp/anvil-e2e.log &
 ANVIL_PID=$!
 
@@ -340,85 +340,217 @@ done
 log_success "All candidates are healthy"
 
 # =============================================================================
-log_header "Step 4: Submit Proposal via propose-expand-to-10-groups.sh"
+log_header "Step 4: Celo Governance Proposal → MultiSig.governanceProposeAndExecute"
 # =============================================================================
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Celo Governance contracts
+GOVERNANCE="0xD533Ca259b330c7A88f74E000a3FaEa2d63B7972"
+APPROVER="0x41822d8A191fcfB1cfcA5F7048818aCd8eE933d3"
+LOCKED_GOLD_CONTRACT="0x6cC083Aed9e3ebe302A6336dBC7c921C9f03349E"
+MIN_DEPOSIT="10000000000000000000000" # 10,000 CELO
+
+# Use stCELO Account contract as the proposer/voter — it has ~24M locked CELO,
+# enough to pass the governance participation threshold
+PROPOSER="$ACCOUNT"
+
+if ! cast rpc anvil_impersonateAccount $PROPOSER --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
+    log_error "Failed to impersonate stCELO Account for governance"; exit 1
+fi
+FUND_RESULT=$(cast send $PROPOSER --value 100ether --from $ANVIL_FUNDER --rpc-url $ANVIL_RPC --unlocked 2>&1)
+if ! echo "$FUND_RESULT" | grep -q "status.*1"; then
+    log_error "Failed to fund proposer"; exit 1
+fi
+
+# --- 4a. Build the inner payload: MultiSig.governanceProposeAndExecute(destinations, values, payloads) ---
+
+log_info "Building governance proposal payload..."
+
+SORTING_PAYLOAD=$(cast calldata "setSortingParams(uint256,uint256,uint256)" 15 15 17)
+INNER_DESTINATIONS="$DEFAULT_STRATEGY"
+INNER_VALUES="0"
+INNER_PAYLOADS="$SORTING_PAYLOAD"
+
+for i in "${!NEW_GROUPS[@]}"; do
+    PAYLOAD=$(cast calldata "addActivatableGroup(address)" "${NEW_GROUPS[$i]}")
+    INNER_DESTINATIONS="$INNER_DESTINATIONS,$DEFAULT_STRATEGY"
+    INNER_VALUES="$INNER_VALUES,0"
+    INNER_PAYLOADS="$INNER_PAYLOADS,$PAYLOAD"
+done
+
+# The governance proposal calls MultiSig.governanceProposeAndExecute
+GOV_EXECUTE_CALLDATA=$(cast calldata "governanceProposeAndExecute(address[],uint256[],bytes[])" \
+    "[$INNER_DESTINATIONS]" "[$INNER_VALUES]" "[$INNER_PAYLOADS]")
+
+log_info "governanceProposeAndExecute calldata length: ${#GOV_EXECUTE_CALLDATA}"
+
+# stCELO Account already has ~24M locked CELO — no need to lock more
+LOCKED_CELO=$(parse_number "$(cast call $LOCKED_GOLD_CONTRACT \
+    "getAccountTotalLockedGold(address)(uint256)" "$PROPOSER" --rpc-url $ANVIL_RPC)")
+log_info "Proposer (stCELO Account) has $LOCKED_CELO locked CELO for voting"
+
+# --- 4b. Submit Celo Governance proposal ---
+
+log_info "Submitting Celo Governance proposal..."
+
+# Governance.propose(values[], destinations[], data, dataLengths[], descriptionUrl)
+# - values: [0] (no CELO sent with the call)
+# - destinations: [MULTISIG]
+# - data: the governanceProposeAndExecute calldata
+# - dataLengths: [length of the calldata in bytes]
+
+# Convert hex calldata to raw bytes length (subtract 2 for "0x" prefix, divide by 2)
+DATA_BYTES_LEN=$(python3 -c "print((len('$GOV_EXECUTE_CALLDATA') - 2) // 2)")
 
 set +e
-PROPOSE_RESULT=$("$SCRIPT_DIR/propose-expand-to-10-groups.sh" \
-    --submit --from $OWNER_1 --rpc-url $ANVIL_RPC --unlocked 2>&1)
+PROPOSE_RESULT=$(cast send $GOVERNANCE \
+    "propose(uint256[],address[],bytes,uint256[],string)" \
+    "[0]" \
+    "[$MULTISIG]" \
+    "$GOV_EXECUTE_CALLDATA" \
+    "[$DATA_BYTES_LEN]" \
+    "https://forum.celo.org/t/expand-stcelo-to-15-validator-groups" \
+    --value $MIN_DEPOSIT \
+    --from $PROPOSER --rpc-url $ANVIL_RPC --unlocked --gas-limit 5000000 2>&1)
 PROPOSE_CODE=$?
 set -e
 
-echo "$PROPOSE_RESULT"
-if [ $PROPOSE_CODE -ne 0 ]; then
-    log_error "Proposal submission script failed"
+if [ $PROPOSE_CODE -ne 0 ] || ! echo "$PROPOSE_RESULT" | grep -q "status.*1"; then
+    log_error "Governance proposal submission failed"
+    echo "$PROPOSE_RESULT" | tail -5
     exit 1
 fi
-log_success "Proposal submitted via propose-expand-to-10-groups.sh"
 
-# Get proposal ID from the output
-PROPOSAL_ID=$(echo "$PROPOSE_RESULT" | grep "Proposal ID:" | awk '{print $NF}')
-log_info "Proposal ID: $PROPOSAL_ID"
+# Get proposal ID from proposalCount
+GOV_PROPOSAL_ID=$(parse_number "$(cast call $GOVERNANCE "proposalCount()(uint256)" --rpc-url $ANVIL_RPC)")
+log_success "Governance proposal submitted (ID: $GOV_PROPOSAL_ID)"
 
-# Now do the confirm/schedule/execute flow (test-only — on mainnet this happens over days)
-log_info "Confirming with remaining owners..."
+# --- 4d. Fast-forward past dequeue frequency (1 day) and dequeue ---
 
-set +e
-STEP_RESULT=$(cast send $MULTISIG "confirmProposal(uint256)" $PROPOSAL_ID \
-    --from $OWNER_2 --rpc-url $ANVIL_RPC --unlocked --gas-limit 200000 2>&1)
-set -e
-if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
-    log_error "Owner 2 confirm failed"; exit 1
-fi
-
-set +e
-STEP_RESULT=$(cast send $MULTISIG "confirmProposal(uint256)" $PROPOSAL_ID \
-    --from $OWNER_3 --rpc-url $ANVIL_RPC --unlocked --gas-limit 200000 2>&1)
-set -e
-if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
-    log_error "Owner 3 confirm failed"; exit 1
-fi
-log_success "All 3 owners confirmed"
-
-# Schedule if not auto-scheduled
-IS_SCHEDULED=$(cast call $MULTISIG "isScheduled(uint256)(bool)" $PROPOSAL_ID --rpc-url $ANVIL_RPC)
-if [ "$IS_SCHEDULED" == "true" ]; then
-    log_success "Proposal auto-scheduled on final confirmation"
-else
-    set +e
-    STEP_RESULT=$(cast send $MULTISIG "scheduleProposal(uint256)" $PROPOSAL_ID \
-        --from $OWNER_1 --rpc-url $ANVIL_RPC --unlocked --gas-limit 200000 2>&1)
-    set -e
-    if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
-        log_error "Schedule proposal failed"; echo "$STEP_RESULT" | tail -3; exit 1
-    fi
-    log_success "Proposal scheduled"
-fi
-
-# Fast-forward timelock
-DELAY=$(parse_number "$(cast call $MULTISIG "delay()(uint256)" --rpc-url $ANVIL_RPC)")
-if ! cast rpc evm_increaseTime $DELAY --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
-    log_error "evm_increaseTime failed"; exit 1
+DEQUEUE_FREQ=$(parse_number "$(cast call $GOVERNANCE "dequeueFrequency()(uint256)" --rpc-url $ANVIL_RPC)")
+if ! cast rpc evm_increaseTime $((DEQUEUE_FREQ + 1)) --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
+    log_error "evm_increaseTime for dequeue failed"; exit 1
 fi
 if ! cast rpc evm_mine --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
     log_error "evm_mine failed"; exit 1
 fi
-log_info "Fast-forwarded $((DELAY / 86400)) days"
+log_info "Fast-forwarded $((DEQUEUE_FREQ / 3600)) hours for dequeue"
 
-# Execute
 set +e
-EXEC_RESULT=$(cast send $MULTISIG "executeProposal(uint256)" $PROPOSAL_ID \
-    --from $OWNER_1 --rpc-url $ANVIL_RPC --unlocked --gas-limit 5000000 2>&1)
+STEP_RESULT=$(cast send $GOVERNANCE "dequeueProposalsIfReady()" \
+    --from $PROPOSER --rpc-url $ANVIL_RPC --unlocked --gas-limit 5000000 2>&1)
+set -e
+if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
+    log_error "dequeueProposalsIfReady failed"; echo "$STEP_RESULT" | tail -3; exit 1
+fi
+log_success "Proposals dequeued"
+
+# Find the proposal's index in the dequeued array
+DEQUEUE_RAW=$(cast call $GOVERNANCE "getDequeue()(uint256[])" --rpc-url $ANVIL_RPC)
+GOV_INDEX=$(python3 -c "
+raw = '$DEQUEUE_RAW'.strip('[]')
+items = [x.strip() for x in raw.split(',') if x.strip()]
+proposal_id = $GOV_PROPOSAL_ID
+for i, item in enumerate(items):
+    val = int(item.split()[0]) if ' ' in item else int(item)
+    if val == proposal_id:
+        print(i)
+        break
+else:
+    print(-1)
+")
+if [ "$GOV_INDEX" = "-1" ]; then
+    log_error "Proposal $GOV_PROPOSAL_ID not found in dequeue"
+    exit 1
+fi
+log_info "Proposal index in dequeue: $GOV_INDEX"
+
+# --- 4e. Approve IMMEDIATELY after dequeue (approval window is only 1 day!) ---
+
+log_info "Approving proposal as governance approver ($APPROVER)..."
+
+if ! cast rpc anvil_impersonateAccount $APPROVER --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
+    log_error "Failed to impersonate approver"; exit 1
+fi
+FUND_RESULT=$(cast send $APPROVER --value 1ether --from $ANVIL_FUNDER --rpc-url $ANVIL_RPC --unlocked 2>&1)
+if ! echo "$FUND_RESULT" | grep -q "status.*1"; then
+    log_error "Failed to fund approver"; exit 1
+fi
+
+set +e
+STEP_RESULT=$(cast send $GOVERNANCE "approve(uint256,uint256)" \
+    $GOV_PROPOSAL_ID $GOV_INDEX \
+    --from $APPROVER --rpc-url $ANVIL_RPC --unlocked --gas-limit 1000000 2>&1)
+set -e
+if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
+    log_error "Governance approve failed"; echo "$STEP_RESULT" | tail -5; exit 1
+fi
+
+# Verify approval
+IS_APPROVED=$(cast call $GOVERNANCE "isApproved(uint256)(bool)" $GOV_PROPOSAL_ID --rpc-url $ANVIL_RPC)
+if [ "$IS_APPROVED" != "true" ]; then
+    log_error "Proposal not approved after approve() call"; exit 1
+fi
+log_success "Proposal approved by governance approver"
+
+# --- 4f. Vote YES on the proposal ---
+
+log_info "Voting YES on proposal..."
+
+# VoteValue: None=0, Abstain=1, No=2, Yes=3
+set +e
+STEP_RESULT=$(cast send $GOVERNANCE "vote(uint256,uint256,uint8)" \
+    $GOV_PROPOSAL_ID $GOV_INDEX 3 \
+    --from $PROPOSER --rpc-url $ANVIL_RPC --unlocked --gas-limit 1000000 2>&1)
+set -e
+if ! echo "$STEP_RESULT" | grep -q "status.*1"; then
+    log_error "Governance vote failed"; echo "$STEP_RESULT" | tail -5; exit 1
+fi
+log_success "Voted YES on proposal (~24M CELO weight)"
+
+# Verify proposal is passing
+IS_PASSING=$(cast call $GOVERNANCE "isProposalPassing(uint256)(bool)" $GOV_PROPOSAL_ID --rpc-url $ANVIL_RPC)
+if [ "$IS_PASSING" != "true" ]; then
+    log_error "Proposal not passing after vote"; exit 1
+fi
+log_success "Proposal is passing"
+
+# --- 4g. Fast-forward to execution stage ---
+# Timeline from dequeue: approval(1d) + referendum(7d) = 8d to reach execution
+# We already spent 1d on dequeue, need 7 more days to reach execution stage
+
+REFERENDUM_DURATION=$(parse_number "$(cast call $GOVERNANCE "getReferendumStageDuration()(uint256)" --rpc-url $ANVIL_RPC)")
+if ! cast rpc evm_increaseTime $((REFERENDUM_DURATION + 1)) --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
+    log_error "evm_increaseTime for execution stage failed"; exit 1
+fi
+if ! cast rpc evm_mine --rpc-url $ANVIL_RPC > /dev/null 2>&1; then
+    log_error "evm_mine failed"; exit 1
+fi
+log_info "Fast-forwarded $((REFERENDUM_DURATION / 86400)) days to execution stage"
+
+# Verify we're in execution stage (stage 4)
+GOV_STAGE=$(cast call $GOVERNANCE "getProposalStage(uint256)(uint8)" $GOV_PROPOSAL_ID --rpc-url $ANVIL_RPC)
+if [ "$GOV_STAGE" != "4" ]; then
+    log_error "Expected execution stage (4), got stage $GOV_STAGE"
+    exit 1
+fi
+log_success "Proposal is in execution stage"
+
+# --- 4h. Execute the governance proposal ---
+
+log_info "Executing governance proposal..."
+
+set +e
+EXEC_RESULT=$(cast send $GOVERNANCE "execute(uint256,uint256)" \
+    $GOV_PROPOSAL_ID $GOV_INDEX \
+    --from $PROPOSER --rpc-url $ANVIL_RPC --unlocked --gas-limit 10000000 2>&1)
 EXEC_CODE=$?
 set -e
 
 if [ $EXEC_CODE -eq 0 ] && echo "$EXEC_RESULT" | grep -q "status.*1"; then
-    log_success "Proposal $PROPOSAL_ID executed"
+    log_success "Governance proposal $GOV_PROPOSAL_ID executed — MultiSig.governanceProposeAndExecute called"
 else
-    log_error "Proposal $PROPOSAL_ID execution FAILED"
-    echo "$EXEC_RESULT"
+    log_error "Governance proposal execution FAILED"
+    echo "$EXEC_RESULT" | tail -10
     exit 1
 fi
 
