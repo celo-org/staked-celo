@@ -510,8 +510,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
     function rebalance(address fromGroup, address toGroup) public onlyWhenNotPaused {
         if (
             !defaultStrategy.isActive(toGroup) &&
-            (specificGroupStrategy.isBlockedGroup(toGroup) ||
-                !groupHealth.isGroupValid(toGroup))
+            (specificGroupStrategy.isBlockedGroup(toGroup) || !groupHealth.isGroupValid(toGroup))
         ) {
             revert InvalidToGroup(toGroup);
         }
