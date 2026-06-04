@@ -82,13 +82,26 @@ fi
 
 # ---------------------------------------------------------------------------
 echo "=== deploying the 4 new implementations ==="
-deploy(){ cast send --rpc-url "$RPC" --private-key "$DEPLOY_KEY" $SEND_EXTRA --create "$1" --json 2>/dev/null | jq -r .contractAddress; }
-A_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/Account.sol/Account.json)")
-M_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/Manager.sol/Manager.json)")
-S_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/SpecificGroupStrategy.sol/SpecificGroupStrategy.json)")
-LIB=$(deploy "$(jq -r .bytecode artifacts/contracts/common/linkedlists/AddressSortedLinkedList.sol/AddressSortedLinkedList.json)")
-DBC=$(jq -r .bytecode artifacts/contracts/DefaultStrategy.sol/DefaultStrategy.json | sed "s/__\$[0-9a-f]*\$__/$(norm "$LIB")/g")
-D_IMPL=$(deploy "$DBC")
+# Deploy creation bytecode; surface the cast error (and abort) on failure.
+deploy(){
+  local out addr
+  out=$(cast send --rpc-url "$RPC" --private-key "$DEPLOY_KEY" $SEND_EXTRA --create "$1" --json 2>/tmp/deploy-err.log)
+  addr=$(echo "$out" | jq -r '.contractAddress // empty' 2>/dev/null)
+  if [ -z "$addr" ] || [ "$addr" = "null" ]; then
+    echo "DEPLOY FAILED:" >&2; tail -5 /tmp/deploy-err.log >&2; return 1
+  fi
+  echo "$addr"
+}
+A_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/Account.sol/Account.json)") || exit 1
+M_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/Manager.sol/Manager.json)") || exit 1
+S_IMPL=$(deploy "$(jq -r .bytecode artifacts/contracts/SpecificGroupStrategy.sol/SpecificGroupStrategy.json)") || exit 1
+LIB=$(deploy "$(jq -r .bytecode artifacts/contracts/common/linkedlists/AddressSortedLinkedList.sol/AddressSortedLinkedList.json)") || exit 1
+# Link DefaultStrategy to the deployed library. The placeholder must be replaced
+# by the full 40-hex address (lowercased, 0x stripped, LEADING ZEROS PRESERVED).
+LIB_HEX=$(echo "${LIB#0x}" | tr 'A-Z' 'a-z')
+DBC=$(jq -r .bytecode artifacts/contracts/DefaultStrategy.sol/DefaultStrategy.json | sed "s/__\$[0-9a-f]*\$__/$LIB_HEX/g")
+case "$DBC" in *'__$'*) echo "ERROR: DefaultStrategy bytecode still has an unlinked library placeholder" >&2; exit 1;; esac
+D_IMPL=$(deploy "$DBC") || exit 1
 for v in "$A_IMPL:Account" "$M_IMPL:Manager" "$S_IMPL:SpecificGroupStrategy" "$D_IMPL:DefaultStrategy" "$LIB:AddressSortedLinkedList"; do
   [ -n "${v%%:*}" ] && [ "${v%%:*}" != null ] || { echo "deploy failed: ${v##*:}"; exit 1; }
   echo "  ${v##*:}: ${v%%:*}"
