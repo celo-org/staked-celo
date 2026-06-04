@@ -1258,7 +1258,7 @@ describe("DefaultStrategy", () => {
   describe("#generateWithdrawalVoteDistribution", () => {
     it("cannot be called by a non-Manager address", async () => {
       await expect(
-        defaultStrategyContract.connect(nonManager).generateWithdrawalVoteDistribution(10)
+        defaultStrategyContract.connect(nonManager).generateWithdrawalVoteDistribution(10, false)
       ).revertedWith(`CallerNotManagerNorStrategy("${nonManager.address}")`);
     });
   });

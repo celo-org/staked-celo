@@ -187,6 +187,17 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     /// @notice There's no amount of scheduled withdrawal for the given beneficiary and group.
     error NoScheduledWithdrawal(address beneficiary, address group);
 
+    /**
+     * @notice Thrown when `rescueScheduledWithdrawal` targets a group that can
+     * still pay the beneficiary's withdrawal - so no rescue is warranted.
+     */
+    error GroupNotInDeficit(
+        address beneficiary,
+        address group,
+        uint256 capacity,
+        uint256 userClaim
+    );
+
     /// @notice Voting for proposal was not successfull.
     error VotingNotSuccessful(uint256 proposalId);
 
@@ -325,19 +336,19 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             revert GroupsAndVotesArrayLengthsMismatch();
         }
 
+        // Thread one balance budget across groups: balance is shared, so
+        // validating each group independently would double-count the same CELO.
+        uint256 balanceBudget = address(this).balance;
         uint256 totalWithdrawalsDelta;
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            uint256 celoAvailableForGroup = getCeloForGroup(groups[i]);
-            if (celoAvailableForGroup < withdrawals[i]) {
-                revert WithdrawalAmountTooHigh(groups[i], celoAvailableForGroup, withdrawals[i]);
-            }
-
-            scheduledVotes[groups[i]].toWithdraw += withdrawals[i];
-            scheduledVotes[groups[i]].toWithdrawFor[beneficiary] += withdrawals[i];
+            balanceBudget = _addBeneficiaryWithdrawal(
+                beneficiary,
+                groups[i],
+                withdrawals[i],
+                balanceBudget
+            );
             totalWithdrawalsDelta += withdrawals[i];
-
-            emit CeloWithdrawalScheduled(beneficiary, groups[i], withdrawals[i]);
         }
 
         totalScheduledWithdrawals += totalWithdrawalsDelta;
@@ -581,6 +592,60 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
     }
 
     /**
+     * @notice Re-routes a beneficiary's pinned withdrawal onto groups that can
+     * fulfill it, freeing CELO stuck on a group whose Election votes fell below
+     * the pinned amount. Bookkeeping only; no CELO moves. Permissionless, but
+     * only when `fromGroup` truly cannot pay this beneficiary right now (see
+     * `_requireGroupInDeficit`). Funds can only ever reach `beneficiary` via
+     * `Account.withdraw`, so a caller can at worst route to slower groups -
+     * never steal or destroy CELO.
+     * @dev Net change to `totalScheduledWithdrawals` is zero, so it isn't
+     * touched. The source slot is cleared before the additions, so passing
+     * `fromGroup` inside `toGroups` re-adds onto a clean slot instead of
+     * zeroing the beneficiary's claim.
+     * @param beneficiary The beneficiary of the withdrawal.
+     * @param fromGroup The group the withdrawal is currently pinned to.
+     * @param toGroups Groups to re-route the withdrawal across.
+     * @param amounts Per-group CELO amounts. Sum must equal the pinned amount.
+     */
+    function rescueScheduledWithdrawal(
+        address beneficiary,
+        address fromGroup,
+        address[] calldata toGroups,
+        uint256[] calldata amounts
+    ) external onlyWhenNotPaused {
+        if (toGroups.length != amounts.length) {
+            revert GroupsAndVotesArrayLengthsMismatch();
+        }
+        uint256 original = scheduledVotes[fromGroup].toWithdrawFor[beneficiary];
+        if (original == 0) {
+            revert NoScheduledWithdrawal(beneficiary, fromGroup);
+        }
+        _requireGroupInDeficit(beneficiary, fromGroup, original);
+
+        // Clear source FIRST so a malformed `toGroups` containing
+        // `fromGroup` cannot trigger an "add-then-zero" sequence that
+        // would destroy the beneficiary's claim.
+        scheduledVotes[fromGroup].toWithdrawFor[beneficiary] = 0;
+        scheduledVotes[fromGroup].toWithdraw -= original;
+
+        uint256 balanceBudget = address(this).balance;
+        uint256 sum;
+        for (uint256 i = 0; i < toGroups.length; i++) {
+            balanceBudget = _addBeneficiaryWithdrawal(
+                beneficiary,
+                toGroups[i],
+                amounts[i],
+                balanceBudget
+            );
+            sum += amounts[i];
+        }
+        if (sum != original) {
+            revert TransferAmountMisalignment(original, sum);
+        }
+    }
+
+    /**
      * @notice Gets the total amount of CELO this contract controls. This is the
      * unlocked CELO balance of the contract plus the amount of LockedGold for this contract,
      * which included unvoting and voting LockedGold.
@@ -705,7 +770,7 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
             uint256
         )
     {
-        return (1, 2, 1, 0);
+        return (1, 2, 2, 0);
     }
 
     /**
@@ -762,6 +827,9 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
      * @notice Returns the total amount of CELO directed towards `group`. This is
      * the Unlocked CELO balance for `group` plus the combined amount in pending
      * and active votes made by this contract.
+     * @dev WARNING: includes `scheduledVotes.toVote` even when Election cap is
+     * exhausted and those votes can never be cast. For withdrawal-capacity
+     * decisions use `getRealisableCeloForGroup` instead.
      * @param group The address of the validator group.
      * @return The total amount of CELO directed towards `group`.
      */
@@ -775,6 +843,29 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
         }
 
         return 0;
+    }
+
+    /**
+     * @notice CELO for `group` that `Account.withdraw` can actually pay out now,
+     * unlike `getCeloForGroup` which counts `toVote` the Election cap may block.
+     * @dev Two buckets: revokable Election votes, and the `toVote` slice backed
+     * by current balance (withdraw pays that directly, no Election vote needed).
+     * Subtract queued `toRevoke` from the revoke bucket, and existing
+     * `toWithdraw` once from the total - withdraw is immediate-first, so a
+     * pending withdrawal costs one unit of total capacity, not one per bucket.
+     * @param group The address of the validator group.
+     * @return The realisable CELO for `group`.
+     */
+    function getRealisableCeloForGroup(address group) public view returns (uint256) {
+        uint256 revokable = getElection().getTotalVotesForGroupByAccount(group, address(this));
+        uint256 toRevoke = scheduledVotes[group].toRevoke;
+        uint256 revokableAvail = revokable > toRevoke ? revokable - toRevoke : 0;
+        uint256 toVote = scheduledVotes[group].toVote;
+        uint256 balance = address(this).balance;
+        uint256 immediateBucket = balance < toVote ? balance : toVote;
+        uint256 capacity = revokableAvail + immediateBucket;
+        uint256 toWithdraw = scheduledVotes[group].toWithdraw;
+        return capacity > toWithdraw ? capacity - toWithdraw : 0;
     }
 
     /**
@@ -944,6 +1035,71 @@ contract Account is UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Managed, I
 
         if (addToRevoke > 0) {
             emit RevocationScheduled(group, addToRevoke);
+        }
+    }
+
+    /**
+     * @notice Books a per-group withdrawal for `rescueScheduledWithdrawal`,
+     * reverting unless the group can realisably fulfill it. Returns the
+     * balance budget left after this pin's immediate draw.
+     */
+    function _addBeneficiaryWithdrawal(
+        address beneficiary,
+        address toGroup,
+        uint256 amount,
+        uint256 balanceBudget
+    ) private returns (uint256 newBalanceBudget) {
+        // Capacity = immediate bucket + revoke bucket, minus what existing
+        // pins on this group already claim (subtracted once - see
+        // getRealisableCeloForGroup). Charge the budget by this pin's immediate
+        // draw so a later group can't reuse the same balance.
+        uint256 immediate;
+        {
+            uint256 revokable = getElection().getTotalVotesForGroupByAccount(
+                toGroup,
+                address(this)
+            );
+            uint256 toRevoke = scheduledVotes[toGroup].toRevoke;
+            uint256 revokableAvail = revokable > toRevoke ? revokable - toRevoke : 0;
+            uint256 toVote = scheduledVotes[toGroup].toVote;
+            uint256 immediateBucket = balanceBudget < toVote ? balanceBudget : toVote;
+            uint256 capacity = revokableAvail + immediateBucket;
+            uint256 existingToWithdraw = scheduledVotes[toGroup].toWithdraw;
+            uint256 capacityForNew = capacity > existingToWithdraw
+                ? capacity - existingToWithdraw
+                : 0;
+            if (amount > capacityForNew) {
+                revert WithdrawalAmountTooHigh(toGroup, capacityForNew, amount);
+            }
+            immediate = amount < immediateBucket ? amount : immediateBucket;
+        }
+        scheduledVotes[toGroup].toWithdraw += amount;
+        scheduledVotes[toGroup].toWithdrawFor[beneficiary] += amount;
+        emit CeloWithdrawalScheduled(beneficiary, toGroup, amount);
+        return balanceBudget - immediate;
+    }
+
+    /**
+     * @notice Reverts unless `group` genuinely cannot pay `userClaim` to this
+     * beneficiary now - the gate that keeps `rescueScheduledWithdrawal`
+     * permissionless without letting anyone reroute a payable withdrawal.
+     * @dev Capacity is what `Account.withdraw(beneficiary, group)` could deliver
+     * for THIS claim: `min(balance, toVote) + revokable`. It deliberately
+     * ignores `toRevoke` and other beneficiaries' `toWithdraw` - withdraw isn't
+     * gated by those, so counting them could mark a payable group as deficient.
+     */
+    function _requireGroupInDeficit(
+        address beneficiary,
+        address group,
+        uint256 userClaim
+    ) private view {
+        uint256 revokable = getElection().getTotalVotesForGroupByAccount(group, address(this));
+        uint256 toVote = scheduledVotes[group].toVote;
+        uint256 balance = address(this).balance;
+        uint256 immediate = toVote < balance ? toVote : balance;
+        uint256 capacity = immediate + revokable;
+        if (capacity >= userClaim) {
+            revert GroupNotInDeficit(beneficiary, group, capacity, userClaim);
         }
     }
 }

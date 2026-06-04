@@ -279,7 +279,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             celoWithdrawalAmount -= celoToBeMovedFromDefaultStrategy;
 
             (address[] memory overflowGroups, uint256[] memory overflowVotes) = defaultStrategy
-                .generateWithdrawalVoteDistribution(celoToBeMovedFromDefaultStrategy);
+                .generateWithdrawalVoteDistribution(celoToBeMovedFromDefaultStrategy, isTransfer);
 
             handleWithdrawalOverflowAndUnhealthyAccounting(
                 group,
@@ -294,7 +294,11 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
                     groups[i] = overflowGroups[i];
                     votes[i] = overflowVotes[i];
                 }
-                if (!isTransfer && account.getCeloForGroup(group) < celoWithdrawalAmount) {
+                if (
+                    !isTransfer && account.getRealisableCeloForGroup(group) < celoWithdrawalAmount
+                ) {
+                    // Use realisable (not getCeloForGroup) so we don't pin to a
+                    // group whose votes the Election cap won't let us revoke.
                     revert GroupNotBalanced(group);
                 }
                 groups[overflowGroups.length] = group;
@@ -466,7 +470,7 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
             uint256
         )
     {
-        return (1, 1, 1, 0);
+        return (1, 1, 1, 1);
     }
 
     /**
@@ -623,8 +627,9 @@ contract SpecificGroupStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausa
      */
     function transferFromDefaultStrategy(address group, uint256 stCeloToMove) private {
         uint256 toMoveCelo = IManager(manager).toCelo(stCeloToMove);
+        // isTransfer=true: accounting-only move, so DS skips the realisable cap.
         (address[] memory fromGroups, uint256[] memory fromVotes) = defaultStrategy
-            .generateWithdrawalVoteDistribution(toMoveCelo);
+            .generateWithdrawalVoteDistribution(toMoveCelo, true);
         address[] memory toGroups = new address[](1);
         uint256[] memory toVotes = new uint256[](1);
         toGroups[0] = group;

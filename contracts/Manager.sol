@@ -333,7 +333,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
             uint256
         )
     {
-        return (1, 3, 1, 0);
+        return (1, 3, 1, 1);
     }
 
     /**
@@ -671,7 +671,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
                 .generateWithdrawalVoteDistribution(strategy, celoAmount, stCeloAmount, isTransfer);
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
-                .generateWithdrawalVoteDistribution(celoAmount);
+                .generateWithdrawalVoteDistribution(celoAmount, isTransfer);
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);
