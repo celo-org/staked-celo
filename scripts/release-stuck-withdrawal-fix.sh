@@ -131,21 +131,24 @@ echo "  CGP JSON -> /tmp/stcelo-fix-cgp.json"
 # ---------------------------------------------------------------------------
 if [ "$TARGET" = "mainnet" ]; then
   echo "=== verifying implementations on Celoscan + Blockscout ==="
-  printf 'module.exports = { "%s": "%s" };\n' "AddressSortedLinkedList" "$LIB" > /tmp/ds-libs.js
-  verify_celoscan(){ # <addr> [extra hardhat args...]
-    local a="$1"; shift
-    echo "  [Celoscan] $a"; npx hardhat verify --network celo "$a" "$@" 2>&1 | tail -3 || true; }
+  # Both via forge (uses local solc; no dependency on solc-bin.ethereum.org,
+  # which the hardhat-etherscan plugin needs and which can fail with DNS errors).
+  verify_celoscan(){ # <addr> <path:Contract> [extra forge args...]
+    local a="$1" cp="$2"; shift 2
+    echo "  [Celoscan] $a ($cp)"; forge verify-contract "$a" "$cp" \
+      --chain celo --etherscan-api-key "$CELO_SCAN_API_KEY" \
+      --compiler-version "$SOLC_VERSION" --evm-version "$EVM_VERSION" --watch "$@" 2>&1 | tail -3 || true; }
   verify_blockscout(){ # <addr> <path:Contract> [extra forge args...]
     local a="$1" cp="$2"; shift 2
     echo "  [Blockscout] $a ($cp)"; forge verify-contract "$a" "$cp" \
       --verifier blockscout --verifier-url "$BLOCKSCOUT_API" \
       --compiler-version "$SOLC_VERSION" --evm-version "$EVM_VERSION" --watch "$@" 2>&1 | tail -3 || true; }
 
-  verify_celoscan  "$LIB";    verify_blockscout "$LIB"    "$DS_LIB_PATH"
-  verify_celoscan  "$A_IMPL"; verify_blockscout "$A_IMPL" "contracts/Account.sol:Account"
-  verify_celoscan  "$M_IMPL"; verify_blockscout "$M_IMPL" "contracts/Manager.sol:Manager"
-  verify_celoscan  "$S_IMPL"; verify_blockscout "$S_IMPL" "contracts/SpecificGroupStrategy.sol:SpecificGroupStrategy"
-  verify_celoscan  "$D_IMPL" --libraries /tmp/ds-libs.js
+  verify_celoscan  "$LIB"    "$DS_LIB_PATH";                                  verify_blockscout "$LIB"    "$DS_LIB_PATH"
+  verify_celoscan  "$A_IMPL" "contracts/Account.sol:Account";                 verify_blockscout "$A_IMPL" "contracts/Account.sol:Account"
+  verify_celoscan  "$M_IMPL" "contracts/Manager.sol:Manager";                 verify_blockscout "$M_IMPL" "contracts/Manager.sol:Manager"
+  verify_celoscan  "$S_IMPL" "contracts/SpecificGroupStrategy.sol:SpecificGroupStrategy"; verify_blockscout "$S_IMPL" "contracts/SpecificGroupStrategy.sol:SpecificGroupStrategy"
+  verify_celoscan  "$D_IMPL" "contracts/DefaultStrategy.sol:DefaultStrategy" --libraries "$DS_LIB_PATH:$LIB"
   verify_blockscout "$D_IMPL" "contracts/DefaultStrategy.sol:DefaultStrategy" --libraries "$DS_LIB_PATH:$LIB"
 
   echo
