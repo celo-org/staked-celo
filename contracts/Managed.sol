@@ -14,6 +14,12 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
     address public manager;
 
     /**
+     * @dev Note: A storage gap cannot be added to this contract because it would
+     * break the storage layout of all contracts that inherit from it. Any future
+     * storage variables should be added to the inheriting contracts directly.
+     */
+
+    /**
      * @notice Emitted when the manager is initially set or later modified.
      * @param manager The new managing account address.
      */
@@ -24,6 +30,9 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
      *  @param caller `msg.sender` that called the function.
      */
     error CallerNotManager(address caller);
+
+    /// @notice Used when attempting to renounce ownership.
+    error RenounceOwnershipDisabled();
 
     /**
      * @dev Throws if called by any account other than the manager.
@@ -41,6 +50,13 @@ abstract contract Managed is Errors, Initializable, OwnableUpgradeable {
      */
     function setManager(address _manager) external onlyOwner {
         _setManager(_manager);
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure virtual override {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

@@ -72,7 +72,7 @@
     "verify:deploy": "hardhat sourcify",
     "tarchain": "ts-node scripts/tarchain.ts",
     "generate:standard:artifacts": "ts-node scripts/standardize-artifacts.ts run",
-    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -e \".*Test|Mock.*|I[A-Z].*|.*Proxy|ReleaseGold|SlasherUtil|UsingPrecompiles|^UsingRegistry|ERC20.*\""
+    "compare:artifacts": "./node_modules/@celo/contract-compatibility-check/bin/run check -e \".*Test|Mock.*|I[A-Z].*|.*Proxy|ReleaseGold|SlasherUtil|UsingPrecompiles|^UsingRegistry|ERC20.*|^Managed$\""
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

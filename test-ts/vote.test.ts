@@ -239,6 +239,50 @@ describe("Vote", async function (this: any) {
       const voteWeight = await voteContract.getVoteWeight(depositor0.address);
       expect(voteWeight).to.eq(amountOfCeloToDeposit);
     });
+
+    it("should return deposited stCelo plus locked stCelo from voting", async () => {
+      const amountOfCeloToDeposit = hre.web3.utils.toWei("10");
+      await depositAndActivate(depositor0, amountOfCeloToDeposit);
+      await proposeNewProposal();
+
+      // Check initial vote weight (just deposited amount)
+      const initialVoteWeight = await voteContract.getVoteWeight(depositor0.address);
+      expect(initialVoteWeight).to.eq(amountOfCeloToDeposit);
+
+      // Get initial balances before voting
+      const stakedCelo = await hre.ethers.getContract("StakedCelo");
+      const initialRegularBalance = await stakedCelo.balanceOf(depositor0.address);
+      const initialLockedBalance = await stakedCelo.lockedVoteBalanceOf(depositor0.address);
+      expect(initialLockedBalance).to.eq(0); // Should be 0 before voting
+
+      // Vote on proposal to create locked stCELO
+      const proposal1Id = 1;
+      const proposal1Index = 0;
+      const yesVotes = hre.web3.utils.toWei("7");
+      const noVotes = hre.web3.utils.toWei("2");
+      const abstainVotes = hre.web3.utils.toWei("1");
+
+      await managerContract
+        .connect(depositor0)
+        .voteProposal(proposal1Id, proposal1Index, yesVotes, noVotes, abstainVotes);
+
+      // After voting, verify that locked vote balance exists and is non-zero
+      const finalRegularBalance = await stakedCelo.balanceOf(depositor0.address);
+      const finalLockedBalance = await stakedCelo.lockedVoteBalanceOf(depositor0.address);
+
+      expect(finalLockedBalance).to.be.gt(0); // Should have locked stCELO now
+
+      // The total stCELO (regular + locked) should equal the initial regular balance
+      const totalStCeloBalance = finalRegularBalance.add(finalLockedBalance);
+      expect(totalStCeloBalance).to.eq(initialRegularBalance);
+
+      // Vote weight should include both regular and locked stCELO
+      const finalVoteWeight = await voteContract.getVoteWeight(depositor0.address);
+      const expectedVoteWeight = await voteContract.toCelo(totalStCeloBalance);
+
+      expect(finalVoteWeight).to.eq(expectedVoteWeight);
+      expect(finalVoteWeight).to.eq(amountOfCeloToDeposit); // Should still equal total CELO deposited
+    });
   });
 
   describe("#getReferendumDuration()", () => {

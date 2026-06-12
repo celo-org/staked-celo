@@ -81,6 +81,11 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
     mapping(uint256 => uint256) public proposalTimestamps;
 
     /**
+     * @dev Reserved storage space to allow for layout changes in future upgrades.
+     */
+    uint256[50] private __gap;
+
+    /**
      * @notice Emitted when an account votes for governance proposal.
      * @param voter The voter's address.
      * @param proposalId The proposal UIID.
@@ -218,7 +223,7 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
             uint256
         )
     {
-        return (1, 1, 3, 0);
+        return (1, 2, 0, 0);
     }
 
     /**
@@ -454,7 +459,8 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
      * @param beneficiary The account.
      */
     function getVoteWeight(address beneficiary) public view returns (uint256) {
-        uint256 stakedCeloBalance = stakedCelo.balanceOf(beneficiary);
+        uint256 stakedCeloBalance = stakedCelo.balanceOf(beneficiary) +
+            stakedCelo.lockedVoteBalanceOf(beneficiary);
         return toCelo(stakedCeloBalance);
     }
 
@@ -498,6 +504,13 @@ contract Vote is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Manag
         }
 
         return (stCeloAmount * celoBalance) / stCeloSupply;
+    }
+
+    /**
+     * @notice Disables renouncing ownership. Ownership should never be renounced.
+     */
+    function renounceOwnership() public pure override(Managed, OwnableUpgradeable) {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

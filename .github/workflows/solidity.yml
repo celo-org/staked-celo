@@ -104,7 +104,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: release
-          ref: releases/2
+          ref: releases/4
 
       - name: Install release dependencies
         run: yarn

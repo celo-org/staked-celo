@@ -35,6 +35,15 @@ contract MockAccount {
     uint256 public noVotesVoted;
     uint256 public abstainVoteVoted;
 
+    /**
+     * @notice Used when attempting to schedule more withdrawals
+     * than CELO available to the contract.
+     * @param group The offending group.
+     * @param celoAvailable CELO available to the group.
+     * @param celoToWithdraw total amount of CELO that would be scheduled to be withdrawn.
+     */
+    error WithdrawalAmountTooHigh(address group, uint256 celoAvailable, uint256 celoToWithdraw);
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
@@ -48,6 +57,15 @@ contract MockAccount {
         address[] calldata groups,
         uint256[] calldata withdrawals
     ) external {
+        // Validate that each group has enough CELO for the withdrawal
+        // This matches the validation in the real Account contract
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            uint256 celoAvailableForGroup = getCeloForGroup[groups[i]];
+            if (celoAvailableForGroup < withdrawals[i]) {
+                revert WithdrawalAmountTooHigh(groups[i], celoAvailableForGroup, withdrawals[i]);
+            }
+        }
+
         lastWithdrawnGroups = groups;
         lastWithdrawals = withdrawals;
         lastWithdrawalBeneficiary = beneficiary;
