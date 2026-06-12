@@ -8,7 +8,7 @@ interface IDefaultStrategy {
         address depositGroupToIgnore
     ) external returns (address[] memory finalGroups, uint256[] memory finalVotes);
 
-    function generateWithdrawalVoteDistribution(uint256 celoAmount)
+    function generateWithdrawalVoteDistribution(uint256 celoAmount, bool isTransfer)
         external
         returns (address[] memory finalGroups, uint256[] memory finalVotes);
 

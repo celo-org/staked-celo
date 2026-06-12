@@ -671,7 +671,7 @@ contract Manager is Errors, UUPSOwnableUpgradeable, UsingRegistryUpgradeable, Pa
                 .generateWithdrawalVoteDistribution(strategy, celoAmount, stCeloAmount, isTransfer);
         } else {
             (groupsWithdrawn, withdrawalsPerGroup) = defaultStrategy
-                .generateWithdrawalVoteDistribution(celoAmount);
+                .generateWithdrawalVoteDistribution(celoAmount, isTransfer);
         }
 
         return (groupsWithdrawn, withdrawalsPerGroup);

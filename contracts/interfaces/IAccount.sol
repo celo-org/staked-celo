@@ -29,6 +29,8 @@ interface IAccount {
 
     function getCeloForGroup(address) external view returns (uint256);
 
+    function getRealisableCeloForGroup(address group) external view returns (uint256);
+
     function scheduledVotesForGroup(address group) external view returns (uint256);
 
     function scheduledRevokeForGroup(address group) external view returns (uint256);

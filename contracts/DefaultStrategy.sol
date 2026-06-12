@@ -412,7 +412,7 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
      * @return finalGroups The groups that were chosen for subtraction.
      * @return finalVotes The votes of chosen finalGroups.
      */
-    function generateWithdrawalVoteDistribution(uint256 celoAmount)
+    function generateWithdrawalVoteDistribution(uint256 celoAmount, bool isTransfer)
         external
         managerOrStrategy
         returns (address[] memory finalGroups, uint256[] memory finalVotes)
@@ -430,14 +430,22 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
         uint256 groupsIndex;
 
         while (groupsIndex < maxGroupCount && celoAmount != 0 && votedGroup != address(0)) {
-            votes[groupsIndex] = Math.min(
-                Math.min(
-                    account.getCeloForGroup(votedGroup),
-                    IManager(manager).toCelo(stCeloInGroup[votedGroup])
-                ),
-                celoAmount
-            );
+            // Real withdrawals cap by realisable CELO so we never pin to a
+            // group that can't pay. Transfers (isTransfer) are accounting-only
+            // and the caller discards the votes, so they skip that cap.
+            uint256 stCeloAsCelo = IManager(manager).toCelo(stCeloInGroup[votedGroup]);
+            uint256 capacity = isTransfer
+                ? stCeloAsCelo
+                : Math.min(account.getRealisableCeloForGroup(votedGroup), stCeloAsCelo);
 
+            if (capacity == 0) {
+                // Nothing to take here; move to the next-smaller group without
+                // using a slot. (Re-reading HEAD would loop on this group.)
+                (, votedGroup, ) = activeGroups.get(votedGroup);
+                continue;
+            }
+
+            votes[groupsIndex] = Math.min(capacity, celoAmount);
             groups[groupsIndex] = votedGroup;
             celoAmount -= votes[groupsIndex];
             _updateGroupStCelo(
@@ -447,13 +455,31 @@ contract DefaultStrategy is Errors, UUPSOwnableUpgradeable, Managed, Pausable {
             );
             trySort(votedGroup, stCeloInGroup[votedGroup], false);
 
+            address previous = votedGroup;
             if (sorted) {
                 votedGroup = activeGroups.getHead();
             } else {
-                (, votedGroup, ) = activeGroups.get(votedGroup);
+                (, votedGroup, ) = activeGroups.get(previous);
             }
 
             groupsIndex++;
+
+            // Skip groups already chosen this call: when realisable (not
+            // stCelo) is the binding cap, a group's stCelo barely drops and it
+            // can resurface as HEAD, and emitting it twice would make
+            // scheduleWithdrawals revert. Walking toward smaller groups never
+            // skips an unchosen one (HEAD-down order).
+            bool chosen = true;
+            while (votedGroup != address(0) && chosen) {
+                chosen = false;
+                for (uint256 j = 0; j < groupsIndex; j++) {
+                    if (groups[j] == votedGroup) {
+                        chosen = true;
+                        (, votedGroup, ) = activeGroups.get(votedGroup);
+                        break;
+                    }
+                }
+            }
         }
 
         if (celoAmount != 0) {
