@@ -129,10 +129,15 @@ async function runCmd(outputDir: string, inputDir: string) {
   console.log("allBuildSources", JSON.stringify(allBuildSources));
 
   for (const source of allBuildSources.values()) {
-    const contractName = path.parse(source).name;
+    let contractName = path.parse(source).name;
     const contractInputSource = getInputContractSource(buildInfos, source);
     const contractOutputSource = getOutputContractSource(buildInfos, source);
     const contract = getContract(buildInfos, source);
+
+    if (contractName === "draft-IERC1822") {
+      contractName = "IERC1822Proxiable";
+    }
+
     const art: ArtifactInterface = {
       contractName: contractName,
       ast: contractOutputSource?.ast,
