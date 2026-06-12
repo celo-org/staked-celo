@@ -10,6 +10,7 @@
     "@celo/celo-devchain": "^7.0.0",
     "@celo/connect": "^1.5.2",
     "@celo/contractkit": "^4.1.0",
+    "@celo/abis": "^12.0.3",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
     "@nomiclabs/hardhat-etherscan": "^3.1.6",
     "@nomiclabs/hardhat-waffle": "^2.0.2",
@@ -48,13 +49,16 @@
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "eslint": "^8.28.0",
-    "prettier-plugin-organize-imports": "^3.2.1"
+    "prettier-plugin-organize-imports": "^3.2.1",
+    "@celo/devchain-anvil": "13.0.0-canary.11",
+    "@viem/anvil": "^0.0.10"
   },
   "scripts": {
     "compile": "yarn run hardhat compile",
     "clean": "yarn hardhat clean",
     "test": "yarn run hardhat test",
     "test:ci": "./scripts/run-tests.ci.sh",
+    "test:anvil": "RUN_ANVIL_TESTS=true yarn run hardhat test --network anvil test-ts/end-to-end-l2.test.ts",
     "deploy:devchain": "yarn run hardhat deploy --network devchain && ts-node --files ./scripts/mineBlocks.ts",
     "devchain": "yarn run celo-devchain --port 7545",
     "devchain:stCeloV1": "yarn run celo-devchain --port 7545 --file ./devChain/stCeloV1.tar.gz",

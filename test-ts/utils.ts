@@ -1,3 +1,4 @@
+import { electionABI, epochManagerABI, scoreManagerABI, validatorsABI } from "@celo/abis";
 import { AccountsWrapper } from "@celo/contractkit/lib/wrappers/Accounts";
 import { ElectionWrapper } from "@celo/contractkit/lib/wrappers/Election";
 import { LockedGoldWrapper } from "@celo/contractkit/lib/wrappers/LockedGold";
@@ -23,7 +24,6 @@ import { MockAccount } from "../typechain-types/MockAccount";
 import { MockDefaultStrategy } from "../typechain-types/MockDefaultStrategy";
 import { MockGroupHealth } from "../typechain-types/MockGroupHealth";
 import { SpecificGroupStrategy } from "../typechain-types/SpecificGroupStrategy";
-import electionContractData from "./code/abi/electionAbi.json";
 import { ExpectVsReal, OrderedGroup, RebalanceContract } from "./utils-interfaces";
 
 export const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
@@ -87,6 +87,14 @@ export async function setBalance(address: string, balance: EthersBigNumber) {
 
 export async function impersonateAccount(address: string) {
   await hre.network.provider.send("hardhat_impersonateAccount", [address]);
+}
+
+export async function impersonateAccountAnvil(address: string) {
+  await hre.network.provider.send("anvil_impersonateAccount", [address]);
+}
+
+export async function setBalanceAnvil(address: string, balance: EthersBigNumber) {
+  await hre.network.provider.send("anvil_setBalance", [address, balance.toHexString()]);
 }
 
 // ----- Epoch utils -----
@@ -185,6 +193,134 @@ export async function distributeEpochRewards(group: string, amount: string) {
   await electionContract.methods.distributeEpochRewards(group, amount, lesser, greater).send({
     from: ADDRESS_ZERO,
   });
+}
+
+// returns elected validator groups and elected validators
+export async function getValidatorGroupsL2() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
+  const epochManagerContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    epochManagerABI as any,
+    epochManagerAddress
+  );
+
+  const validatorsWrapper = await hre.kit.contracts.getValidators();
+  const validatorsContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validatorsABI as any,
+    validatorsWrapper.address
+  );
+
+  const elected = await epochManagerContract.methods.getElectedAccounts().call();
+
+  const electedGroups = new Set(
+    await Promise.all(
+      elected.map(async (validator: string) =>
+        validatorsContract.methods.getValidatorsGroup(validator).call()
+      )
+    )
+  );
+  return [Array.from(electedGroups), elected];
+}
+
+export async function mineToNextEpochL2(validators?: string[]) {
+  const defaultAnvilAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
+  const epochManagerContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    epochManagerABI as any,
+    epochManagerAddress
+  );
+
+  let groups = [];
+  [groups] = await getValidatorGroupsL2();
+
+  await timeTravel(60 * 60 * 24 * 7);
+
+  await epochManagerContract.methods.startNextEpochProcess().send({
+    from: defaultAnvilAddress,
+  });
+
+  const [lessers, greaters] = await getLessersAndGreaters(groups);
+
+  await epochManagerContract.methods.finishNextEpochProcess(groups, lessers, greaters).send({
+    from: defaultAnvilAddress,
+  });
+
+  if (validators == null) {
+    return;
+  }
+  for (let i = 0; i < validators.length; i++) {
+    await epochManagerContract.methods.sendValidatorPayment(validators[i]).send({
+      from: defaultAnvilAddress,
+    });
+  }
+}
+
+async function getLessersAndGreaters(groups: string[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scoreMangerAddress = await hre.kit.registry.addressFor("ScoreManager" as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const epochManagerAddress = await hre.kit.registry.addressFor("EpochManager" as any);
+  const electionWrapper = await hre.kit.contracts.getElection();
+  const electionContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    electionABI as any,
+    electionWrapper.address
+  );
+
+  const epochMangerContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    epochManagerABI as any,
+    epochManagerAddress
+  );
+
+  const scoreMangerContract = new hre.kit.web3.eth.Contract(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    scoreManagerABI as any,
+    scoreMangerAddress
+  );
+
+  const getEpochProcessingState = await epochMangerContract.methods
+    .getEpochProcessingState()
+    .call();
+  const totalRewardsVoter = getEpochProcessingState[2];
+  const groupWithVotesPromise = electionWrapper.getEligibleValidatorGroupsVotes();
+  const lessers: string[] = new Array(groups.length);
+  const greaters: string[] = new Array(groups.length);
+  const rewards = await Promise.all(
+    groups.map(async (group) => {
+      const groupScore = await scoreMangerContract.methods.getGroupScore(group).call();
+      return await electionContract.methods
+        .getGroupEpochRewardsBasedOnScore(group, totalRewardsVoter, groupScore)
+        .call();
+    })
+  );
+  const groupWithVotes = await groupWithVotesPromise;
+
+  for (let i = 0; i < groups.length; i++) {
+    const reward = rewards[i];
+
+    for (let j = 0; j < groupWithVotes.length; j++) {
+      if (groupWithVotes[j].address === groups[i]) {
+        groupWithVotes[j].votes = groupWithVotes[j].votes.plus(reward.toString());
+        break;
+      }
+    }
+
+    groupWithVotes.sort((a, b) => (b.votes.gt(a.votes) ? 1 : b.votes.lt(a.votes) ? -1 : 0));
+
+    for (let j = 0; j < groupWithVotes.length; j++) {
+      if (groupWithVotes[j].address === groups[i]) {
+        greaters[i] = j === 0 ? ADDRESS_ZERO : groupWithVotes[j - 1].address;
+        lessers[i] = j === groupWithVotes.length - 1 ? ADDRESS_ZERO : groupWithVotes[j + 1].address;
+        break;
+      }
+    }
+  }
+  return [lessers, greaters];
 }
 
 export async function submitAndExecuteProposal(
@@ -541,7 +677,7 @@ export async function updateMaxNumberOfGroups(
   // TODO: once contractkit updated - use just election contract from contractkit
   const electionContract = new hre.kit.web3.eth.Contract(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    electionContractData.abi as any,
+    electionABI as any,
     election.address
   );
   const setAllowedToVoteOverMaxNumberOfGroupsTxObject =
