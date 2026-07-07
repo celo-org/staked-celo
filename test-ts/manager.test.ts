@@ -3193,13 +3193,13 @@ describe("Manager", () => {
       await account.setScheduledVotes(groupAddresses[0], fromGroupDepositedValue + 1);
 
       await expect(manager.rebalance(groupAddresses[0], ADDRESS_ZERO)).revertedWith(
-        `RebalanceEnoughCelo("${ADDRESS_ZERO}", 0, 0)`
+        `InvalidToGroup("${ADDRESS_ZERO}")`
       );
     });
 
     it("should revert when trying to balance 0x0 and 0x0 group", async () => {
       await expect(manager.rebalance(ADDRESS_ZERO, ADDRESS_ZERO)).revertedWith(
-        `RebalanceNoExtraCelo("${ADDRESS_ZERO}", 0, 0)`
+        `InvalidToGroup("${ADDRESS_ZERO}")`
       );
     });
 
