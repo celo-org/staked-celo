@@ -36,6 +36,9 @@ library PayloadLib {
         pure
         returns (bytes memory)
     {
+        // The selector is the hash of the canonical signature, so any whitespace would
+        // silently select a different function; the arguments are trimmed, the signature is not.
+        require(!_containsWhitespace(signature), "payload: signature must not contain whitespace");
         bytes memory payload = abi.encodePacked(bytes4(keccak256(bytes(signature))));
 
         string[] memory argTypes = _argumentTypes(signature);
@@ -48,6 +51,16 @@ library PayloadLib {
             payload = abi.encodePacked(payload, _encodeArgument(argTypes[i], _trim(args[i])));
         }
         return payload;
+    }
+
+    /// @dev True when `value` contains a space, tab, carriage return or line feed.
+    function _containsWhitespace(string memory value) private pure returns (bool) {
+        bytes memory raw = bytes(value);
+        for (uint256 i = 0; i < raw.length; i++) {
+            bytes1 c = raw[i];
+            if (c == 0x20 || c == 0x09 || c == 0x0d || c == 0x0a) return true;
+        }
+        return false;
     }
 
     // =========================================================================

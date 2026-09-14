@@ -702,6 +702,17 @@ contract PayloadEncodingTest is CeloTestHelper {
         encoder.encodePayload("setValues(uint256[])", "1");
     }
 
+    function test_rejectsWhitespaceInSignature() public {
+        // "setMinCountOfActiveGroups( uint256 )" hashes to a selector of a different function.
+        vm.expectRevert("payload: signature must not contain whitespace");
+        encoder.encodePayload("setMinCountOfActiveGroups( uint256 )", "1");
+    }
+
+    function test_canonicalSignatureSelector() public view {
+        bytes memory payload = encoder.encodePayload("setMinCountOfActiveGroups(uint256)", "1");
+        assertEq(uint256(uint32(bytes4(payload))), uint256(uint32(bytes4(0x41b9179f))));
+    }
+
     function test_rejectsTupleType() public {
         vm.expectRevert("payload: unsupported argument type: (uint256,address)");
         encoder.encodePayload("setConfig((uint256,address))", "1");
