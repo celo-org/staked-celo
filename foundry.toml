@@ -21,7 +21,10 @@ ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
-fs_permissions = [{ access = "read", path = "./test/devchain" }]
+fs_permissions = [
+  { access = "read", path = "./test/devchain" },
+  { access = "read-write", path = "./deployments" },
+]
 
 # Tests and scripts may use via_ir/optimizer for stack-depth relief without
 # affecting the production profile above (bytecode must match Hardhat builds).
@@ -30,7 +33,6 @@ additional_compiler_profiles = [
 ]
 compilation_restrictions = [
   { paths = "test/**", via_ir = true, optimizer_runs = 200 },
-  { paths = "script/**", via_ir = true, optimizer_runs = 200 },
 ]
 
 [lint]
