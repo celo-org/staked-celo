@@ -164,6 +164,9 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
   execute. Values are checked against their declared type as well, so an out of range
   `uint8`, a non decimal integer, a short address or an argument count that does not match
   the signature stops the encoding instead of producing a wrong payload.
+  The signature itself must be canonical, without whitespace, because the selector is the
+  hash of the exact text (`setMinCountOfActiveGroups( uint256 )` would select a different
+  function); such signatures are rejected too.
 - `encode:managerSetDependencies` and `update:v1:v2` no longer repair the deployment ABI file
   when hardhat-deploy refreshed only `<Name>_Implementation.json`: the scripts read addresses,
   never ABIs, from the deployment files.
