@@ -23,7 +23,7 @@ build_info = true
 extra_output = ["storageLayout"]
 fs_permissions = [
   { access = "read", path = "./test/devchain" },
-  { access = "read", path = "./deployments" },
+  { access = "read-write", path = "./deployments" },
 ]
 
 [lint]

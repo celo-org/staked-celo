@@ -35,3 +35,6 @@ test/devchain/meta.json
 
 # Compatibility baseline checked out by the CI compatibility job
 baseline/
+
+# forge script broadcast logs
+broadcast/
