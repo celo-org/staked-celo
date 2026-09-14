@@ -342,7 +342,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     /// @notice Advance to the next epoch (ports mineToNextEpoch from utils.ts).
     /// @dev Also mines BLOCKS_PER_EPOCH blocks with one second per block, which is what the
     ///      ganache devchain did when the Hardhat tests mined to the next epoch.
-    function mineToNextEpoch() internal override {
+    function mineToNextEpoch() internal virtual override {
         devchainEpochNumber += 1;
         _applyEpochMock();
         vm.roll(block.number + BLOCKS_PER_EPOCH);
@@ -350,7 +350,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice Current epoch number as seen by the core contracts.
-    function currentEpochNumber() internal view override returns (uint256) {
+    function currentEpochNumber() internal view virtual override returns (uint256) {
         return devchainEpochNumber;
     }
 
