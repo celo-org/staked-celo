@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "../helpers/DevchainHelper.sol";
-import {CoreDeployer} from "../../script/deploy/DeployCore.s.sol";
+import {DeployCore} from "../../script/deploy/DeployCore.s.sol";
 import {IOwnable} from "../../script/deploy/DeployBase.s.sol";
 
 /// @dev Cheatcodes used only by this test, cast onto the usual cheatcode address.
@@ -39,14 +39,6 @@ interface IStrategyDependencies {
 }
 
 /**
- * @notice Concrete instance of the deployment sequence.
- * @dev Subclassing here rather than using `DeployCore` keeps the concrete script out of
- *      the via-ir test profile; Forge cannot link AddressSortedLinkedList when the same
- *      contract is compiled under two profiles.
- */
-contract CoreDeployerHarness is CoreDeployer {}
-
-/**
  * @title DeployCoreScriptTest
  * @notice Runs script/deploy/DeployCore.s.sol in-process against the Celo devchain and
  *         checks the result matches what deploy/00 .. deploy/13 used to produce.
@@ -60,19 +52,19 @@ contract DeployCoreScriptTest is DevchainHelper {
 
     uint256 internal constant REQUIRED_CONFIRMATIONS = 3;
 
-    CoreDeployerHarness internal deployScript;
+    DeployCore internal deployScript;
 
     function setUp() public {
         loadDevchain();
         _initNamedAccounts();
         vm.deal(deployer, 10_000 ether);
 
-        deployScript = new CoreDeployerHarness();
+        deployScript = new DeployCore();
         deployScript.runInProcess(deployer, _config());
     }
 
     /// @dev MultiSig parameters, standing in for the TIME_LOCK_* environment variables.
-    function _config() private view returns (CoreDeployer.CoreConfig memory config) {
+    function _config() private view returns (DeployCore.CoreConfig memory config) {
         config.timeLockMinDelay = DAY;
         config.timeLockDelay = 3 * DAY;
         config.requiredConfirmations = REQUIRED_CONFIRMATIONS;

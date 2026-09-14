@@ -8,7 +8,7 @@ re-running a single `deploy/NN_*.ts` file to push a new implementation.
 | File | Purpose |
 | --- | --- |
 | `DeployBase.s.sol` | Network resolution, deployment records, ERC1967 proxy helper, console logging. |
-| `DeployCore.s.sol` | Full protocol deployment: `CoreDeployer` holds the sequence, `DeployCore` is the `forge script` entry point. |
+| `DeployCore.s.sol` | Full protocol deployment: the `deploy/00` .. `deploy/13` sequence and the `forge script` entry point. |
 | `UpgradeImplementation.s.sol` | New implementation for one proxy, upgraded directly or handed to the MultiSig. |
 
 ## Environment
@@ -22,7 +22,10 @@ re-running a single `deploy/NN_*.ts` file to push a new implementation.
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes | Comma separated owner addresses. Replaces `MULTISIG_SIGNER_0..4`; the addresses must be distinct. |
 | `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 44787 -> `alfajores`, anything else -> `local`. |
-| `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. |
+| `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
+
+`UpgradeImplementation` needs `CONTRACT` and, for `CONTRACT=MultiSig` only,
+`TIME_LOCK_MIN_DELAY` - it is an immutable constructor argument of the implementation.
 
 The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--account`),
 not a `DEPLOYER` variable. `DEPLOYER_PRIVATE_KEY` from `.env` can still be passed
@@ -37,9 +40,7 @@ zero address as "use the canonical Registry at `0x0...ce10`".
 ```sh
 eval "$(mise env -s zsh)"          # forge 1.8.1
 
-forge clean                        # see "Build hygiene" below
 forge script script/deploy/DeployCore.s.sol \
-  --skip 'test/**' \
   --disable-code-size-limit \
   --rpc-url celo \
   --broadcast \
@@ -49,41 +50,48 @@ forge script script/deploy/DeployCore.s.sol \
 Drop `--broadcast` for a dry run; everything is simulated and the addresses are printed,
 but note that the deployment records are still written (see "Failed runs").
 
-Local devchain (anvil loaded with the Celo devchain state) additionally needs `--legacy`,
-because the loaded chain has no fee history for EIP-1559 estimation:
+`contracts/`, `test/` and `script/` are compiled with one and the same profile, so `out/`
+holds exactly one artifact per contract and nothing has to be skipped or cleaned before a
+deploy. `--disable-code-size-limit` is the only extra flag a mainnet deploy needs.
 
-```sh
-NETWORK=local forge script script/deploy/DeployCore.s.sol \
-  --skip 'test/**' --disable-code-size-limit --legacy \
-  --rpc-url http://localhost:8545 --broadcast --private-key <anvil key>
-```
+### Signing with a Ledger
 
-### Why the extra flags
+`--ledger` signs with the first account of the default derivation path. Pass
+`--sender <address>` as well so the simulation runs as the account that will actually
+broadcast, and `--mnemonic-derivation-paths "m/44'/60'/0'/0/<i>"` to use another account.
+The device has to be unlocked with the Ethereum app open and blind signing enabled -
+every transaction here is a contract creation or a contract call.
 
-- `--disable-code-size-limit`: `Manager`, `Account` and `DefaultStrategy` compile to more
-  than the 24576 byte EIP-170 limit under the production profile (no optimizer). Celo
-  allows larger contracts, which is why the live implementations are that size too, but
-  Forge refuses to simulate them without this flag.
-- `--skip 'test/**'` after `forge clean`: see below.
-- `--legacy`: only for the local devchain.
+### Why `--disable-code-size-limit`
 
-### Build hygiene
+Three implementations are larger than the 24576 byte EIP-170 limit under the production
+profile (solc 0.8.11, no optimizer, no via-ir):
 
-`foundry.toml` compiles `test/**` with via-ir through `compilation_restrictions`, so a
-normal `forge build` leaves two artifacts per contract (`Manager.json` and
-`Manager.test-via-ir.json`). When Forge maps a broadcast transaction back onto an
-artifact it can pick the via-ir one and then fails to decode the constructor arguments of
-`MultiSig`. Running `forge clean` and passing `--skip 'test/**'` keeps only the
-production artifacts, which are the ones the script deploys anyway.
+| Contract | Deployed size |
+| --- | --- |
+| `Manager` | 26595 |
+| `DefaultStrategy` | 25957 |
+| `Account` | 24911 |
 
-Run `forge clean && forge build` again afterwards, before `forge test`. An incremental
-build on top of a `--skip 'test/**'` build leaves a mixed artifact set, and Forge then
-cannot decide which `AddressSortedLinkedList` to link ("multiple library artifacts
-resolve to the same key"). A full rebuild is the fix.
+Celo has always allowed larger contracts, which is why the live implementations are that
+size too, but Forge applies the EIP-170 limit while simulating the broadcast and aborts
+with `` `DefaultStrategy` is above the contract size limit `` without the flag. The
+in-process script execution is not affected, so the failure only shows up once the
+transactions are prepared.
 
-`AddressSortedLinkedList` is deployed and linked by Forge automatically, so the
-"reuse the recorded library address" branch of `deploy/07_default_strategy.ts` has no
-equivalent here. Pass `--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
+### Fee estimation on a local node
+
+The scripts broadcast EIP-1559 transactions. Add `--legacy` when the node exposes no base
+fee or fee history - an anvil started from a `--load-state` snapshot, for example. An
+anvil started with `--init <genesis>` as described below does have a base fee, so
+`--legacy` is not needed there.
+
+### Library linking
+
+`AddressSortedLinkedList` is deployed and linked by Forge automatically, so the "reuse the
+recorded library address" branch of `deploy/07_default_strategy.ts` has no equivalent
+here. Pass
+`--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
 to reuse an already deployed library instead.
 
 ## Deployment records
@@ -113,20 +121,22 @@ Account: already owned by MultiSig
 ```
 
 This mirrors the `if (owner !== multisig.address)` guards in `deploy/08` to `deploy/12`.
-Re-running against a fully deployed network therefore broadcasts nothing.
+Re-running against a fully deployed network therefore broadcasts nothing and ends with
+`Warning: No transactions to broadcast.`
 
 ### Failed runs
 
 Forge writes files during the simulation phase, so a run that fails while broadcasting
 can leave records for contracts that never made it on chain. Delete the affected
 `deployments/<network>/*.json` files before retrying, otherwise the next run reuses
-addresses that hold no code.
+addresses that hold no code. The three files of one contract always have to go together:
+`<Name>.json`, `<Name>_Proxy.json` and `<Name>_Implementation.json`.
 
 ## Upgrading one implementation
 
 ```sh
 CONTRACT=Manager forge script script/deploy/UpgradeImplementation.s.sol \
-  --skip 'test/**' --disable-code-size-limit \
+  --disable-code-size-limit \
   --rpc-url celo --broadcast --ledger
 ```
 
@@ -134,16 +144,78 @@ The script deploys the new implementation, then:
 
 - if the broadcaster owns the proxy it calls `upgradeTo(newImplementation)` and refreshes
   `<Name>.json`, `<Name>_Proxy.json` and `<Name>_Implementation.json`;
-- otherwise (the normal case, since the MultiSig owns everything after deploy/12) it
+- otherwise (the normal case, since the MultiSig owns everything after `deploy/12`) it
   prints the destination, value and `upgradeTo(address)` payload to submit through the
-  MultiSig, and only writes `<Name>_Implementation.json`.
+  MultiSig, and only writes `<Name>_Implementation.json`:
+
+```
+Manager: proxy 0x3fdc08D815cc4ED3B7F69Ee246716f2C8bCD6b07
+Manager: current implementation 0x1E3b98102e19D3a164d239BdD190913C2F02E756
+Broadcaster does not own the proxy; submit this through the MultiSig:
+  destination 0x3fdc08D815cc4ED3B7F69Ee246716f2C8bCD6b07
+  value 0
+  payload 0x3659cfe6000000000000000000000000c32609c91d6b6b51d48f2611308fef121b02041f
+Manager: new implementation 0xC32609C91d6B6b51D48f2611308FEf121B02041f
+```
+
+Feed those three values to `MultiSig.submitProposal([destination], [value], [payload])`,
+collect the confirmations, wait out the delay and execute. `<Name>.json` keeps pointing at
+the old implementation until the proposal has gone through, which is intentional: it
+records what the proxy actually delegates to.
 
 This replaces `catchNotOwnerForProxy` / `catchUpgradeErrorInMultisig`, which discovered
 the same thing by letting the transaction revert on chain.
 
 `MultiSig` has no `owner()` - it authorizes its own upgrades through a proposal - so
-`CONTRACT=MultiSig` always prints the payload. It also re-reads `TIME_LOCK_MIN_DELAY`,
-which is an immutable constructor argument of the implementation.
+`CONTRACT=MultiSig` always prints the payload.
+
+## Local devchain
+
+The devchain fixture in `test/devchain/` is a state dump of the Celo L2 devchain
+(`@celo/devchain-anvil`): `allocs.json` holds every account and `meta.json` the block
+number and timestamp it was taken at. Turn it into a genesis file and start anvil from
+that. `anvil --load-state` on the original `l2-devchain.json` is not an option; anvil
+1.8.1 rejects the 716 MB snapshot.
+
+```sh
+python3 - <<'PY'
+import json
+alloc = json.load(open("test/devchain/allocs.json"))
+meta = json.load(open("test/devchain/meta.json"))
+for account in alloc.values():
+    account["nonce"] = hex(int(str(account["nonce"]), 0))
+json.dump({
+    "config": {"chainId": 31337},
+    "timestamp": hex(meta["timestamp"]),
+    "gasLimit": "0x1c9c380",
+    "difficulty": "0x0",
+    "alloc": alloc,
+}, open("/tmp/devchain-genesis.json", "w"))
+PY
+
+anvil --celo --disable-code-size-limit --init /tmp/devchain-genesis.json
+```
+
+`--celo` enables the Celo transaction types and `--disable-code-size-limit` lets the
+oversized implementations be created on the node, the same reason the script needs the
+flag. Write the genesis file outside the repository; it is 11 MB.
+
+Deploying against it is the normal command with `NETWORK=local` and one of the anvil
+development keys:
+
+```sh
+NETWORK=local \
+TIME_LOCK_MIN_DELAY=86400 TIME_LOCK_DELAY=259200 MULTISIG_REQUIRED_CONFIRMATIONS=3 \
+MULTISIG_OWNERS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,0x90F79bf6EB2c4f870365E785982E1f101E93b906,0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
+forge script script/deploy/DeployCore.s.sol \
+  --disable-code-size-limit \
+  --rpc-url http://localhost:8545 --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+A full run is 29 transactions: nine implementations, the `AddressSortedLinkedList`
+library, nine proxies, four `setDependencies` calls and six `transferOwnership` calls.
+`deployments/local/` and `broadcast/` are git-ignored.
 
 ## Not ported
 
@@ -154,6 +226,8 @@ which is an immutable constructor argument of the implementation.
 ## Tests
 
 `test/script/DeployCoreScriptTest.t.sol` runs the same sequence in-process against the
-Celo devchain fixture through `CoreDeployer.runInProcess`, which pranks the deployer
-instead of broadcasting and writes no records. It checks the proxies, the wiring, the
-ownership transfers and that each implementation is byte-for-byte the compiled artifact.
+Celo devchain fixture through `DeployCore.runInProcess`, which pranks the deployer instead
+of broadcasting and writes no records. It checks the proxies, the wiring, the ownership
+transfers and that each implementation is byte-for-byte the compiled artifact, apart from
+the immutable slots the artifact leaves zeroed (`UUPSUpgradeable.__self` everywhere, plus
+`MultiSig.minDelay`).

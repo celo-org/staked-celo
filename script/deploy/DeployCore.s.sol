@@ -17,7 +17,7 @@ import {DefaultStrategy} from "../../contracts/DefaultStrategy.sol";
 import {RebasedStakedCelo} from "../../contracts/RebasedStakedCelo.sol";
 
 /**
- * @title CoreDeployer
+ * @title DeployCore
  * @notice The deploy/00 .. deploy/13 sequence, replacing `yarn deploy`
  *         (`hardhat stakedCelo:deploy --tags core`).
  * @dev Every contract sits behind an ERC1967 proxy and the implementations are deployed
@@ -36,13 +36,8 @@ import {RebasedStakedCelo} from "../../contracts/RebasedStakedCelo.sol";
  *      Optional:
  *        NETWORK                         Deployments directory name; defaults to the
  *                                        chain id mapping (celo / alfajores / local).
- *
- *      The sequence lives in this abstract base rather than in `DeployCore` so that the
- *      tests can subclass it. A test that referenced `DeployCore` itself would pull the
- *      concrete script into the via-ir test profile as well, and Forge cannot resolve the
- *      AddressSortedLinkedList library when the same contract exists under two profiles.
  */
-abstract contract CoreDeployer is DeployBase {
+contract DeployCore is DeployBase {
     /// @notice Parameters that used to come from `.env` and hardhat-deploy named accounts.
     struct CoreConfig {
         uint256 timeLockMinDelay;
@@ -67,6 +62,18 @@ abstract contract CoreDeployer is DeployBase {
     // =========================================================================
     //                            ENTRY POINTS
     // =========================================================================
+
+    /// @notice Deploy the protocol against the connected node, broadcasting every
+    ///         transaction from the configured signer.
+    function run() external {
+        _initNetwork();
+        deployer = msg.sender;
+        _loadConfigFromEnv();
+        vm.startBroadcast();
+        _deployAll();
+        vm.stopBroadcast();
+        _logSummary();
+    }
 
     /// @notice Run the exact same sequence in-process, impersonating `broadcaster` and
     ///         without touching the deployment records. Used by the tests.
@@ -393,23 +400,5 @@ abstract contract CoreDeployer is DeployBase {
         DeployLog.a("SpecificGroupStrategy", specificGroupStrategy);
         DeployLog.a("DefaultStrategy", defaultStrategy);
         DeployLog.a("RebasedStakedCelo", rebasedStakedCelo);
-    }
-}
-
-/**
- * @title DeployCore
- * @notice `forge script` entry point for a full protocol deployment.
- */
-contract DeployCore is CoreDeployer {
-    /// @notice Deploy the protocol against the connected node, broadcasting every
-    ///         transaction from the configured signer.
-    function run() external {
-        _initNetwork();
-        deployer = msg.sender;
-        _loadConfigFromEnv();
-        vm.startBroadcast();
-        _deployAll();
-        vm.stopBroadcast();
-        _logSummary();
     }
 }
