@@ -76,7 +76,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     }
 
     function test_addActivatableGroup_EmitsActivatableGroupAddedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit ActivatableGroupAdded(groupAddresses[0]);
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[0]);
@@ -116,7 +116,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     function test_activateGroup_WhenGroupIsActivatable_EmitsAGroupActivatedEvent() public {
         _setUpGroupIsActivatable();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupActivated(groupAddresses[0]);
         mockDefaultStrategy.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
     }
@@ -166,7 +166,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[3]);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupActivated(groupAddresses[3]);
         mockDefaultStrategy.activateGroup(groupAddresses[3], ADDRESS_ZERO, head);
     }
@@ -224,7 +224,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[10]);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupActivated(groupAddresses[10]);
         vm.prank(owner);
         mockDefaultStrategy.activateGroup(groupAddresses[10], ADDRESS_ZERO, head);
@@ -274,7 +274,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[2]);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupActivated(groupAddresses[2]);
         mockDefaultStrategy.activateGroup(groupAddresses[2], ADDRESS_ZERO, head);
     }
@@ -384,7 +384,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     {
         _activateGroupsFromHead(3);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupRemoved(deactivatedGroup);
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(deactivatedGroup);
@@ -480,7 +480,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     function test_deactivateUnhealthyGroup_WhenTheGroupIsNotElected_ShouldRemoveGroup() public {
         _setUpGroupNotElected();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupRemoved(groupAddresses[1]);
         mockDefaultStrategy.deactivateUnhealthyGroup(groupAddresses[1]);
     }
@@ -506,7 +506,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mineToNextEpoch();
         electMockValidatorGroupsAndUpdate(mockGroupHealth, _toArray(deactivatedGroup));
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupRemoved(deactivatedGroup);
         mockDefaultStrategy.deactivateUnhealthyGroup(deactivatedGroup);
     }
@@ -518,7 +518,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mineToNextEpoch();
         electMockValidatorGroupsAndUpdate(mockGroupHealth, _toArray(deactivatedGroup));
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupRemoved(deactivatedGroup);
         mockDefaultStrategy.deactivateUnhealthyGroup(deactivatedGroup);
     }
@@ -581,7 +581,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mineToNextEpoch();
         electMockValidatorGroupsAndUpdate(mockGroupHealth, _toArray(deactivatedGroup));
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupRemoved(groupAddresses[1]);
         mockDefaultStrategy.deactivateUnhealthyGroup(deactivatedGroup);
     }

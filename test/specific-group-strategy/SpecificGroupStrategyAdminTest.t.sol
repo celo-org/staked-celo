@@ -54,7 +54,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
 
     function test_setDependencies_EmitsDependenciesSetEvent() public {
         vm.prank(manager.owner());
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(specificGroupStrategy));
         emit DependenciesSet(nonAccount, nonStakedCelo, nonOwner);
         specificGroupStrategy.setDependencies(nonAccount, nonStakedCelo, nonOwner);
     }
@@ -87,7 +87,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
 
     function test_setPauser_EmitsAPauserSetEvent() public {
         vm.prank(owner);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(specificGroupStrategy));
         emit PauserSet(owner);
         specificGroupStrategy.setPauser();
     }
@@ -124,7 +124,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
 
     function test_pause_EmitsAContractPausedEvent() public {
         vm.prank(pauser);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(specificGroupStrategy));
         emit ContractPaused();
         specificGroupStrategy.pause();
     }
@@ -153,7 +153,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
         _pause();
 
         vm.prank(pauser);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(specificGroupStrategy));
         emit ContractUnpaused();
         specificGroupStrategy.unpause();
     }

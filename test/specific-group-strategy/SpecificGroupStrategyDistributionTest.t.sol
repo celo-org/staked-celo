@@ -3,18 +3,6 @@ pragma solidity 0.8.11;
 
 import "./SpecificGroupStrategyTestBase.sol";
 
-/// @dev `expectEmit` overload that also checks the emitter. `CeloTestVm` only declares the
-///      four-argument form.
-interface IVmExpectEmitFrom {
-    function expectEmit(
-        bool checkTopic1,
-        bool checkTopic2,
-        bool checkTopic3,
-        bool checkData,
-        address emitter
-    ) external;
-}
-
 /**
  * @title SpecificGroupStrategyDistributionTest
  * @notice Port of the vote distribution and accounting describe blocks of

@@ -32,7 +32,7 @@ contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
     {
         address accountOwner = account.owner();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit AllowedToVoteOverMaxNumberOfGroupsSet(true);
         vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
@@ -46,7 +46,7 @@ contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
         vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit AllowedToVoteOverMaxNumberOfGroupsSet(false);
         vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(false);

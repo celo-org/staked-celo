@@ -16,7 +16,7 @@ contract AccountWithdrawTest is AccountTestBase {
 
     function test_withdraw_WhenThereAreScheduledVotes_EmitsCeloWithdrawalStarted() public {
         _setupScheduledVotes();
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit CeloWithdrawalStarted(beneficiary, groupAddresses[0], 60);
         _withdraw(beneficiary, groupAddresses[0]);
     }

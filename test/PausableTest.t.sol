@@ -28,7 +28,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     }
 
     function test_pause_emitsContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(pausableTest));
         emit ContractPaused();
         vm.prank(pauser);
         pausableTest.pause();
@@ -77,7 +77,7 @@ contract PausableTestTest is TestAccountDeployHelper {
         vm.prank(pauser);
         pausableTest.pause();
         
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(pausableTest));
         emit ContractUnpaused();
         vm.prank(pauser);
         pausableTest.unpause();
@@ -136,7 +136,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     }
 
     function test_setPauser_emitsPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(pausableTest));
         emit PauserSet(nonPauser);
         pausableTest.setPauser(nonPauser);
     }

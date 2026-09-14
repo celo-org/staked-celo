@@ -11,7 +11,7 @@ contract AccountScheduleVotesTest is AccountTestBase {
     }
 
     function test_scheduleVotes_EmitsAVotesScheduledEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit VotesScheduled(groupAddresses[0], 100);
         _scheduleVotes(_addrs(groupAddresses[0]), _amounts(100), 100);
     }
@@ -24,11 +24,11 @@ contract AccountScheduleVotesTest is AccountTestBase {
     }
 
     function test_scheduleVotes_EmitsMultipleVotesScheduledEvents() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit VotesScheduled(groupAddresses[0], 100);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit VotesScheduled(groupAddresses[1], 30);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit VotesScheduled(groupAddresses[2], 70);
         _scheduleVotes(_allGroups(), _amounts(100, 30, 70), 200);
     }

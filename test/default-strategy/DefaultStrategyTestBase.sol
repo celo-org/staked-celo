@@ -6,6 +6,18 @@ import "../helpers/DevchainHelper.sol";
 import "../../contracts/mock/MockStakedCelo.sol";
 import "../../contracts/mock/MockVote.sol";
 
+/// @dev `expectEmit` overload that also checks the emitter. `CeloTestVm` only declares the
+///      four-argument form.
+interface IVmExpectEmitFrom {
+    function expectEmit(
+        bool checkTopic1,
+        bool checkTopic2,
+        bool checkTopic3,
+        bool checkData,
+        address emitter
+    ) external;
+}
+
 /**
  * @title DefaultStrategyTestBase
  * @notice Shared fixture for the ported `test-ts/default-strategy.test.ts` suite.
@@ -98,6 +110,16 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
         returns (uint256)
     {
         return DevchainHelper.currentEpochNumber();
+    }
+
+    // =========================================================================
+    //                        EVENT ASSERTION HELPER
+    // =========================================================================
+
+    /// @dev `.to.emit(contract, name)` of the original: checks every topic, the event data and
+    ///      the contract that emitted it.
+    function _expectEmitFrom(address emitter) internal {
+        IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
     }
 
     // =========================================================================

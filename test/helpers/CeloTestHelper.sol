@@ -47,6 +47,14 @@ interface CeloTestVm {
     function toString(uint256 value) external pure returns (string memory);
     function toString(address value) external pure returns (string memory);
     function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData) external;
+
+    function expectEmit(
+        bool checkTopic1,
+        bool checkTopic2,
+        bool checkTopic3,
+        bool checkData,
+        address emitter
+    ) external;
     function expectRevert(bytes memory revertData) external;
 
     function expectRevert() external;

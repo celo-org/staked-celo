@@ -35,7 +35,7 @@ contract AccountVoteProposalTest is AccountTestBase {
     function test_voteProposal_EmitsVotedPartiallyEventWithCorrectParameters() public {
         _registerMockGovernance();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit VotedPartially(1, 100, 50, 25);
         vm.prank(managerSigner);
         account.votePartially(1, 0, 100, 50, 25);

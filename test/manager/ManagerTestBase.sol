@@ -15,6 +15,15 @@ interface ManagerTestVm {
 }
 
 /**
+ * @dev The `expectEmit` overload that pins the expected event to a single emitter, mirroring
+ *      the `.to.emit(contract, "Event")` assertion of the TypeScript suite. Cast onto the same
+ *      cheatcode address.
+ */
+interface IVmExpectEmitFrom {
+    function expectEmit(bool, bool, bool, bool, address) external;
+}
+
+/**
  * @title ManagerTestBase
  * @notice Shared fixture of the ported `describe("Manager")` suite.
  * @dev Ports the `before()` block of test-ts/manager.test.ts. The Hardhat suite used
@@ -41,6 +50,13 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     event PauserSet(address pauser);
     event ContractPaused();
     event ContractUnpaused();
+
+    /// @dev Expects the next emitted event to come from `emitter`, checking every topic and
+    ///      the data. The emitter is what the TypeScript `.to.emit(contract, "Event")` pinned;
+    ///      without it any contract emitting the same event would satisfy the assertion.
+    function _expectEmitFrom(address emitter) internal {
+        IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
+    }
 
     // =========================================================================
     //                         FIXTURE CONTRACTS

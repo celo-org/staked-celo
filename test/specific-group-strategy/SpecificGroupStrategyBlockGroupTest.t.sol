@@ -66,7 +66,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         _whenTheGroupIsAllowed();
 
         vm.prank(owner);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(specificGroupStrategy));
         emit GroupBlocked(specificGroup);
         specificGroupStrategy.blockGroup(specificGroup);
     }

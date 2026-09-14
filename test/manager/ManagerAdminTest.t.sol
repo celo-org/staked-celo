@@ -57,7 +57,7 @@ contract ManagerAdminTest is ManagerTestBase {
 
     function test_setDependencies_EmitsAVoteContractSetEvent() public {
         vm.prank(owner);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit VoteContractSet(nonVote);
         manager.setDependencies(nonStakedCelo, nonAccount, nonVote, nonVote, nonVote, nonVote);
     }
@@ -80,7 +80,7 @@ contract ManagerAdminTest is ManagerTestBase {
 
     function test_setPauser_EmitsAPauserSetEvent() public {
         vm.prank(owner);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit PauserSet(owner);
         manager.setPauser();
     }
@@ -112,7 +112,7 @@ contract ManagerAdminTest is ManagerTestBase {
 
     function test_pause_EmitsAContractPausedEvent() public {
         vm.prank(pauser);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit ContractPaused();
         manager.pause();
     }
@@ -138,7 +138,7 @@ contract ManagerAdminTest is ManagerTestBase {
     function test_unpause_EmitsAContractUnpausedEvent() public {
         pauseManager();
         vm.prank(pauser);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit ContractUnpaused();
         manager.unpause();
     }

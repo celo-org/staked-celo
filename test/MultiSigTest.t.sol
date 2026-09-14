@@ -303,7 +303,7 @@ contract MultiSigTest is TestAccountDeployHelper, MultiSigHelper {
         uint256 value = 100;
         vm.deal(owner1, value);
 
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true, address(multiSig));
         emit CeloDeposited(owner1, value);
 
         vm.prank(owner1);
@@ -1220,7 +1220,7 @@ contract MultiSigTest is TestAccountDeployHelper, MultiSigHelper {
         ProposalTester proposalTester = new ProposalTester();
         bytes memory txData = abi.encodeWithSelector(ProposalTester.testCall.selector, uint256(42));
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit(false, false, false, true, address(multiSig));
         emit GovernanceTransactionExecuted(0, hex"");
 
         vm.prank(address(mockGovernance));

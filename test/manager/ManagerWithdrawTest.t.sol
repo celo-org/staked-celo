@@ -117,7 +117,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         withdrawAs(depositor2, 77);
 
         vm.prank(depositor2);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit CeloWithdrawn(depositor2, 50, 50);
         manager.withdraw(50);
     }

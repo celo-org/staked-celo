@@ -124,7 +124,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
 
     function _bodyEmitsAnEventForEachGroup() private {
         for (uint256 i = 0; i < 3; i++) {
-            vm.expectEmit(true, true, true, true);
+            _expectEmitFrom(address(account));
             emit CeloWithdrawalScheduled(beneficiary, groupAddresses[i], 40);
         }
         _firstWithdrawal();

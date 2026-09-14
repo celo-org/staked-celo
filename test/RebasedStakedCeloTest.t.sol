@@ -88,7 +88,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
 
     function test_deposit_shouldEmitDepositedEvent() public {
         _depositSetup();
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit StakedCeloDeposited(someone, 100);
         vm.prank(someone);
         rebasedStakedCelo.deposit(100);
@@ -211,7 +211,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
 
     function test_withdraw_shouldEmitWithdrawnEvent() public {
         _withdrawSetup();
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit StakedCeloWithdrawn(alice, 50);
         vm.prank(alice);
         rebasedStakedCelo.withdraw(50);
@@ -329,7 +329,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
 
     function test_transfer_shouldEmitTransferEvent() public {
         _transferSetup();
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit Transfer(alice, bob, 50);
         vm.prank(alice);
         rebasedStakedCelo.transfer(bob, 50);
@@ -586,7 +586,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
 
     function test_transferFrom_shouldEmitTransferEvent() public {
         _transferFromSetup();
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit Transfer(alice, someone, 50);
         vm.prank(bob);
         rebasedStakedCelo.transferFrom(alice, someone, 50);
@@ -694,7 +694,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_setPauser_emitsPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit PauserSet(owner);
         vm.prank(owner);
         rebasedStakedCelo.setPauser();
@@ -727,7 +727,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_pause_emitsContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit ContractPaused();
         vm.prank(pauser);
         rebasedStakedCelo.pause();
@@ -757,7 +757,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
         vm.prank(pauser);
         rebasedStakedCelo.pause();
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(rebasedStakedCelo));
         emit ContractUnpaused();
         vm.prank(pauser);
         rebasedStakedCelo.unpause();

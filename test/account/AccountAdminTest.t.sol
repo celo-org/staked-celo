@@ -28,7 +28,7 @@ contract AccountAdminTest is AccountTestBase {
     }
 
     function test_setPauser_EmitsAPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit PauserSet(owner);
         vm.prank(owner);
         account.setPauser();
@@ -76,7 +76,7 @@ contract AccountAdminTest is AccountTestBase {
     }
 
     function test_pause_EmitsAContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit ContractPaused();
         vm.prank(pauser);
         account.pause();
@@ -107,7 +107,7 @@ contract AccountAdminTest is AccountTestBase {
 
     function test_unpause_EmitsAContractUnpausedEvent() public {
         _pause();
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(account));
         emit ContractUnpaused();
         vm.prank(pauser);
         account.unpause();

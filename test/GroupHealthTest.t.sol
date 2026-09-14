@@ -329,7 +329,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
     function test_updateGroupHealth_ShouldUpdateToValid() public {
         _setupForUpdateGroupHealth();
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], true);
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
@@ -342,7 +342,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
         _slashGroup(activatedGroups[0]);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
@@ -355,7 +355,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
         removeMembersFromGroup(mockValidators, activatedGroups[0]);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
@@ -368,7 +368,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
         deregisterValidatorGroup(mockValidators, activatedGroups[0]);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
@@ -381,7 +381,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
         _revokeElection(_toArray(activatedGroupAddresses[0]), false);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
@@ -480,7 +480,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
     // Test 19: Emits a PauserSet event
     function test_setPauser_EmitsPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit PauserSet(owner);
         vm.prank(owner);
         mockGroupHealth.setPauser();
@@ -573,7 +573,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
 
     // Test 27: Emits a ContractPaused event
     function test_pause_EmitsContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit ContractPaused();
         vm.prank(_pauser);
         mockGroupHealth.pause();
@@ -609,7 +609,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         vm.prank(_pauser);
         mockGroupHealth.pause();
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit ContractUnpaused();
         vm.prank(_pauser);
         mockGroupHealth.unpause();

@@ -140,7 +140,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     function test_rebalance_WhenDeposited_EmitsRebalancedEvent() public {
         _setUpRebalanceDeposited();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit Rebalanced(groupAddresses[1], groupAddresses[0], 17);
         mockDefaultStrategy.rebalance(groupAddresses[1], groupAddresses[0]);
     }
@@ -233,7 +233,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     }
 
     function test_updateGroupStCelo_EmitsGroupStCeloUpdatedEventWhenAdding() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupStCeloUpdated(groupAddresses[0], 100, true);
         vm.prank(owner);
         mockDefaultStrategy.updateGroupStCelo(groupAddresses[0], 100, true);
@@ -243,7 +243,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.updateGroupStCelo(groupAddresses[0], 100, true);
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit GroupStCeloUpdated(groupAddresses[0], 50, false);
         vm.prank(owner);
         mockDefaultStrategy.updateGroupStCelo(groupAddresses[0], 50, false);

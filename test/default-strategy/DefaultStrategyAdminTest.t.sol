@@ -53,7 +53,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     }
 
     function test_setDependencies_EmitsDependenciesSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit DependenciesSet(nonAccount, nonStakedCelo, nonVote);
         vm.prank(owner);
         mockDefaultStrategy.setDependencies(nonAccount, nonStakedCelo, nonVote);
@@ -68,7 +68,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
         uint256 withdrawFrom = 3;
         uint256 loopLimit = 10;
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit SortingParamsSet(distributeTo, withdrawFrom, loopLimit);
         vm.prank(owner);
         mockDefaultStrategy.setSortingParams(distributeTo, withdrawFrom, loopLimit);
@@ -85,7 +85,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     }
 
     function test_setMinCountOfActiveGroups_EmitsMinCountOfActiveGroupsSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit MinCountOfActiveGroupsSet(5);
         vm.prank(owner);
         mockDefaultStrategy.setMinCountOfActiveGroups(5);
@@ -118,7 +118,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     }
 
     function test_setPauser_EmitsAPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit PauserSet(owner);
         vm.prank(owner);
         mockDefaultStrategy.setPauser();
@@ -155,7 +155,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     }
 
     function test_pause_EmitsAContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit ContractPaused();
         vm.prank(pauser);
         mockDefaultStrategy.pause();
@@ -190,7 +190,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     function test_unpause_EmitsAContractUnpausedEvent() public {
         _setUpPaused();
 
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(mockDefaultStrategy));
         emit ContractUnpaused();
         vm.prank(pauser);
         mockDefaultStrategy.unpause();

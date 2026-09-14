@@ -143,7 +143,7 @@ contract ManagerDepositTest is ManagerTestBase {
         mockAccount.setTotalCelo(0);
 
         vm.prank(depositor);
-        vm.expectEmit(true, true, true, true);
+        _expectEmitFrom(address(manager));
         emit CeloDeposited(depositor, 100, 100);
         manager.deposit{value: 100}();
     }

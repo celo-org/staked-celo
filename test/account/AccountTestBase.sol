@@ -15,6 +15,15 @@ interface AccountTestVm {
 }
 
 /**
+ * @dev The `expectEmit` overload that pins the expected event to a single emitter, mirroring
+ *      the `.to.emit(contract, "Event")` assertion of the TypeScript suite. Cast onto the same
+ *      cheatcode address.
+ */
+interface IVmExpectEmitFrom {
+    function expectEmit(bool, bool, bool, bool, address) external;
+}
+
+/**
  * @title AccountTestBase
  * @notice Shared fixture for the port of legacy/test-ts/account.test.ts.
  * @dev Ports the `before()` hook of the TypeScript suite: three validator groups with one
@@ -62,6 +71,13 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     event PauserSet(address newPauser);
     event ContractPaused();
     event ContractUnpaused();
+
+    /// @dev Expects the next emitted event to come from `emitter`, checking every topic and
+    ///      the data. The emitter is what the TypeScript `.to.emit(contract, "Event")` pinned;
+    ///      without it any contract emitting the same event would satisfy the assertion.
+    function _expectEmitFrom(address emitter) internal {
+        IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
+    }
 
     // =========================================================================
     //                            TEST STATE

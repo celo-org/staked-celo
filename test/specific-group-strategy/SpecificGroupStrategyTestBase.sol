@@ -6,6 +6,18 @@ import "../helpers/deploy/FullTestManagerDeployHelper.sol";
 import "../../contracts/mock/MockStakedCelo.sol";
 import "../../contracts/mock/MockVote.sol";
 
+/// @dev `expectEmit` overload that also checks the emitter. `CeloTestVm` only declares the
+///      four-argument form.
+interface IVmExpectEmitFrom {
+    function expectEmit(
+        bool checkTopic1,
+        bool checkTopic2,
+        bool checkTopic3,
+        bool checkData,
+        address emitter
+    ) external;
+}
+
 /**
  * @title SpecificGroupStrategyTestBase
  * @notice Shared fixture for the Foundry port of test-ts/specific_group_strategy.test.ts.
@@ -44,6 +56,16 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
         address[] groups,
         uint256[] votes
     );
+
+    // =========================================================================
+    //                        EVENT ASSERTION HELPER
+    // =========================================================================
+
+    /// @dev `.to.emit(contract, name)` of the original: checks every topic, the event data and
+    ///      the contract that emitted it.
+    function _expectEmitFrom(address emitter) internal {
+        IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
+    }
 
     // =========================================================================
     //                               STRUCTS

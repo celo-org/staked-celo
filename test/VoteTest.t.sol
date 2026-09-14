@@ -499,7 +499,7 @@ contract VoteTest is TestAccountDeployHelper {
         _deposit(depositor0, 10 ether);
         _proposeNewProposal(1);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit LockedStCeloInVoting(depositor0, 0);
         vote.updateHistoryAndReturnLockedStCeloInVoting(depositor0);
     }
@@ -515,7 +515,7 @@ contract VoteTest is TestAccountDeployHelper {
         uint256 totalVotes = yesVotes + noVotes + abstainVotes;
         _voteProposal(depositor0, 1, 0, yesVotes, noVotes, abstainVotes);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit LockedStCeloInVoting(depositor0, totalVotes);
         vote.updateHistoryAndReturnLockedStCeloInVoting(depositor0);
     }
@@ -542,7 +542,7 @@ contract VoteTest is TestAccountDeployHelper {
             _voteProposal(depositor0, i + 1, i, yesVotes, noVotes, abstainVotes);
         }
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit LockedStCeloInVoting(depositor0, totalVotes);
         vote.updateHistoryAndReturnLockedStCeloInVoting(depositor0);
     }
@@ -562,7 +562,7 @@ contract VoteTest is TestAccountDeployHelper {
         uint256 totalRevotes = yesVotesRevote + noVotesRevote + abstainVotesRevote;
         _voteProposal(depositor0, 1, 0, yesVotesRevote, noVotesRevote, abstainVotesRevote);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit LockedStCeloInVoting(depositor0, totalRevotes);
         vote.updateHistoryAndReturnLockedStCeloInVoting(depositor0);
     }
@@ -821,7 +821,7 @@ contract VoteTest is TestAccountDeployHelper {
 
     // 37
     function test_SetPauser_EmitsPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit PauserSet(owner);
         vm.prank(owner);
         vote.setPauser();
@@ -858,7 +858,7 @@ contract VoteTest is TestAccountDeployHelper {
 
     // 41
     function test_Pause_EmitsContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit ContractPaused();
         vm.prank(pauser);
         vote.pause();
@@ -891,7 +891,7 @@ contract VoteTest is TestAccountDeployHelper {
         vm.prank(pauser);
         vote.pause();
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(vote));
         emit ContractUnpaused();
         vm.prank(pauser);
         vote.unpause();

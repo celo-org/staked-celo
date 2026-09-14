@@ -66,7 +66,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_mint_emitsTransferEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit Transfer(ADDRESS_ZERO, anAccount, 100);
         vm.prank(address(mockManager));
         stakedCelo.mint(anAccount, 100);
@@ -116,7 +116,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
         vm.prank(address(mockManager));
         stakedCelo.mint(anAccount, 100);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit Transfer(anAccount, ADDRESS_ZERO, 50);
         vm.prank(address(mockManager));
         stakedCelo.burn(anAccount, 50);
@@ -133,7 +133,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_setManager_emitsManagerSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit ManagerSet(nonManager);
         vm.prank(owner);
         stakedCelo.setManager(nonManager);
@@ -165,7 +165,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
         vm.prank(address(mockManager));
         stakedCelo.mint(anAccount, 100);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit LockedStCelo(anAccount, 100);
         vm.prank(address(mockManager));
         stakedCelo.lockVoteBalance(anAccount, 100);
@@ -321,7 +321,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_setPauser_emitsPauserSetEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit PauserSet(owner);
         vm.prank(owner);
         stakedCelo.setPauser();
@@ -353,7 +353,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_pause_emitsContractPausedEvent() public {
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit ContractPaused();
         vm.prank(owner);
         stakedCelo.pause();
@@ -383,7 +383,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
         vm.prank(owner);
         stakedCelo.pause();
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true, address(stakedCelo));
         emit ContractUnpaused();
         vm.prank(owner);
         stakedCelo.unpause();
