@@ -23,6 +23,12 @@ interface IVmExtended {
     function getCode(string calldata artifactPath) external returns (bytes memory);
 }
 
+/// @dev Minimal Ownable view interface, used to find out who may write to a registry.
+///      Declared here because Ownable cannot be imported (Initializable collision).
+interface IOwnable {
+    function owner() external view returns (address);
+}
+
 /// @dev Minimal mock for Celo's core Accounts contract.
 ///      Satisfies Account.initialize() which calls getAccounts().createAccount().
 contract MockAccountsCelo {
@@ -37,6 +43,11 @@ contract MockAccountsCelo {
  *         Replicates the 15 test deploy scripts from deploy/test/*.ts.
  * @dev Extends CeloTestHelper. Each deployTestXxx() function deploys MockRegistry,
  *      required mock Celo contracts, and the contract under test behind ERC1967Proxy.
+ *      Every fixture that deploys a registry-dependent contract also has a
+ *      deployTestXxx(address registry) overload that skips the mock Celo
+ *      infrastructure and wires the contracts to the given registry instead —
+ *      for example the Celo core registry of a devchain. The overloads never
+ *      write to that registry, since they do not own it.
  *
  *      UNSAFE contracts (MockRegistry, MultiSig) are deployed via vm.getCode()
  *      to avoid Initializable name collision between OZ contracts and
@@ -96,22 +107,49 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         return addr;
     }
 
-    /// @dev Deploy mock Celo core contracts and register them in MockRegistry.
-    ///      Must be called after _deployMockRegistry() and while still pranked
-    ///      as the registry owner (deployer).
-    function _registerCoreMocks(address registryAddr) internal {
+    /// @dev Deploy the mock Celo core contracts. Must be called while pranked as
+    ///      `deployer` so that they match the Hardhat fixtures' deployer.
+    function _deployCoreMocks() internal {
         mockElection = new MockElection();
         mockLockedGold = new MockLockedGold();
         mockValidators = new MockValidators();
         mockGovernance = new MockGovernance();
         mockAccountsCelo = new MockAccountsCelo();
+    }
 
-        IRegistry reg = IRegistry(registryAddr);
-        reg.setAddressFor("Election", address(mockElection));
-        reg.setAddressFor("LockedGold", address(mockLockedGold));
-        reg.setAddressFor("Validators", address(mockValidators));
-        reg.setAddressFor("Governance", address(mockGovernance));
-        reg.setAddressFor("Accounts", address(mockAccountsCelo));
+    /// @dev Register the mock Celo core contracts deployed by _deployCoreMocks()
+    ///      in the given registry. Must be called outside of any prank.
+    function _registerCoreMocks(address registryAddr) internal {
+        _setRegistryAddress(registryAddr, "Election", address(mockElection));
+        _setRegistryAddress(registryAddr, "LockedGold", address(mockLockedGold));
+        _setRegistryAddress(registryAddr, "Validators", address(mockValidators));
+        _setRegistryAddress(registryAddr, "Governance", address(mockGovernance));
+        _setRegistryAddress(registryAddr, "Accounts", address(mockAccountsCelo));
+    }
+
+    /// @dev Deploy MockRegistry plus the mock Celo core contracts as `deployer` and
+    ///      register them. Must be called outside of any prank.
+    /// @return registryAddr Address of the freshly deployed MockRegistry.
+    function _deployMockCeloInfrastructure() internal returns (address registryAddr) {
+        vm.startPrank(deployer);
+        registryAddr = _deployMockRegistry();
+        _deployCoreMocks();
+        vm.stopPrank();
+
+        _registerCoreMocks(registryAddr);
+    }
+
+    /// @dev Write a registry entry as the registry owner. Works both for MockRegistry
+    ///      (owned by `deployer`) and for the Celo core registry of a devchain
+    ///      (owned by the governance multisig). Must be called outside of any prank.
+    function _setRegistryAddress(
+        address registry,
+        string memory id,
+        address addr
+    ) internal {
+        address registryOwner = IOwnable(registry).owner();
+        vm.prank(registryOwner);
+        IRegistry(registry).setAddressFor(id, addr);
     }
 
     /// @dev Deploy Manager behind ERC1967Proxy, initialized with registry and owner.
@@ -120,6 +158,88 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         bytes memory data = abi.encodeWithSelector(Manager.initialize.selector, registryAddr, owner);
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         return Manager(address(proxy));
+    }
+
+    // -------------------------------------------------------------------------
+    // One function per proxy so that each stack frame stays small enough to
+    // compile without via_ir. All of them must run while pranked as `deployer`.
+    // -------------------------------------------------------------------------
+
+    /// @dev Account — initialize(registry, managerProxy, owner).
+    ///      REQUIRES: "Accounts" resolvable in the registry, because
+    ///      Account.initialize() calls getAccounts().createAccount().
+    function _deployAccountProxy(address registryAddr) private {
+        Account impl = new Account();
+        bytes memory data = abi.encodeWithSelector(
+            Account.initialize.selector,
+            registryAddr,
+            address(manager),
+            owner
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        account = Account(payable(address(proxy)));
+    }
+
+    /// @dev StakedCelo — initialize(managerProxy, owner).
+    function _deployStakedCeloProxy() private {
+        StakedCelo impl = new StakedCelo();
+        bytes memory data = abi.encodeWithSelector(
+            StakedCelo.initialize.selector,
+            address(manager),
+            owner
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        stakedCelo = StakedCelo(address(proxy));
+    }
+
+    /// @dev Vote — initialize(registry, owner, managerProxy).
+    function _deployVoteProxy(address registryAddr) private {
+        Vote impl = new Vote();
+        bytes memory data = abi.encodeWithSelector(
+            Vote.initialize.selector,
+            registryAddr,
+            owner,
+            address(manager)
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        vote = Vote(address(proxy));
+    }
+
+    /// @dev MockGroupHealth — initialize(registry, owner).
+    function _deployMockGroupHealthProxy(address registryAddr) private {
+        MockGroupHealth impl = new MockGroupHealth();
+        bytes memory data = abi.encodeWithSelector(
+            GroupHealth.initialize.selector,
+            registryAddr,
+            owner
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        mockGroupHealth = MockGroupHealth(address(proxy));
+    }
+
+    /// @dev MockDefaultStrategy — initialize(owner, managerProxy).
+    ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
+    function _deployMockDefaultStrategyProxy() private {
+        MockDefaultStrategy impl = new MockDefaultStrategy();
+        bytes memory data = abi.encodeWithSelector(
+            DefaultStrategy.initialize.selector,
+            owner,
+            address(manager)
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        mockDefaultStrategy = MockDefaultStrategy(payable(address(proxy)));
+    }
+
+    /// @dev SpecificGroupStrategy — initialize(owner, managerProxy).
+    function _deploySpecificGroupStrategyProxy() private {
+        SpecificGroupStrategy impl = new SpecificGroupStrategy();
+        bytes memory data = abi.encodeWithSelector(
+            SpecificGroupStrategy.initialize.selector,
+            owner,
+            address(manager)
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
+        specificGroupStrategy = SpecificGroupStrategy(address(proxy));
     }
 
     // =========================================================================
@@ -168,50 +288,56 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         vm.stopPrank();
     }
 
-    /// @notice Deploy Manager behind proxy.
+    /// @notice Deploy Manager behind proxy on top of a fresh MockRegistry.
     ///         Replicates deploy/test/manager.ts + mock_vote.ts [tag: TestManager].
     function deployTestManager() internal {
         _initNamedAccounts();
-        vm.startPrank(deployer);
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestManager(mockRegistryAddr);
+    }
 
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
+    /// @notice Deploy Manager behind proxy against an existing registry.
+    /// @param registry Registry the Manager resolves Celo core contracts from.
+    ///        Nothing is registered in it, so it may be owned by someone else.
+    function deployTestManager(address registry) internal {
+        _initNamedAccounts();
+        vm.startPrank(deployer);
 
         // MockVote (from mock_vote.ts, tag TestManager)
         mockVote = new MockVote();
 
         // Manager behind proxy
-        manager = _deployManagerBehindProxy(mockRegistryAddr);
+        manager = _deployManagerBehindProxy(registry);
 
         vm.stopPrank();
     }
 
-    /// @notice Deploy Manager + Account behind proxies.
+    /// @notice Deploy Manager + Account behind proxies on top of a fresh MockRegistry.
     ///         Replicates deploy/test/account.ts + deps [tag: TestAccount].
     ///         Includes: MockGovernance (tag TestAccount), MockVote (tag TestManager).
     function deployTestAccount() internal {
         _initNamedAccounts();
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestAccount(mockRegistryAddr);
+    }
+
+    /// @notice Deploy Manager + Account behind proxies against an existing registry.
+    /// @param registry Registry the Manager and Account resolve Celo core contracts
+    ///        from. It must resolve "Accounts", because Account.initialize() calls
+    ///        getAccounts().createAccount().
+    function deployTestAccount(address registry) internal {
+        deployTestManager(registry);
+
         vm.startPrank(deployer);
 
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
+        // MockGovernance (from mock_governance.ts, tag TestAccount). Already deployed
+        // when the mock Celo infrastructure is in use.
+        if (address(mockGovernance) == address(0)) {
+            mockGovernance = new MockGovernance();
+        }
 
-        // MockVote (from mock_vote.ts, tag TestManager)
-        mockVote = new MockVote();
-
-        // Manager behind proxy
-        manager = _deployManagerBehindProxy(mockRegistryAddr);
-
-        // Account behind proxy — needs "Accounts" registered for createAccount()
-        Account accountImpl = new Account();
-        bytes memory accountData = abi.encodeWithSelector(
-            Account.initialize.selector,
-            mockRegistryAddr,
-            address(manager),
-            owner
-        );
-        ERC1967Proxy accountProxy = new ERC1967Proxy(address(accountImpl), accountData);
-        account = Account(payable(address(accountProxy)));
+        // Account behind proxy — needs "Accounts" resolvable for createAccount()
+        _deployAccountProxy(registry);
 
         vm.stopPrank();
     }
@@ -238,178 +364,95 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         vm.stopPrank();
     }
 
-    /// @notice Deploy full Vote test environment:
+    /// @notice Deploy full Vote test environment on top of a fresh MockRegistry:
     ///         Manager + Account + StakedCelo + Vote + MockGroupHealth +
     ///         MockDefaultStrategy + SpecificGroupStrategy behind proxies.
     ///         Replicates all deploy/test/*.ts with [tag: TestVote].
     function deployTestVote() internal {
         _initNamedAccounts();
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestVote(mockRegistryAddr);
+    }
+
+    /// @notice Deploy the full Vote test environment against an existing registry.
+    /// @param registry Registry the registry-dependent contracts resolve Celo core
+    ///        contracts from. It must resolve "Accounts" for Account.initialize().
+    function deployTestVote(address registry) internal {
+        deployTestManager(registry);
+
         vm.startPrank(deployer);
 
-        // Deploy MockRegistry and register core mocks
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
-
-        // MockVote (from mock_vote.ts, tag TestManager)
-        mockVote = new MockVote();
-
-        // Manager behind proxy
-        manager = _deployManagerBehindProxy(mockRegistryAddr);
-
-        // Account behind proxy
-        {
-            Account accountImpl = new Account();
-            bytes memory accountData = abi.encodeWithSelector(
-                Account.initialize.selector,
-                mockRegistryAddr,
-                address(manager),
-                owner
-            );
-            ERC1967Proxy accountProxy = new ERC1967Proxy(
-                address(accountImpl),
-                accountData
-            );
-            account = Account(payable(address(accountProxy)));
-        }
-
-        // StakedCelo behind proxy (uses real Manager address per staked_celo.ts)
-        {
-            StakedCelo scImpl = new StakedCelo();
-            bytes memory scData = abi.encodeWithSelector(
-                StakedCelo.initialize.selector,
-                address(manager),
-                owner
-            );
-            ERC1967Proxy scProxy = new ERC1967Proxy(address(scImpl), scData);
-            stakedCelo = StakedCelo(address(scProxy));
-        }
-
-        // Vote behind proxy
-        {
-            Vote voteImpl = new Vote();
-            bytes memory voteData = abi.encodeWithSelector(
-                Vote.initialize.selector,
-                mockRegistryAddr,
-                owner,
-                address(manager)
-            );
-            ERC1967Proxy voteProxy = new ERC1967Proxy(address(voteImpl), voteData);
-            vote = Vote(address(voteProxy));
-        }
-
-        // MockGroupHealth behind proxy
-        {
-            MockGroupHealth ghImpl = new MockGroupHealth();
-            bytes memory ghData = abi.encodeWithSelector(
-                GroupHealth.initialize.selector,
-                mockRegistryAddr,
-                owner
-            );
-            ERC1967Proxy ghProxy = new ERC1967Proxy(address(ghImpl), ghData);
-            mockGroupHealth = MockGroupHealth(address(ghProxy));
-        }
-
-        // MockDefaultStrategy behind proxy (library auto-linked by Forge)
-        {
-            MockDefaultStrategy dsImpl = new MockDefaultStrategy();
-            bytes memory dsData = abi.encodeWithSelector(
-                DefaultStrategy.initialize.selector,
-                owner,
-                address(manager)
-            );
-            ERC1967Proxy dsProxy = new ERC1967Proxy(address(dsImpl), dsData);
-            mockDefaultStrategy = MockDefaultStrategy(payable(address(dsProxy)));
-        }
-
-        // SpecificGroupStrategy behind proxy
-        {
-            SpecificGroupStrategy sgsImpl = new SpecificGroupStrategy();
-            bytes memory sgsData = abi.encodeWithSelector(
-                SpecificGroupStrategy.initialize.selector,
-                owner,
-                address(manager)
-            );
-            ERC1967Proxy sgsProxy = new ERC1967Proxy(address(sgsImpl), sgsData);
-            specificGroupStrategy = SpecificGroupStrategy(address(sgsProxy));
-        }
+        _deployAccountProxy(registry);
+        // StakedCelo uses the real Manager address per staked_celo.ts
+        _deployStakedCeloProxy();
+        _deployVoteProxy(registry);
+        _deployMockGroupHealthProxy(registry);
+        _deployMockDefaultStrategyProxy();
+        _deploySpecificGroupStrategyProxy();
 
         vm.stopPrank();
     }
 
-    /// @notice Deploy MockGroupHealth behind proxy.
+    /// @notice Deploy MockGroupHealth behind proxy on top of a fresh MockRegistry.
     ///         Replicates deploy/test/group_health.ts [tag: TestGroupHealth].
     function deployTestGroupHealth() internal {
         _initNamedAccounts();
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestGroupHealth(mockRegistryAddr);
+    }
+
+    /// @notice Deploy MockGroupHealth behind proxy against an existing registry.
+    /// @param registry Registry MockGroupHealth resolves Celo core contracts from.
+    function deployTestGroupHealth(address registry) internal {
+        _initNamedAccounts();
         vm.startPrank(deployer);
 
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
-
-        MockGroupHealth ghImpl = new MockGroupHealth();
-        bytes memory ghData = abi.encodeWithSelector(
-            GroupHealth.initialize.selector,
-            mockRegistryAddr,
-            owner
-        );
-        ERC1967Proxy ghProxy = new ERC1967Proxy(address(ghImpl), ghData);
-        mockGroupHealth = MockGroupHealth(address(ghProxy));
+        _deployMockGroupHealthProxy(registry);
 
         vm.stopPrank();
     }
 
-    /// @notice Deploy Manager + MockDefaultStrategy behind proxy.
+    /// @notice Deploy Manager + MockDefaultStrategy behind proxy on top of a fresh
+    ///         MockRegistry.
     ///         Replicates deploy/test/default_strategy.ts [tag: TestDefaultStrategy].
     ///         AddressSortedLinkedList library is auto-linked by Forge.
     function deployTestDefaultStrategy() internal {
         _initNamedAccounts();
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestDefaultStrategy(mockRegistryAddr);
+    }
+
+    /// @notice Deploy Manager + MockDefaultStrategy behind proxy against an existing
+    ///         registry.
+    /// @param registry Registry the Manager resolves Celo core contracts from.
+    function deployTestDefaultStrategy(address registry) internal {
+        deployTestManager(registry);
+
         vm.startPrank(deployer);
 
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
-
-        // MockVote (from mock_vote.ts, tag TestManager)
-        mockVote = new MockVote();
-
-        // Manager behind proxy
-        manager = _deployManagerBehindProxy(mockRegistryAddr);
-
-        // MockDefaultStrategy behind proxy
-        MockDefaultStrategy dsImpl = new MockDefaultStrategy();
-        bytes memory dsData = abi.encodeWithSelector(
-            DefaultStrategy.initialize.selector,
-            owner,
-            address(manager)
-        );
-        ERC1967Proxy dsProxy = new ERC1967Proxy(address(dsImpl), dsData);
-        mockDefaultStrategy = MockDefaultStrategy(payable(address(dsProxy)));
+        _deployMockDefaultStrategyProxy();
 
         vm.stopPrank();
     }
 
-    /// @notice Deploy Manager + SpecificGroupStrategy behind proxy.
+    /// @notice Deploy Manager + SpecificGroupStrategy behind proxy on top of a fresh
+    ///         MockRegistry.
     ///         Replicates deploy/test/specific_group_strategy.ts [tag: TestSpecificGroupStrategy].
     function deployTestSpecificGroupStrategy() internal {
         _initNamedAccounts();
+        mockRegistryAddr = _deployMockCeloInfrastructure();
+        deployTestSpecificGroupStrategy(mockRegistryAddr);
+    }
+
+    /// @notice Deploy Manager + SpecificGroupStrategy behind proxy against an existing
+    ///         registry.
+    /// @param registry Registry the Manager resolves Celo core contracts from.
+    function deployTestSpecificGroupStrategy(address registry) internal {
+        deployTestManager(registry);
+
         vm.startPrank(deployer);
 
-        mockRegistryAddr = _deployMockRegistry();
-        _registerCoreMocks(mockRegistryAddr);
-
-        // MockVote (from mock_vote.ts, tag TestManager)
-        mockVote = new MockVote();
-
-        // Manager behind proxy
-        manager = _deployManagerBehindProxy(mockRegistryAddr);
-
-        // SpecificGroupStrategy behind proxy
-        SpecificGroupStrategy sgsImpl = new SpecificGroupStrategy();
-        bytes memory sgsData = abi.encodeWithSelector(
-            SpecificGroupStrategy.initialize.selector,
-            owner,
-            address(manager)
-        );
-        ERC1967Proxy sgsProxy = new ERC1967Proxy(address(sgsImpl), sgsData);
-        specificGroupStrategy = SpecificGroupStrategy(address(sgsProxy));
+        _deploySpecificGroupStrategyProxy();
 
         vm.stopPrank();
     }

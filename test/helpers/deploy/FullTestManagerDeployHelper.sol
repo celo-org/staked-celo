@@ -57,7 +57,9 @@ contract MockCeloAccount {
  *      Also deploys MockRegistry + mock Celo core contracts (Election, LockedGold,
  *      Validators, Governance, Accounts) and registers them in the registry.
  *
- *      Usage: extend this contract and call deployFullTestManager() in setUp().
+ *      Usage: extend this contract and call deployFullTestManager() in setUp(),
+ *      or deployFullTestManager(registry) to wire the protocol against an
+ *      already existing registry (for example the Celo core registry of a devchain).
  */
 abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     // =========================================================================
@@ -93,34 +95,75 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     // =========================================================================
 
     /**
-     * @notice Deploy the full Manager test fixture.
+     * @notice Deploy the full Manager test fixture against mock Celo core contracts.
      * @dev Deployment sequence:
      *      1. MockRegistry (via getCode — cannot import directly)
      *      2. Mock Celo core contracts + registry registration
-     *      3. Manager (proxy) — initialize(registry, owner)
-     *      4. MockGroupHealth (proxy) — initialize(registry, owner)
-     *      5. MockDefaultStrategy (proxy) — initialize(owner, managerProxy)
-     *      6. SpecificGroupStrategy (proxy) — initialize(owner, managerProxy)
-     *      7. Account (proxy) — initialize(registry, managerProxy, owner)
-     *      8. StakedCelo (proxy) — initialize(managerProxy, owner)
-     *      9. Vote (proxy) — initialize(registry, owner, managerProxy)
-     *      10. Manager.setDependencies(...)
-     *      11. Vote.setDependencies(...)
-     *      12. SpecificGroupStrategy.setDependencies(...)
-     *      13. MockDefaultStrategy.setDependencies(...)
+     *      3-13. Everything deployFullTestManager(registry) does.
      */
     function deployFullTestManager() internal {
         _initNamedAccounts();
+        _deployMockCeloInfrastructure();
+        deployFullTestManager(mockRegistryAddr);
+    }
+
+    /**
+     * @notice Deploy the full Manager test fixture against an existing registry.
+     * @param registry Registry the protocol contracts resolve Celo core contracts from.
+     *        Nothing is registered in it, so it may be a registry owned by someone else
+     *        (for example the Celo core registry of a devchain).
+     * @dev Deployment sequence:
+     *      1. Manager (proxy) — initialize(registry, owner)
+     *      2. MockGroupHealth (proxy) — initialize(registry, owner)
+     *      3. MockDefaultStrategy (proxy) — initialize(owner, managerProxy)
+     *      4. SpecificGroupStrategy (proxy) — initialize(owner, managerProxy)
+     *      5. Account (proxy) — initialize(registry, managerProxy, owner)
+     *      6. StakedCelo (proxy) — initialize(managerProxy, owner)
+     *      7. Vote (proxy) — initialize(registry, owner, managerProxy)
+     *      8. Manager.setDependencies(...)
+     *      9. Vote.setDependencies(...)
+     *      10. SpecificGroupStrategy.setDependencies(...)
+     *      11. MockDefaultStrategy.setDependencies(...)
+     */
+    function deployFullTestManager(address registry) internal {
+        // Idempotent — harmless when called again from the no-argument fixture.
+        _initNamedAccounts();
 
         // ================================================================
-        // Phase 1: MockRegistry + Celo core mocks
-        // ================================================================
-        // MockRegistry is deployed via getCode + assembly create because
-        // importing it directly causes Initializable name collision.
-        // The registry owner is address(this) (the test contract), so
-        // setAddressFor calls must happen outside any prank context.
+        // Phase 2: Protocol contracts behind ERC1967 proxies
         // ================================================================
 
+        vm.startPrank(deployer);
+
+        _deployManagerProxy(registry);
+        _deployMockGroupHealthProxy(registry);
+        _deployMockDefaultStrategyProxy();
+        _deploySpecificGroupStrategyProxy();
+        _deployAccountProxy(registry);
+        _deployStakedCeloProxy();
+        _deployVoteProxy(registry);
+
+        vm.stopPrank();
+
+        // ================================================================
+        // Phase 3: Wire dependencies (as owner)
+        // ================================================================
+
+        _setDependencies();
+    }
+
+    // =========================================================================
+    //                    MOCK INFRASTRUCTURE DEPLOYMENT
+    // =========================================================================
+
+    /**
+     * @dev Deploy MockRegistry + mock Celo core contracts and register them.
+     *      MockRegistry is deployed via getCode + assembly create because
+     *      importing it directly causes Initializable name collision.
+     *      Called without prank, so the registry owner is address(this) (the
+     *      test contract) and setAddressFor needs no prank either.
+     */
+    function _deployMockCeloInfrastructure() private {
         bytes memory registryCode = IVmExtended(address(vm)).getCode(
             "MockRegistry.sol:MockRegistry"
         );
@@ -144,107 +187,104 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         IMockRegistry(mockRegistryAddr).setAddressFor("Validators", address(mockValidators));
         IMockRegistry(mockRegistryAddr).setAddressFor("Governance", address(mockGovernance));
         IMockRegistry(mockRegistryAddr).setAddressFor("Accounts", address(mockCeloAccount));
+    }
 
-        // ================================================================
-        // Phase 2: Protocol contracts behind ERC1967 proxies
-        // ================================================================
+    // =========================================================================
+    //                    PROTOCOL CONTRACT DEPLOYMENT
+    // =========================================================================
+    //
+    // One function per proxy so that each stack frame stays small enough to
+    // compile without via_ir.
 
-        vm.startPrank(deployer);
-
-        // --- Manager ---
-        // initialize(address _registry, address _owner)
-        Manager managerImpl = new Manager();
-        ERC1967Proxy managerProxy = new ERC1967Proxy(
-            address(managerImpl),
-            abi.encodeWithSelector(Manager.initialize.selector, mockRegistryAddr, owner)
+    /// @dev Manager — initialize(registry, owner)
+    function _deployManagerProxy(address registry) private {
+        Manager impl = new Manager();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(Manager.initialize.selector, registry, owner)
         );
-        manager = Manager(address(managerProxy));
+        manager = Manager(address(proxy));
+    }
 
-        // --- MockGroupHealth ---
-        // initialize(address _registry, address _owner)
-        MockGroupHealth ghImpl = new MockGroupHealth();
-        ERC1967Proxy ghProxy = new ERC1967Proxy(
-            address(ghImpl),
-            abi.encodeWithSelector(GroupHealth.initialize.selector, mockRegistryAddr, owner)
+    /// @dev MockGroupHealth — initialize(registry, owner)
+    function _deployMockGroupHealthProxy(address registry) private {
+        MockGroupHealth impl = new MockGroupHealth();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(GroupHealth.initialize.selector, registry, owner)
         );
-        mockGroupHealth = MockGroupHealth(address(ghProxy));
+        mockGroupHealth = MockGroupHealth(address(proxy));
+    }
 
-        // --- MockDefaultStrategy ---
-        // initialize(address _owner, address _manager)
-        // Note: DefaultStrategy uses AddressSortedLinkedList library — Forge auto-links at compile.
-        MockDefaultStrategy dsImpl = new MockDefaultStrategy();
-        ERC1967Proxy dsProxy = new ERC1967Proxy(
-            address(dsImpl),
-            abi.encodeWithSelector(
-                DefaultStrategy.initialize.selector,
-                owner,
-                address(managerProxy)
-            )
+    /// @dev MockDefaultStrategy — initialize(owner, managerProxy)
+    ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
+    function _deployMockDefaultStrategyProxy() private {
+        MockDefaultStrategy impl = new MockDefaultStrategy();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(DefaultStrategy.initialize.selector, owner, address(manager))
         );
-        mockDefaultStrategy = MockDefaultStrategy(payable(address(dsProxy)));
+        mockDefaultStrategy = MockDefaultStrategy(payable(address(proxy)));
+    }
 
-        // --- SpecificGroupStrategy ---
-        // initialize(address _owner, address _manager)
-        SpecificGroupStrategy sgsImpl = new SpecificGroupStrategy();
-        ERC1967Proxy sgsProxy = new ERC1967Proxy(
-            address(sgsImpl),
+    /// @dev SpecificGroupStrategy — initialize(owner, managerProxy)
+    function _deploySpecificGroupStrategyProxy() private {
+        SpecificGroupStrategy impl = new SpecificGroupStrategy();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
             abi.encodeWithSelector(
                 SpecificGroupStrategy.initialize.selector,
                 owner,
-                address(managerProxy)
+                address(manager)
             )
         );
-        specificGroupStrategy = SpecificGroupStrategy(address(sgsProxy));
+        specificGroupStrategy = SpecificGroupStrategy(address(proxy));
+    }
 
-        // --- Account ---
-        // initialize(address _registry, address _manager, address _owner)
-        // Note: Account.initialize() calls getAccounts().createAccount(), requiring
-        //       "Accounts" to be registered in MockRegistry (done in Phase 1).
-        Account accountImpl = new Account();
-        ERC1967Proxy accountProxy = new ERC1967Proxy(
-            address(accountImpl),
+    /// @dev Account — initialize(registry, managerProxy, owner)
+    ///      REQUIRES: "Accounts" resolvable in the registry, because
+    ///      Account.initialize() calls getAccounts().createAccount().
+    function _deployAccountProxy(address registry) private {
+        Account impl = new Account();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
             abi.encodeWithSelector(
                 Account.initialize.selector,
-                mockRegistryAddr,
-                address(managerProxy),
+                registry,
+                address(manager),
                 owner
             )
         );
-        account = Account(payable(address(accountProxy)));
+        account = Account(payable(address(proxy)));
+    }
 
-        // --- StakedCelo ---
-        // initialize(address _manager, address _owner)
-        StakedCelo stCeloImpl = new StakedCelo();
-        ERC1967Proxy stCeloProxy = new ERC1967Proxy(
-            address(stCeloImpl),
-            abi.encodeWithSelector(
-                StakedCelo.initialize.selector,
-                address(managerProxy),
-                owner
-            )
+    /// @dev StakedCelo — initialize(managerProxy, owner)
+    function _deployStakedCeloProxy() private {
+        StakedCelo impl = new StakedCelo();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(StakedCelo.initialize.selector, address(manager), owner)
         );
-        stakedCelo = StakedCelo(address(stCeloProxy));
+        stakedCelo = StakedCelo(address(proxy));
+    }
 
-        // --- Vote ---
-        // initialize(address _registry, address _owner, address _manager)
-        Vote voteImpl = new Vote();
-        ERC1967Proxy voteProxy = new ERC1967Proxy(
-            address(voteImpl),
+    /// @dev Vote — initialize(registry, owner, managerProxy)
+    function _deployVoteProxy(address registry) private {
+        Vote impl = new Vote();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
             abi.encodeWithSelector(
                 Vote.initialize.selector,
-                mockRegistryAddr,
+                registry,
                 owner,
-                address(managerProxy)
+                address(manager)
             )
         );
-        vote = Vote(address(voteProxy));
+        vote = Vote(address(proxy));
+    }
 
-        vm.stopPrank();
-
-        // ================================================================
-        // Phase 3: Wire dependencies (as owner)
-        // ================================================================
-
+    /// @dev Wire Manager, Vote, SpecificGroupStrategy and DefaultStrategy together.
+    function _setDependencies() private {
         vm.startPrank(owner);
 
         // Manager.setDependencies(stakedCelo, account, vote, groupHealth, sgs, ds)

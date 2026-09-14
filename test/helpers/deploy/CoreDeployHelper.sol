@@ -21,7 +21,9 @@ import "../../../contracts/common/ERC1967Proxy.sol";
  *         ERC1967Proxy, calls setDependencies on 4 contracts, and transfers
  *         ownership to MultiSig.
  * @dev Extend this contract in concrete test files and call deployCoreWithMockRegistry()
- *      inside setUp().
+ *      inside setUp(), or deployCore(registry, minDelay, delay, requiredConfirmations)
+ *      to run the same sequence against an already existing registry (for example
+ *      the Celo core registry of a devchain).
  *
  *      IMPORTANT: MultiSig.sol and MockRegistry.sol are NOT imported directly to avoid
  *      Initializable name collision between OZ contracts (non-upgradeable)
@@ -95,28 +97,49 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         // ================================================================
         _deployMockCeloInfrastructure();
 
+        deployCore(mockRegistryAddr, 3 * DAY, 3 * DAY, 1);
+    }
+
+    /// @notice Deploy all protocol contracts against an existing registry, replicating
+    ///         the full production deploy sequence from scripts 00-13.
+    /// @param registry Registry the protocol contracts resolve Celo core contracts from.
+    ///        Nothing is registered in it, so it may be a registry owned by someone else
+    ///        (for example the Celo core registry of a devchain).
+    /// @param minDelay MultiSig constructor argument (TIME_LOCK_MIN_DELAY).
+    /// @param delay MultiSig time lock delay (TIME_LOCK_DELAY). Must be >= minDelay.
+    /// @param requiredConfirmations MultiSig confirmations needed to schedule a proposal
+    ///        (MULTISIG_REQUIRED_CONFIRMATIONS).
+    function deployCore(
+        address registry,
+        uint256 minDelay,
+        uint256 delay,
+        uint256 requiredConfirmations
+    ) internal {
+        // Idempotent — harmless when called again from deployCoreWithMockRegistry().
+        _initNamedAccounts();
+
         // ================================================================
         // Phase 2: Protocol contracts behind ERC1967 proxies (as deployer)
         // ================================================================
         vm.startPrank(deployer);
 
         // Script 00: MultiSig
-        _deployMultiSigProxy();
+        _deployMultiSigProxy(minDelay, delay, requiredConfirmations);
 
         // Script 01: Manager — initialize(registry, deployer)
-        _deployManagerProxy();
+        _deployManagerProxy(registry);
 
         // Script 02: Account — initialize(registry, managerProxy, deployer)
-        _deployAccountProxy();
+        _deployAccountProxy(registry);
 
         // Script 03: StakedCelo — initialize(managerProxy, deployer)
         _deployStakedCeloProxy();
 
         // Script 04: Vote — initialize(registry, deployer, managerProxy)
-        _deployVoteProxy();
+        _deployVoteProxy(registry);
 
         // Script 05: GroupHealth — initialize(registry, multiSigProxy)
-        _deployGroupHealthProxy();
+        _deployGroupHealthProxy(registry);
 
         // Script 06: SpecificGroupStrategy — initialize(deployer, managerProxy)
         _deploySpecificGroupStrategyProxy();
@@ -218,11 +241,17 @@ abstract contract CoreDeployHelper is CeloTestHelper {
 
     /// @dev Script 00: Deploy MultiSig implementation via getCode + proxy.
     ///      MultiSig.sol is UNSAFE to import (non-upgradeable Initializable).
-    ///      constructor(minDelay = 3 * DAY), initialize(owners, required = 1, delay = DAY)
-    function _deployMultiSigProxy() private {
-        // Deploy implementation with constructor arg: minDelay = 3 days
+    ///      constructor(minDelay), initialize(multisigOwner0..4, required, delay).
+    ///      The owner set mirrors deploy/00_multisig.ts, which collects every
+    ///      named account whose name contains "multisigOwner".
+    function _deployMultiSigProxy(
+        uint256 minDelay,
+        uint256 delay,
+        uint256 requiredConfirmations
+    ) private {
+        // Deploy implementation with constructor arg minDelay
         bytes memory msCode = IVmExtended(address(vm)).getCode("MultiSig.sol:MultiSig");
-        bytes memory msCreation = abi.encodePacked(msCode, abi.encode(3 * DAY));
+        bytes memory msCreation = abi.encodePacked(msCode, abi.encode(minDelay));
         address msImpl;
         assembly {
             msImpl := create(0, add(msCreation, 0x20), mload(msCreation))
@@ -230,14 +259,18 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         require(msImpl != address(0), "MultiSig impl deploy failed");
 
         // Deploy proxy with initialize(owners, required, delay)
-        address[] memory owners = new address[](1);
+        address[] memory owners = new address[](5);
         owners[0] = multisigOwner0;
+        owners[1] = multisigOwner1;
+        owners[2] = multisigOwner2;
+        owners[3] = multisigOwner3;
+        owners[4] = multisigOwner4;
 
         bytes memory msInit = abi.encodeWithSignature(
             "initialize(address[],uint256,uint256)",
             owners,
-            uint256(1), // required confirmations
-            uint256(3 * DAY) // delay (must be >= minDelay of 3 * DAY)
+            requiredConfirmations,
+            delay // must be >= minDelay
         );
 
         ERC1967Proxy proxy = new ERC1967Proxy(msImpl, msInit);
@@ -246,24 +279,24 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     }
 
     /// @dev Script 01: Manager — initialize(registry, owner)
-    function _deployManagerProxy() private {
+    function _deployManagerProxy(address registry) private {
         Manager impl = new Manager();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(Manager.initialize.selector, mockRegistryAddr, deployer)
+            abi.encodeWithSelector(Manager.initialize.selector, registry, deployer)
         );
         manager = Manager(address(proxy));
     }
 
     /// @dev Script 02: Account — initialize(registry, managerProxy, owner)
-    ///      REQUIRES: "Accounts" registered in MockRegistry (for createAccount())
-    function _deployAccountProxy() private {
+    ///      REQUIRES: "Accounts" resolvable in the registry (for createAccount())
+    function _deployAccountProxy(address registry) private {
         Account impl = new Account();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
                 Account.initialize.selector,
-                mockRegistryAddr,
+                registry,
                 address(manager),
                 deployer
             )
@@ -282,13 +315,13 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     }
 
     /// @dev Script 04: Vote — initialize(registry, owner, managerProxy)
-    function _deployVoteProxy() private {
+    function _deployVoteProxy(address registry) private {
         Vote impl = new Vote();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
                 Vote.initialize.selector,
-                mockRegistryAddr,
+                registry,
                 deployer,
                 address(manager)
             )
@@ -298,13 +331,13 @@ abstract contract CoreDeployHelper is CeloTestHelper {
 
     /// @dev Script 05: GroupHealth — initialize(registry, owner = multiSig)
     ///      GroupHealth is owned by MultiSig from the start (matching production).
-    function _deployGroupHealthProxy() private {
+    function _deployGroupHealthProxy(address registry) private {
         GroupHealth impl = new GroupHealth();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
                 GroupHealth.initialize.selector,
-                mockRegistryAddr,
+                registry,
                 multiSigProxy
             )
         );
