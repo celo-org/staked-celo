@@ -23,20 +23,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      ## yarn.lock file contains git:// instead of https
-      ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
-      - run: git config --global url."https://".insteadOf git://
-
       - name: Checkout commit
         uses: actions/checkout@v4
 
-      # Still node 14: the dependency tree pinned in package.json does not install on
-      # newer runtimes. It only has to provide prettier and solhint here, and it goes
-      # away with the rest of the Hardhat tooling.
+      # package.json carries the lint tooling only (prettier, solhint) plus the
+      # devchain fixture package, so this tracks a supported release.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "14.x"
+          node-version: "20.x"
           cache: yarn
 
       - name: Install dependencies
