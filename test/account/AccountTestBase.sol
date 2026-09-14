@@ -301,6 +301,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     // =========================================================================
 
     /// @notice `account.activateAndVote(group, ...)` with neighbours derived from chain state.
+    /// @dev The original called this through `.connect(manager)`, but `activateAndVote` is
+    ///      permissionless (`onlyWhenNotPaused` only), so no prank is needed.
     function _activateAndVote(address group) internal {
         (address lesser, address greater) = findLesserAndGreaterAfterVote(
             group,
@@ -310,6 +312,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     }
 
     /// @notice `account.revokeVotes(group, ...)` with neighbours derived from chain state.
+    /// @dev The original called this through `.connect(manager)`, but `revokeVotes` is
+    ///      permissionless (`onlyWhenNotPaused` only), so no prank is needed.
     function _revokeVotesForGroup(address group) internal {
         uint256 revokable = _min(account.votesForGroup(group), _celoToRevoke(group));
         RevokeNeighbours memory n = _revokeNeighbours(group, revokable);

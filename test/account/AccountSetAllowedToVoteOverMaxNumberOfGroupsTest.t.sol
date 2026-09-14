@@ -6,6 +6,10 @@ import "./AccountTestBase.sol";
 /// @notice Port of
 ///         `describe("Account") > describe("#setAllowedToVoteOverMaxNumberOfGroups()")`.
 contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
+    /// @dev Strengthened port: the original assertion never ran. It was missing the `await` on
+    ///      `expect(...).revertedWith(...)`, and it called through the owner signer, so the
+    ///      call it asserted on would not have reverted anyway. Here the call really is made
+    ///      by a non-owner and the revert really is asserted.
     function test_setAllowedToVoteOverMaxNumberOfGroups_RevertsWhenNotCalledByOwner() public {
         vm.expectRevert(bytes("Ownable: caller is not the owner"));
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
@@ -14,9 +18,10 @@ contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
     function test_setAllowedToVoteOverMaxNumberOfGroups_SetsAllowedToVoteOverMaxNumberOfGroupsCorrectly()
         public
     {
+        address accountOwner = account.owner();
         assertFalse(celoElection.allowedToVoteOverMaxNumberOfGroups(address(account)));
 
-        vm.prank(account.owner());
+        vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
 
         assertTrue(celoElection.allowedToVoteOverMaxNumberOfGroups(address(account)));
@@ -25,21 +30,25 @@ contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
     function test_setAllowedToVoteOverMaxNumberOfGroups_EmitsAllowedToVoteOverMaxNumberOfGroupsSetEventWhenSetToTrue()
         public
     {
+        address accountOwner = account.owner();
+
         vm.expectEmit(true, true, true, true);
         emit AllowedToVoteOverMaxNumberOfGroupsSet(true);
-        vm.prank(account.owner());
+        vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
     }
 
     function test_setAllowedToVoteOverMaxNumberOfGroups_EmitsAllowedToVoteOverMaxNumberOfGroupsSetEventWhenSetToFalse()
         public
     {
-        vm.prank(account.owner());
+        address accountOwner = account.owner();
+
+        vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(true);
 
         vm.expectEmit(true, true, true, true);
         emit AllowedToVoteOverMaxNumberOfGroupsSet(false);
-        vm.prank(account.owner());
+        vm.prank(accountOwner);
         account.setAllowedToVoteOverMaxNumberOfGroups(false);
     }
 }

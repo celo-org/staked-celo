@@ -312,9 +312,10 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
     // =========================================================================
 
     /// @dev `beforeEach` of `#transfer()`.
-    /// @dev Deviation: the original funded the impersonated StakedCelo signer with 1 CELO so
-    ///      that it could pay for gas; Foundry pranks instead, the balance is only kept for
-    ///      parity.
+    /// @dev Deviation: Foundry pranks the StakedCelo caller instead of impersonating it, so
+    ///      this transfer is not needed to pay for gas. It is kept so that the balances of
+    ///      `nonVote` and of the StakedCelo mock match the original; no assertion depends on
+    ///      it.
     function setUpTransfer() private {
         vm.prank(nonVote);
         (bool sent, ) = address(mockStakedCelo).call{value: 1 ether}("");

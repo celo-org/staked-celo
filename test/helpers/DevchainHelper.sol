@@ -317,16 +317,25 @@ abstract contract DevchainHelper is MultiSigHelper {
         (groupLockedGoldRequirement, ) = celoValidators.getGroupLockedGoldRequirements();
 
         devchainEpochNumber = celoEpochManager.getCurrentEpochNumber();
-        _applyEpochMock();
+        syncEpochMock();
     }
 
     // =========================================================================
     //                               EPOCHS
     // =========================================================================
 
+    /// @notice Re-apply the mocked epoch number so that EpochManager reports
+    ///         `devchainEpochNumber` again.
     /// @dev Core contracts read the epoch number through EpochManager; pin it so tests
     ///      can advance epochs without running the (oracle dependent) epoch process.
-    function _applyEpochMock() private {
+    ///
+    ///      Cheatcode state lives outside the EVM state a snapshot captures, so reverting to
+    ///      a snapshot restores `devchainEpochNumber` (a storage variable) but leaves the
+    ///      `vm.mockCall` installed by the last `mineToNextEpoch()` in place. A test that
+    ///      reverts to a snapshot taken before `mineToNextEpoch()` must therefore call this
+    ///      afterwards, otherwise the core contracts keep reporting the advanced epoch while
+    ///      `devchainEpochNumber` says otherwise.
+    function syncEpochMock() internal {
         dvm.mockCall(
             address(celoEpochManager),
             abi.encodeWithSelector(ICeloEpochManager.getCurrentEpochNumber.selector),
@@ -344,7 +353,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     ///      ganache devchain did when the Hardhat tests mined to the next epoch.
     function mineToNextEpoch() internal virtual override {
         devchainEpochNumber += 1;
-        _applyEpochMock();
+        syncEpochMock();
         vm.roll(block.number + BLOCKS_PER_EPOCH);
         vm.warp(block.timestamp + BLOCKS_PER_EPOCH);
     }

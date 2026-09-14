@@ -7,6 +7,14 @@ import "../../contracts/mock/MockStakedCelo.sol";
 import "../../contracts/mock/MockVote.sol";
 
 /**
+ * @dev `vm.toString(address)`, which CeloTestVm does not declare. Cast onto the same
+ *      cheatcode address; used to render array assertion failures.
+ */
+interface ManagerTestVm {
+    function toString(address value) external pure returns (string memory);
+}
+
+/**
  * @title ManagerTestBase
  * @notice Shared fixture of the ported `describe("Manager")` suite.
  * @dev Ports the `before()` block of test-ts/manager.test.ts. The Hardhat suite used
@@ -19,6 +27,10 @@ import "../../contracts/mock/MockVote.sol";
  *      devchain, resolved through the registry at 0x...ce10.
  */
 abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper {
+    /// @dev `vm` widened with `toString(address)` (see ManagerTestVm).
+    ManagerTestVm internal constant mvm =
+        ManagerTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
     // =========================================================================
     //                       MANAGER EVENTS (vm.expectEmit)
     // =========================================================================
@@ -371,25 +383,77 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     //                         ARRAY ASSERTIONS
     // =========================================================================
 
+    /// @dev "<prefix> length: <aLength> != <bLength>".
+    function _lengthMessage(
+        string memory prefix,
+        uint256 aLength,
+        uint256 bLength
+    ) private pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    prefix,
+                    " length: ",
+                    vm.toString(aLength),
+                    " != ",
+                    vm.toString(bLength)
+                )
+            );
+    }
+
+    /// @dev "<prefix> [<index>]: <a> != <b>".
+    function _elementMessage(
+        string memory prefix,
+        uint256 index,
+        string memory a,
+        string memory b
+    ) private pure returns (string memory) {
+        return string(abi.encodePacked(prefix, " [", vm.toString(index), "]: ", a, " != ", b));
+    }
+
     /// @notice `expect(a).to.deep.equal(b)` for address arrays (order matters).
     function assertEq(address[] memory a, address[] memory b) internal pure {
-        require(a.length == b.length, "Assertion failed: address array length");
+        if (a.length != b.length) {
+            revert(_lengthMessage("Assertion failed: address array", a.length, b.length));
+        }
         for (uint256 i = 0; i < a.length; i++) {
-            require(a[i] == b[i], "Assertion failed: address array element");
+            if (a[i] != b[i]) {
+                revert(
+                    _elementMessage(
+                        "Assertion failed: address array element",
+                        i,
+                        mvm.toString(a[i]),
+                        mvm.toString(b[i])
+                    )
+                );
+            }
         }
     }
 
     /// @notice `expect(a).to.deep.equal(b)` for uint arrays (order matters).
     function assertEq(uint256[] memory a, uint256[] memory b) internal pure {
-        require(a.length == b.length, "Assertion failed: uint array length");
+        if (a.length != b.length) {
+            revert(_lengthMessage("Assertion failed: uint array", a.length, b.length));
+        }
         for (uint256 i = 0; i < a.length; i++) {
-            require(a[i] == b[i], "Assertion failed: uint array element");
+            if (a[i] != b[i]) {
+                revert(
+                    _elementMessage(
+                        "Assertion failed: uint array element",
+                        i,
+                        vm.toString(a[i]),
+                        vm.toString(b[i])
+                    )
+                );
+            }
         }
     }
 
     /// @notice `expect(a).to.have.deep.members(b)` for address arrays (order agnostic).
     function assertMembers(address[] memory a, address[] memory b) internal pure {
-        require(a.length == b.length, "Assertion failed: address members length");
+        if (a.length != b.length) {
+            revert(_lengthMessage("Assertion failed: address members", a.length, b.length));
+        }
         bool[] memory used = new bool[](b.length);
         for (uint256 i = 0; i < a.length; i++) {
             bool found = false;
@@ -400,13 +464,27 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
                     break;
                 }
             }
-            require(found, "Assertion failed: address members mismatch");
+            if (!found) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "Assertion failed: address members mismatch, a[",
+                            vm.toString(i),
+                            "] = ",
+                            mvm.toString(a[i]),
+                            " is not in b"
+                        )
+                    )
+                );
+            }
         }
     }
 
     /// @notice `expect(a).to.have.deep.members(b)` for uint arrays (order agnostic).
     function assertMembers(uint256[] memory a, uint256[] memory b) internal pure {
-        require(a.length == b.length, "Assertion failed: uint members length");
+        if (a.length != b.length) {
+            revert(_lengthMessage("Assertion failed: uint members", a.length, b.length));
+        }
         bool[] memory used = new bool[](b.length);
         for (uint256 i = 0; i < a.length; i++) {
             bool found = false;
@@ -417,7 +495,19 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
                     break;
                 }
             }
-            require(found, "Assertion failed: uint members mismatch");
+            if (!found) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "Assertion failed: uint members mismatch, a[",
+                            vm.toString(i),
+                            "] = ",
+                            vm.toString(a[i]),
+                            " is not in b"
+                        )
+                    )
+                );
+            }
         }
     }
 

@@ -75,6 +75,8 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.changeStrategy(ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
+        // Ported verbatim: the original asserts this value against itself, so the "different
+        // specific strategy" branch is effectively unasserted.
         assertEq(
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0]),
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0])
@@ -224,6 +226,8 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.forceChangeStrategy(depositor, ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
+        // Ported verbatim: the original asserts this value against itself, so the "different
+        // specific strategy" branch is effectively unasserted.
         assertEq(
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0]),
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0])

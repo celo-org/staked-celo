@@ -11,11 +11,20 @@ import "./AccountTestBase.sol";
  *      `test_` function per declared `it()`, every case here runs its body against all three
  *      vote states in turn, using `snapshotState` / `revertToState` to reset in between. No
  *      assertion of the original is lost.
+ *
+ *      Because the assertion helpers take no failure message, every iteration emits
+ *      `VoteStateUnderTest` first so that `forge test -vvvv` shows which of the three states
+ *      a failure belongs to. `revertToState` does not undo cheatcode state, so each revert is
+ *      followed by `syncEpochMock()` to put the mocked epoch number back in step with
+ *      `devchainEpochNumber` (the "active" state calls `mineToNextEpoch()`).
  */
 contract AccountScheduleWithdrawalsTest is AccountTestBase {
     uint256 private constant VOTE_STATE_SCHEDULED = 0;
     uint256 private constant VOTE_STATE_LOCKED_AND_PENDING = 1;
     uint256 private constant VOTE_STATE_ACTIVE = 2;
+
+    /// @dev Marks which of the three vote states an iteration runs against.
+    event VoteStateUnderTest(uint256 voteState);
 
     // =========================================================================
     //                   when called by a non-manager
@@ -70,10 +79,13 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _bodyRevertsWithAWithdrawalAmountTooHighError();
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -100,10 +112,13 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _bodyEmitsAnEventForEachGroup();
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -119,11 +134,14 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
             assertEq(account.totalScheduledWithdrawals(), 120);
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -131,6 +149,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
@@ -138,6 +157,8 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
                 assertEq(account.scheduledWithdrawalsForGroup(groupAddresses[i]), 40);
             }
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -145,6 +166,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
@@ -158,6 +180,8 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
                 );
             }
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -169,12 +193,15 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
             _secondWithdrawal();
             assertEq(account.totalScheduledWithdrawals(), 210);
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -182,6 +209,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
@@ -190,6 +218,8 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
                 assertEq(account.scheduledWithdrawalsForGroup(groupAddresses[i]), 70);
             }
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
@@ -197,12 +227,15 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         public
     {
         for (uint256 voteState = 0; voteState < 3; voteState++) {
+            emit VoteStateUnderTest(voteState);
             uint256 snapshotId = avm.snapshotState();
             _setupVoteState(voteState);
             _firstWithdrawal();
             _secondWithdrawal();
             _assertPerBeneficiaryWithdrawals();
             avm.revertToState(snapshotId);
+            syncEpochMock();
+            assertEq(celoEpochManager.getCurrentEpochNumber(), devchainEpochNumber);
         }
     }
 
