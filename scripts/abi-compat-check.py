@@ -17,6 +17,15 @@ Two things are compared for every non-excluded contract under contracts/:
                   manual review because only a human can tell a deliberate gap
                   reservation from an accidental overlap.
 
+                  Growing a type is only free where nothing sits behind it. Array
+                  elements are stored back to back from the array's base slot, so
+                  the element's size is the stride: growing it moves every element
+                  after the first one and silently reinterprets the state that is
+                  already there. Growth anywhere below an array element - directly,
+                  or through a struct member of one - is therefore an error, while
+                  growth of a mapping value stays a review item, because every
+                  mapping entry starts at its own hash.
+
   ABI             Every baseline function, event and custom error must still exist
                   with identical inputs and outputs. Comparison is by canonical
                   signature, which is what the selector and the event topic are
@@ -110,79 +119,128 @@ def array_length(label):
     return int(match.group(1)) if match else None
 
 
-def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen):
+def type_size(definition):
+    return int(definition.get("numberOfBytes", 32))
+
+
+def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, stride, path):
     """Compares two type definitions and everything reachable from them.
 
     Both sides are walked in lockstep so each identifier is resolved in its own
     types map; nothing is ever looked up across builds, where the AST ids differ.
+
+    `stride` says whether the size of this type decides where other data lives,
+    which is what turns a growth from a review item into an error. It is set when
+    descending into an array's element type and stays set for everything that
+    contributes to that element's size (its struct members, and their members in
+    turn). It is cleared again under a mapping value, whose entries are each
+    addressed by their own hash and so have nothing sitting behind them.
+
+    `path` is the access path the type was reached by, e.g. `withdrawals[key][i]`,
+    and only serves to make the findings readable.
     """
-    if (base_id, cur_id) in seen:
+    if (base_id, cur_id, stride) in seen:
         return
-    seen.add((base_id, cur_id))
+    seen.add((base_id, cur_id, stride))
 
     base_type, cur_type = base_types.get(base_id), cur_types.get(cur_id)
     if base_type is None or cur_type is None:
         return
 
-    for key in ("base", "key", "value"):
-        if key in base_type and key in cur_type:
-            check_type(name, base_type[key], base_types, cur_type[key], cur_types, findings, seen)
+    before = len(findings)
 
-    base_members = base_type.get("members")
-    if base_members is None:
-        return
+    # Only array types carry a `base`, both the static t_array(...)N_storage and
+    # the dynamic t_array(...)dyn_storage kind: in either the elements are packed
+    # one after another, so the element size is the distance between them.
+    if "base" in base_type and "base" in cur_type:
+        check_type(name, base_type["base"], base_types, cur_type["base"], cur_types, findings, seen, True, f"{path}[i]")
+    if "value" in base_type and "value" in cur_type:
+        check_type(
+            name, base_type["value"], base_types, cur_type["value"], cur_types, findings, seen, False, f"{path}[key]"
+        )
+
     label = base_type.get("label", base_id)
+    base_members = base_type.get("members")
     cur_members = cur_type.get("members")
-    if cur_members is None:
+    if base_members is not None and cur_members is None:
         findings.append((ERROR, name, f"{label} is no longer a struct"))
         return
 
-    for index, base_member in enumerate(base_members):
-        if index >= len(cur_members):
-            findings.append((ERROR, name, f"{label}: member {base_member['label']} was removed"))
-            continue
-        cur_member = cur_members[index]
-        base_member_type = type_label(base_member["type"], base_types)
-        cur_member_type = type_label(cur_member["type"], cur_types)
-        if base_member["label"] != cur_member["label"]:
-            findings.append(
-                (
-                    ERROR,
-                    name,
-                    f"{label}: slot {base_member['slot']} was {base_member['label']}, "
-                    f"is now {cur_member['label']}",
+    if base_members is not None:
+        for index, base_member in enumerate(base_members):
+            if index >= len(cur_members):
+                findings.append((ERROR, name, f"{label}: member {base_member['label']} was removed"))
+                continue
+            cur_member = cur_members[index]
+            base_member_type = type_label(base_member["type"], base_types)
+            cur_member_type = type_label(cur_member["type"], cur_types)
+            if base_member["label"] != cur_member["label"]:
+                findings.append(
+                    (
+                        ERROR,
+                        name,
+                        f"{label}: slot {base_member['slot']} was {base_member['label']}, "
+                        f"is now {cur_member['label']}",
+                    )
                 )
-            )
-        elif base_member_type != cur_member_type:
-            findings.append(
-                (
-                    ERROR,
-                    name,
-                    f"{label}: member {base_member['label']} changed type from "
-                    f"{base_member_type} to {cur_member_type}",
+            elif base_member_type != cur_member_type:
+                findings.append(
+                    (
+                        ERROR,
+                        name,
+                        f"{label}: member {base_member['label']} changed type from "
+                        f"{base_member_type} to {cur_member_type}",
+                    )
                 )
-            )
-        elif base_member["slot"] != cur_member["slot"] or base_member["offset"] != cur_member["offset"]:
-            findings.append(
-                (
-                    ERROR,
-                    name,
-                    f"{label}: member {base_member['label']} moved from "
-                    f"slot {base_member['slot']}+{base_member['offset']} to "
-                    f"slot {cur_member['slot']}+{cur_member['offset']}",
+            elif base_member["slot"] != cur_member["slot"] or base_member["offset"] != cur_member["offset"]:
+                findings.append(
+                    (
+                        ERROR,
+                        name,
+                        f"{label}: member {base_member['label']} moved from "
+                        f"slot {base_member['slot']}+{base_member['offset']} to "
+                        f"slot {cur_member['slot']}+{cur_member['offset']}",
+                    )
                 )
-            )
-        else:
-            check_type(name, base_member["type"], base_types, cur_member["type"], cur_types, findings, seen)
+            else:
+                check_type(
+                    name,
+                    base_member["type"],
+                    base_types,
+                    cur_member["type"],
+                    cur_types,
+                    findings,
+                    seen,
+                    stride,
+                    f"{path}.{base_member['label']}",
+                )
 
-    if len(cur_members) > len(base_members):
-        added = ", ".join(m["label"] for m in cur_members[len(base_members) :])
+        if len(cur_members) > len(base_members):
+            added = ", ".join(m["label"] for m in cur_members[len(base_members) :])
+            findings.append(
+                (
+                    ERROR if stride else REVIEW,
+                    name,
+                    f"{label} gained member(s) {added} at {path}; it is an array element, so every "
+                    "element behind the first one moves and existing entries are misread"
+                    if stride
+                    else f"{label} gained member(s) {added} at {path}; not an array element (a mapping "
+                    "value starts at its own hash, a top level struct is followed by free slots), so "
+                    "existing entries keep their meaning - confirm the slots it grows into are unused",
+                )
+            )
+
+    # Catches the size changes the member walk above cannot see, e.g. a fixed array
+    # member whose element type grew. Skipped when something below already reported,
+    # because that finding is the same growth, named at the place it happens.
+    if stride and type_size(base_type) != type_size(cur_type) and len(findings) == before:
         findings.append(
             (
-                REVIEW,
+                ERROR,
                 name,
-                f"{label} gained member(s) {added}; safe only where the struct is "
-                "reached through a mapping or a dynamic array",
+                f"{label} at {path} grew from {type_size(base_type)} to {type_size(cur_type)} bytes; "
+                "it is an array element, so every element behind the first one moves and existing "
+                "entries are misread",
             )
         )
 
@@ -239,7 +297,19 @@ def check_storage(name, baseline, current, findings):
                 )
             )
         else:
-            check_type(name, base_entry["type"], base_types, cur_entry["type"], cur_types, findings, seen_structs)
+            # A top level variable has no stride of its own: anything that grows
+            # behind it shows up as the next variable having moved.
+            check_type(
+                name,
+                base_entry["type"],
+                base_types,
+                cur_entry["type"],
+                cur_types,
+                findings,
+                seen_structs,
+                False,
+                label,
+            )
 
     base_end = layout_end(base_storage, base_types)
     for cur_entry in cur_storage[len(base_storage) :]:
@@ -356,14 +426,14 @@ def report(results, errors, reviews, verbose):
             print(f"  {name}: {message}")
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--baseline", required=True, help="Foundry out/ directory of the baseline build")
     parser.add_argument("--current", default="out", help="Foundry out/ directory of the current build")
     parser.add_argument("--exclude", default=DEFAULT_EXCLUDE, help="contract names to skip")
     parser.add_argument("--source-prefix", default="contracts/", help="only check sources under this prefix")
     parser.add_argument("-v", "--verbose", action="store_true", help="list compatible contracts too")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     for directory in (args.baseline, args.current):
         if not os.path.isdir(directory):

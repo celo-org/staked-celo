@@ -123,6 +123,13 @@ jobs:
           path: baseline
           ref: ${{ env.COMPATIBILITY_BASELINE }}
 
+      # The comparison below is the only thing standing between an upgrade and a
+      # corrupted proxy, so its own rules are covered by unit tests. They build
+      # storage layouts in memory and need nothing but python, hence running them
+      # here, ahead of the two builds.
+      - name: Test the compatibility checker
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:

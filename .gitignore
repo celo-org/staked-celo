@@ -39,3 +39,6 @@ legacy/cache/
 legacy/typechain-types/
 legacy/deployments/
 legacy/db/
+
+# python bytecode caches (scripts/tests)
+__pycache__/
