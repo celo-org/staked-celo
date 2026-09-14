@@ -5,14 +5,6 @@ node_modules/
 # asdf
 .tool-versions
 
-# hardhat
-artifacts
-cache
-deployments/hardhat
-deployments/local
-deployments/devchain
-typechain-types
-
 # IDEA
 .idea
 
@@ -22,12 +14,13 @@ typechain-types
 .env.local
 .env
 
-#devchain
-db
-
 # Foundry
 out/
+cache/
 cache_forge/
+
+# forge deployment records for a local devchain
+deployments/local
 
 # Generated devchain fixture (scripts/prepare-devchain.sh)
 test/devchain/allocs.json
@@ -38,3 +31,11 @@ baseline/
 
 # forge script broadcast logs
 broadcast/
+
+# Build output of the frozen Hardhat toolchain under legacy/, in case it is
+# ever run for reference. Nothing in CI builds it.
+legacy/artifacts/
+legacy/cache/
+legacy/typechain-types/
+legacy/deployments/
+legacy/db/

@@ -10,3 +10,6 @@ script/
 
 # Build output (forge build writes one directory per source file, named *.sol).
 out/
+
+# Frozen Hardhat-era toolchain, kept for reference only.
+legacy/
