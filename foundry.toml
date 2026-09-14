@@ -21,7 +21,10 @@ ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
-fs_permissions = [{ access = "read", path = "./test/devchain" }]
+fs_permissions = [
+  { access = "read", path = "./test/devchain" },
+  { access = "read", path = "./deployments" },
+]
 
 [lint]
 lint_on_build = false
