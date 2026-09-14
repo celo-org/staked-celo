@@ -303,38 +303,91 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     }
 
     /// @dev chai `to.have.deep.members`: same length, same elements in any order.
+    ///      A matched entry of `actual` is consumed, so this compares multisets: a duplicate in
+    ///      `expected` cannot be satisfied twice by the same element of `actual`.
     function _assertMembersAddresses(address[] memory actual, address[] memory expected)
         internal
         pure
     {
-        require(actual.length == expected.length, "address members length mismatch");
+        if (actual.length != expected.length) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "address members length mismatch: actual ",
+                        vm.toString(actual.length),
+                        ", expected ",
+                        vm.toString(expected.length)
+                    )
+                )
+            );
+        }
+        bool[] memory matched = new bool[](actual.length);
         for (uint256 i = 0; i < expected.length; i++) {
             bool found = false;
             for (uint256 j = 0; j < actual.length; j++) {
-                if (actual[j] == expected[i]) {
+                if (!matched[j] && actual[j] == expected[i]) {
+                    matched[j] = true;
                     found = true;
                     break;
                 }
             }
-            require(found, "address members mismatch");
+            if (!found) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "address members mismatch: expected[",
+                            vm.toString(i),
+                            "] = ",
+                            vm.toString(expected[i]),
+                            " has no unmatched counterpart in the actual members"
+                        )
+                    )
+                );
+            }
         }
     }
 
-    /// @dev chai `to.have.deep.members` for uint arrays.
+    /// @dev chai `to.have.deep.members` for uint arrays. Multiset comparison, see
+    ///      `_assertMembersAddresses`.
     function _assertMembersUints(uint256[] memory actual, uint256[] memory expected)
         internal
         pure
     {
-        require(actual.length == expected.length, "uint members length mismatch");
+        if (actual.length != expected.length) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "uint members length mismatch: actual ",
+                        vm.toString(actual.length),
+                        ", expected ",
+                        vm.toString(expected.length)
+                    )
+                )
+            );
+        }
+        bool[] memory matched = new bool[](actual.length);
         for (uint256 i = 0; i < expected.length; i++) {
             bool found = false;
             for (uint256 j = 0; j < actual.length; j++) {
-                if (actual[j] == expected[i]) {
+                if (!matched[j] && actual[j] == expected[i]) {
+                    matched[j] = true;
                     found = true;
                     break;
                 }
             }
-            require(found, "uint members mismatch");
+            if (!found) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "uint members mismatch: expected[",
+                            vm.toString(i),
+                            "] = ",
+                            vm.toString(expected[i]),
+                            " has no unmatched counterpart in the actual members"
+                        )
+                    )
+                );
+            }
         }
     }
 }

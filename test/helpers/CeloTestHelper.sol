@@ -45,6 +45,7 @@ interface CeloTestVm {
     function addr(uint256 privateKey) external pure returns (address);
     function label(address account, string calldata newLabel) external;
     function toString(uint256 value) external pure returns (string memory);
+    function toString(address value) external pure returns (string memory);
     function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData) external;
     function expectRevert(bytes memory revertData) external;
 
@@ -909,9 +910,23 @@ abstract contract CeloTestHelper {
     //                        ASSERTION HELPERS
     // =========================================================================
 
+    // The failing values are formatted only on the failing branch: `require(cond, message)`
+    // would build the message (and call the `toString` cheatcode) on every passing assertion
+    // too, which is the hot path of the suite.
+
     /// @notice Assert that two uint256 values are equal.
     function assertEq(uint256 a, uint256 b) internal pure {
-        require(a == b, "Assertion failed: values not equal");
+        if (a == b) return;
+        revert(
+            string(
+                abi.encodePacked(
+                    "Assertion failed: values not equal: actual ",
+                    vm.toString(a),
+                    ", expected ",
+                    vm.toString(b)
+                )
+            )
+        );
     }
 
     /// @notice Assert that a boolean is true.
@@ -926,17 +941,29 @@ abstract contract CeloTestHelper {
 
     /// @notice Assert that two addresses are equal.
     function assertEq(address a, address b) internal pure {
-        require(a == b, "Assertion failed: addresses not equal");
+        if (a == b) return;
+        revert(
+            string(
+                abi.encodePacked(
+                    "Assertion failed: addresses not equal: actual ",
+                    vm.toString(a),
+                    ", expected ",
+                    vm.toString(b)
+                )
+            )
+        );
     }
 
     /// @notice Assert that two addresses are not equal.
     function assertNotEq(address a, address b) internal pure {
-        require(a != b, "Assertion failed: addresses are equal");
+        if (a != b) return;
+        revert(string(abi.encodePacked("Assertion failed: addresses are equal: ", vm.toString(a))));
     }
 
     /// @notice Assert that two uint256 values are not equal.
     function assertNotEq(uint256 a, uint256 b) internal pure {
-        require(a != b, "Assertion failed: values are equal");
+        if (a != b) return;
+        revert(string(abi.encodePacked("Assertion failed: values are equal: ", vm.toString(a))));
     }
 
     // =========================================================================

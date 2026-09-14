@@ -3,6 +3,18 @@ pragma solidity 0.8.11;
 
 import "./SpecificGroupStrategyTestBase.sol";
 
+/// @dev `expectEmit` overload that also checks the emitter. `CeloTestVm` only declares the
+///      four-argument form.
+interface IVmExpectEmitFrom {
+    function expectEmit(
+        bool checkTopic1,
+        bool checkTopic2,
+        bool checkTopic3,
+        bool checkData,
+        address emitter
+    ) external;
+}
+
 /**
  * @title SpecificGroupStrategyDistributionTest
  * @notice Port of the vote distribution and accounting describe blocks of
@@ -13,6 +25,18 @@ import "./SpecificGroupStrategyTestBase.sol";
 contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase {
     function setUp() public {
         _setUpSpecificGroupStrategy();
+    }
+
+    /// @dev `.to.emit(specificGroupStrategy, name)` without `withArgs`: only the event
+    ///      signature and the emitter are checked.
+    function _expectEventFromStrategy() private {
+        IVmExpectEmitFrom(address(vm)).expectEmit(
+            false,
+            false,
+            false,
+            false,
+            address(specificGroupStrategy)
+        );
     }
 
     // =========================================================================
@@ -31,7 +55,7 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
     {
         _whenCalledThroughManagerWithdrawWithSpecificStrategy();
 
-        vm.expectEmit(false, false, false, false);
+        _expectEventFromStrategy();
         emit WithdrawalVoteDistributionGenerated(
             ADDRESS_ZERO,
             new address[](0),
@@ -69,7 +93,7 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
     {
         _whenCalledThroughManagerDepositWithSpecificStrategy();
 
-        vm.expectEmit(false, false, false, false);
+        _expectEventFromStrategy();
         emit DepositVoteDistributionGenerated(ADDRESS_ZERO, new address[](0), new uint256[](0));
         vm.prank(depositor);
         manager.deposit{value: 1 ether}();

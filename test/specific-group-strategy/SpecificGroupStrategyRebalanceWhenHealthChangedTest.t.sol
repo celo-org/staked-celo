@@ -42,6 +42,9 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     //                     #rebalanceWhenHealthChanged()
     // =========================================================================
 
+    /// @dev The original `expect(...).revertedWith(...)` was missing its `await`, so the
+    ///      assertion resolved after the test had finished and never ran. The revert is
+    ///      asserted for real here.
     function test_rebalanceWhenHealthChanged_ShouldRevertWhenHealthyAndNoUnhealthyStCelo() public {
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -62,6 +65,9 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         assertFalse(mockGroupHealth.isGroupValid(specificGroupAddress));
     }
 
+    /// @dev The original `expect(...).revertedWith(...)` was missing its `await`, so the
+    ///      assertion resolved after the test had finished and never ran. The revert is
+    ///      asserted for real here.
     function test_rebalanceWhenHealthChanged_WhenGroupIsUnhealthy_ShouldRevertWhenNoStCeloInGroup()
         public
     {

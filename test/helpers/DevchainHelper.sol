@@ -368,8 +368,11 @@ abstract contract DevchainHelper is MultiSigHelper {
     // =========================================================================
 
     /// @notice Distribute epoch rewards to `group` (ports distributeEpochRewards from utils.ts).
-    /// @dev On L2 the caller must be EpochManager. The CELO backing the rewards is normally
-    ///      released to LockedGold by the epoch process, so the same amount is credited here.
+    /// @dev Deviation: the ganache original only impersonated address(0) and called Election. On
+    ///      the L2 devchain the caller must be EpochManager, and the CELO backing the rewards
+    ///      would be released to LockedGold by the epoch process, so the same amount is credited
+    ///      to the LockedGold balance here. Only the native balance moves; totalLockedGold is
+    ///      unaffected, so voting limits stay where the test set them.
     function distributeEpochRewards(address group, uint256 amount) internal {
         (address lesser, address greater) = findLesserAndGreaterAfterVote(group, int256(amount));
         vm.deal(address(celoLockedGold), address(celoLockedGold).balance + amount);
@@ -443,6 +446,10 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice Lock `amount` CELO for `account` (creating the Celo account if needed).
+    /// @dev Tops the native balance of `account` up to `amount` when it is short, standing in
+    ///      for the original fixtures, which funded actors with effectively unlimited CELO
+    ///      (10^10 CELO for voters). A caller that wants to assert on native balances must
+    ///      therefore fund `account` itself instead of relying on this top-up.
     function lockCelo(address account, uint256 amount) internal {
         createCeloAccount(account);
         if (account.balance < amount) {
@@ -720,9 +727,10 @@ abstract contract DevchainHelper is MultiSigHelper {
             votes[i] = cap - current - remaining[i];
             sum += votes[i];
         }
-        if (sum > toLock) {
-            lockCelo(voter, sum - toLock);
-        }
+        // Locking more here would raise totalLockedGold, which would move the caps the votes
+        // were just solved against and silently break the 40/100/200 CELO invariant. The 1 CELO
+        // margin of _overflowLockAmount covers the rounding, so a shortfall is a bug.
+        require(sum <= toLock, "overflow: lock amount underestimated");
         for (uint256 i = 0; i < 3; i++) {
             (address lesser, address greater) = findLesserAndGreaterAfterVote(
                 groupAddresses[i],

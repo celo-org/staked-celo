@@ -20,6 +20,12 @@ import "../../contracts/mock/MockVote.sol";
  *      `beforeEach` + `evm_snapshot` / `evm_revert` of the original maps to Foundry's `setUp()`,
  *      which runs before every test. Nested `beforeEach` blocks become `_setUp...()` helpers that
  *      the tests of that block call first.
+ *
+ *      Deviation: the Hardhat `FullTestManager` fixture never called
+ *      `SpecificGroupStrategy.setDependencies`, so its `account`, `groupHealth` and
+ *      `defaultStrategy` stayed address(0) throughout the original default-strategy suite.
+ *      `deployFullTestManager` wires them. Nothing in this suite reaches a SpecificGroupStrategy
+ *      path that reads those dependencies, so the extra wiring is inert here.
  */
 abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDeployHelper {
     // =========================================================================
@@ -233,17 +239,44 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     }
 
     /// @dev `expect(a).to.have.deep.members(b)` — same elements, order insensitive.
+    ///      A matched entry of `b` is consumed, so this compares multisets: a duplicate in `a`
+    ///      cannot be satisfied twice by the same element of `b`.
     function _assertSameMembers(address[] memory a, address[] memory b) internal pure {
-        require(a.length == b.length, "members length mismatch");
+        if (a.length != b.length) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "members length mismatch: actual ",
+                        vm.toString(a.length),
+                        ", expected ",
+                        vm.toString(b.length)
+                    )
+                )
+            );
+        }
+        bool[] memory matched = new bool[](b.length);
         for (uint256 i = 0; i < a.length; i++) {
             bool found = false;
             for (uint256 j = 0; j < b.length; j++) {
-                if (a[i] == b[j]) {
+                if (!matched[j] && a[i] == b[j]) {
+                    matched[j] = true;
                     found = true;
                     break;
                 }
             }
-            require(found, "members mismatch");
+            if (!found) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            "members mismatch: actual[",
+                            vm.toString(i),
+                            "] = ",
+                            vm.toString(a[i]),
+                            " has no unmatched counterpart in the expected members"
+                        )
+                    )
+                );
+            }
         }
     }
 

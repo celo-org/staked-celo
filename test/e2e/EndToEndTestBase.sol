@@ -401,7 +401,33 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         uint256 expected,
         uint256 range
     ) internal pure {
-        require(real + range >= expected, "value below expected range");
-        require(real <= expected + range, "value above expected range");
+        if (real + range < expected) {
+            revert(_outOfRangeMessage("below", real, expected, range));
+        }
+        if (real > expected + range) {
+            revert(_outOfRangeMessage("above", real, expected, range));
+        }
+    }
+
+    /// @dev Revert message of `assertInRange`, carrying the values that failed the comparison.
+    function _outOfRangeMessage(
+        string memory side,
+        uint256 real,
+        uint256 expected,
+        uint256 range
+    ) private pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "value ",
+                    side,
+                    " expected range: ",
+                    vm.toString(real),
+                    " vs ",
+                    vm.toString(expected),
+                    " +- ",
+                    vm.toString(range)
+                )
+            );
     }
 }
