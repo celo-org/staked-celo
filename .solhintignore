@@ -1,1 +1,12 @@
 pseudocode-contracts/
+
+# Solidity that is not a production contract. The solhint rules (ordering,
+# func-name-mixedcase, max-line-length) are written for contracts/; the Foundry
+# test-suite and deploy scripts use the forge-std naming conventions instead,
+# and the vendored OpenZeppelin sources are upstream code.
+test/
+script/
+@openzeppelin/
+
+# Build output (forge build writes one directory per source file, named *.sol).
+out/
