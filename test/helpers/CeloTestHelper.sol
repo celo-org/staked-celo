@@ -254,7 +254,7 @@ abstract contract CeloTestHelper {
     // =========================================================================
 
     /// @notice Mine blocks until the next epoch boundary (default epoch size).
-    function mineToNextEpoch() internal {
+    function mineToNextEpoch() internal virtual {
         mineToNextEpoch(BLOCKS_PER_EPOCH);
     }
 
@@ -268,7 +268,7 @@ abstract contract CeloTestHelper {
     }
 
     /// @notice Get the current epoch number (default epoch size).
-    function currentEpochNumber() internal view returns (uint256) {
+    function currentEpochNumber() internal view virtual returns (uint256) {
         return getEpochNumberOfBlock(block.number, BLOCKS_PER_EPOCH);
     }
 

@@ -28,3 +28,7 @@ db
 # Foundry
 out/
 cache_forge/
+
+# Generated devchain fixture (scripts/prepare-devchain.sh)
+test/devchain/allocs.json
+test/devchain/meta.json
