@@ -23,10 +23,10 @@ becomes `test_deposit_WhenThereAreActiveGroups_DistributesVotes`.
   is not used: cheatcodes are declared in local interfaces (`CeloTestVm` in
   `CeloTestHelper.sol`, `DevchainVm` in `DevchainHelper.sol`). Cast the cheatcode address to
   a local interface if you need a cheatcode that is not declared yet.
-- The default profile compiles the production contracts with the exact Hardhat settings
-  (no optimizer, evm istanbul). `test/**` and `script/**` are compiled with `via_ir` and the
-  optimizer through `compilation_restrictions`, which keeps "stack too deep" away from the
-  test code without touching the contract bytecode.
+- There is a single compiler profile with the exact Hardhat settings (solc 0.8.11, evm
+  istanbul, no optimizer, no via_ir), so the tests exercise the production bytecode. Keep
+  test functions small and put fixture state in storage variables to stay clear of
+  "stack too deep"; do not enable via_ir or the optimizer for tests.
 - `contracts/common/MultiSig.sol` and `contracts/mock/MockRegistry.sol` import the
   non-upgradeable OpenZeppelin `Initializable`, everything else the upgradeable one. Both
   cannot be imported into one compilation unit, so helpers deploy those two through
