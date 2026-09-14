@@ -1,19 +1,40 @@
 [profile.default]
 src = "contracts"
 out = "out"
-libs = ["lib"]
+# OpenZeppelin is vendored at ./@openzeppelin (scripts/vendor-openzeppelin.sh) so that
+# solc source-unit names match the Hardhat build and the bytecode stays byte-identical.
+libs = []
+auto_detect_remappings = false
+remappings = []
 test = "test"
 script = "script"
 solc_version = "0.8.11"
 evm_version = "istanbul"
-optimizer = true
+optimizer = false
 optimizer_runs = 200
-via_ir = true
+via_ir = false
+use_literal_content = true
+bytecode_hash = "ipfs"
+cbor_metadata = true
 celo = true
 ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
+fs_permissions = [{ access = "read", path = "./test/devchain" }]
+
+# Tests and scripts may use via_ir/optimizer for stack-depth relief without
+# affecting the production profile above (bytecode must match Hardhat builds).
+additional_compiler_profiles = [
+  { name = "test-via-ir", via_ir = true, optimizer = true, optimizer_runs = 200 },
+]
+compilation_restrictions = [
+  { paths = "test/**", via_ir = true, optimizer_runs = 200 },
+  { paths = "script/**", via_ir = true, optimizer_runs = 200 },
+]
+
+[lint]
+lint_on_build = false
 
 [rpc_endpoints]
 celo = "https://forno.celo.org"
