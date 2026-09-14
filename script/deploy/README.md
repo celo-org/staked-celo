@@ -1,9 +1,9 @@
 # Foundry deployment scripts
 
-Forge port of the hardhat-deploy scripts in `deploy/`. `DeployCore.s.sol` replaces
-`yarn deploy` (`hardhat stakedCelo:deploy --tags core`, i.e. `deploy/00_multisig.ts`
-through `deploy/13_rebased_staked_celo.ts`), and `UpgradeImplementation.s.sol` replaces
-re-running a single `deploy/NN_*.ts` file to push a new implementation.
+Forge port of the hardhat-deploy scripts in `legacy/deploy/`. `DeployCore.s.sol` replaces
+`yarn deploy` (`hardhat stakedCelo:deploy --tags core`, i.e. `legacy/deploy/00_multisig.ts`
+through `legacy/deploy/13_rebased_staked_celo.ts`), and `UpgradeImplementation.s.sol` replaces
+re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
 
 | File | Purpose |
 | --- | --- |
@@ -82,7 +82,7 @@ cannot decide which `AddressSortedLinkedList` to link ("multiple library artifac
 resolve to the same key"). A full rebuild is the fix.
 
 `AddressSortedLinkedList` is deployed and linked by Forge automatically, so the
-"reuse the recorded library address" branch of `deploy/07_default_strategy.ts` has no
+"reuse the recorded library address" branch of `legacy/deploy/07_default_strategy.ts` has no
 equivalent here. Pass `--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
 to reuse an already deployed library instead.
 
@@ -112,7 +112,7 @@ Manager: owned by MultiSig, propose setDependencies through the MultiSig
 Account: already owned by MultiSig
 ```
 
-This mirrors the `if (owner !== multisig.address)` guards in `deploy/08` to `deploy/12`.
+This mirrors the `if (owner !== multisig.address)` guards in `legacy/deploy/08` to `legacy/deploy/12`.
 Re-running against a fully deployed network therefore broadcasts nothing.
 
 ### Failed runs
@@ -134,7 +134,7 @@ The script deploys the new implementation, then:
 
 - if the broadcaster owns the proxy it calls `upgradeTo(newImplementation)` and refreshes
   `<Name>.json`, `<Name>_Proxy.json` and `<Name>_Implementation.json`;
-- otherwise (the normal case, since the MultiSig owns everything after deploy/12) it
+- otherwise (the normal case, since the MultiSig owns everything after legacy/deploy/12) it
   prints the destination, value and `upgradeTo(address)` payload to submit through the
   MultiSig, and only writes `<Name>_Implementation.json`.
 
@@ -147,7 +147,7 @@ which is an immutable constructor argument of the implementation.
 
 ## Not ported
 
-- `VALIDATOR_GROUPS` handling from `deploy/05` and `deploy/11` (calling
+- `VALIDATOR_GROUPS` handling from `legacy/deploy/05` and `legacy/deploy/11` (calling
   `updateGroupHealth` and `activateGroup` for a list of groups after a first deployment).
 - `deploy:devchain`, which mined extra blocks after deploying through Hardhat.
 
