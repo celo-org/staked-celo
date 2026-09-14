@@ -378,19 +378,20 @@ abstract contract DevchainHelper is MultiSigHelper {
         (address[] memory groups, uint256[] memory votes) = celoElection
             .getTotalVotesForEligibleValidatorGroups();
 
-        uint256 current = 0;
+        // Signed on purpose: the account tasks ask for neighbours after revoking more
+        // than the group currently holds, which ContractKit handled with BigNumber math.
+        int256 total = delta;
         for (uint256 i = 0; i < groups.length; i++) {
             if (groups[i] == group) {
-                current = votes[i];
+                total = int256(votes[i]) + delta;
                 break;
             }
         }
-        uint256 total = delta >= 0 ? current + uint256(delta) : current - uint256(-delta);
 
         // The list is ordered from most to least votes.
         for (uint256 i = 0; i < groups.length; i++) {
             if (groups[i] == group) continue;
-            if (votes[i] <= total) {
+            if (int256(votes[i]) <= total) {
                 lesser = groups[i];
                 break;
             }

@@ -248,7 +248,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
             uint256 amountScheduled = account.scheduledVotesForGroup(group);
 
             if (amountScheduled > 0 || canActivateForGroup) {
-                (address lesser, address greater) = _findLesserAndGreaterAfterVote(
+                (address lesser, address greater) = findLesserAndGreaterAfterVote(
                     group,
                     int256(amountScheduled)
                 );
@@ -341,49 +341,18 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
                 : pendingVotes;
 
             (n.lesserAfterPendingRevoke, n.greaterAfterPendingRevoke) = (
-                _findLesserAndGreaterAfterVote(group, -int256(toRevokeFromPending))
+                findLesserAndGreaterAfterVote(group, -int256(toRevokeFromPending))
             );
 
             // Revoking pending votes happens before revoking active votes in the same
             // transaction, so the neighbours of the active revocation are computed from the
             // full remaining amount.
             (n.lesserAfterActiveRevoke, n.greaterAfterActiveRevoke) = (
-                _findLesserAndGreaterAfterVote(group, -int256(remainingToRevokeAmount))
+                findLesserAndGreaterAfterVote(group, -int256(remainingToRevokeAmount))
             );
         }
 
         n.index = _findAddressIndex(group);
-    }
-
-    /// @dev Signed variant of DevchainHelper.findLesserAndGreaterAfterVote, ported from
-    ///      ElectionWrapper.findLesserAndGreaterAfterVote. The account tasks ask for the
-    ///      neighbours after revoking more votes than the group holds, which makes the
-    ///      resulting vote total negative; every group is then `greater`.
-    function _findLesserAndGreaterAfterVote(address group, int256 delta)
-        private
-        view
-        returns (address lesser, address greater)
-    {
-        (address[] memory groupList, uint256[] memory votes) = celoElection
-            .getTotalVotesForEligibleValidatorGroups();
-
-        int256 voteTotal = delta;
-        for (uint256 i = 0; i < groupList.length; i++) {
-            if (groupList[i] == group) {
-                voteTotal = int256(votes[i]) + delta;
-                break;
-            }
-        }
-
-        // The list is ordered from most to least votes.
-        for (uint256 i = 0; i < groupList.length; i++) {
-            if (groupList[i] == group) continue;
-            if (int256(votes[i]) <= voteTotal) {
-                lesser = groupList[i];
-                break;
-            }
-            greater = groupList[i];
-        }
     }
 
     /// @dev Index of `group` in the groups the Account contract voted for.
