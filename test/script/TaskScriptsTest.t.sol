@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
-import "./DevchainProtocolDeploy.sol";
+import "../helpers/DevchainHelper.sol";
+import "../helpers/deploy/CoreDeployHelper.sol";
 
 import "../../script/tasks/lib/AccountTaskLib.sol";
 import "../../script/tasks/lib/ElectionLib.sol";
@@ -12,6 +13,32 @@ import "../../script/tasks/lib/PayloadLib.sol";
 import "../../script/tasks/lib/UpgradeProposalLib.sol";
 
 /**
+ * @title TaskScriptsTestBase
+ * @notice Deploys the production protocol fixture against the real Celo Registry of the
+ *         devchain, so the operational task scripts run against the real Election,
+ *         LockedGold and Validators contracts.
+ */
+abstract contract TaskScriptsTestBase is CoreDeployHelper, DevchainHelper {
+    /// @dev Minimum delay baked into the MultiSig implementation, and the delay used here.
+    uint256 internal constant MULTISIG_DELAY = 3 * DAY;
+
+    /// @dev CoreDeployHelper and DevchainHelper both derive from CeloTestHelper, so the epoch
+    ///      helpers have to be disambiguated explicitly. The devchain behaviour is kept.
+    function mineToNextEpoch() internal override(CeloTestHelper, DevchainHelper) {
+        DevchainHelper.mineToNextEpoch();
+    }
+
+    function currentEpochNumber()
+        internal
+        view
+        override(CeloTestHelper, DevchainHelper)
+        returns (uint256)
+    {
+        return DevchainHelper.currentEpochNumber();
+    }
+}
+
+/**
  * @title MultiSigTaskScriptsTest
  * @notice Exercises the logic behind script/tasks/multisig/*.s.sol in process: a proposal
  *         carrying a Manager.setDependencies payload is submitted, its confirmation is
@@ -20,7 +47,7 @@ import "../../script/tasks/lib/UpgradeProposalLib.sol";
  *      runs exactly the code `forge script` runs. Library functions are internal and get
  *      inlined, which is why vm.prank applies to the MultiSig calls they make.
  */
-contract MultiSigTaskScriptsTest is DevchainProtocolDeploy {
+contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
     /// @dev Cheatcode interface the task scripts use (toString(address) and friends).
     TaskVm internal constant taskVm =
         TaskVm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -37,7 +64,7 @@ contract MultiSigTaskScriptsTest is DevchainProtocolDeploy {
         address[] memory owners = new address[](2);
         owners[0] = multisigOwner0;
         owners[1] = multisigOwner1;
-        deployProtocolOnDevchain(owners, 2);
+        deployCore(REGISTRY_ADDRESS, owners, MULTISIG_DELAY, MULTISIG_DELAY, 2);
 
         ms = IMultiSigTask(multiSigProxy);
     }
@@ -234,7 +261,7 @@ contract MultiSigTaskScriptsTest is DevchainProtocolDeploy {
  *         script/tasks/manager/*.s.sol against the real Celo core contracts of the devchain
  *         fixture: deposit, activateAndVote, revoke, withdraw and finishPendingWithdrawal.
  */
-contract AccountAndManagerTaskScriptsTest is DevchainProtocolDeploy {
+contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
     uint256 internal constant DEPOSIT_AMOUNT = 30 ether;
 
     MockGroupHealth internal mockGroupHealth;
@@ -254,7 +281,7 @@ contract AccountAndManagerTaskScriptsTest is DevchainProtocolDeploy {
 
         address[] memory owners = new address[](1);
         owners[0] = multisigOwner0;
-        deployProtocolOnDevchain(owners, 1);
+        deployCore(REGISTRY_ADDRESS, owners, MULTISIG_DELAY, MULTISIG_DELAY, 1);
 
         mockGroupHealth = upgradeToMockGroupHealthE2E(
             multiSig,

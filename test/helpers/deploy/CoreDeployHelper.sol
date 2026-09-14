@@ -23,7 +23,8 @@ import "../../../contracts/common/ERC1967Proxy.sol";
  * @dev Extend this contract in concrete test files and call deployCoreWithMockRegistry()
  *      inside setUp(), or deployCore(registry, minDelay, delay, requiredConfirmations)
  *      to run the same sequence against an already existing registry (for example
- *      the Celo core registry of a devchain).
+ *      the Celo core registry of a devchain). The overload taking an `owners` array
+ *      does the same with a MultiSig owner set other than the five named accounts.
  *
  *      IMPORTANT: MultiSig.sol and MockRegistry.sol are NOT imported directly to avoid
  *      Initializable name collision between OZ contracts (non-upgradeable)
@@ -118,13 +119,42 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         // Idempotent — harmless when called again from deployCoreWithMockRegistry().
         _initNamedAccounts();
 
+        // The owner set mirrors deploy/00_multisig.ts, which collects every named account
+        // whose name contains "multisigOwner".
+        address[] memory owners = new address[](5);
+        owners[0] = multisigOwner0;
+        owners[1] = multisigOwner1;
+        owners[2] = multisigOwner2;
+        owners[3] = multisigOwner3;
+        owners[4] = multisigOwner4;
+
+        deployCore(registry, owners, minDelay, delay, requiredConfirmations);
+    }
+
+    /// @notice Same as the five named owner variant, but with an explicit MultiSig owner set.
+    /// @param registry Registry the protocol contracts resolve Celo core contracts from.
+    /// @param owners The initial MultiSig owners.
+    /// @param minDelay MultiSig constructor argument (TIME_LOCK_MIN_DELAY).
+    /// @param delay MultiSig time lock delay (TIME_LOCK_DELAY). Must be >= minDelay.
+    /// @param requiredConfirmations MultiSig confirmations needed to schedule a proposal
+    ///        (MULTISIG_REQUIRED_CONFIRMATIONS).
+    function deployCore(
+        address registry,
+        address[] memory owners,
+        uint256 minDelay,
+        uint256 delay,
+        uint256 requiredConfirmations
+    ) internal {
+        // Idempotent — harmless when called again from deployCoreWithMockRegistry().
+        _initNamedAccounts();
+
         // ================================================================
         // Phase 2: Protocol contracts behind ERC1967 proxies (as deployer)
         // ================================================================
         vm.startPrank(deployer);
 
         // Script 00: MultiSig
-        _deployMultiSigProxy(minDelay, delay, requiredConfirmations);
+        _deployMultiSigProxy(owners, minDelay, delay, requiredConfirmations);
 
         // Script 01: Manager — initialize(registry, deployer)
         _deployManagerProxy(registry);
@@ -241,10 +271,9 @@ abstract contract CoreDeployHelper is CeloTestHelper {
 
     /// @dev Script 00: Deploy MultiSig implementation via getCode + proxy.
     ///      MultiSig.sol is UNSAFE to import (non-upgradeable Initializable).
-    ///      constructor(minDelay), initialize(multisigOwner0..4, required, delay).
-    ///      The owner set mirrors deploy/00_multisig.ts, which collects every
-    ///      named account whose name contains "multisigOwner".
+    ///      constructor(minDelay), initialize(owners, required, delay).
     function _deployMultiSigProxy(
+        address[] memory owners,
         uint256 minDelay,
         uint256 delay,
         uint256 requiredConfirmations
@@ -259,13 +288,6 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         require(msImpl != address(0), "MultiSig impl deploy failed");
 
         // Deploy proxy with initialize(owners, required, delay)
-        address[] memory owners = new address[](5);
-        owners[0] = multisigOwner0;
-        owners[1] = multisigOwner1;
-        owners[2] = multisigOwner2;
-        owners[3] = multisigOwner3;
-        owners[4] = multisigOwner4;
-
         bytes memory msInit = abi.encodeWithSignature(
             "initialize(address[],uint256,uint256)",
             owners,
