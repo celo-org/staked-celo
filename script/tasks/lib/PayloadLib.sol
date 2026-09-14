@@ -10,9 +10,16 @@ import "./TaskVm.sol";
  *         the `stakedCelo:multiSig:encode:proposal:payload` task.
  * @dev The Hardhat task looked the ABI up from the deployment artifact and took a bare
  *      function name. Solidity has no runtime ABI, so the full signature is passed in
- *      instead, for example "upgradeTo(address)". Every argument type used by StakedCelo
- *      proposals encodes to a single 32 byte word (address, bool, uintN, intN), which is
- *      what this encoder supports; anything else is rejected rather than mis-encoded.
+ *      instead, for example "upgradeTo(address)".
+ *
+ *      Only the single word static types StakedCelo proposals use are supported:
+ *      `address`, `bool`, `bytes32`, `uint8`..`uint256` and `int8`..`int256` in steps of
+ *      eight bits. Dynamic types (`string`, `bytes`), arrays and tuples need the head/tail
+ *      encoding this encoder does not produce, so they are rejected by name instead of
+ *      being silently written as one word, which would yield a payload the MultiSig cannot
+ *      execute. Values are validated against the declared type as well: integers must be
+ *      decimal and fit the declared width, `bool` is `true` or `false`, and `address` and
+ *      `bytes32` are 0x prefixed hex of the exact length.
  */
 library PayloadLib {
     TaskVm private constant vm =
@@ -43,25 +50,76 @@ library PayloadLib {
         return payload;
     }
 
-    /// @dev The declared argument types of `signature`, in order.
-    function _argumentTypes(string memory signature) private pure returns (string[] memory) {
-        string[] memory afterName = vm.split(signature, "(");
-        require(afterName.length == 2, "payload: malformed signature");
+    // =========================================================================
+    //                            SIGNATURE PARSING
+    // =========================================================================
 
-        string[] memory beforeClose = vm.split(afterName[1], ")");
-        string memory typeList = _trim(beforeClose[0]);
-        if (bytes(typeList).length == 0) {
+    /**
+     * @dev The declared argument types of `signature`, in order. The parameter list is the
+     *      text between the first "(" and the trailing ")"; it is split on commas that are
+     *      not nested, so a tuple or an array of tuples arrives whole and can be reported
+     *      by name rather than being torn apart into fragments.
+     */
+    function _argumentTypes(string memory signature) private pure returns (string[] memory) {
+        bytes memory raw = bytes(signature);
+
+        uint256 open = 0;
+        while (open < raw.length && raw[open] != "(") {
+            open++;
+        }
+        // A name, an opening parenthesis and the trailing one, in that order.
+        require(open > 0 && open < raw.length, "payload: malformed signature");
+        require(raw[raw.length - 1] == ")", "payload: malformed signature");
+
+        bytes memory list = bytes(_trim(_slice(raw, open + 1, raw.length - 1)));
+        if (list.length == 0) {
             return new string[](0);
         }
 
-        string[] memory argTypes = vm.split(typeList, ",");
-        for (uint256 i = 0; i < argTypes.length; i++) {
-            argTypes[i] = _trim(argTypes[i]);
+        string[] memory argTypes = new string[](_countTopLevel(list));
+        uint256 index = 0;
+        uint256 start = 0;
+        uint256 depth = 0;
+        for (uint256 i = 0; i < list.length; i++) {
+            bytes1 char = list[i];
+            if (char == "(" || char == "[") {
+                depth++;
+            } else if (char == ")" || char == "]") {
+                depth--;
+            } else if (char == "," && depth == 0) {
+                argTypes[index++] = _trim(_slice(list, start, i));
+                start = i + 1;
+            }
         }
+        argTypes[index] = _trim(_slice(list, start, list.length));
         return argTypes;
     }
 
-    /// @dev One 32 byte head word for a static single word argument.
+    /// @dev The number of comma separated entries of `list` that are not nested in
+    ///      parentheses or brackets. Reverts when those are unbalanced.
+    function _countTopLevel(bytes memory list) private pure returns (uint256 count) {
+        count = 1;
+        uint256 depth = 0;
+        for (uint256 i = 0; i < list.length; i++) {
+            bytes1 char = list[i];
+            if (char == "(" || char == "[") {
+                depth++;
+            } else if (char == ")" || char == "]") {
+                require(depth > 0, "payload: malformed signature");
+                depth--;
+            } else if (char == "," && depth == 0) {
+                count++;
+            }
+        }
+        require(depth == 0, "payload: malformed signature");
+    }
+
+    // =========================================================================
+    //                            ARGUMENT ENCODING
+    // =========================================================================
+
+    /// @dev One 32 byte head word for a single word static argument, or a revert naming the
+    ///      type when `argType` is not one this encoder can write as a single word.
     function _encodeArgument(string memory argType, string memory value)
         private
         pure
@@ -69,33 +127,199 @@ library PayloadLib {
     {
         bytes32 typeHash = keccak256(bytes(argType));
         if (typeHash == keccak256("address")) {
-            return bytes32(uint256(uint160(vm.parseAddress(value))));
+            return bytes32(uint256(_parseHexOfLength(argType, value, 40)));
         }
         if (typeHash == keccak256("bool")) {
-            return vm.parseBool(value) ? bytes32(uint256(1)) : bytes32(0);
+            return _parseBool(value);
         }
-        if (_startsWith(argType, "uint")) {
-            return bytes32(vm.parseUint(value));
+        if (typeHash == keccak256("bytes32")) {
+            return bytes32(_parseHexOfLength(argType, value, 64));
         }
-        if (_startsWith(argType, "int")) {
-            return bytes32(uint256(vm.parseInt(value)));
+
+        uint256 width = _integerWidth(argType, "uint");
+        if (width != 0) {
+            return bytes32(_parseUintOfWidth(argType, value, width));
         }
-        revert("payload: unsupported argument type");
+        width = _integerWidth(argType, "int");
+        if (width != 0) {
+            return bytes32(uint256(_parseIntOfWidth(argType, value, width)));
+        }
+
+        revert(string(abi.encodePacked("payload: unsupported argument type: ", argType)));
     }
 
-    /// @dev Whether `value` begins with `prefix`.
-    function _startsWith(string memory value, string memory prefix) private pure returns (bool) {
-        bytes memory valueBytes = bytes(value);
+    /**
+     * @dev The bit width of `argType` when it is `prefix` followed by a canonical width
+     *      (8 to 256 in steps of eight), and zero when it is anything else. Zero is not a
+     *      valid width, so the caller can use it as "not this kind of integer". The bare
+     *      `uint` and `int` aliases are rejected: the selector is taken from the signature
+     *      text, and only the canonical names hash to the selector the target expects.
+     */
+    function _integerWidth(string memory argType, string memory prefix)
+        private
+        pure
+        returns (uint256)
+    {
+        bytes memory raw = bytes(argType);
         bytes memory prefixBytes = bytes(prefix);
-        if (valueBytes.length < prefixBytes.length) {
-            return false;
+        if (raw.length <= prefixBytes.length) {
+            return 0;
         }
         for (uint256 i = 0; i < prefixBytes.length; i++) {
-            if (valueBytes[i] != prefixBytes[i]) {
+            if (raw[i] != prefixBytes[i]) {
+                return 0;
+            }
+        }
+
+        // Leading zeros would name a type that hashes to a different selector.
+        if (raw[prefixBytes.length] == "0") {
+            return 0;
+        }
+        uint256 width = 0;
+        for (uint256 i = prefixBytes.length; i < raw.length; i++) {
+            if (raw[i] < "0" || raw[i] > "9") {
+                return 0;
+            }
+            width = width * 10 + uint8(raw[i]) - 48;
+            if (width > 256) {
+                return 0;
+            }
+        }
+        return width % 8 == 0 ? width : 0;
+    }
+
+    /// @dev `value` as an unsigned integer that fits `width` bits.
+    function _parseUintOfWidth(
+        string memory argType,
+        string memory value,
+        uint256 width
+    ) private pure returns (uint256 parsed) {
+        if (!_isDecimal(value, false)) {
+            revert(_invalid(argType, value));
+        }
+        parsed = vm.parseUint(value);
+        if (parsed > type(uint256).max >> (256 - width)) {
+            revert(_outOfRange(argType, value));
+        }
+    }
+
+    /// @dev `value` as a signed integer in [-2**(width-1), 2**(width-1) - 1].
+    function _parseIntOfWidth(
+        string memory argType,
+        string memory value,
+        uint256 width
+    ) private pure returns (int256 parsed) {
+        if (!_isDecimal(value, true)) {
+            revert(_invalid(argType, value));
+        }
+        parsed = vm.parseInt(value);
+
+        uint256 bound = uint256(1) << (width - 1);
+        int256 max = int256(bound - 1);
+        if (parsed > max || parsed < -max - 1) {
+            revert(_outOfRange(argType, value));
+        }
+    }
+
+    /// @dev The word for `value`, which has to be exactly "true" or "false".
+    function _parseBool(string memory value) private pure returns (bytes32) {
+        bytes32 valueHash = keccak256(bytes(value));
+        if (valueHash == keccak256("true")) {
+            return bytes32(uint256(1));
+        }
+        if (valueHash == keccak256("false")) {
+            return bytes32(0);
+        }
+        revert(_invalid("bool", value));
+    }
+
+    /**
+     * @dev `value` as an unsigned integer, when it is "0x" followed by exactly `digits` hex
+     *      characters. Used for `address` (40 digits) and `bytes32` (64 digits), both of
+     *      which are right aligned in the word the caller builds from the result.
+     */
+    function _parseHexOfLength(
+        string memory argType,
+        string memory value,
+        uint256 digits
+    ) private pure returns (uint256 parsed) {
+        bytes memory raw = bytes(value);
+        if (raw.length != digits + 2 || raw[0] != "0" || (raw[1] != "x" && raw[1] != "X")) {
+            revert(_invalid(argType, value));
+        }
+        for (uint256 i = 2; i < raw.length; i++) {
+            uint8 nibble = _hexDigit(raw[i]);
+            if (nibble == type(uint8).max) {
+                revert(_invalid(argType, value));
+            }
+            parsed = (parsed << 4) | nibble;
+        }
+    }
+
+    /// @dev The value of one hex character, or uint8 max when `char` is not one.
+    function _hexDigit(bytes1 char) private pure returns (uint8) {
+        if (char >= "0" && char <= "9") {
+            return uint8(char) - 48;
+        }
+        if (char >= "a" && char <= "f") {
+            return uint8(char) - 87;
+        }
+        if (char >= "A" && char <= "F") {
+            return uint8(char) - 55;
+        }
+        return type(uint8).max;
+    }
+
+    /// @dev Whether `value` is a non empty run of decimal digits, optionally preceded by a
+    ///      minus sign when `signed` is set. Other bases are rejected so that the range
+    ///      check below reads the number the operator wrote.
+    function _isDecimal(string memory value, bool signed) private pure returns (bool) {
+        bytes memory raw = bytes(value);
+        uint256 start = signed && raw.length > 0 && raw[0] == "-" ? 1 : 0;
+        if (raw.length == start) {
+            return false;
+        }
+        for (uint256 i = start; i < raw.length; i++) {
+            if (raw[i] < "0" || raw[i] > "9") {
                 return false;
             }
         }
         return true;
+    }
+
+    // =========================================================================
+    //                                 STRINGS
+    // =========================================================================
+
+    /// @dev The "not a valid <type>" message, quoting the offending value.
+    function _invalid(string memory argType, string memory value)
+        private
+        pure
+        returns (string memory)
+    {
+        return string(abi.encodePacked("payload: invalid ", argType, " argument: ", value));
+    }
+
+    /// @dev The "does not fit <type>" message, quoting the offending value.
+    function _outOfRange(string memory argType, string memory value)
+        private
+        pure
+        returns (string memory)
+    {
+        return string(abi.encodePacked("payload: ", argType, " argument out of range: ", value));
+    }
+
+    /// @dev `raw[start:end]` as a string.
+    function _slice(
+        bytes memory raw,
+        uint256 start,
+        uint256 end
+    ) private pure returns (string memory) {
+        bytes memory sliced = new bytes(end - start);
+        for (uint256 i = 0; i < sliced.length; i++) {
+            sliced[i] = raw[start + i];
+        }
+        return string(sliced);
     }
 
     /// @dev Strips leading and trailing spaces so "a, b" reads the same as "a,b".
@@ -109,10 +333,6 @@ library PayloadLib {
         while (end > start && raw[end - 1] == 0x20) {
             end--;
         }
-        bytes memory trimmed = new bytes(end - start);
-        for (uint256 i = 0; i < trimmed.length; i++) {
-            trimmed[i] = raw[start + i];
-        }
-        return string(trimmed);
+        return _slice(raw, start, end);
     }
 }

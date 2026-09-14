@@ -147,9 +147,23 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
 ## Differences from the Hardhat tasks
 
 - `encode:proposal:payload` takes a full function signature instead of a bare function name:
-  Solidity has no runtime ABI to look the parameter types up in. It supports the single word
-  static types StakedCelo proposals use (`address`, `bool`, `uintN`, `intN`) and rejects
-  anything else rather than mis-encoding it.
+  Solidity has no runtime ABI to look the parameter types up in. It encodes one 32 byte word
+  per argument, so it supports only the single word static types StakedCelo proposals use:
+
+  | Parameter type | `ARGS` entry |
+  | --- | --- |
+  | `address` | `0x` and 40 hex digits, any casing |
+  | `bool` | `true` or `false` |
+  | `bytes32` | `0x` and 64 hex digits |
+  | `uint8`, `uint16`, … `uint256` (steps of 8) | decimal digits, must fit the width |
+  | `int8`, `int16`, … `int256` (steps of 8) | decimal digits with an optional leading `-`, must fit the width |
+
+  Everything else - arrays, tuples, `string`, `bytes`, other `bytesN`, and the non canonical
+  `uint` / `int` aliases - is rejected by name, because a payload encoded as one word for a
+  type that needs head/tail encoding would be accepted by the MultiSig and then fail to
+  execute. Values are checked against their declared type as well, so an out of range
+  `uint8`, a non decimal integer, a short address or an argument count that does not match
+  the signature stops the encoding instead of producing a wrong payload.
 - `encode:managerSetDependencies` and `update:v1:v2` no longer repair the deployment ABI file
   when hardhat-deploy refreshed only `<Name>_Implementation.json`: the scripts read addresses,
   never ABIs, from the deployment files.

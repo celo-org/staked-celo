@@ -580,3 +580,236 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         }
     }
 }
+
+/**
+ * @dev Calls PayloadLib across a call boundary. The library is internal and gets inlined,
+ *      so a direct call would revert the test itself instead of the call vm.expectRevert
+ *      watches.
+ */
+contract PayloadEncoderHarness {
+    function encodePayload(string memory signature, string memory argsCsv)
+        external
+        pure
+        returns (bytes memory)
+    {
+        return PayloadLib.encodePayload(signature, argsCsv);
+    }
+}
+
+/**
+ * @title PayloadEncodingTest
+ * @notice Covers the argument validation of script/tasks/lib/PayloadLib.sol: the encoder
+ *         writes one 32 byte word per argument, so every type it cannot write that way, and
+ *         every value that does not fit its declared type, has to be rejected rather than
+ *         encoded into a payload the MultiSig would not be able to execute.
+ * @dev No devchain fixture is needed: the encoder is pure string handling.
+ */
+contract PayloadEncodingTest is CeloTestHelper {
+    /// @dev The lower case spelling of ADDRESS_ARGUMENT, to show the parse ignores casing.
+    string internal constant ADDRESS_ARGUMENT_LOWER_CASE =
+        "0xabcdef0123456789abcdef0123456789abcdef01";
+    address internal constant ADDRESS_ARGUMENT = 0xabCDeF0123456789AbcdEf0123456789aBCDEF01;
+
+    string internal constant BYTES32_ARGUMENT =
+        "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    bytes32 internal constant BYTES32_VALUE =
+        0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+
+    PayloadEncoderHarness internal encoder;
+
+    function setUp() public {
+        encoder = new PayloadEncoderHarness();
+    }
+
+    // =========================================================================
+    //                            SUPPORTED TYPES
+    // =========================================================================
+
+    function test_encodesUintBoundaries() public view {
+        _assertEncodes(
+            "setCap(uint8)",
+            "255",
+            abi.encodeWithSignature("setCap(uint8)", uint8(255))
+        );
+        _assertEncodes("setCap(uint8)", "0", abi.encodeWithSignature("setCap(uint8)", uint8(0)));
+        _assertEncodes(
+            "setCap(uint256)",
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            abi.encodeWithSignature("setCap(uint256)", type(uint256).max)
+        );
+    }
+
+    function test_encodesIntBoundaries() public view {
+        _assertEncodes(
+            "setDelta(int8)",
+            "-128",
+            abi.encodeWithSignature("setDelta(int8)", int8(-128))
+        );
+        _assertEncodes(
+            "setDelta(int8)",
+            "127",
+            abi.encodeWithSignature("setDelta(int8)", int8(127))
+        );
+        _assertEncodes(
+            "setDelta(int256)",
+            "-1",
+            abi.encodeWithSignature("setDelta(int256)", int256(-1))
+        );
+    }
+
+    function test_encodesBytes32() public view {
+        _assertEncodes(
+            "setHash(bytes32)",
+            BYTES32_ARGUMENT,
+            abi.encodeWithSignature("setHash(bytes32)", BYTES32_VALUE)
+        );
+    }
+
+    function test_encodesAddressIgnoringCase() public view {
+        _assertEncodes(
+            "upgradeTo(address)",
+            ADDRESS_ARGUMENT_LOWER_CASE,
+            abi.encodeWithSignature("upgradeTo(address)", ADDRESS_ARGUMENT)
+        );
+        _assertEncodes(
+            "upgradeTo(address)",
+            vm.toString(ADDRESS_ARGUMENT),
+            abi.encodeWithSignature("upgradeTo(address)", ADDRESS_ARGUMENT)
+        );
+    }
+
+    function test_encodesMixedArgumentsWithSpaces() public view {
+        _assertEncodes(
+            "setGroup(address,uint256,bool)",
+            string(abi.encodePacked(ADDRESS_ARGUMENT_LOWER_CASE, ", 7, false")),
+            abi.encodeWithSignature(
+                "setGroup(address,uint256,bool)",
+                ADDRESS_ARGUMENT,
+                uint256(7),
+                false
+            )
+        );
+    }
+
+    // =========================================================================
+    //                           REJECTED TYPES
+    // =========================================================================
+
+    /// @dev The reported reproduction: an array argument used to encode as a single word,
+    ///      producing a payload that could never be executed.
+    function test_rejectsArrayType() public {
+        vm.expectRevert("payload: unsupported argument type: uint256[]");
+        encoder.encodePayload("setValues(uint256[])", "1");
+    }
+
+    function test_rejectsTupleType() public {
+        vm.expectRevert("payload: unsupported argument type: (uint256,address)");
+        encoder.encodePayload("setConfig((uint256,address))", "1");
+    }
+
+    function test_rejectsDynamicTypes() public {
+        vm.expectRevert("payload: unsupported argument type: string");
+        encoder.encodePayload("setName(string)", "celo");
+
+        vm.expectRevert("payload: unsupported argument type: bytes");
+        encoder.encodePayload("setBlob(bytes)", "0x1234");
+    }
+
+    function test_rejectsUnknownAndNonCanonicalTypes() public {
+        vm.expectRevert("payload: unsupported argument type: uint12");
+        encoder.encodePayload("setCap(uint12)", "1");
+
+        vm.expectRevert("payload: unsupported argument type: uint");
+        encoder.encodePayload("setCap(uint)", "1");
+
+        vm.expectRevert("payload: unsupported argument type: bytes4");
+        encoder.encodePayload("setSelector(bytes4)", "0x12345678");
+
+        vm.expectRevert("payload: unsupported argument type: celo");
+        encoder.encodePayload("setThing(celo)", "1");
+    }
+
+    function test_rejectsMalformedSignature() public {
+        vm.expectRevert("payload: malformed signature");
+        encoder.encodePayload("setCap(uint256", "1");
+    }
+
+    // =========================================================================
+    //                           REJECTED VALUES
+    // =========================================================================
+
+    function test_rejectsOutOfRangeUint() public {
+        vm.expectRevert("payload: uint8 argument out of range: 256");
+        encoder.encodePayload("setCap(uint8)", "256");
+    }
+
+    function test_rejectsOutOfRangeInt() public {
+        vm.expectRevert("payload: int8 argument out of range: -129");
+        encoder.encodePayload("setDelta(int8)", "-129");
+
+        vm.expectRevert("payload: int8 argument out of range: 128");
+        encoder.encodePayload("setDelta(int8)", "128");
+    }
+
+    function test_rejectsNonDecimalInteger() public {
+        vm.expectRevert("payload: invalid uint256 argument: 0x10");
+        encoder.encodePayload("setCap(uint256)", "0x10");
+
+        vm.expectRevert("payload: invalid int256 argument: -");
+        encoder.encodePayload("setDelta(int256)", "-");
+    }
+
+    function test_rejectsBadBool() public {
+        vm.expectRevert("payload: invalid bool argument: yes");
+        encoder.encodePayload("setFlag(bool)", "yes");
+
+        vm.expectRevert("payload: invalid bool argument: True");
+        encoder.encodePayload("setFlag(bool)", "True");
+    }
+
+    function test_rejectsBadAddress() public {
+        vm.expectRevert("payload: invalid address argument: 0x1234");
+        encoder.encodePayload("upgradeTo(address)", "0x1234");
+
+        vm.expectRevert(
+            "payload: invalid address argument: abcdef0123456789abcdef0123456789abcdef01"
+        );
+        encoder.encodePayload("upgradeTo(address)", "abcdef0123456789abcdef0123456789abcdef01");
+
+        vm.expectRevert(
+            "payload: invalid address argument: 0xzzcdef0123456789abcdef0123456789abcdef01"
+        );
+        encoder.encodePayload("upgradeTo(address)", "0xzzcdef0123456789abcdef0123456789abcdef01");
+    }
+
+    function test_rejectsBadBytes32() public {
+        vm.expectRevert("payload: invalid bytes32 argument: 0x1234");
+        encoder.encodePayload("setHash(bytes32)", "0x1234");
+    }
+
+    function test_rejectsArgumentCountMismatch() public {
+        vm.expectRevert("payload: argument count mismatch");
+        encoder.encodePayload("setPair(address,address)", ADDRESS_ARGUMENT_LOWER_CASE);
+
+        vm.expectRevert("payload: argument count mismatch");
+        encoder.encodePayload("setPauser()", "1");
+
+        vm.expectRevert("payload: argument count mismatch");
+        encoder.encodePayload("setCap(uint256)", "");
+    }
+
+    // =========================================================================
+    //                                HELPERS
+    // =========================================================================
+
+    /// @dev Asserts the encoder reproduces what the compiler would encode for the same call.
+    function _assertEncodes(
+        string memory signature,
+        string memory argsCsv,
+        bytes memory expected
+    ) private view {
+        assertTrue(
+            keccak256(encoder.encodePayload(signature, argsCsv)) == keccak256(expected)
+        );
+    }
+}
