@@ -94,15 +94,21 @@ here. Pass
 `--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
 to reuse an already deployed library instead.
 
+The library ends up at an address of its own and has to be verified like any other
+contract, so `DeployCore` writes it to `AddressSortedLinkedList_Implementation.json`
+next to the rest. hardhat-deploy instead noted it under `libraries` in
+`DefaultStrategy_Implementation.json`; `scripts/verify-contracts.sh` reads both.
+
 ## Deployment records
 
 Records are written to `deployments/<network>/` in the hardhat-deploy layout the CLI
 scripts read:
 
 ```
-Manager.json                 { address: <proxy>, implementation: <logic>, contract, chainId, deployer }
-Manager_Proxy.json           same as above
-Manager_Implementation.json  { address: <logic>, contract, chainId, deployer }
+Manager.json                                 { address: <proxy>, implementation: <logic>, contract, chainId, deployer }
+Manager_Proxy.json                           same as above
+Manager_Implementation.json                  { address: <logic>, contract, chainId, deployer }
+AddressSortedLinkedList_Implementation.json  { address: <library>, contract, chainId, deployer }
 ```
 
 The `abi`, `receipt` and `args` fields hardhat-deploy wrote are not reproduced; the ABI
@@ -168,6 +174,98 @@ the same thing by letting the transaction revert on chain.
 
 `MultiSig` has no `owner()` - it authorizes its own upgrades through a proposal - so
 `CONTRACT=MultiSig` always prints the payload.
+
+## Verifying deployed contracts
+
+`scripts/verify-contracts.sh` (also `yarn verify`) replaces `yarn verify:deploy`
+(`hardhat sourcify`). It walks `deployments/<network>/` and submits every recorded address
+to Sourcify and, when an API key is around, to Celoscan:
+
+```sh
+eval "$(mise env -s zsh)"
+
+scripts/verify-contracts.sh --dry-run celo        # print the forge commands
+scripts/verify-contracts.sh --watch celo          # everything, waiting for each result
+scripts/verify-contracts.sh celo Manager          # one contract
+CELOSCAN_API_KEY=... scripts/verify-contracts.sh --watch celo
+
+yarn verify --watch celo                          # same thing through package.json
+```
+
+Each contract has two addresses on chain and both are submitted: the implementation from
+`<Name>_Implementation.json` as `contracts/<Name>.sol:<Name>`, and the proxy in front of
+it from `<Name>_Proxy.json` as
+`@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy`. The library
+`AddressSortedLinkedList` is submitted as well; it is a contract of its own on chain.
+
+| Variable | Meaning |
+| --- | --- |
+| `CELOSCAN_API_KEY` | Celoscan key. `CELO_SCAN_API_KEY` (the name in `.env.example`) is accepted too. Without one only Sourcify is used - it needs no key. |
+| `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
+| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220) and `alfajores` (44787); for anything else it asks the node. |
+| `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
+
+### Why this works with contracts deployed before the port
+
+The production profile reproduces the Hardhat build byte for byte, metadata trailer
+included - that is what `foundry.toml` pins (`solc 0.8.11`, `evm istanbul`, optimizer off,
+`use_literal_content`, `bytecode_hash = "ipfs"`) and what `scripts/bytecode-compat-check.py`
+checks on every CI run. A contract deployed by the Hardhat tooling therefore still verifies
+as a full match from these sources, as long as the source itself has not changed since it
+was deployed. Check which implementations still qualify before submitting anything:
+
+```sh
+python3 scripts/bytecode-compat-check.py --deployments celo
+```
+
+Contracts reported as `DIFF` there have been edited since they were deployed and will come
+back from Sourcify as `bytecode_length_mismatch` or a partial match. That is a correct
+result, not a tooling problem: verify those addresses from the commit they were deployed
+from. The script exits non-zero when any submission fails.
+
+### Proxies and constructor arguments
+
+`ERC1967Proxy(address _logic, bytes _data)` takes the implementation and the initializer
+calldata, and Celoscan needs both to reproduce the creation code. The script takes them
+from the `args` field of the hardhat-deploy record and ABI-encodes them with `cast`.
+Records written by `DeployCore` have no `args`, so there it falls back to
+`--guess-constructor-args`, which recovers them from the creation code on chain. Right
+after a deploy they can also be read out of
+`broadcast/DeployCore.s.sol/<chainId>/run-latest.json` and passed by hand:
+
+```sh
+forge verify-contract <proxy> \
+  '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy' \
+  --chain 42220 --verifier sourcify \
+  --constructor-args "$(cast abi-encode 'constructor(address,bytes)' <implementation> <initializeCalldata>)"
+```
+
+### The linked library
+
+`DefaultStrategy` is compiled unlinked - `settings.libraries` is empty in the metadata of
+the deployed code - and `AddressSortedLinkedList` is substituted into the bytecode at
+deploy time. Verification has to be submitted the same way, so the script does *not* pass
+`--libraries`: adding an address there puts it into `settings.libraries`, which changes the
+metadata hash and with it the last 32 bytes of the deployed bytecode, and the match fails.
+Sourcify resolves the library placeholders from the deployed code itself. `--link-libraries`
+forces the address in anyway, for a verifier that cannot.
+
+### Networks
+
+Only mainnet has an `[etherscan]` entry in `foundry.toml`; the script carries the Celoscan
+endpoints itself, so nothing has to be added there.
+
+| Network | Chain | Sourcify | Celoscan |
+| --- | --- | --- | --- |
+| `celo` | 42220 | yes | `https://api.celoscan.io/api` |
+| `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | `https://api-alfajores.celoscan.io/api` |
+| `staging` | from the node, or `CHAIN_ID` | no | none |
+
+Only mainnet is fully covered. Sourcify answers `Chain 44787 not found` for Alfajores and
+lists Baklava (62320) as unsupported, so `deployments/alfajores/` can only be verified on
+Celoscan. `staging` is never described beyond its RPC URL in `legacy/hardhat.config.ts`,
+has no chain id written down anywhere and no public explorer; its records can only be
+verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a service that supports it.
 
 ## Local devchain
 

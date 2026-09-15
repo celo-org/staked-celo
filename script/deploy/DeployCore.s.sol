@@ -15,6 +15,9 @@ import {GroupHealth} from "../../contracts/GroupHealth.sol";
 import {SpecificGroupStrategy} from "../../contracts/SpecificGroupStrategy.sol";
 import {DefaultStrategy} from "../../contracts/DefaultStrategy.sol";
 import {RebasedStakedCelo} from "../../contracts/RebasedStakedCelo.sol";
+import {
+    AddressSortedLinkedList
+} from "../../contracts/common/linkedlists/AddressSortedLinkedList.sol";
 
 /**
  * @title DeployCore
@@ -269,7 +272,14 @@ contract DeployCore is DeployBase {
             abi.encodeWithSelector(DefaultStrategy.initialize.selector, deployer, manager)
         );
         _recordProxyDeployment("DefaultStrategy", defaultStrategy, implementation);
+        // The library Forge linked is a contract of its own on chain and has to be
+        // verified separately, so record where it ended up.
+        _recordImplementationDeployment(
+            "AddressSortedLinkedList",
+            address(AddressSortedLinkedList)
+        );
         DeployLog.a("DefaultStrategy: deployed", defaultStrategy);
+        DeployLog.a("AddressSortedLinkedList: linked", address(AddressSortedLinkedList));
     }
 
     /// @dev deploy/13: RebasedStakedCelo, owned by the MultiSig from the start.

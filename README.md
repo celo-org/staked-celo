@@ -182,6 +182,11 @@ records written under `deployments/<network>/`, and how a failed run must be cle
 - ABIs: `forge build` writes them to `out/<Name>.sol/<Name>.json` (`abi` field), or print one
   with `forge inspect <Name> abi`. The Hardhat `artifacts/` directory no longer exists.
 
+`yarn verify <network>` (`scripts/verify-contracts.sh`) publishes the sources of everything
+under `deployments/<network>/` to Sourcify and, with `CELOSCAN_API_KEY` set, to Celoscan.
+It replaces `yarn verify:deploy`; because the production build is byte-identical to the
+Hardhat one, contracts deployed before the port still verify from these sources.
+
 ## Operational tasks
 
 Every `yarn hardhat stakedCelo:*` task has a forge script counterpart under
