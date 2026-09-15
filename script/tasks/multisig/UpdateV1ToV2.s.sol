@@ -39,9 +39,7 @@ contract UpdateV1ToV2Script is TaskBase {
     /// @notice Builds and prints the V1 to V2 proposal for `validatorGroups`.
     /// @param validatorGroups The groups to activate in DefaultStrategy; may be empty.
     function execute(address[] memory validatorGroups) internal {
-        ProposalBuilder.Proposal memory proposal = ProposalBuilder.init(
-            validatorGroups.length + 7
-        );
+        ProposalBuilder.Proposal memory proposal = ProposalBuilder.init(validatorGroups.length + 7);
 
         _addGroupActivations(proposal, validatorGroups);
         _addUpgrades(proposal);
@@ -52,11 +50,8 @@ contract UpdateV1ToV2Script is TaskBase {
         );
         _addManagerSetDependencies(proposal);
 
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = proposal.build();
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            proposal.build();
 
         TaskConsole.log("DESTINATIONS", FormatLib.join(destinations));
         TaskConsole.log("VALUES", FormatLib.join(values));

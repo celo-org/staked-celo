@@ -47,11 +47,7 @@ contract WithdrawScript is TaskBase {
         address beneficiary
     ) internal {
         AccountTaskLib.withdraw(
-            account,
-            defaultStrategy,
-            specificGroupStrategy,
-            electionContract,
-            beneficiary
+            account, defaultStrategy, specificGroupStrategy, electionContract, beneficiary
         );
     }
 }

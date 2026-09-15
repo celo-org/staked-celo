@@ -26,8 +26,7 @@ contract IsFullyConfirmedScript is TaskBase {
     /// @param proposalId The ID of the proposal.
     function execute(IMultiSigTask multiSigContract, uint256 proposalId) internal view {
         TaskConsole.log(
-            "is proposal fully confirmed:",
-            multiSigContract.isFullyConfirmed(proposalId)
+            "is proposal fully confirmed:", multiSigContract.isFullyConfirmed(proposalId)
         );
     }
 }

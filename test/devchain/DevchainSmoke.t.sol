@@ -8,12 +8,14 @@ library Log {
     address internal constant CONSOLE = 0x000000000000000000636F6e736F6c652e6c6f67;
 
     function u(string memory label, uint256 value) internal view {
-        (bool ok, ) = CONSOLE.staticcall(abi.encodeWithSignature("log(string,uint256)", label, value));
+        (bool ok,) =
+            CONSOLE.staticcall(abi.encodeWithSignature("log(string,uint256)", label, value));
         ok;
     }
 
     function a(string memory label, address value) internal view {
-        (bool ok, ) = CONSOLE.staticcall(abi.encodeWithSignature("log(string,address)", label, value));
+        (bool ok,) =
+            CONSOLE.staticcall(abi.encodeWithSignature("log(string,address)", label, value));
         ok;
     }
 }
@@ -72,8 +74,8 @@ contract DevchainSmokeTest is DevchainHelper {
 
         vm.prank(voter);
         celoLockedGold.unlock(4 ether);
-        (uint256[] memory values, uint256[] memory timestamps) = celoLockedGold
-            .getPendingWithdrawals(voter);
+        (uint256[] memory values, uint256[] memory timestamps) =
+            celoLockedGold.getPendingWithdrawals(voter);
         assertEq(values.length, 1);
         assertEq(values[0], 4 ether);
         assertTrue(timestamps[0] > block.timestamp);
@@ -170,8 +172,8 @@ contract DevchainSmokeTest is DevchainHelper {
 
         uint256[3] memory expected = [uint256(40 ether), uint256(100 ether), uint256(200 ether)];
         for (uint256 i = 0; i < 3; i++) {
-            uint256 left = celoElection.getNumVotesReceivable(groups[i]) -
-                celoElection.getTotalVotesForGroup(groups[i]);
+            uint256 left = celoElection.getNumVotesReceivable(groups[i])
+                - celoElection.getTotalVotesForGroup(groups[i]);
             Log.u("receivable left", left);
             assertEq(left, expected[i]);
         }

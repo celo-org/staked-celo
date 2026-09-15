@@ -79,7 +79,7 @@ contract EndToEndOverflowTest is EndToEndTestBase {
         expectReceivableVotes(groups[0], FIRST_G_CAPACITY - celoDeposit);
         expectSpecGStCelo(specGroupSameAsActive, celoDeposit, 0);
 
-        (address tail, ) = defaultStrategy.getGroupsTail();
+        (address tail,) = defaultStrategy.getGroupsTail();
         assertEq(tail, groups[2]);
 
         deposit(depositor1, FIRST_G_CAPACITY);
@@ -90,7 +90,7 @@ contract EndToEndOverflowTest is EndToEndTestBase {
         expectVotes(groups[1], ZERO, ZERO, ZERO, ZERO);
         expectVotes(groups[2], ZERO, overflow, ZERO, ZERO);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
 
         vm.prank(depositor1);
         manager.changeStrategy(specGroupDifferentFromActive);
@@ -107,11 +107,7 @@ contract EndToEndOverflowTest is EndToEndTestBase {
         manager.changeStrategy(specGroupSameAsActive);
 
         expectSpecGStCelo(specGroupDifferentFromActive, ZERO, ZERO);
-        expectSpecGStCelo(
-            specGroupSameAsActive,
-            celoDeposit + FIRST_G_CAPACITY,
-            g0ExpectedOverflow
-        );
+        expectSpecGStCelo(specGroupSameAsActive, celoDeposit + FIRST_G_CAPACITY, g0ExpectedOverflow);
 
         rebalanceAllAndActivate();
         expectCeloForGroup(groups[0], FIRST_G_CAPACITY + celoDeposit - g0ExpectedOverflow);
@@ -145,10 +141,8 @@ contract EndToEndOverflowTest is EndToEndTestBase {
         uint256 scheduledForGroup1 = account.scheduledVotesForGroup(groups[1]);
 
         uint256 voteAmount = receivableByGroup1 + scheduledForGroup1;
-        (address lesser, address greater) = findLesserAndGreaterAfterVote(
-            groups[1],
-            int256(voteAmount)
-        );
+        (address lesser, address greater) =
+            findLesserAndGreaterAfterVote(groups[1], int256(voteAmount));
         vm.prank(voter);
         celoElection.vote(groups[1], voteAmount, lesser, greater);
 
@@ -182,14 +176,9 @@ contract EndToEndOverflowTest is EndToEndTestBase {
         assertEq(manager.getReceivableVotesForGroup(group), amount);
     }
 
-    function expectSpecGStCelo(
-        address strategy,
-        uint256 total,
-        uint256 overflow
-    ) internal view {
-        (uint256 totalActual, uint256 overflowActual, ) = specificGroupStrategy.getStCeloInGroup(
-            strategy
-        );
+    function expectSpecGStCelo(address strategy, uint256 total, uint256 overflow) internal view {
+        (uint256 totalActual, uint256 overflowActual,) =
+            specificGroupStrategy.getStCeloInGroup(strategy);
         assertEq(totalActual, total);
         assertEq(overflowActual, overflow);
     }

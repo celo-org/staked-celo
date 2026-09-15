@@ -141,8 +141,7 @@ contract EndToEndSpecificGroupStrategyTest is EndToEndTestBase {
         manager.changeStrategy(specificGroupThatWillBeUnhealthy);
         deposit(depositor6, amountOfCeloToDeposit);
         assertEq(
-            account.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy),
-            amountOfCeloToDeposit
+            account.scheduledVotesForGroup(specificGroupThatWillBeUnhealthy), amountOfCeloToDeposit
         );
 
         address[] memory unhealthyGroup = new address[](1);
@@ -199,10 +198,8 @@ contract EndToEndSpecificGroupStrategyTest is EndToEndTestBase {
     }
 
     function expectSumOfExpectedAndRealCeloInGroupsToEqual() internal view {
-        address[] memory allGroups = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory allGroups =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
         ExpectVsReal[] memory expectedVsReal = getRealVsExpectedCeloForGroups(manager, allGroups);
 
         uint256 expectedSum = 0;

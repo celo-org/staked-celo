@@ -107,7 +107,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.activateGroup(groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO);
 
         address[] memory activeGroups = getDefaultGroups(defaultStrategy);
-        (address firstActiveGroup, ) = defaultStrategy.getGroupsHead();
+        (address firstActiveGroup,) = defaultStrategy.getGroupsHead();
         _assertArrayEq(activeGroups, _toArray(groupAddresses[0]));
         assertEq(defaultStrategy.getNumberOfGroups(), 1);
         assertEq(firstActiveGroup, groupAddresses[0]);
@@ -131,7 +131,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     function test_activateGroup_WhenGroupIsNotHealthyRegistered_RevertsWhenTryingToAddAnUnregisteredGroup()
         public
     {
-        (address unregisteredGroup, ) = randomSigner(100 ether);
+        (address unregisteredGroup,) = randomSigner(100 ether);
         mockGroupHealth.setGroupValidity(unregisteredGroup, true);
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(unregisteredGroup);
@@ -147,7 +147,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     function test_activateGroup_WhenSomeGroupsAreAlreadyAdded_AddsAnotherGroup() public {
         _activateGroupsFromHead(3);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[3]);
         mockDefaultStrategy.activateGroup(groupAddresses[3], ADDRESS_ZERO, head);
@@ -162,7 +162,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     function test_activateGroup_WhenSomeGroupsAreAlreadyAdded_EmitsAGroupActivatedEvent() public {
         _activateGroupsFromHead(3);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[3]);
 
@@ -220,7 +220,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
 
         updateMaxNumberOfGroups(address(mockAccount), true);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[10]);
 
@@ -251,7 +251,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(groupAddresses[7]);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[2]);
         mockDefaultStrategy.activateGroup(groupAddresses[2], ADDRESS_ZERO, head);
@@ -270,7 +270,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(groupAddresses[7]);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[2]);
 
@@ -329,7 +329,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
 
     /// @dev Shared body of the three "should schedule transfer to tail of default strategy" cases.
     function _assertScheduleTransferToTail() private {
-        (address tail, ) = defaultStrategy.getGroupsTail();
+        (address tail,) = defaultStrategy.getGroupsTail();
         uint256 originalStCeloInTail = defaultStrategy.stCeloInGroup(tail);
 
         vm.prank(owner);
@@ -471,9 +471,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         _setUpUnhealthyGroup();
         mineToNextEpoch();
         revokeElectionOnMockValidatorGroupsAndUpdate(
-            mockGroupHealth,
-            _toArray(groupAddresses[1]),
-            true
+            mockGroupHealth, _toArray(groupAddresses[1]), true
         );
     }
 
@@ -542,7 +540,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     ///      the real Validators contract so the group really has the three members the original
     ///      test registers.
     function _registerGroupWithThreeValidatorsOneElected() private returns (address group) {
-        (group, ) = randomSigner(40_000 ether);
+        (group,) = randomSigner(40_000 ether);
         uint256 memberCount = 3;
         _raiseMaxGroupSize(memberCount);
         registerValidatorGroup(group, memberCount);
@@ -557,7 +555,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         }
         mockGroupHealth.updateGroupHealth(group);
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(group);
         mockDefaultStrategy.activateGroup(group, ADDRESS_ZERO, head);

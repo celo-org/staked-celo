@@ -49,10 +49,7 @@ contract SubmitProposalScript is TaskBase {
         bytes[] memory payloads
     ) internal returns (uint256 proposalId) {
         proposalId = MultiSigTaskLib.submitProposal(
-            multiSigContract,
-            destinations,
-            values,
-            payloads
+            multiSigContract, destinations, values, payloads
         );
     }
 }

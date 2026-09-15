@@ -43,7 +43,9 @@ contract UpgradeImplementation is DeployBase {
         require(proxy != address(0), "UpgradeImplementation: no deployment record");
 
         DeployLog.a(string(abi.encodePacked(name, ": proxy")), proxy);
-        DeployLog.a(string(abi.encodePacked(name, ": current implementation")), implementationOf(proxy));
+        DeployLog.a(
+            string(abi.encodePacked(name, ": current implementation")), implementationOf(proxy)
+        );
 
         vm.startBroadcast();
         address implementation = _deployImplementation(name);
@@ -60,10 +62,7 @@ contract UpgradeImplementation is DeployBase {
     /// @dev Upgrade the proxy if the broadcaster owns it, otherwise print what has to be
     ///      submitted through the MultiSig.
     /// @return True when the proxy was upgraded in this run.
-    function _upgradeOrPrintPayload(address proxy, address implementation)
-        private
-        returns (bool)
-    {
+    function _upgradeOrPrintPayload(address proxy, address implementation) private returns (bool) {
         if (_ownerOf(proxy) == deployer) {
             IUUPS(proxy).upgradeTo(implementation);
             DeployLog.s("upgradeTo executed by the broadcaster");

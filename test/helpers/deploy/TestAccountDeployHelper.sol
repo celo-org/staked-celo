@@ -142,11 +142,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     /// @dev Write a registry entry as the registry owner. Works both for MockRegistry
     ///      (owned by `deployer`) and for the Celo core registry of a devchain
     ///      (owned by the governance multisig). Must be called outside of any prank.
-    function _setRegistryAddress(
-        address registry,
-        string memory id,
-        address addr
-    ) internal {
+    function _setRegistryAddress(address registry, string memory id, address addr) internal {
         address registryOwner = IOwnable(registry).owner();
         vm.prank(registryOwner);
         IRegistry(registry).setAddressFor(id, addr);
@@ -171,10 +167,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     function _deployAccountProxy(address registryAddr) private {
         Account impl = new Account();
         bytes memory data = abi.encodeWithSelector(
-            Account.initialize.selector,
-            registryAddr,
-            address(manager),
-            owner
+            Account.initialize.selector, registryAddr, address(manager), owner
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         account = Account(payable(address(proxy)));
@@ -183,11 +176,8 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     /// @dev StakedCelo — initialize(managerProxy, owner).
     function _deployStakedCeloProxy() private {
         StakedCelo impl = new StakedCelo();
-        bytes memory data = abi.encodeWithSelector(
-            StakedCelo.initialize.selector,
-            address(manager),
-            owner
-        );
+        bytes memory data =
+            abi.encodeWithSelector(StakedCelo.initialize.selector, address(manager), owner);
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         stakedCelo = StakedCelo(address(proxy));
     }
@@ -195,12 +185,8 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     /// @dev Vote — initialize(registry, owner, managerProxy).
     function _deployVoteProxy(address registryAddr) private {
         Vote impl = new Vote();
-        bytes memory data = abi.encodeWithSelector(
-            Vote.initialize.selector,
-            registryAddr,
-            owner,
-            address(manager)
-        );
+        bytes memory data =
+            abi.encodeWithSelector(Vote.initialize.selector, registryAddr, owner, address(manager));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         vote = Vote(address(proxy));
     }
@@ -208,11 +194,8 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     /// @dev MockGroupHealth — initialize(registry, owner).
     function _deployMockGroupHealthProxy(address registryAddr) private {
         MockGroupHealth impl = new MockGroupHealth();
-        bytes memory data = abi.encodeWithSelector(
-            GroupHealth.initialize.selector,
-            registryAddr,
-            owner
-        );
+        bytes memory data =
+            abi.encodeWithSelector(GroupHealth.initialize.selector, registryAddr, owner);
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         mockGroupHealth = MockGroupHealth(address(proxy));
     }
@@ -221,11 +204,8 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
     function _deployMockDefaultStrategyProxy() private {
         MockDefaultStrategy impl = new MockDefaultStrategy();
-        bytes memory data = abi.encodeWithSelector(
-            DefaultStrategy.initialize.selector,
-            owner,
-            address(manager)
-        );
+        bytes memory data =
+            abi.encodeWithSelector(DefaultStrategy.initialize.selector, owner, address(manager));
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         mockDefaultStrategy = MockDefaultStrategy(payable(address(proxy)));
     }
@@ -234,9 +214,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     function _deploySpecificGroupStrategyProxy() private {
         SpecificGroupStrategy impl = new SpecificGroupStrategy();
         bytes memory data = abi.encodeWithSelector(
-            SpecificGroupStrategy.initialize.selector,
-            owner,
-            address(manager)
+            SpecificGroupStrategy.initialize.selector, owner, address(manager)
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), data);
         specificGroupStrategy = SpecificGroupStrategy(address(proxy));
@@ -356,11 +334,8 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
 
         // StakedCelo behind proxy
         StakedCelo scImpl = new StakedCelo();
-        bytes memory scData = abi.encodeWithSelector(
-            StakedCelo.initialize.selector,
-            address(mockManager),
-            owner
-        );
+        bytes memory scData =
+            abi.encodeWithSelector(StakedCelo.initialize.selector, address(mockManager), owner);
         ERC1967Proxy scProxy = new ERC1967Proxy(address(scImpl), scData);
         stakedCelo = StakedCelo(address(scProxy));
 

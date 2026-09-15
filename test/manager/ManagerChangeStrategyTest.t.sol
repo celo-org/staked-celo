@@ -88,7 +88,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
     {
         setUpChoseSpecificStrategy();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         manager.changeStrategy(ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
@@ -108,8 +108,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
         assertEq(
-            specificGroupStrategy.stCeloInGroup(differentSpecificGroupStrategy),
-            STRATEGY_DEPOSIT
+            specificGroupStrategy.stCeloInGroup(differentSpecificGroupStrategy), STRATEGY_DEPOSIT
         );
     }
 
@@ -120,11 +119,11 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         setUpChosenGroupUnhealthy();
         setUpRebalanced();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         manager.changeStrategy(ADDRESS_ZERO);
 
-        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(specificGroupStrategyAddress);
+        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(specificGroupStrategyAddress);
         assertEq(stCeloInStrategy, 0);
         assertEq(overflow, 0);
         assertEq(unhealthy, 0);
@@ -137,7 +136,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         setUpChoseSpecificStrategy();
         setUpChosenGroupUnhealthy();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         manager.changeStrategy(ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
@@ -164,8 +163,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.changeStrategy(specificGroupStrategyAddress);
 
         assertEq(
-            specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress),
-            STRATEGY_DEPOSIT
+            specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), STRATEGY_DEPOSIT
         );
         assertEq(mockDefaultStrategy.stCeloInGroup(groupAddresses[0]), 0);
         assertEq(mockDefaultStrategy.stCeloInGroup(groupAddresses[1]), 0);
@@ -239,7 +237,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
     {
         setUpForcedSpecificStrategy();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(owner);
         manager.forceChangeStrategy(depositor, ADDRESS_ZERO);
 
@@ -261,8 +259,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
         assertEq(
-            specificGroupStrategy.stCeloInGroup(differentSpecificGroupStrategy),
-            STRATEGY_DEPOSIT
+            specificGroupStrategy.stCeloInGroup(differentSpecificGroupStrategy), STRATEGY_DEPOSIT
         );
     }
 
@@ -273,12 +270,12 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         setUpChosenGroupUnhealthy();
         setUpRebalanced();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(owner);
         manager.forceChangeStrategy(depositor, ADDRESS_ZERO);
 
-        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(specificGroupStrategyAddress);
+        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(specificGroupStrategyAddress);
         assertEq(stCeloInStrategy, 0);
         assertEq(overflow, 0);
         assertEq(unhealthy, 0);
@@ -291,7 +288,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         setUpForcedSpecificStrategy();
         setUpChosenGroupUnhealthy();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(owner);
         manager.forceChangeStrategy(depositor, ADDRESS_ZERO);
 
@@ -321,8 +318,7 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.forceChangeStrategy(depositor, specificGroupStrategyAddress);
 
         assertEq(
-            specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress),
-            STRATEGY_DEPOSIT
+            specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), STRATEGY_DEPOSIT
         );
         assertEq(mockDefaultStrategy.stCeloInGroup(groupAddresses[0]), 0);
         assertEq(mockDefaultStrategy.stCeloInGroup(groupAddresses[1]), 0);

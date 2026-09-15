@@ -27,8 +27,7 @@ contract IsProposalTimelockReachedScript is TaskBase {
     /// @param proposalId The ID of the proposal.
     function execute(IMultiSigTask multiSigContract, uint256 proposalId) internal view {
         TaskConsole.log(
-            "is timelock reached:",
-            multiSigContract.isProposalTimelockReached(proposalId)
+            "is timelock reached:", multiSigContract.isProposalTimelockReached(proposalId)
         );
     }
 }

@@ -26,8 +26,8 @@ library ElectionLib {
         address group,
         int256 delta
     ) internal view returns (address lesser, address greater) {
-        (address[] memory groups, uint256[] memory votes) = electionContract
-            .getTotalVotesForEligibleValidatorGroups();
+        (address[] memory groups, uint256[] memory votes) =
+            electionContract.getTotalVotesForEligibleValidatorGroups();
 
         uint256 total = _totalAfterVote(groups, votes, group, delta);
 
@@ -53,11 +53,11 @@ library ElectionLib {
      * @param group The validator group to look up.
      * @return The index of `group` in Election's per account group list.
      */
-    function findAddressIndex(
-        IElectionLookup electionContract,
-        address account,
-        address group
-    ) internal view returns (uint256) {
+    function findAddressIndex(IElectionLookup electionContract, address account, address group)
+        internal
+        view
+        returns (uint256)
+    {
         address[] memory list = electionContract.getGroupsVotedForByAccount(account);
         for (uint256 i = 0; i < list.length; i++) {
             if (list[i] == group) {

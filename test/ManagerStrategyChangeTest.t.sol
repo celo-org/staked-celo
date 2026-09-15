@@ -29,7 +29,7 @@ contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelpe
         loadDevchain();
         deployFullTestManager(REGISTRY_ADDRESS);
 
-        (depositor, ) = randomSigner(1000 ether);
+        (depositor,) = randomSigner(1000 ether);
 
         group0 = _registerGroupWithValidator();
         group1 = _registerGroupWithValidator();
@@ -59,14 +59,14 @@ contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelpe
 
     /// @dev One validator group with a single validator member.
     function _registerGroupWithValidator() private returns (address group) {
-        (group, ) = randomSigner(21_000 ether);
+        (group,) = randomSigner(21_000 ether);
         registerValidatorGroup(group, 1);
         registerValidatorAndAddToGroupMembers(group, createWallet(11_000 ether));
     }
 
     /// @dev Ports `activateValidators(...)` from utils-validators.ts.
     function _activateGroups(address[] memory groups) private {
-        (address nextGroup, ) = mockDefaultStrategy.getGroupsTail();
+        (address nextGroup,) = mockDefaultStrategy.getGroupsTail();
 
         for (uint256 i = 0; i < groups.length; i++) {
             require(mockGroupHealth.isGroupValid(groups[i]), "not a valid group");

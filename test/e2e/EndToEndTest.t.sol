@@ -43,19 +43,15 @@ contract EndToEndTest is EndToEndTestBase {
 
         deposit(depositor2, amountOfCeloToDeposit);
 
-        assertEq(
-            stakedCelo.balanceOf(depositor2),
-            manager.toStakedCelo(amountOfCeloToDeposit)
-        );
+        assertEq(stakedCelo.balanceOf(depositor2), manager.toStakedCelo(amountOfCeloToDeposit));
 
         assertEq(stakedCelo.balanceOf(depositor0), amountOfCeloToDeposit);
 
         uint256 depositor1AfterWithdrawalBalance = depositor1.balance;
         assertTrue(depositor1AfterWithdrawalBalance > depositor1BeforeWithdrawalBalance);
 
-        uint256 rewardsReceived = depositor1AfterWithdrawalBalance -
-            depositor1BeforeWithdrawalBalance -
-            amountOfCeloToDeposit;
+        uint256 rewardsReceived = depositor1AfterWithdrawalBalance
+            - depositor1BeforeWithdrawalBalance - amountOfCeloToDeposit;
 
         assertEq(rewardsReceived, (REWARDS_GROUP_0 + REWARDS_GROUP_1 + REWARDS_GROUP_2) / 2);
     }

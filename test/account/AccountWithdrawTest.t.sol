@@ -63,7 +63,7 @@ contract AccountWithdrawTest is AccountTestBase {
     {
         _setupPendingVotes();
         _withdraw(beneficiary, groupAddresses[0]);
-        (uint256 value, ) = account.getPendingWithdrawal(beneficiary, 0);
+        (uint256 value,) = account.getPendingWithdrawal(beneficiary, 0);
         assertEq(value, 60);
     }
 
@@ -96,7 +96,7 @@ contract AccountWithdrawTest is AccountTestBase {
     {
         _setupPendingAndRevokedVotes();
         _withdraw(beneficiary, groupAddresses[0]);
-        (uint256 value, ) = account.getPendingWithdrawal(beneficiary, 0);
+        (uint256 value,) = account.getPendingWithdrawal(beneficiary, 0);
         assertEq(value, 50);
     }
 
@@ -138,7 +138,7 @@ contract AccountWithdrawTest is AccountTestBase {
     {
         _setupActiveVotes();
         _withdraw(beneficiary, groupAddresses[0]);
-        (uint256 value, ) = account.getPendingWithdrawal(beneficiary, 0);
+        (uint256 value,) = account.getPendingWithdrawal(beneficiary, 0);
         assertEq(value, 60);
     }
 
@@ -169,9 +169,7 @@ contract AccountWithdrawTest is AccountTestBase {
         assertEq(beneficiary.balance - balanceBefore, 100);
     }
 
-    function test_withdraw_WhenThereAreScheduledPendingAndActiveVotes_RevokesPendingVotes()
-        public
-    {
+    function test_withdraw_WhenThereAreScheduledPendingAndActiveVotes_RevokesPendingVotes() public {
         _setupScheduledPendingAndActiveVotes();
         _withdraw(beneficiary, groupAddresses[0]);
         assertEq(_pendingVotes(groupAddresses[0]), 0);
@@ -188,7 +186,7 @@ contract AccountWithdrawTest is AccountTestBase {
     // =========================================================================
 
     function _assertSingleLockedGoldWithdrawal(uint256 expectedValue) private view {
-        (uint256[] memory values, ) = celoLockedGold.getPendingWithdrawals(address(account));
+        (uint256[] memory values,) = celoLockedGold.getPendingWithdrawals(address(account));
         assertEq(values.length, 1);
         assertEq(values[0], expectedValue);
     }

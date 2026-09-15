@@ -189,10 +189,7 @@ contract DeployCore is DeployBase {
         account = _deployProxy(
             implementation,
             abi.encodeWithSelector(
-                Account.initialize.selector,
-                CANONICAL_REGISTRY,
-                manager,
-                deployer
+                Account.initialize.selector, CANONICAL_REGISTRY, manager, deployer
             )
         );
         _recordProxyDeployment("Account", account, implementation);
@@ -223,12 +220,7 @@ contract DeployCore is DeployBase {
         address implementation = address(new Vote());
         vote = _deployProxy(
             implementation,
-            abi.encodeWithSelector(
-                Vote.initialize.selector,
-                CANONICAL_REGISTRY,
-                deployer,
-                manager
-            )
+            abi.encodeWithSelector(Vote.initialize.selector, CANONICAL_REGISTRY, deployer, manager)
         );
         _recordProxyDeployment("Vote", vote, implementation);
         DeployLog.a("Vote: deployed", vote);
@@ -244,11 +236,7 @@ contract DeployCore is DeployBase {
         address implementation = address(new GroupHealth());
         groupHealth = _deployProxy(
             implementation,
-            abi.encodeWithSelector(
-                GroupHealth.initialize.selector,
-                CANONICAL_REGISTRY,
-                multiSig
-            )
+            abi.encodeWithSelector(GroupHealth.initialize.selector, CANONICAL_REGISTRY, multiSig)
         );
         _recordProxyDeployment("GroupHealth", groupHealth, implementation);
         DeployLog.a("GroupHealth: deployed", groupHealth);
@@ -296,10 +284,7 @@ contract DeployCore is DeployBase {
         _recordProxyDeployment("DefaultStrategy", defaultStrategy, implementation);
         // The library Forge linked is a contract of its own on chain and has to be
         // verified separately, so record where it ended up.
-        _recordImplementationDeployment(
-            "AddressSortedLinkedList",
-            address(AddressSortedLinkedList)
-        );
+        _recordImplementationDeployment("AddressSortedLinkedList", address(AddressSortedLinkedList));
         DeployLog.a("DefaultStrategy: deployed", defaultStrategy);
         DeployLog.a("AddressSortedLinkedList: linked", address(AddressSortedLinkedList));
     }
@@ -314,10 +299,7 @@ contract DeployCore is DeployBase {
         rebasedStakedCelo = _deployProxy(
             implementation,
             abi.encodeWithSelector(
-                RebasedStakedCelo.initialize.selector,
-                stakedCelo,
-                account,
-                multiSig
+                RebasedStakedCelo.initialize.selector, stakedCelo, account, multiSig
             )
         );
         _recordProxyDeployment("RebasedStakedCelo", rebasedStakedCelo, implementation);
@@ -333,14 +315,10 @@ contract DeployCore is DeployBase {
         if (_ownedByMultiSig(manager, "Manager")) {
             return;
         }
-        Manager(manager).setDependencies(
-            stakedCelo,
-            account,
-            vote,
-            groupHealth,
-            specificGroupStrategy,
-            defaultStrategy
-        );
+        Manager(manager)
+            .setDependencies(
+                stakedCelo, account, vote, groupHealth, specificGroupStrategy, defaultStrategy
+            );
         DeployLog.s("Manager: dependencies set");
     }
 
@@ -358,11 +336,8 @@ contract DeployCore is DeployBase {
         if (_ownedByMultiSig(specificGroupStrategy, "SpecificGroupStrategy")) {
             return;
         }
-        SpecificGroupStrategy(specificGroupStrategy).setDependencies(
-            account,
-            groupHealth,
-            defaultStrategy
-        );
+        SpecificGroupStrategy(specificGroupStrategy)
+            .setDependencies(account, groupHealth, defaultStrategy);
         DeployLog.s("SpecificGroupStrategy: dependencies set");
     }
 
@@ -371,11 +346,8 @@ contract DeployCore is DeployBase {
         if (_ownedByMultiSig(defaultStrategy, "DefaultStrategy")) {
             return;
         }
-        DefaultStrategy(defaultStrategy).setDependencies(
-            account,
-            groupHealth,
-            specificGroupStrategy
-        );
+        DefaultStrategy(defaultStrategy)
+            .setDependencies(account, groupHealth, specificGroupStrategy);
         DeployLog.s("DefaultStrategy: dependencies set");
         _activateValidatorGroups();
     }
@@ -419,7 +391,7 @@ contract DeployCore is DeployBase {
         }
         // Every group starts with no stCELO, so each one goes in below the current tail
         // and the list ends up in the order the groups were sorted in.
-        (address tail, ) = strategy.getGroupsTail();
+        (address tail,) = strategy.getGroupsTail();
         strategy.activateGroup(group, address(0), tail);
         DeployLog.a("DefaultStrategy: group activated", group);
     }
@@ -491,8 +463,7 @@ contract DeployCore is DeployBase {
         DeployLog.s(
             string(
                 abi.encodePacked(
-                    name,
-                    ": owned by MultiSig, propose setDependencies through the MultiSig"
+                    name, ": owned by MultiSig, propose setDependencies through the MultiSig"
                 )
             )
         );

@@ -46,7 +46,8 @@ interface CeloTestVm {
     function label(address account, string calldata newLabel) external;
     function toString(uint256 value) external pure returns (string memory);
     function toString(address value) external pure returns (string memory);
-    function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData) external;
+    function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData)
+        external;
 
     function expectEmit(
         bool checkTopic1,
@@ -353,11 +354,7 @@ abstract contract CeloTestHelper {
     /// @notice Distribute epoch rewards to a group via the Election contract.
     /// @dev Impersonates address(0) (the Celo VM caller for epoch rewards).
     ///      With MockElection, lesser/greater are unused so ADDRESS_ZERO is passed.
-    function distributeEpochRewards(
-        IElection election,
-        address group,
-        uint256 amount
-    ) internal {
+    function distributeEpochRewards(IElection election, address group, uint256 amount) internal {
         vm.prank(ADDRESS_ZERO);
         election.distributeEpochRewards(group, amount, ADDRESS_ZERO, ADDRESS_ZERO);
     }
@@ -378,11 +375,11 @@ abstract contract CeloTestHelper {
 
         if (numGroups == 0) return groups;
 
-        (address key, ) = defaultStrategy.getGroupsHead();
+        (address key,) = defaultStrategy.getGroupsHead();
 
         for (uint256 i = 0; i < numGroups; i++) {
             groups[i] = key;
-            (key, ) = defaultStrategy.getGroupPreviousAndNext(key);
+            (key,) = defaultStrategy.getGroupPreviousAndNext(key);
         }
 
         return groups;
@@ -399,9 +396,7 @@ abstract contract CeloTestHelper {
 
         for (uint256 i = 0; i < groups.length; i++) {
             result[i] = OrderedGroup({
-                group: groups[i],
-                stCelo: defaultStrategy.stCeloInGroup(groups[i]),
-                realCelo: 0
+                group: groups[i], stCelo: defaultStrategy.stCeloInGroup(groups[i]), realCelo: 0
             });
         }
 
@@ -499,9 +494,7 @@ abstract contract CeloTestHelper {
         ExpectVsReal[] memory result = new ExpectVsReal[](groups.length);
 
         for (uint256 i = 0; i < groups.length; i++) {
-            (uint256 expected, uint256 actual) = manager.getExpectedAndActualCeloForGroup(
-                groups[i]
-            );
+            (uint256 expected, uint256 actual) = manager.getExpectedAndActualCeloForGroup(groups[i]);
             result[i] = ExpectVsReal({
                 group: groups[i],
                 expected: expected,
@@ -521,8 +514,8 @@ abstract contract CeloTestHelper {
         ExpectVsReal[] memory result = new ExpectVsReal[](groups.length);
 
         for (uint256 i = 0; i < groups.length; i++) {
-            (uint256 expected, uint256 actual) = defaultStrategy
-                .getExpectedAndActualStCeloForGroup(groups[i]);
+            (uint256 expected, uint256 actual) =
+                defaultStrategy.getExpectedAndActualStCeloForGroup(groups[i]);
             result[i] = ExpectVsReal({
                 group: groups[i],
                 expected: expected,
@@ -601,10 +594,8 @@ abstract contract CeloTestHelper {
     /// @notice Rebalance groups in the DefaultStrategy.
     function rebalanceDefaultGroups(DefaultStrategy defaultStrategy) internal {
         address[] memory activeGroups = getDefaultGroups(defaultStrategy);
-        ExpectVsReal[] memory expectedVsReal = getRealVsExpectedStCeloForGroupsDefaultStrategy(
-            defaultStrategy,
-            activeGroups
-        );
+        ExpectVsReal[] memory expectedVsReal =
+            getRealVsExpectedStCeloForGroupsDefaultStrategy(defaultStrategy, activeGroups);
         _rebalanceInternal(IRebalanceable(address(defaultStrategy)), expectedVsReal);
     }
 
@@ -614,10 +605,8 @@ abstract contract CeloTestHelper {
         SpecificGroupStrategy specificGroupStrategy,
         DefaultStrategy defaultStrategy
     ) internal {
-        address[] memory allGroups = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory allGroups =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
         ExpectVsReal[] memory expectedVsReal = getRealVsExpectedCeloForGroups(manager, allGroups);
         _rebalanceInternal(IRebalanceable(address(manager)), expectedVsReal);
     }
@@ -711,10 +700,10 @@ abstract contract CeloTestHelper {
 
         if (numGroups == 0) return groups;
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
 
         for (uint256 i = 0; i < numGroups; i++) {
-            (address prev, ) = defaultStrategy.getGroupPreviousAndNext(head);
+            (address prev,) = defaultStrategy.getGroupPreviousAndNext(head);
             uint256 stCelo = defaultStrategy.stCeloInGroup(head);
             uint256 realCelo = 0;
 
@@ -723,11 +712,8 @@ abstract contract CeloTestHelper {
             }
 
             // Store in reverse order (matching TS unshift / prepend)
-            groups[numGroups - 1 - i] = OrderedGroup({
-                group: head,
-                stCelo: stCelo,
-                realCelo: realCelo
-            });
+            groups[numGroups - 1 - i] =
+                OrderedGroup({group: head, stCelo: stCelo, realCelo: realCelo});
 
             head = prev;
         }
@@ -752,18 +738,14 @@ abstract contract CeloTestHelper {
         // Collect all validator signers for the given groups
         uint256 totalSigners = 0;
         for (uint256 i = 0; i < validatorGroups.length; i++) {
-            (address[] memory members, , , , , , ) = validators.getValidatorGroup(
-                validatorGroups[i]
-            );
+            (address[] memory members,,,,,,) = validators.getValidatorGroup(validatorGroups[i]);
             totalSigners += members.length;
         }
 
         address[] memory allSigners = new address[](totalSigners);
         uint256 signerIdx = 0;
         for (uint256 i = 0; i < validatorGroups.length; i++) {
-            (address[] memory members, , , , , , ) = validators.getValidatorGroup(
-                validatorGroups[i]
-            );
+            (address[] memory members,,,,,,) = validators.getValidatorGroup(validatorGroups[i]);
             for (uint256 j = 0; j < members.length; j++) {
                 allSigners[signerIdx++] = accounts.getValidatorSigner(members[j]);
             }
@@ -802,9 +784,7 @@ abstract contract CeloTestHelper {
         MockAccount account,
         Manager manager
     ) internal {
-        address[] memory defaultGroups = getDefaultGroups(
-            DefaultStrategy(address(defaultStrategy))
-        );
+        address[] memory defaultGroups = getDefaultGroups(DefaultStrategy(address(defaultStrategy)));
         address[] memory specificGroups = getSpecificGroups(specificStrategy);
 
         // Track unique groups and their combined stCELO amounts
@@ -822,8 +802,8 @@ abstract contract CeloTestHelper {
 
         // Add specific groups (merge if already present from default)
         for (uint256 i = 0; i < specificGroups.length; i++) {
-            (uint256 total, uint256 overflow, uint256 unhealthy) = specificStrategy
-                .getStCeloInGroup(specificGroups[i]);
+            (uint256 total, uint256 overflow, uint256 unhealthy) =
+                specificStrategy.getStCeloInGroup(specificGroups[i]);
             uint256 amount = total - overflow - unhealthy;
 
             // Check if group already exists from default strategy
@@ -875,16 +855,13 @@ abstract contract CeloTestHelper {
         require(groupAddresses.length >= 3, "Need at least 3 groups");
 
         // Derived vote amounts matching the TS test fixtures
-        uint256[3] memory votes = [
-            uint256(95_824 ether),
-            uint256(143_697 ether),
-            uint256(95_664 ether)
-        ];
+        uint256[3] memory votes =
+            [uint256(95_824 ether), uint256(143_697 ether), uint256(95_664 ether)];
 
         // Lock CELO and optionally activate groups (reverse order matches TS)
         for (uint256 i = 3; i > 0; i--) {
             uint256 idx = i - 1;
-            (address head, ) = defaultStrategy.getGroupsHead();
+            (address head,) = defaultStrategy.getGroupsHead();
 
             if (activateGroups) {
                 defaultStrategy.addActivatableGroup(groupAddresses[idx]);

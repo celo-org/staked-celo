@@ -62,7 +62,8 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
     }
 
     function test_SetPauser_AllowsMultiSigToSetItselfAsPauser() public {
-        bytes memory payload = abi.encodeWithSelector(IMultiSigFull.setPauser.selector, address(multiSig));
+        bytes memory payload =
+            abi.encodeWithSelector(IMultiSigFull.setPauser.selector, address(multiSig));
         _executeMultisigProposal(
             msig,
             _singleAddress(address(multiSig)),
@@ -76,13 +77,17 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
     }
 
     function test_SetPauser_DoesNotAllowOwnerToSetPauser() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, owner1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, owner1)
+        );
         vm.prank(owner1);
         msig.setPauser(nonOwner);
     }
 
     function test_SetPauser_DoesNotAllowNonOwnerToSetPauser() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.setPauser(nonOwner);
     }
@@ -133,7 +138,9 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
     }
 
     function test_PauseContracts_RevertsWhenCalledByNonOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernanceOrOwner.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernanceOrOwner.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.pauseContracts(_singleAddress(address(pausableTest)));
         // Kept verbatim from the original: the call above reverted, so PausableTest was
@@ -159,7 +166,9 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
 
     function test_UnpauseContracts_RevertsWhenCalledByOwner() public {
         _pausePausableTest();
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, owner1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, owner1)
+        );
         vm.prank(owner1);
         msig.unpauseContracts(_singleAddress(address(pausableTest)));
         assertTrue(pausableTest.isPaused());
@@ -167,7 +176,9 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
 
     function test_UnpauseContracts_RevertsWhenCalledByMultiSig() public {
         _pausePausableTest();
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, address(multiSig)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, address(multiSig))
+        );
         vm.prank(address(multiSig));
         msig.unpauseContracts(_singleAddress(address(pausableTest)));
         assertTrue(pausableTest.isPaused());
@@ -175,7 +186,9 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
 
     function test_UnpauseContracts_RevertsWhenCalledByNonOwner() public {
         _pausePausableTest();
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.unpauseContracts(_singleAddress(address(pausableTest)));
         assertTrue(pausableTest.isPaused());
@@ -187,15 +200,12 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
 
     function _setupPaused() internal returns (uint256 submittedProposal) {
         // Submit a proposal (confirmed only by owner1, not fully confirmed)
-        submittedProposal = _submitProposal(
-            owner1,
-            _singleAddress(nonOwner),
-            _singleUint(0),
-            _singleBytes(hex"")
-        );
+        submittedProposal =
+            _submitProposal(owner1, _singleAddress(nonOwner), _singleUint(0), _singleBytes(hex""));
 
         // Set mockPauserAddr as the pauser via multisig proposal
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.setPauser.selector, mockPauserAddr);
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.setPauser.selector, mockPauserAddr);
         _executeMultisigProposal(
             msig,
             _singleAddress(address(multiSig)),

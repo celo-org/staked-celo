@@ -24,11 +24,10 @@ interface DeployVm {
         view
         returns (string memory);
 
-    function envOr(
-        string calldata name,
-        string calldata delim,
-        address[] calldata defaultValue
-    ) external view returns (address[] memory);
+    function envOr(string calldata name, string calldata delim, address[] calldata defaultValue)
+        external
+        view
+        returns (address[] memory);
 
     function exists(string calldata path) external view returns (bool);
 
@@ -39,11 +38,9 @@ interface DeployVm {
         pure
         returns (address);
 
-    function serializeAddress(
-        string calldata objectKey,
-        string calldata valueKey,
-        address value
-    ) external returns (string memory);
+    function serializeAddress(string calldata objectKey, string calldata valueKey, address value)
+        external
+        returns (string memory);
 
     function serializeString(
         string calldata objectKey,
@@ -51,11 +48,9 @@ interface DeployVm {
         string calldata value
     ) external returns (string memory);
 
-    function serializeUint(
-        string calldata objectKey,
-        string calldata valueKey,
-        uint256 value
-    ) external returns (string memory);
+    function serializeUint(string calldata objectKey, string calldata valueKey, uint256 value)
+        external
+        returns (string memory);
 
     function writeJson(string calldata json, string calldata path) external;
 
@@ -92,23 +87,21 @@ library DeployLog {
 
     /// @notice Log a plain message.
     function s(string memory message) internal view {
-        (bool ok, ) = CONSOLE.staticcall(abi.encodeWithSignature("log(string)", message));
+        (bool ok,) = CONSOLE.staticcall(abi.encodeWithSignature("log(string)", message));
         ok;
     }
 
     /// @notice Log a labelled address.
     function a(string memory label, address value) internal view {
-        (bool ok, ) = CONSOLE.staticcall(
-            abi.encodeWithSignature("log(string,address)", label, value)
-        );
+        (bool ok,) =
+            CONSOLE.staticcall(abi.encodeWithSignature("log(string,address)", label, value));
         ok;
     }
 
     /// @notice Log a labelled number.
     function u(string memory label, uint256 value) internal view {
-        (bool ok, ) = CONSOLE.staticcall(
-            abi.encodeWithSignature("log(string,uint256)", label, value)
-        );
+        (bool ok,) =
+            CONSOLE.staticcall(abi.encodeWithSignature("log(string,uint256)", label, value));
         ok;
     }
 }
@@ -203,11 +196,9 @@ abstract contract DeployBase {
     /// @param name The contract name, e.g. `Manager`.
     /// @param proxy The ERC1967 proxy address.
     /// @param implementation The logic contract address.
-    function _recordProxyDeployment(
-        string memory name,
-        address proxy,
-        address implementation
-    ) internal {
+    function _recordProxyDeployment(string memory name, address proxy, address implementation)
+        internal
+    {
         _writeRecord(name, name, proxy, implementation);
         _writeRecord(string(abi.encodePacked(name, "_Proxy")), name, proxy, implementation);
         _recordImplementationDeployment(name, implementation);
@@ -216,14 +207,9 @@ abstract contract DeployBase {
     /// @notice Write the `<Name>_Implementation.json` record.
     /// @param name The contract name, e.g. `Manager`.
     /// @param implementation The logic contract address.
-    function _recordImplementationDeployment(string memory name, address implementation)
-        internal
-    {
+    function _recordImplementationDeployment(string memory name, address implementation) internal {
         _writeRecord(
-            string(abi.encodePacked(name, "_Implementation")),
-            name,
-            implementation,
-            address(0)
+            string(abi.encodePacked(name, "_Implementation")), name, implementation, address(0)
         );
     }
 

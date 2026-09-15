@@ -119,11 +119,8 @@ contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
         assertFalse(ms.isOwner(makeAddr("stranger")));
 
         uint256 proposalId = _submitSetDependenciesProposal();
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = ms.getProposal(proposalId);
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            ms.getProposal(proposalId);
 
         assertEq(destinations.length, 1);
         assertEq(destinations[0], address(manager));
@@ -145,22 +142,22 @@ contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
 
     function test_encodeProposalPayloadSupportsUintBoolAndNoArguments() public pure {
         assertTrue(
-            keccak256(PayloadLib.encodePayload("setMinCountOfActiveGroups(uint256)", "3")) ==
-                keccak256(
+            keccak256(PayloadLib.encodePayload("setMinCountOfActiveGroups(uint256)", "3"))
+                == keccak256(
                     abi.encodeWithSignature("setMinCountOfActiveGroups(uint256)", uint256(3))
                 )
         );
         assertTrue(
             keccak256(
-                PayloadLib.encodePayload("setAllowedToVoteOverMaxNumberOfGroups(bool)", "true")
-            ) ==
-                keccak256(
+                    PayloadLib.encodePayload("setAllowedToVoteOverMaxNumberOfGroups(bool)", "true")
+                )
+                == keccak256(
                     abi.encodeWithSignature("setAllowedToVoteOverMaxNumberOfGroups(bool)", true)
                 )
         );
         assertTrue(
-            keccak256(PayloadLib.encodePayload("setPauser()", "")) ==
-                keccak256(abi.encodeWithSignature("setPauser()"))
+            keccak256(PayloadLib.encodePayload("setPauser()", ""))
+                == keccak256(abi.encodeWithSignature("setPauser()"))
         );
     }
 
@@ -170,11 +167,8 @@ contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
 
     /// @dev Submits the setDependencies proposal as the first MultiSig owner.
     function _submitSetDependenciesProposal() private returns (uint256 proposalId) {
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = _singleOperation(address(manager), _setDependenciesPayload());
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            _singleOperation(address(manager), _setDependenciesPayload());
 
         vm.prank(multisigOwner0);
         proposalId = MultiSigTaskLib.submitProposal(ms, destinations, values, payloads);
@@ -182,14 +176,9 @@ contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
 
     /// @dev Runs a second proposal that lowers the confirmation requirement to one.
     function _lowerRequirementToOne() private {
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = _singleOperation(
-                multiSigProxy,
-                abi.encodeWithSignature("changeRequirement(uint256)", uint256(1))
-            );
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) = _singleOperation(
+            multiSigProxy, abi.encodeWithSignature("changeRequirement(uint256)", uint256(1))
+        );
 
         vm.prank(multisigOwner0);
         uint256 proposalId = MultiSigTaskLib.submitProposal(ms, destinations, values, payloads);
@@ -206,46 +195,40 @@ contract MultiSigTaskScriptsTest is TaskScriptsTestBase {
 
     /// @dev The Manager.setDependencies payload the encode scripts produce.
     function _setDependenciesPayload() private view returns (bytes memory) {
-        return
-            UpgradeProposalLib.managerSetDependenciesPayload(
-                address(stakedCelo),
-                address(account),
-                address(vote),
-                address(groupHealth),
-                address(specificGroupStrategy),
-                address(defaultStrategy)
-            );
+        return UpgradeProposalLib.managerSetDependenciesPayload(
+            address(stakedCelo),
+            address(account),
+            address(vote),
+            address(groupHealth),
+            address(specificGroupStrategy),
+            address(defaultStrategy)
+        );
     }
 
     /// @dev The same dependencies as the comma separated ARGS string of the encode script.
     function _setDependenciesArgs() private view returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    taskVm.toString(address(stakedCelo)),
-                    ",",
-                    taskVm.toString(address(account)),
-                    ",",
-                    taskVm.toString(address(vote)),
-                    ",",
-                    taskVm.toString(address(groupHealth)),
-                    ",",
-                    taskVm.toString(address(specificGroupStrategy)),
-                    ",",
-                    taskVm.toString(address(defaultStrategy))
-                )
-            );
+        return string(
+            abi.encodePacked(
+                taskVm.toString(address(stakedCelo)),
+                ",",
+                taskVm.toString(address(account)),
+                ",",
+                taskVm.toString(address(vote)),
+                ",",
+                taskVm.toString(address(groupHealth)),
+                ",",
+                taskVm.toString(address(specificGroupStrategy)),
+                ",",
+                taskVm.toString(address(defaultStrategy))
+            )
+        );
     }
 
     /// @dev A one operation proposal with a zero CELO value.
     function _singleOperation(address destination, bytes memory payload)
         private
         pure
-        returns (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        )
+        returns (address[] memory destinations, uint256[] memory values, bytes[] memory payloads)
     {
         destinations = new address[](1);
         values = new uint256[](1);
@@ -283,11 +266,8 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         owners[0] = multisigOwner0;
         deployCore(REGISTRY_ADDRESS, owners, MULTISIG_DELAY, MULTISIG_DELAY, 1);
 
-        mockGroupHealth = upgradeToMockGroupHealthE2E(
-            multiSig,
-            multisigOwner0,
-            address(groupHealth)
-        );
+        mockGroupHealth =
+            upgradeToMockGroupHealthE2E(multiSig, multisigOwner0, address(groupHealth));
 
         _registerGroups(3);
         electMockValidatorGroupsAndUpdate(mockGroupHealth, groups);
@@ -329,30 +309,20 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         assertNotEq(votedGroup, ADDRESS_ZERO);
 
         AccountTaskLib.activateAndVote(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask
         );
 
         assertEq(accountTask.scheduledVotesForGroup(votedGroup), 0);
-        assertTrue(
-            celoElection.getPendingVotesForGroupByAccount(votedGroup, address(account)) > 0
-        );
+        assertTrue(celoElection.getPendingVotesForGroupByAccount(votedGroup, address(account)) > 0);
 
         // A second run after the epoch boundary activates the pending votes.
         mineToNextEpoch();
         assertTrue(celoElection.hasActivatablePendingVotes(address(account), votedGroup));
 
         AccountTaskLib.activateAndVote(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask
         );
-        assertTrue(
-            celoElection.getActiveVotesForGroupByAccount(votedGroup, address(account)) > 0
-        );
+        assertTrue(celoElection.getActiveVotesForGroupByAccount(votedGroup, address(account)) > 0);
     }
 
     // =========================================================================
@@ -367,16 +337,11 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         _scheduleTransfer(fromGroup, toGroup, 1 ether);
         assertEq(accountTask.scheduledRevokeForGroup(fromGroup), 1 ether);
 
-        uint256 votesBefore = celoElection.getTotalVotesForGroupByAccount(
-            fromGroup,
-            address(account)
-        );
+        uint256 votesBefore =
+            celoElection.getTotalVotesForGroupByAccount(fromGroup, address(account));
 
         AccountTaskLib.revoke(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask
         );
 
         assertEq(accountTask.scheduledRevokeForGroup(fromGroup), 0);
@@ -401,11 +366,7 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         assertTrue(_totalScheduledWithdrawals() > 0);
 
         AccountTaskLib.withdraw(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask,
-            depositor
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask, depositor
         );
         assertEq(_totalScheduledWithdrawals(), 0);
 
@@ -413,11 +374,8 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         assertTrue(pending > 0);
 
         // The withdrawal is still inside the LockedGold unlocking period.
-        (bool readyEarly, , ) = AccountTaskLib.pendingWithdrawalIndexes(
-            accountTask,
-            lockedGoldTask,
-            depositor
-        );
+        (bool readyEarly,,) =
+            AccountTaskLib.pendingWithdrawalIndexes(accountTask, lockedGoldTask, depositor);
         assertFalse(readyEarly);
 
         timeTravel(celoLockedGold.unlockingPeriod() + 1);
@@ -454,26 +412,18 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
     function _depositActivateAndVote() private {
         _deposit(DEPOSIT_AMOUNT);
         AccountTaskLib.activateAndVote(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask
         );
         mineToNextEpoch();
         AccountTaskLib.activateAndVote(
-            accountTask,
-            defaultStrategyTask,
-            specificGroupStrategyTask,
-            electionTask
+            accountTask, defaultStrategyTask, specificGroupStrategyTask, electionTask
         );
     }
 
     /// @dev Registers `count` validator groups with one validator each.
     function _registerGroups(uint256 count) private {
         for (uint256 i = 0; i < count; i++) {
-            address group = makeAddr(
-                string(abi.encodePacked("task-group-", vm.toString(i)))
-            );
+            address group = makeAddr(string(abi.encodePacked("task-group-", vm.toString(i))));
             vm.deal(group, 100_000 ether);
             address validator = createWallet(100_000 ether);
             registerValidatorGroup(group, 1);
@@ -491,16 +441,10 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
             destinations[i] = address(defaultStrategy);
             payloads[i] = abi.encodeWithSignature("addActivatableGroup(address)", groups[i]);
         }
-        submitAndExecuteMultiSigProposal(
-            multiSig,
-            destinations,
-            values,
-            payloads,
-            multisigOwner0
-        );
+        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
 
         for (uint256 i = 0; i < groups.length; i++) {
-            (address head, ) = defaultStrategy.getGroupsHead();
+            (address head,) = defaultStrategy.getGroupsHead();
             defaultStrategy.activateGroup(groups[i], ADDRESS_ZERO, head);
         }
     }
@@ -512,21 +456,11 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
         bytes[] memory payloads = new bytes[](1);
         destinations[0] = address(account);
         payloads[0] = UpgradeProposalLib.setAllowedToVoteOverMaxNumberOfGroupsPayload(true);
-        submitAndExecuteMultiSigProposal(
-            multiSig,
-            destinations,
-            values,
-            payloads,
-            multisigOwner0
-        );
+        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
     }
 
     /// @dev Moves `amount` CELO from one group to another, which schedules a revoke.
-    function _scheduleTransfer(
-        address fromGroup,
-        address toGroup,
-        uint256 amount
-    ) private {
+    function _scheduleTransfer(address fromGroup, address toGroup, uint256 amount) private {
         address[] memory fromGroups = new address[](1);
         uint256[] memory fromVotes = new uint256[](1);
         address[] memory toGroups = new address[](1);
@@ -573,10 +507,7 @@ contract AccountAndManagerTaskScriptsTest is TaskScriptsTestBase {
     /// @dev Total CELO scheduled to be withdrawn for the depositor across all groups.
     function _totalScheduledWithdrawals() private view returns (uint256 total) {
         for (uint256 i = 0; i < groups.length; i++) {
-            total += accountTask.scheduledWithdrawalsForGroupAndBeneficiary(
-                groups[i],
-                depositor
-            );
+            total += accountTask.scheduledWithdrawalsForGroupAndBeneficiary(groups[i], depositor);
         }
     }
 }
@@ -626,11 +557,7 @@ contract PayloadEncodingTest is CeloTestHelper {
     // =========================================================================
 
     function test_encodesUintBoundaries() public view {
-        _assertEncodes(
-            "setCap(uint8)",
-            "255",
-            abi.encodeWithSignature("setCap(uint8)", uint8(255))
-        );
+        _assertEncodes("setCap(uint8)", "255", abi.encodeWithSignature("setCap(uint8)", uint8(255)));
         _assertEncodes("setCap(uint8)", "0", abi.encodeWithSignature("setCap(uint8)", uint8(0)));
         _assertEncodes(
             "setCap(uint256)",
@@ -641,19 +568,13 @@ contract PayloadEncodingTest is CeloTestHelper {
 
     function test_encodesIntBoundaries() public view {
         _assertEncodes(
-            "setDelta(int8)",
-            "-128",
-            abi.encodeWithSignature("setDelta(int8)", int8(-128))
+            "setDelta(int8)", "-128", abi.encodeWithSignature("setDelta(int8)", int8(-128))
         );
         _assertEncodes(
-            "setDelta(int8)",
-            "127",
-            abi.encodeWithSignature("setDelta(int8)", int8(127))
+            "setDelta(int8)", "127", abi.encodeWithSignature("setDelta(int8)", int8(127))
         );
         _assertEncodes(
-            "setDelta(int256)",
-            "-1",
-            abi.encodeWithSignature("setDelta(int256)", int256(-1))
+            "setDelta(int256)", "-1", abi.encodeWithSignature("setDelta(int256)", int256(-1))
         );
     }
 
@@ -683,10 +604,7 @@ contract PayloadEncodingTest is CeloTestHelper {
             "setGroup(address,uint256,bool)",
             string(abi.encodePacked(ADDRESS_ARGUMENT_LOWER_CASE, ", 7, false")),
             abi.encodeWithSignature(
-                "setGroup(address,uint256,bool)",
-                ADDRESS_ARGUMENT,
-                uint256(7),
-                false
+                "setGroup(address,uint256,bool)", ADDRESS_ARGUMENT, uint256(7), false
             )
         );
     }
@@ -814,13 +732,10 @@ contract PayloadEncodingTest is CeloTestHelper {
     // =========================================================================
 
     /// @dev Asserts the encoder reproduces what the compiler would encode for the same call.
-    function _assertEncodes(
-        string memory signature,
-        string memory argsCsv,
-        bytes memory expected
-    ) private view {
-        assertTrue(
-            keccak256(encoder.encodePayload(signature, argsCsv)) == keccak256(expected)
-        );
+    function _assertEncodes(string memory signature, string memory argsCsv, bytes memory expected)
+        private
+        view
+    {
+        assertTrue(keccak256(encoder.encodePayload(signature, argsCsv)) == keccak256(expected));
     }
 }

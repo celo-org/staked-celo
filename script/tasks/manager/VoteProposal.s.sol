@@ -58,12 +58,7 @@ contract VoteProposalScript is TaskBase {
         uint256 abstainVotes
     ) internal {
         ManagerTaskLib.voteProposal(
-            manager,
-            governanceContract,
-            proposalId,
-            yesVotes,
-            noVotes,
-            abstainVotes
+            manager, governanceContract, proposalId, yesVotes, noVotes, abstainVotes
         );
     }
 }

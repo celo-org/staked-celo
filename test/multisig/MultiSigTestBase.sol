@@ -24,11 +24,10 @@ interface IMultiSigFull {
     // --- additional ---
     function minDelay() external view returns (uint256);
     function initialize(address[] calldata, uint256, uint256) external;
-    function getProposal(uint256 proposalId) external view returns (
-        address[] memory destinations,
-        uint256[] memory values,
-        bytes[] memory payloads
-    );
+    function getProposal(uint256 proposalId)
+        external
+        view
+        returns (address[] memory destinations, uint256[] memory values, bytes[] memory payloads);
     function getConfirmations(uint256 proposalId) external view returns (address[] memory);
     function isFullyConfirmed(uint256 proposalId) external view returns (bool);
     function isConfirmedBy(uint256 proposalId, address owner) external view returns (bool);
@@ -163,11 +162,7 @@ abstract contract MultiSigTestBase is TestAccountDeployHelper, MultiSigHelper {
         IVmExt(address(vm)).etch(REGISTRY_ADDRESS, runtimeCode);
 
         // Set deployer as owner at slot 0 (Ownable._owner)
-        IVmExt(address(vm)).store(
-            REGISTRY_ADDRESS,
-            bytes32(0),
-            bytes32(uint256(uint160(deployer)))
-        );
+        IVmExt(address(vm)).store(REGISTRY_ADDRESS, bytes32(0), bytes32(uint256(uint160(deployer))));
 
         // Deploy MockGovernance and register it via direct call on 0xce10
         mockGovernance = new MockGovernance();

@@ -57,8 +57,8 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     function setUp() public {
         loadDevchain();
 
-        (nonManager, ) = randomSigner(100 ether);
-        (_mockSlasher, ) = randomSigner(100 ether);
+        (nonManager,) = randomSigner(100 ether);
+        (_mockSlasher,) = randomSigner(100 ether);
 
         deployTestGroupHealth(REGISTRY_ADDRESS);
         _pauser = owner;
@@ -90,7 +90,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     ///      `activatedGroups` of the original.
     function _registerGroups() private {
         for (uint256 i = 0; i < 10; i++) {
-            (address group, ) = randomSigner(11_000 ether * VALIDATOR_MEMBERS);
+            (address group,) = randomSigner(11_000 ether * VALIDATOR_MEMBERS);
             allGroupAddresses.push(group);
             if (i < 3) {
                 activatedGroupAddresses.push(group);
@@ -113,9 +113,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
      *      registers.
      */
     function _raiseMaxGroupSize(uint256 size) private {
-        ICeloValidatorsMaxGroupSize groupSize = ICeloValidatorsMaxGroupSize(
-            address(celoValidators)
-        );
+        ICeloValidatorsMaxGroupSize groupSize = ICeloValidatorsMaxGroupSize(address(celoValidators));
         if (groupSize.maxGroupSize() >= size) {
             return;
         }
@@ -142,24 +140,15 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
 
     /// @dev Elect first activated group without updating health. Returns mockedIndexes.
     function _electFirstGroupNoUpdate() internal returns (uint256[] memory) {
-        return
-            electMockValidatorGroupsAndUpdate(
-                mockGroupHealth,
-                _toArray(activatedGroupAddresses[0]),
-                false,
-                false,
-                true
-            );
+        return electMockValidatorGroupsAndUpdate(
+            mockGroupHealth, _toArray(activatedGroupAddresses[0]), false, false, true
+        );
     }
 
     /// @dev `electMockValidatorGroupsAndUpdate(..., activatedGroupAddresses, false, false)`.
     function _setupForUpdateGroupHealth() internal {
         electMockValidatorGroupsAndUpdate(
-            mockGroupHealth,
-            activatedGroupAddresses,
-            false,
-            false,
-            true
+            mockGroupHealth, activatedGroupAddresses, false, false, true
         );
     }
 
@@ -305,10 +294,8 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
 
     // Test 11: Reverts when group is already healthy
     function test_markGroupHealthy_RevertsWhenGroupAlreadyHealthy() public {
-        uint256[] memory mockedIndexes = electMockValidatorGroupsAndUpdate(
-            mockGroupHealth,
-            activatedGroupAddresses
-        );
+        uint256[] memory mockedIndexes =
+            electMockValidatorGroupsAndUpdate(mockGroupHealth, activatedGroupAddresses);
 
         vm.expectRevert(
             abi.encodeWithSelector(GroupHealth.GroupHealthy.selector, activatedGroupAddresses[0])

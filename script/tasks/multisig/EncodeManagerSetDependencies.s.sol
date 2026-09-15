@@ -33,11 +33,7 @@ contract EncodeManagerSetDependenciesScript is TaskBase {
     function execute()
         internal
         view
-        returns (
-            address destination,
-            uint256 value,
-            bytes memory payload
-        )
+        returns (address destination, uint256 value, bytes memory payload)
     {
         destination = deploymentAddress("Manager");
         value = 0;

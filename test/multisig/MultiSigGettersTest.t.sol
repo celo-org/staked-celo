@@ -26,7 +26,9 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_GetConfirmations_ReturnsConfirmations() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         address[] memory confirmations = msig.getConfirmations(pid);
         assertEq(confirmations.length, 1);
@@ -39,7 +41,9 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_IsFullyConfirmed_ReturnsTrueWhenFullyConfirmed() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -57,7 +61,9 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_IsConfirmedBy_ReturnsTrueWhenConfirmed() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         assertTrue(msig.isConfirmedBy(pid, owner1));
     }
 
@@ -72,7 +78,9 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_IsProposalTimelockReached_ReturnsTrueWhenReached() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -82,13 +90,17 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_IsProposalTimelockReached_ReturnsFalseForUnscheduled() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         assertFalse(msig.isProposalTimelockReached(pid));
     }
 
     function test_IsProposalTimelockReached_ReturnsFalseForUnscheduledAfterDelay() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.warp(block.timestamp + delay + 1);
         assertFalse(msig.isProposalTimelockReached(pid));
@@ -96,7 +108,9 @@ contract MultiSigGettersTest is MultiSigTestBase {
 
     function test_IsProposalTimelockReached_ReturnsFalseWhenTimelockNotElapsed() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);

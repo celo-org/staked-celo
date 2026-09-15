@@ -73,8 +73,7 @@ library MultiSigTaskLib {
         if (!multiSig.isProposalTimelockReached(proposalId)) {
             TaskConsole.log("proposal", proposalId);
             TaskConsole.log(
-                "executable soonest at (unix seconds)",
-                multiSig.getTimestamp(proposalId)
+                "executable soonest at (unix seconds)", multiSig.getTimestamp(proposalId)
             );
             revert("Timelock of proposal has not been reached yet");
         }

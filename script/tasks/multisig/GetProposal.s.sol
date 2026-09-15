@@ -26,11 +26,8 @@ contract GetProposalScript is TaskBase {
     /// @param multiSigContract The MultiSig contract to read from.
     /// @param proposalId The ID of the proposal.
     function execute(IMultiSigTask multiSigContract, uint256 proposalId) internal view {
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = multiSigContract.getProposal(proposalId);
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            multiSigContract.getProposal(proposalId);
 
         TaskConsole.log("Proposal", proposalId);
         TaskConsole.log("destinations", FormatLib.join(destinations));

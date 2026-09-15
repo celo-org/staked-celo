@@ -29,11 +29,10 @@ library ProposalBuilder {
     /// @param proposal The builder to append to.
     /// @param destination The address the operation targets.
     /// @param payload The calldata of the operation.
-    function add(
-        Proposal memory proposal,
-        address destination,
-        bytes memory payload
-    ) internal pure {
+    function add(Proposal memory proposal, address destination, bytes memory payload)
+        internal
+        pure
+    {
         require(proposal.count < proposal.destinations.length, "proposal: capacity exceeded");
         proposal.destinations[proposal.count] = destination;
         proposal.values[proposal.count] = 0;
@@ -49,11 +48,7 @@ library ProposalBuilder {
     function build(Proposal memory proposal)
         internal
         pure
-        returns (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        )
+        returns (address[] memory destinations, uint256[] memory values, bytes[] memory payloads)
     {
         destinations = new address[](proposal.count);
         values = new uint256[](proposal.count);

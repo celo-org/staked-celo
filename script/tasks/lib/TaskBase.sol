@@ -56,9 +56,8 @@ abstract contract TaskBase {
      * @return The `address` field of the deployment file.
      */
     function deploymentAddress(string memory name) internal view returns (address) {
-        string memory path = string(
-            abi.encodePacked("deployments/", networkName(), "/", name, ".json")
-        );
+        string memory path =
+            string(abi.encodePacked("deployments/", networkName(), "/", name, ".json"));
         return vm.parseJsonAddress(vm.readFile(path), ".address");
     }
 

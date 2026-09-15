@@ -47,14 +47,10 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     event ContractPaused();
     event ContractUnpaused();
     event DepositVoteDistributionGenerated(
-        address indexed group,
-        address[] groups,
-        uint256[] votes
+        address indexed group, address[] groups, uint256[] votes
     );
     event WithdrawalVoteDistributionGenerated(
-        address indexed group,
-        address[] groups,
-        uint256[] votes
+        address indexed group, address[] groups, uint256[] votes
     );
 
     // =========================================================================
@@ -161,28 +157,24 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
             address(mockDefaultStrategy)
         );
         specificGroupStrategy.setDependencies(
-            address(mockAccount),
-            address(mockGroupHealth),
-            address(mockDefaultStrategy)
+            address(mockAccount), address(mockGroupHealth), address(mockDefaultStrategy)
         );
         mockDefaultStrategy.setDependencies(
-            address(mockAccount),
-            address(mockGroupHealth),
-            address(specificGroupStrategy)
+            address(mockAccount), address(mockGroupHealth), address(specificGroupStrategy)
         );
         vm.stopPrank();
     }
 
     function _createTestAccounts() private {
         pauser = owner;
-        (nonOwner, ) = randomSigner(100 ether);
-        (nonVote, ) = randomSigner(100_000 ether);
-        (nonStakedCelo, ) = randomSigner(100 ether);
-        (nonAccount, ) = randomSigner(100 ether);
-        (nonManager, ) = randomSigner(100 ether);
-        (voter, ) = randomSigner(10_000_000_000 ether);
-        (someone, ) = randomSigner(100 ether);
-        (depositor, ) = randomSigner(500 ether);
+        (nonOwner,) = randomSigner(100 ether);
+        (nonVote,) = randomSigner(100_000 ether);
+        (nonStakedCelo,) = randomSigner(100 ether);
+        (nonAccount,) = randomSigner(100 ether);
+        (nonManager,) = randomSigner(100 ether);
+        (voter,) = randomSigner(10_000_000_000 ether);
+        (someone,) = randomSigner(100 ether);
+        (depositor,) = randomSigner(500 ether);
 
         createCeloAccount(voter);
         createCeloAccount(someone);
@@ -191,16 +183,13 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     /// @dev Registers 11 groups; groups[1] has two members so its voting limit is higher.
     function _registerGroups() private {
         for (uint256 i = 0; i < 11; i++) {
-            (address group, ) = randomSigner(21_000 ether);
+            (address group,) = randomSigner(21_000 ether);
             groupAddresses.push(group);
         }
         for (uint256 i = 0; i < 11; i++) {
             if (i == 1) {
                 registerValidatorGroup(groupAddresses[i], 2);
-                registerValidatorAndAddToGroupMembers(
-                    groupAddresses[i],
-                    createWallet(11_000 ether)
-                );
+                registerValidatorAndAddToGroupMembers(groupAddresses[i], createWallet(11_000 ether));
             } else {
                 registerValidatorGroup(groupAddresses[i], 1);
             }
@@ -216,7 +205,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     ///      `for (let i = 0; i < count; i++)` loops of the original `beforeEach` blocks.
     function _activateGroups(uint256 count) internal {
         for (uint256 i = 0; i < count; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -231,27 +220,18 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     /// @dev updateGroupCeloBasedOnProtocolStCelo over the fixture contracts.
     function _updateGroupCelo() internal {
         updateGroupCeloBasedOnProtocolStCelo(
-            mockDefaultStrategy,
-            specificGroupStrategy,
-            mockAccount,
-            manager
+            mockDefaultStrategy, specificGroupStrategy, mockAccount, manager
         );
     }
 
     /// @dev The votes `group` can still receive from the Election contract.
     ///      Replaces the hardcoded ganache capacities of the original suite.
     function _receivableVotes(address group) internal view returns (uint256) {
-        return
-            celoElection.getNumVotesReceivable(group) -
-            celoElection.getTotalVotesForGroup(group);
+        return celoElection.getNumVotesReceivable(group) - celoElection.getTotalVotesForGroup(group);
     }
 
     /// @dev Ports ElectionWrapper.revokePending: resolves index and neighbours, then revokes.
-    function _revokePending(
-        address voterAddress,
-        address group,
-        uint256 value
-    ) internal {
+    function _revokePending(address voterAddress, address group, uint256 value) internal {
         address[] memory votedFor = celoElection.getGroupsVotedForByAccount(voterAddress);
         uint256 index = type(uint256).max;
         for (uint256 i = 0; i < votedFor.length; i++) {
@@ -268,17 +248,13 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     }
 
     function _lastTransferValues() internal view returns (TransferValues memory values) {
-        (
-            values.fromGroups,
-            values.fromVotes,
-            values.toGroups,
-            values.toVotes
-        ) = mockAccount.getLastTransferValues();
+        (values.fromGroups, values.fromVotes, values.toGroups, values.toVotes) =
+            mockAccount.getLastTransferValues();
     }
 
     function _stCeloInGroup(address group) internal view returns (GroupStCelo memory amounts) {
-        (amounts.total, amounts.overflow, amounts.unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(group);
+        (amounts.total, amounts.overflow, amounts.unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(group);
     }
 
     // =========================================================================
@@ -306,10 +282,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     // =========================================================================
 
     /// @dev chai `to.deep.eq` on an address array: same length, same order.
-    function _assertEqAddresses(address[] memory actual, address[] memory expected)
-        internal
-        pure
-    {
+    function _assertEqAddresses(address[] memory actual, address[] memory expected) internal pure {
         require(actual.length == expected.length, "address array length mismatch");
         for (uint256 i = 0; i < actual.length; i++) {
             require(actual[i] == expected[i], "address array mismatch");
@@ -371,10 +344,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
 
     /// @dev chai `to.have.deep.members` for uint arrays. Multiset comparison, see
     ///      `_assertMembersAddresses`.
-    function _assertMembersUints(uint256[] memory actual, uint256[] memory expected)
-        internal
-        pure
-    {
+    function _assertMembersUints(uint256[] memory actual, uint256[] memory expected) internal pure {
         if (actual.length != expected.length) {
             revert(
                 string(

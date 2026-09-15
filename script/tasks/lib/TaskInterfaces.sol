@@ -20,20 +20,14 @@ interface IElectionLookup {
         view
         returns (address[] memory groups, uint256[] memory votes);
 
-    function getGroupsVotedForByAccount(address account)
-        external
-        view
-        returns (address[] memory);
+    function getGroupsVotedForByAccount(address account) external view returns (address[] memory);
 
     function getPendingVotesForGroupByAccount(address group, address account)
         external
         view
         returns (uint256);
 
-    function hasActivatablePendingVotes(address account, address group)
-        external
-        view
-        returns (bool);
+    function hasActivatablePendingVotes(address account, address group) external view returns (bool);
 
     /// @dev Declared `view` here; the core contract exposes it without the view modifier.
     function allowedToVoteOverMaxNumberOfGroups(address account) external view returns (bool);
@@ -54,11 +48,7 @@ interface IGovernanceLookup {
 
 /// @notice StakedCelo Account contract.
 interface IAccountTask {
-    function activateAndVote(
-        address group,
-        address voteLesser,
-        address voteGreater
-    ) external;
+    function activateAndVote(address group, address voteLesser, address voteGreater) external;
 
     function revokeVotes(
         address group,
@@ -164,11 +154,7 @@ interface IMultiSigTask {
     function getProposal(uint256 proposalId)
         external
         view
-        returns (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        );
+        returns (address[] memory destinations, uint256[] memory values, bytes[] memory payloads);
 
     function getConfirmations(uint256 proposalId) external view returns (address[] memory);
 

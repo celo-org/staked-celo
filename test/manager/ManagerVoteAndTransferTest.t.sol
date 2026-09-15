@@ -164,7 +164,7 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         setUpDepositorVotedForSpecificStrategy();
         address specificGroupStrategyAddress = groupAddresses[2];
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
 
         vm.prank(address(mockStakedCelo));
         manager.transfer(depositor, depositor2, SPECIFIC_GROUP_DEPOSIT);
@@ -214,13 +214,13 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         manager.deposit{value: differentDeposit}();
         mockAccount.setCeloForGroup(differentSpecificGroupStrategyAddress, differentDeposit);
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
 
         vm.prank(address(mockStakedCelo));
         manager.transfer(depositor2, depositor, differentDeposit);
 
-        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(specificGroupStrategyAddress);
+        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(specificGroupStrategyAddress);
         assertEq(stCeloInStrategy, differentDeposit + SPECIFIC_GROUP_DEPOSIT);
         assertEq(overflow, 0);
         assertEq(unhealthy, differentDeposit);
@@ -248,8 +248,8 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         vm.prank(address(mockStakedCelo));
         manager.transfer(depositor2, depositor, differentDeposit);
 
-        (uint256 stCeloInDifferent, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(differentSpecificGroupStrategyAddress);
+        (uint256 stCeloInDifferent, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(differentSpecificGroupStrategyAddress);
         assertEq(
             specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress),
             differentDeposit + SPECIFIC_GROUP_DEPOSIT
@@ -265,9 +265,9 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         setUpTransfer();
         uint256 deposit = setUpOverflowingUnhealthySpecificStrategy();
 
-        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
-        (uint256 stCeloInDifferent, , ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[4]);
+        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInDifferent,,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[4]);
         assertEq(stCeloInStrategy, 0);
         assertEq(overflow, 0);
         assertEq(unhealthy, 0);
@@ -318,7 +318,7 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
     ///      it.
     function setUpTransfer() private {
         vm.prank(nonVote);
-        (bool sent, ) = address(mockStakedCelo).call{value: 1 ether}("");
+        (bool sent,) = address(mockStakedCelo).call{value: 1 ether}("");
         assertTrue(sent);
     }
 
@@ -363,8 +363,8 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         mockGroupHealth.updateGroupHealth(groupAddresses[0]);
         specificGroupStrategy.rebalanceWhenHealthChanged(groupAddresses[0]);
 
-        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, deposit);
         assertEq(overflow, depositOverCapacity);
         assertEq(unhealthy, firstGroupCapacity);

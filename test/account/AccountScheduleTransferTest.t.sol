@@ -23,12 +23,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
         address[] memory groups = _allGroups();
         vm.prank(managerSigner);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Account.NotEnoughCeloInGroup.selector,
-                groupAddresses[0],
-                100,
-                0
-            )
+            abi.encodeWithSelector(Account.NotEnoughCeloInGroup.selector, groupAddresses[0], 100, 0)
         );
         account.scheduleTransfer(groups, _amounts(100, 30, 80), groups, _amounts(30, 70, 100));
     }
@@ -37,12 +32,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
         address[] memory groups = _allGroups();
         vm.prank(managerSigner);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Account.NotEnoughCeloInGroup.selector,
-                groupAddresses[0],
-                100,
-                0
-            )
+            abi.encodeWithSelector(Account.NotEnoughCeloInGroup.selector, groupAddresses[0], 100, 0)
         );
         account.scheduleTransfer(groups, _amounts(100, 30, 60), groups, _amounts(30, 70, 100));
     }
@@ -75,8 +65,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
     {
         _setupMovedToSecondGroup();
         assertEq(
-            account.getCeloForGroup(groupAddresses[0]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[0]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
     }
 
@@ -99,8 +88,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
             ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED + amountTransferred2
         );
         assertEq(
-            account.getCeloForGroup(groupAddresses[1]),
-            AMOUNT_TRANSFERRED - amountTransferred2
+            account.getCeloForGroup(groupAddresses[1]), AMOUNT_TRANSFERRED - amountTransferred2
         );
     }
 
@@ -112,8 +100,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
         _scheduleTransfer(groupAddresses[1], groupAddresses[2], amountTransferred2);
 
         assertEq(
-            account.getCeloForGroup(groupAddresses[1]),
-            AMOUNT_TRANSFERRED - amountTransferred2
+            account.getCeloForGroup(groupAddresses[1]), AMOUNT_TRANSFERRED - amountTransferred2
         );
         assertEq(account.getCeloForGroup(groupAddresses[2]), amountTransferred2);
     }
@@ -135,8 +122,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
     {
         _setupTransferredToMultipleGroups();
         assertEq(
-            account.getCeloForGroup(groupAddresses[0]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[0]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
     }
 
@@ -198,12 +184,10 @@ contract AccountScheduleTransferTest is AccountTestBase {
     {
         _setupTransferredFromMultipleToOne();
         assertEq(
-            account.getCeloForGroup(groupAddresses[0]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[0]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
         assertEq(
-            account.getCeloForGroup(groupAddresses[1]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[1]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
     }
 
@@ -241,12 +225,10 @@ contract AccountScheduleTransferTest is AccountTestBase {
     {
         _setupTransferredFromMultipleToMultiple();
         assertEq(
-            account.getCeloForGroup(groupAddresses[0]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[0]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
         assertEq(
-            account.getCeloForGroup(groupAddresses[1]),
-            ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
+            account.getCeloForGroup(groupAddresses[1]), ORIGINAL_GROUP_AMOUNT - AMOUNT_TRANSFERRED
         );
     }
 }

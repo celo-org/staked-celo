@@ -55,8 +55,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         );
         _assertEqAddresses(getSpecificGroups(specificGroupStrategy), _addresses(specificGroup));
         _assertEqAddresses(
-            getBlockedSpecificGroupStrategies(specificGroupStrategy),
-            _addresses(specificGroup)
+            getBlockedSpecificGroupStrategies(specificGroupStrategy), _addresses(specificGroup)
         );
     }
 
@@ -82,8 +81,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroup);
 
         _assertMembersAddresses(
-            getBlockedSpecificGroupStrategies(specificGroupStrategy),
-            _addresses(specificGroup)
+            getBlockedSpecificGroupStrategies(specificGroupStrategy), _addresses(specificGroup)
         );
     }
 
@@ -115,8 +113,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupAlreadyBlocked.selector,
-                groupAddresses[3]
+                SpecificGroupStrategy.GroupAlreadyBlocked.selector, groupAddresses[3]
             )
         );
         specificGroupStrategy.blockGroup(groupAddresses[3]);
@@ -138,7 +135,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
     {
         _whenTheGroupIsAllowed();
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
 
         vm.prank(owner);
         specificGroupStrategy.blockGroup(specificGroup);
@@ -180,8 +177,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupNotEligible.selector,
-                groupAddresses[0]
+                SpecificGroupStrategy.GroupNotEligible.selector, groupAddresses[0]
             )
         );
         specificGroupStrategy.unblockGroup(groupAddresses[0]);
@@ -191,8 +187,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.FailedToUnblockGroup.selector,
-                groupAddresses[0]
+                SpecificGroupStrategy.FailedToUnblockGroup.selector, groupAddresses[0]
             )
         );
         specificGroupStrategy.unblockGroup(groupAddresses[0]);
@@ -202,8 +197,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         _whenTheGroupIsBlocked();
 
         _assertMembersAddresses(
-            getBlockedSpecificGroupStrategies(specificGroupStrategy),
-            _addresses(specificGroup)
+            getBlockedSpecificGroupStrategies(specificGroupStrategy), _addresses(specificGroup)
         );
     }
 
@@ -214,8 +208,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         specificGroupStrategy.unblockGroup(specificGroup);
 
         _assertMembersAddresses(
-            getBlockedSpecificGroupStrategies(specificGroupStrategy),
-            new address[](0)
+            getBlockedSpecificGroupStrategies(specificGroupStrategy), new address[](0)
         );
     }
 

@@ -23,10 +23,10 @@ library GroupsLib {
     {
         uint256 length = defaultStrategy.getNumberOfGroups();
         groups = new address[](length);
-        (address key, ) = defaultStrategy.getGroupsHead();
+        (address key,) = defaultStrategy.getGroupsHead();
         for (uint256 i = 0; i < length; i++) {
             groups[i] = key;
-            (key, ) = defaultStrategy.getGroupPreviousAndNext(key);
+            (key,) = defaultStrategy.getGroupPreviousAndNext(key);
         }
     }
 
@@ -86,11 +86,11 @@ library GroupsLib {
     }
 
     /// @dev Whether the first `count` entries of `list` hold `value`.
-    function _contains(
-        address[] memory list,
-        uint256 count,
-        address value
-    ) private pure returns (bool) {
+    function _contains(address[] memory list, uint256 count, address value)
+        private
+        pure
+        returns (bool)
+    {
         for (uint256 i = 0; i < count; i++) {
             if (list[i] == value) {
                 return true;

@@ -10,7 +10,6 @@ import "./CeloTestHelper.sol";
  * @dev Ports submitAndExecuteMultiSigProposal from test-ts/utils-multisig.ts
  */
 abstract contract MultiSigHelper is CeloTestHelper {
-
     /**
      * @notice Submits a proposal to the MultiSig contract and executes it after the delay
      * @param multiSig The IMultiSig contract instance

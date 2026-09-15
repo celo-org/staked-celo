@@ -122,15 +122,15 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         loadDevchain();
         deployFullTestManager(REGISTRY_ADDRESS);
 
-        (nonOwner, ) = randomSigner(100 ether);
-        (someone, ) = randomSigner(100 ether);
-        (mockSlasher, ) = randomSigner(100 ether);
-        (depositor, ) = randomSigner(500 ether);
-        (depositor2, ) = randomSigner(500 ether);
-        (voter, ) = randomSigner(10_000_000_000 ether);
-        (nonVote, ) = randomSigner(100_000 ether);
-        (nonStakedCelo, ) = randomSigner(100 ether);
-        (nonAccount, ) = randomSigner(100 ether);
+        (nonOwner,) = randomSigner(100 ether);
+        (someone,) = randomSigner(100 ether);
+        (mockSlasher,) = randomSigner(100 ether);
+        (depositor,) = randomSigner(500 ether);
+        (depositor2,) = randomSigner(500 ether);
+        (voter,) = randomSigner(10_000_000_000 ether);
+        (nonVote,) = randomSigner(100_000 ether);
+        (nonStakedCelo,) = randomSigner(100 ether);
+        (nonAccount,) = randomSigner(100 ether);
         pauser = owner;
 
         mockAccount = new MockAccount();
@@ -162,14 +162,10 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
             address(mockDefaultStrategy)
         );
         specificGroupStrategy.setDependencies(
-            address(mockAccount),
-            address(mockGroupHealth),
-            address(mockDefaultStrategy)
+            address(mockAccount), address(mockGroupHealth), address(mockDefaultStrategy)
         );
         mockDefaultStrategy.setDependencies(
-            address(mockAccount),
-            address(mockGroupHealth),
-            address(specificGroupStrategy)
+            address(mockAccount), address(mockGroupHealth), address(specificGroupStrategy)
         );
         vm.stopPrank();
     }
@@ -178,16 +174,13 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     ///      higher voting limit.
     function _registerGroups() private {
         for (uint256 i = 0; i < 11; i++) {
-            (address group, ) = randomSigner(21_000 ether);
+            (address group,) = randomSigner(21_000 ether);
             groupAddresses.push(group);
         }
         for (uint256 i = 0; i < 11; i++) {
             if (i == 1) {
                 registerValidatorGroup(groupAddresses[i], 2);
-                registerValidatorAndAddToGroupMembers(
-                    groupAddresses[i],
-                    createWallet(11_000 ether)
-                );
+                registerValidatorAndAddToGroupMembers(groupAddresses[i], createWallet(11_000 ether));
             } else {
                 registerValidatorGroup(groupAddresses[i], 1);
             }
@@ -207,7 +200,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     /// @notice Activates the first `count` groups, each inserted in front of the current head.
     function activateGroups(uint256 count) internal {
         for (uint256 i = 0; i < count; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -217,7 +210,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     /// @notice `activateGroups` plus `account.setCeloForGroup(group, celoPerGroup)`.
     function activateGroupsWithCelo(uint256 count, uint256 celoPerGroup) internal {
         for (uint256 i = 0; i < count; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -228,7 +221,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     /// @notice `activateGroups` with a per-group CELO amount.
     function activateGroupsWithCeloList(uint256[] memory celoPerGroup) internal {
         for (uint256 i = 0; i < celoPerGroup.length; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -240,7 +233,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     ///         already cast and the votes still scheduled.
     function activateGroupsWithSplitCelo(uint256 count, uint256 celoPerGroup) internal {
         for (uint256 i = 0; i < count; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -260,17 +253,13 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
 
     /// @notice Votes `group` can still receive according to the Election contract.
     function electionReceivableVotes(address group) internal view returns (uint256) {
-        return
-            celoElection.getNumVotesReceivable(group) - celoElection.getTotalVotesForGroup(group);
+        return celoElection.getNumVotesReceivable(group) - celoElection.getTotalVotesForGroup(group);
     }
 
     /// @notice Ports `updateGroupCeloBasedOnProtocolStCelo(...)` with the fixture contracts.
     function updateGroupCelo() internal {
         updateGroupCeloBasedOnProtocolStCelo(
-            mockDefaultStrategy,
-            specificGroupStrategy,
-            mockAccount,
-            manager
+            mockDefaultStrategy, specificGroupStrategy, mockAccount, manager
         );
     }
 
@@ -310,7 +299,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         view
         returns (address[] memory groups, uint256[] memory withdrawals)
     {
-        (groups, withdrawals, ) = mockAccount.getLastScheduledWithdrawals();
+        (groups, withdrawals,) = mockAccount.getLastScheduledWithdrawals();
     }
 
     // =========================================================================
@@ -328,23 +317,18 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         out[1] = b;
     }
 
-    function arr(
-        address a,
-        address b,
-        address c
-    ) internal pure returns (address[] memory out) {
+    function arr(address a, address b, address c) internal pure returns (address[] memory out) {
         out = new address[](3);
         out[0] = a;
         out[1] = b;
         out[2] = c;
     }
 
-    function arr(
-        address a,
-        address b,
-        address c,
-        address d
-    ) internal pure returns (address[] memory out) {
+    function arr(address a, address b, address c, address d)
+        internal
+        pure
+        returns (address[] memory out)
+    {
         out = new address[](4);
         out[0] = a;
         out[1] = b;
@@ -363,23 +347,18 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         out[1] = b;
     }
 
-    function arr(
-        uint256 a,
-        uint256 b,
-        uint256 c
-    ) internal pure returns (uint256[] memory out) {
+    function arr(uint256 a, uint256 b, uint256 c) internal pure returns (uint256[] memory out) {
         out = new uint256[](3);
         out[0] = a;
         out[1] = b;
         out[2] = c;
     }
 
-    function arr(
-        uint256 a,
-        uint256 b,
-        uint256 c,
-        uint256 d
-    ) internal pure returns (uint256[] memory out) {
+    function arr(uint256 a, uint256 b, uint256 c, uint256 d)
+        internal
+        pure
+        returns (uint256[] memory out)
+    {
         out = new uint256[](4);
         out[0] = a;
         out[1] = b;
@@ -400,30 +379,24 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     // =========================================================================
 
     /// @dev "<prefix> length: <aLength> != <bLength>".
-    function _lengthMessage(
-        string memory prefix,
-        uint256 aLength,
-        uint256 bLength
-    ) private pure returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    prefix,
-                    " length: ",
-                    vm.toString(aLength),
-                    " != ",
-                    vm.toString(bLength)
-                )
-            );
+    function _lengthMessage(string memory prefix, uint256 aLength, uint256 bLength)
+        private
+        pure
+        returns (string memory)
+    {
+        return string(
+            abi.encodePacked(
+                prefix, " length: ", vm.toString(aLength), " != ", vm.toString(bLength)
+            )
+        );
     }
 
     /// @dev "<prefix> [<index>]: <a> != <b>".
-    function _elementMessage(
-        string memory prefix,
-        uint256 index,
-        string memory a,
-        string memory b
-    ) private pure returns (string memory) {
+    function _elementMessage(string memory prefix, uint256 index, string memory a, string memory b)
+        private
+        pure
+        returns (string memory)
+    {
         return string(abi.encodePacked(prefix, " [", vm.toString(index), "]: ", a, " != ", b));
     }
 

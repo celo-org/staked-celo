@@ -271,14 +271,9 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
                     : _getLesserAndGreaterRandom(keyOptions);
 
                 if (action.actionType == ActionType.Insert) {
-                    try
-                        addressSortedLinkedList.insert(
-                            action.element.key,
-                            action.element.numerator,
-                            lesser,
-                            greater
-                        )
-                    {
+                    try addressSortedLinkedList.insert(
+                        action.element.key, action.element.numerator, lesser, greater
+                    ) {
                         expectedKeys[action.keyIndex] = true;
                         expectedValues[action.keyIndex] = action.element.numerator;
                         expectedCount += 1;
@@ -286,14 +281,9 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
                         success = false;
                     }
                 } else {
-                    try
-                        addressSortedLinkedList.update(
-                            action.element.key,
-                            action.element.numerator,
-                            lesser,
-                            greater
-                        )
-                    {
+                    try addressSortedLinkedList.update(
+                        action.element.key, action.element.numerator, lesser, greater
+                    ) {
                         expectedValues[action.keyIndex] = action.element.numerator;
                     } catch {
                         success = false;
@@ -315,8 +305,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
             // otherwise the test would be asserting invariants on an untouched list.
             // Original bound: successes / numActions >= (2 / numKeys) * 0.75, in integer math.
             require(
-                successes * numKeys * 100 >= numActions * 2 * 75,
-                "Success rate below expectation"
+                successes * numKeys * 100 >= numActions * 2 * 75, "Success rate below expectation"
             );
         }
     }
@@ -357,11 +346,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         return sequence;
     }
 
-    function _generateKeyOptions(uint256 numKeys)
-        internal
-        pure
-        returns (address[] memory)
-    {
+    function _generateKeyOptions(uint256 numKeys) internal pure returns (address[] memory) {
         address[] memory keys = new address[](numKeys);
         for (uint256 i = 0; i < numKeys; i++) {
             keys[i] = address(uint160(uint256(keccak256(abi.encodePacked(uint256(1), i))) + 1));
@@ -374,8 +359,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         view
         returns (address lesser, address greater)
     {
-        (address[] memory keys, uint256[] memory numerators) = addressSortedLinkedList
-            .getElements();
+        (address[] memory keys, uint256[] memory numerators) = addressSortedLinkedList.getElements();
 
         lesser = ADDRESS_ZERO;
         greater = ADDRESS_ZERO;
@@ -403,7 +387,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         internal
         returns (address lesser, address greater)
     {
-        (address[] memory keys, ) = addressSortedLinkedList.getElements();
+        (address[] memory keys,) = addressSortedLinkedList.getElements();
         lesser = ADDRESS_ZERO;
         greater = ADDRESS_ZERO;
 
@@ -436,8 +420,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         uint256[] memory expectedValues,
         uint256 expectedCount
     ) internal view {
-        (address[] memory keys, uint256[] memory numerators) = addressSortedLinkedList
-            .getElements();
+        (address[] memory keys, uint256[] memory numerators) = addressSortedLinkedList.getElements();
         uint256 numElements = addressSortedLinkedList.getNumElements();
 
         require(keys.length == numElements, "Keys length mismatch");
@@ -461,10 +444,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
 
         // Check sorted order (descending)
         for (uint256 i = 1; i < keys.length; i++) {
-            require(
-                numerators[i] <= numerators[i - 1],
-                "Elements not sorted in descending order"
-            );
+            require(numerators[i] <= numerators[i - 1], "Elements not sorted in descending order");
         }
 
         // Check head and tail

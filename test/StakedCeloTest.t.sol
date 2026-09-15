@@ -156,7 +156,9 @@ contract StakedCeloTest is TestAccountDeployHelper {
     }
 
     function test_lockVoteBalance_revertsIfNotEnoughStCelo() public {
-        vm.expectRevert(abi.encodeWithSelector(StakedCelo.NotEnoughStCeloToLock.selector, anAccount));
+        vm.expectRevert(
+            abi.encodeWithSelector(StakedCelo.NotEnoughStCeloToLock.selector, anAccount)
+        );
         vm.prank(address(mockManager));
         stakedCelo.lockVoteBalance(anAccount, 100);
     }

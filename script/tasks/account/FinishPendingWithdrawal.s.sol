@@ -41,8 +41,7 @@ contract FinishPendingWithdrawalScript is TaskBase {
         address beneficiary
     ) internal {
         TaskConsole.log(
-            "number of pending withdrawals:",
-            account.getNumberPendingWithdrawals(beneficiary)
+            "number of pending withdrawals:", account.getNumberPendingWithdrawals(beneficiary)
         );
         AccountTaskLib.finishPendingWithdrawals(account, lockedGoldContract, beneficiary);
     }

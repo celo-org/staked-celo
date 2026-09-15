@@ -54,18 +54,14 @@ library AccountTaskLib {
         address group
     ) private {
         uint256 amountScheduled = account.scheduledVotesForGroup(group);
-        bool canActivateForGroup = electionContract.hasActivatablePendingVotes(
-            address(account),
-            group
-        );
+        bool canActivateForGroup =
+            electionContract.hasActivatablePendingVotes(address(account), group);
         if (amountScheduled == 0 && !canActivateForGroup) {
             return;
         }
 
         (address lesser, address greater) = ElectionLib.findLesserAndGreaterAfterVote(
-            electionContract,
-            group,
-            int256(amountScheduled)
+            electionContract, group, int256(amountScheduled)
         );
         account.activateAndVote(group, lesser, greater);
     }
@@ -105,10 +101,7 @@ library AccountTaskLib {
         uint256 scheduledToRevokeAmount
     ) private {
         RevokeNeighbours memory neighbours = revokeNeighbours(
-            account,
-            electionContract,
-            group,
-            scheduledToRevokeAmount
+            account, electionContract, group, scheduledToRevokeAmount
         );
         uint256 index = ElectionLib.findAddressIndex(electionContract, address(account), group);
 
@@ -143,17 +136,13 @@ library AccountTaskLib {
     ) internal {
         address[] memory groups = GroupsLib.allGroups(defaultStrategy, specificGroupStrategy);
         for (uint256 i = 0; i < groups.length; i++) {
-            uint256 scheduledWithdrawalAmount = account
-                .scheduledWithdrawalsForGroupAndBeneficiary(groups[i], beneficiary);
+            uint256 scheduledWithdrawalAmount =
+                account.scheduledWithdrawalsForGroupAndBeneficiary(groups[i], beneficiary);
             if (scheduledWithdrawalAmount == 0) {
                 continue;
             }
             _withdrawFromGroup(
-                account,
-                electionContract,
-                groups[i],
-                beneficiary,
-                scheduledWithdrawalAmount
+                account, electionContract, groups[i], beneficiary, scheduledWithdrawalAmount
             );
         }
     }
@@ -167,10 +156,7 @@ library AccountTaskLib {
         uint256 scheduledWithdrawalAmount
     ) private {
         RevokeNeighbours memory neighbours = revokeNeighbours(
-            account,
-            electionContract,
-            group,
-            scheduledWithdrawalAmount
+            account, electionContract, group, scheduledWithdrawalAmount
         );
         uint256 index = ElectionLib.findAddressIndex(electionContract, address(account), group);
 
@@ -215,31 +201,20 @@ library AccountTaskLib {
         }
 
         uint256 remainingRevokeAmount = scheduledAmount - immediateWithdrawalAmount;
-        uint256 pendingVotes = electionContract.getPendingVotesForGroupByAccount(
-            group,
-            address(account)
-        );
-        uint256 toRevokeFromPending = remainingRevokeAmount < pendingVotes
-            ? remainingRevokeAmount
-            : pendingVotes;
+        uint256 pendingVotes =
+            electionContract.getPendingVotesForGroupByAccount(group, address(account));
+        uint256 toRevokeFromPending =
+            remainingRevokeAmount < pendingVotes ? remainingRevokeAmount : pendingVotes;
 
-        (
-            neighbours.lesserAfterPendingRevoke,
-            neighbours.greaterAfterPendingRevoke
-        ) = ElectionLib.findLesserAndGreaterAfterVote(
-            electionContract,
-            group,
-            -int256(toRevokeFromPending)
-        );
+        (neighbours.lesserAfterPendingRevoke, neighbours.greaterAfterPendingRevoke) =
+            ElectionLib.findLesserAndGreaterAfterVote(
+                electionContract, group, -int256(toRevokeFromPending)
+            );
 
-        (
-            neighbours.lesserAfterActiveRevoke,
-            neighbours.greaterAfterActiveRevoke
-        ) = ElectionLib.findLesserAndGreaterAfterVote(
-            electionContract,
-            group,
-            -int256(remainingRevokeAmount)
-        );
+        (neighbours.lesserAfterActiveRevoke, neighbours.greaterAfterActiveRevoke) =
+            ElectionLib.findLesserAndGreaterAfterVote(
+                electionContract, group, -int256(remainingRevokeAmount)
+            );
     }
 
     // =========================================================================
@@ -258,11 +233,8 @@ library AccountTaskLib {
         address beneficiary
     ) internal {
         while (true) {
-            (bool found, uint256 localIndex, uint256 lockedGoldIndex) = pendingWithdrawalIndexes(
-                account,
-                lockedGoldContract,
-                beneficiary
-            );
+            (bool found, uint256 localIndex, uint256 lockedGoldIndex) =
+                pendingWithdrawalIndexes(account, lockedGoldContract, beneficiary);
             if (!found) {
                 return;
             }
@@ -284,18 +256,9 @@ library AccountTaskLib {
         IAccountTask account,
         ILockedGoldLookup lockedGoldContract,
         address beneficiary
-    )
-        internal
-        view
-        returns (
-            bool found,
-            uint256 localIndex,
-            uint256 lockedGoldIndex
-        )
-    {
-        (uint256[] memory values, uint256[] memory timestamps) = account.getPendingWithdrawals(
-            beneficiary
-        );
+    ) internal view returns (bool found, uint256 localIndex, uint256 lockedGoldIndex) {
+        (uint256[] memory values, uint256[] memory timestamps) =
+            account.getPendingWithdrawals(beneficiary);
         require(values.length == timestamps.length, "mismatched list");
 
         for (uint256 i = 0; i < timestamps.length; i++) {
@@ -310,10 +273,7 @@ library AccountTaskLib {
         }
 
         lockedGoldIndex = _matchingLockedGoldIndex(
-            lockedGoldContract,
-            address(account),
-            values[localIndex],
-            timestamps[localIndex]
+            lockedGoldContract, address(account), values[localIndex], timestamps[localIndex]
         );
     }
 
@@ -324,8 +284,8 @@ library AccountTaskLib {
         uint256 value,
         uint256 timestamp
     ) private view returns (uint256) {
-        (uint256[] memory values, uint256[] memory timestamps) = lockedGoldContract
-            .getPendingWithdrawals(accountAddress);
+        (uint256[] memory values, uint256[] memory timestamps) =
+            lockedGoldContract.getPendingWithdrawals(accountAddress);
         for (uint256 i = 0; i < values.length; i++) {
             if (timestamps[i] == timestamp && values[i] == value) {
                 return i;

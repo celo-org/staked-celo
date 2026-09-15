@@ -16,10 +16,7 @@ contract MultiSigProposalTest is MultiSigTestBase {
     function test_SubmitProposal_AllowsOwnerToSubmit() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
         uint256 proposalId = _submitProposal(
-            owner1,
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            _singleBytes(txData)
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
         );
 
         (address[] memory destinations,,) = msig.getProposal(proposalId);
@@ -30,10 +27,7 @@ contract MultiSigProposalTest is MultiSigTestBase {
     function test_SubmitProposal_SetsProposalAsConfirmedBySender() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
         uint256 proposalId = _submitProposal(
-            owner1,
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            _singleBytes(txData)
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
         );
         assertTrue(msig.isConfirmedBy(proposalId, owner1));
     }
@@ -41,10 +35,7 @@ contract MultiSigProposalTest is MultiSigTestBase {
     function test_SubmitProposal_UpdatesProposalCount() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
         _submitProposal(
-            owner1,
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            _singleBytes(txData)
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
         );
         assertEq(msig.proposalCount(), 1);
     }
@@ -55,22 +46,16 @@ contract MultiSigProposalTest is MultiSigTestBase {
         // either way because the `notNull` destination check runs before `ownerExists`.
         vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.AddressZeroNotAllowed.selector));
         vm.prank(owner1);
-        msig.submitProposal(
-            _singleAddress(ADDRESS_ZERO),
-            _singleUint(0),
-            _singleBytes(txData)
-        );
+        msig.submitProposal(_singleAddress(ADDRESS_ZERO), _singleUint(0), _singleBytes(txData));
     }
 
     function test_SubmitProposal_DoesNotAllowNonOwnerToSubmit() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner));
-        vm.prank(nonOwner);
-        msig.submitProposal(
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            _singleBytes(txData)
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner)
         );
+        vm.prank(nonOwner);
+        msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
     }
 
     function test_SubmitProposal_FailsWhenDestinationsDoesNotMatchValues() public {
@@ -80,11 +65,7 @@ contract MultiSigProposalTest is MultiSigTestBase {
         vals[1] = 1;
         vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ParamLengthsMismatch.selector));
         vm.prank(owner1);
-        msig.submitProposal(
-            _singleAddress(address(multiSig)),
-            vals,
-            _singleBytes(txData)
-        );
+        msig.submitProposal(_singleAddress(address(multiSig)), vals, _singleBytes(txData));
     }
 
     function test_SubmitProposal_FailsWhenDestinationsDoesNotMatchPayloads() public {
@@ -94,11 +75,7 @@ contract MultiSigProposalTest is MultiSigTestBase {
         payloads[1] = txData;
         vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ParamLengthsMismatch.selector));
         vm.prank(owner1);
-        msig.submitProposal(
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            payloads
-        );
+        msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), payloads);
     }
 
     function test_SubmitProposal_AllowsMultipleTransactions() public {
@@ -125,7 +102,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ConfirmProposal_AllowsOwnerToConfirm() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -134,7 +113,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ConfirmProposal_SchedulesOnceEnoughConfirmations() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -143,7 +124,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ConfirmProposal_StoresCorrectTimestamp() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -154,18 +137,28 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ConfirmProposal_DoesNotAllowOwnerToConfirmTwice() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalAlreadyConfirmed.selector, uint256(0), owner1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IMultiSigErrors.ProposalAlreadyConfirmed.selector, uint256(0), owner1
+            )
+        );
         vm.prank(owner1);
         msig.confirmProposal(pid);
     }
 
     function test_ConfirmProposal_DoesNotAllowNonOwnerToConfirm() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.confirmProposal(pid);
     }
@@ -176,21 +169,29 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ScheduleProposal_CannotScheduleTwice() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid); // auto-schedules
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalAlreadyScheduled.selector, uint256(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.ProposalAlreadyScheduled.selector, uint256(0))
+        );
         vm.prank(owner1);
         msig.scheduleProposal(pid);
     }
 
     function test_ScheduleProposal_CannotScheduleNotFullyConfirmed() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalNotFullyConfirmed.selector, uint256(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.ProposalNotFullyConfirmed.selector, uint256(0))
+        );
         vm.prank(owner1);
         msig.scheduleProposal(pid);
     }
@@ -201,7 +202,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ExecuteProposal_OwnerCanExecuteAfterTimelock() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -213,7 +216,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ExecuteProposal_AnyAccountCanExecuteAfterTimelock() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         (address randomAcc,) = randomSigner(100 ether);
         vm.prank(owner2);
@@ -226,7 +231,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_ExecuteProposal_FailsToExecuteTwice() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
@@ -234,29 +241,39 @@ contract MultiSigProposalTest is MultiSigTestBase {
         vm.prank(owner2);
         msig.executeProposal(pid);
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalNotScheduled.selector, uint256(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.ProposalNotScheduled.selector, uint256(0))
+        );
         vm.prank(owner2);
         msig.executeProposal(pid);
     }
 
     function test_ExecuteProposal_FailsWhenTimelockNotPassed() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner2);
         msig.confirmProposal(pid);
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalTimelockNotReached.selector, uint256(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.ProposalTimelockNotReached.selector, uint256(0))
+        );
         vm.prank(owner2);
         msig.executeProposal(pid);
     }
 
     function test_ExecuteProposal_FailsWhenNotScheduled() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.warp(block.timestamp + delay + 1);
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalNotScheduled.selector, uint256(0)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.ProposalNotScheduled.selector, uint256(0))
+        );
         vm.prank(owner1);
         msig.executeProposal(pid);
     }
@@ -285,7 +302,9 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_RevokeConfirmation_AllowsOwnerToRevoke() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
         vm.prank(owner1);
         msig.revokeConfirmation(pid);
@@ -294,18 +313,28 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_RevokeConfirmation_DoesNotAllowNonOwnerToRevoke() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.OwnerDoesNotExist.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.revokeConfirmation(pid);
     }
 
     function test_RevokeConfirmation_DoesNotAllowOwnerToRevokeBeforeConfirming() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        uint256 pid = _submitProposal(owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = _submitProposal(
+            owner1, _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.ProposalNotConfirmed.selector, uint256(0), owner2));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IMultiSigErrors.ProposalNotConfirmed.selector, uint256(0), owner2
+            )
+        );
         vm.prank(owner2);
         msig.revokeConfirmation(pid);
     }

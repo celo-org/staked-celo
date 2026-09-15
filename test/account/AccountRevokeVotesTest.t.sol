@@ -20,12 +20,7 @@ contract AccountRevokeVotesTest is AccountTestBase {
 
     function test_revokeVotes_ShouldSucceedWhenThereIsNothingToRevoke() public {
         account.revokeVotes(
-            groupAddresses[0],
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            0
+            groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO, ADDRESS_ZERO, ADDRESS_ZERO, 0
         );
     }
 
@@ -52,8 +47,7 @@ contract AccountRevokeVotesTest is AccountTestBase {
     {
         _setupScheduledTransferToNewGroup();
         assertEq(
-            account.scheduledVotesForGroup(groupAddresses[0]),
-            ORIGINAL_AMOUNT - TRANSFER_AMOUNT
+            account.scheduledVotesForGroup(groupAddresses[0]), ORIGINAL_AMOUNT - TRANSFER_AMOUNT
         );
         assertEq(account.scheduledVotesForGroup(groupAddresses[1]), TRANSFER_AMOUNT);
     }
@@ -78,8 +72,7 @@ contract AccountRevokeVotesTest is AccountTestBase {
     {
         _setupScheduledSendingToThirdGroup();
         assertEq(
-            account.scheduledVotesForGroup(groupAddresses[1]),
-            TRANSFER_AMOUNT - TRANSFER_AMOUNT_2
+            account.scheduledVotesForGroup(groupAddresses[1]), TRANSFER_AMOUNT - TRANSFER_AMOUNT_2
         );
         assertEq(account.scheduledVotesForGroup(groupAddresses[2]), TRANSFER_AMOUNT_2);
     }

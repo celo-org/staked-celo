@@ -43,10 +43,7 @@ contract ActivateAndVoteScript is TaskBase {
         IElectionLookup electionContract
     ) internal {
         AccountTaskLib.activateAndVote(
-            account,
-            defaultStrategy,
-            specificGroupStrategy,
-            electionContract
+            account, defaultStrategy, specificGroupStrategy, electionContract
         );
     }
 }

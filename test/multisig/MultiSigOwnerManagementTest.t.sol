@@ -34,7 +34,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_AddOwner_DoesNotAllowExternalAccountToAdd() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.addOwner(nonOwner);
     }
@@ -44,7 +46,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
 
         // Submit, confirm, warp
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -74,7 +78,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
         bytes memory payload = _addOwnerPayload(oneMore);
 
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(payload));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(payload)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -117,7 +123,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_RemoveOwner_DoesNotAllowExternalAccountToRemove() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.removeOwner(owner2);
     }
@@ -140,7 +148,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
 
         // With required=1, submitProposal auto-confirms and auto-schedules
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData2));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData2)
+        );
         vm.warp(block.timestamp + delay + 1);
 
         vm.expectRevert(abi.encodeWithSelector(IExternalCallErrors.ExecutionFailed.selector));
@@ -153,7 +163,8 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     // =========================================================================
 
     function test_ReplaceOwner_AllowsOwnerToBeReplaced() public {
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner2, nonOwner);
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner2, nonOwner);
         _executeMultisigProposal(
             msig,
             _singleAddress(address(multiSig)),
@@ -174,16 +185,21 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_ReplaceOwner_DoesNotAllowExternalAccountToReplace() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.replaceOwner(owner2, nonOwner);
     }
 
     function test_ReplaceOwner_DoesNotAllowReplacingWithNullAddress() public {
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner2, ADDRESS_ZERO);
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner2, ADDRESS_ZERO);
 
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -194,10 +210,13 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_ReplaceOwner_DoesNotAllowReplacingWithExistingOwner() public {
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner1, owner2);
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.replaceOwner.selector, owner1, owner2);
 
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -212,7 +231,8 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     // =========================================================================
 
     function test_ChangeRequirement_AllowsChangeViaMultiSig() public {
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.changeRequirement.selector, uint256(1));
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.changeRequirement.selector, uint256(1));
         _executeMultisigProposal(
             msig,
             _singleAddress(address(multiSig)),
@@ -226,16 +246,21 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_ChangeRequirement_DoesNotAllowExternalAccountToChange() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.changeRequirement(3);
     }
 
     function test_ChangeRequirement_FailsIfRequiredMoreThanOwners() public {
-        bytes memory txData = abi.encodeWithSelector(IMultiSigFull.changeRequirement.selector, uint256(5));
+        bytes memory txData =
+            abi.encodeWithSelector(IMultiSigFull.changeRequirement.selector, uint256(5));
 
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -267,7 +292,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
         bytes memory txData = abi.encodeWithSelector(IMultiSigFull.changeDelay.selector, 1 * DAY);
 
         vm.prank(owner1);
-        uint256 pid = msig.submitProposal(_singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData));
+        uint256 pid = msig.submitProposal(
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
+        );
         vm.prank(owner2);
         msig.confirmProposal(pid);
         vm.warp(block.timestamp + delay + 1);
@@ -278,7 +305,9 @@ contract MultiSigOwnerManagementTest is MultiSigTestBase {
     }
 
     function test_ChangeDelay_DoesNotAllowExternalAccountToChange() public {
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderMustBeMultisigWallet.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.changeDelay(4 * DAY);
     }

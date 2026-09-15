@@ -36,14 +36,14 @@ contract ManagerDepositTest is ManagerTestBase {
     function test_deposit_WhenHavingActiveGroups_ShouldChangeTheTail() public {
         setUpHavingActiveGroups();
 
-        (address newTail, ) = mockDefaultStrategy.getGroupsTail();
+        (address newTail,) = mockDefaultStrategy.getGroupsTail();
         assertNotEq(originalTail, newTail);
     }
 
     function test_deposit_WhenHavingActiveGroups_ShouldUpdateHead() public {
         setUpHavingActiveGroups();
 
-        (address newHead, ) = mockDefaultStrategy.getGroupsHead();
+        (address newHead,) = mockDefaultStrategy.getGroupsHead();
         assertEq(newHead, originalTail);
     }
 
@@ -51,11 +51,11 @@ contract ManagerDepositTest is ManagerTestBase {
         public
     {
         setUpHavingActiveGroups();
-        (address tailAfterFirstDeposit, ) = mockDefaultStrategy.getGroupsTail();
+        (address tailAfterFirstDeposit,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(depositor);
         manager.deposit{value: 100}();
 
-        (address newTail, ) = mockDefaultStrategy.getGroupsTail();
+        (address newTail,) = mockDefaultStrategy.getGroupsTail();
         assertNotEq(originalTail, newTail);
         assertNotEq(tailAfterFirstDeposit, newTail);
     }
@@ -64,11 +64,11 @@ contract ManagerDepositTest is ManagerTestBase {
         public
     {
         setUpHavingActiveGroups();
-        (address tailAfterFirstDeposit, ) = mockDefaultStrategy.getGroupsTail();
+        (address tailAfterFirstDeposit,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(depositor);
         manager.deposit{value: 100}();
 
-        (address newHead, ) = mockDefaultStrategy.getGroupsHead();
+        (address newHead,) = mockDefaultStrategy.getGroupsHead();
         assertEq(newHead, tailAfterFirstDeposit);
     }
 
@@ -76,11 +76,11 @@ contract ManagerDepositTest is ManagerTestBase {
         public
     {
         setUpHavingActiveGroups();
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(tail);
 
-        (address currentTail, ) = mockDefaultStrategy.getGroupsTail();
+        (address currentTail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(depositor);
         manager.deposit{value: 100}();
 
@@ -118,7 +118,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         activateGroups(3);
         mockAccount.setTotalCelo(0);
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 100);
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -173,7 +173,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         activateGroups(3);
         setUpRatio(100, 100);
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 100);
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -216,7 +216,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         activateGroups(3);
         setUpRatio(200, 100);
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 100);
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -259,7 +259,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         activateGroups(3);
         setUpRatio(100, 200);
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 100);
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -334,8 +334,8 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         setUpNoLongerValidGroup();
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[4]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[4]);
         assertEq(total, 100);
         assertEq(overflow, 0);
         assertEq(unhealthy, 100);
@@ -369,7 +369,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         setUpBlockedStrategy(2, groupAddresses[2]);
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         manager.deposit{value: 1000}();
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -382,7 +382,7 @@ contract ManagerDepositTest is ManagerTestBase {
     {
         setUpBlockedStrategy(3, groupAddresses[0]);
 
-        (address tail, ) = mockDefaultStrategy.getGroupsTail();
+        (address tail,) = mockDefaultStrategy.getGroupsTail();
         manager.deposit{value: 1000}();
 
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
@@ -461,7 +461,7 @@ contract ManagerDepositTest is ManagerTestBase {
     /// @dev `beforeEach` of `#deposit() > when having active groups`.
     function setUpHavingActiveGroups() private {
         activateGroups(3);
-        (originalTail, ) = mockDefaultStrategy.getGroupsTail();
+        (originalTail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 99);
     }
 
@@ -490,7 +490,7 @@ contract ManagerDepositTest is ManagerTestBase {
         mineToNextEpoch();
         electAndUpdate(groupAddresses[4]);
 
-        (originalTail, ) = mockDefaultStrategy.getGroupsTail();
+        (originalTail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 100);
     }
 

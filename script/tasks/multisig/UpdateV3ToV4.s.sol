@@ -30,11 +30,8 @@ contract UpdateV3ToV4Script is TaskBase {
         contracts[2] = "DefaultStrategy";
         contracts[3] = "Account";
 
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = _upgrades(contracts);
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            _upgrades(contracts);
 
         TaskConsole.log("DESTINATIONS", FormatLib.join(destinations));
         TaskConsole.log("VALUES", FormatLib.join(values));
@@ -46,11 +43,7 @@ contract UpdateV3ToV4Script is TaskBase {
     function _upgrades(string[] memory contracts)
         private
         view
-        returns (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        )
+        returns (address[] memory destinations, uint256[] memory values, bytes[] memory payloads)
     {
         destinations = new address[](contracts.length);
         values = new uint256[](contracts.length);
