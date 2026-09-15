@@ -52,21 +52,14 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
 
     event VotesScheduled(address indexed group, uint256 amount);
     event CeloWithdrawalScheduled(
-        address indexed beneficiary,
-        address indexed group,
-        uint256 withdrawalAmount
+        address indexed beneficiary, address indexed group, uint256 withdrawalAmount
     );
     event CeloWithdrawalStarted(
-        address indexed beneficiary,
-        address indexed group,
-        uint256 withdrawalAmount
+        address indexed beneficiary, address indexed group, uint256 withdrawalAmount
     );
     event AllowedToVoteOverMaxNumberOfGroupsSet(bool flag);
     event VotedPartially(
-        uint256 indexed proposalId,
-        uint256 yesVotes,
-        uint256 noVotes,
-        uint256 abstainVotes
+        uint256 indexed proposalId, uint256 yesVotes, uint256 noVotes, uint256 abstainVotes
     );
     event PauserSet(address newPauser);
     event ContractPaused();
@@ -112,11 +105,11 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         loadDevchain();
         _initNamedAccounts();
 
-        (managerSigner, ) = randomSigner(100 ether);
-        (nonManager, ) = randomSigner(100 ether);
-        (beneficiary, ) = randomSigner(100 ether);
-        (otherBeneficiary, ) = randomSigner(100 ether);
-        (nonBeneficiary, ) = randomSigner(100 ether);
+        (managerSigner,) = randomSigner(100 ether);
+        (nonManager,) = randomSigner(100 ether);
+        (beneficiary,) = randomSigner(100 ether);
+        (otherBeneficiary,) = randomSigner(100 ether);
+        (nonBeneficiary,) = randomSigner(100 ether);
 
         for (uint256 i = 0; i < 3; i++) {
             groupAddresses.push(registerNewValidatorGroup());
@@ -150,7 +143,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
 
     /// @notice Registers a validator group with one validator, as the `before()` hook did.
     function registerNewValidatorGroup() internal returns (address group) {
-        (group, ) = randomSigner(11_000 ether);
+        (group,) = randomSigner(11_000 ether);
         address validator = createWallet(11_000 ether);
         validatorAddresses.push(validator);
         registerValidatorGroup(group);
@@ -172,11 +165,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         arr[1] = b;
     }
 
-    function _addrs(
-        address a,
-        address b,
-        address c
-    ) internal pure returns (address[] memory arr) {
+    function _addrs(address a, address b, address c) internal pure returns (address[] memory arr) {
         arr = new address[](3);
         arr[0] = a;
         arr[1] = b;
@@ -194,11 +183,11 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         arr[1] = b;
     }
 
-    function _amounts(
-        uint256 a,
-        uint256 b,
-        uint256 c
-    ) internal pure returns (uint256[] memory arr) {
+    function _amounts(uint256 a, uint256 b, uint256 c)
+        internal
+        pure
+        returns (uint256[] memory arr)
+    {
         arr = new uint256[](3);
         arr[0] = a;
         arr[1] = b;
@@ -214,11 +203,9 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     //                       MANAGER-ONLY CALLS
     // =========================================================================
 
-    function _scheduleVotes(
-        address[] memory groups,
-        uint256[] memory votes,
-        uint256 value
-    ) internal {
+    function _scheduleVotes(address[] memory groups, uint256[] memory votes, uint256 value)
+        internal
+    {
         vm.prank(managerSigner);
         account.scheduleVotes{value: value}(groups, votes);
     }
@@ -238,11 +225,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         account.scheduleTransfer(fromGroups, fromVotes, toGroups, toVotes);
     }
 
-    function _scheduleTransfer(
-        address fromGroup,
-        address toGroup,
-        uint256 amount
-    ) internal {
+    function _scheduleTransfer(address fromGroup, address toGroup, uint256 amount) internal {
         _scheduleTransfer(_addrs(fromGroup), _amounts(amount), _addrs(toGroup), _amounts(amount));
     }
 
@@ -255,11 +238,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         account.scheduleWithdrawals(forBeneficiary, groups, withdrawals);
     }
 
-    function _scheduleWithdrawals(
-        address forBeneficiary,
-        address group,
-        uint256 amount
-    ) internal {
+    function _scheduleWithdrawals(address forBeneficiary, address group, uint256 amount) internal {
         _scheduleWithdrawals(forBeneficiary, _addrs(group), _amounts(amount));
     }
 
@@ -302,14 +281,10 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     {
         uint256 pending = celoElection.getPendingVotesForGroupByAccount(group, address(account));
         uint256 fromPending = _min(revokeAmount, pending);
-        (n.lesserAfterPending, n.greaterAfterPending) = findLesserAndGreaterAfterVote(
-            group,
-            -int256(fromPending)
-        );
-        (n.lesserAfterActive, n.greaterAfterActive) = findLesserAndGreaterAfterVote(
-            group,
-            -int256(revokeAmount)
-        );
+        (n.lesserAfterPending, n.greaterAfterPending) =
+            findLesserAndGreaterAfterVote(group, -int256(fromPending));
+        (n.lesserAfterActive, n.greaterAfterActive) =
+            findLesserAndGreaterAfterVote(group, -int256(revokeAmount));
     }
 
     // =========================================================================
@@ -320,10 +295,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     /// @dev The original called this through `.connect(manager)`, but `activateAndVote` is
     ///      permissionless (`onlyWhenNotPaused` only), so no prank is needed.
     function _activateAndVote(address group) internal {
-        (address lesser, address greater) = findLesserAndGreaterAfterVote(
-            group,
-            int256(_voteAmount(group))
-        );
+        (address lesser, address greater) =
+            findLesserAndGreaterAfterVote(group, int256(_voteAmount(group)));
         account.activateAndVote(group, lesser, greater);
     }
 
@@ -349,23 +322,18 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         view
         returns (uint256)
     {
-        uint256 withdrawalAmount = account.scheduledWithdrawalsForGroupAndBeneficiary(
-            group,
-            forBeneficiary
-        );
+        uint256 withdrawalAmount =
+            account.scheduledWithdrawalsForGroupAndBeneficiary(group, forBeneficiary);
         uint256 immediate = _min(address(account).balance, _celoToVote(group));
         return immediate > withdrawalAmount ? withdrawalAmount : immediate;
     }
 
     /// @notice `account.withdraw(...)` as the manager, neighbours derived from chain state.
     function _withdraw(address forBeneficiary, address group) internal {
-        uint256 withdrawalAmount = account.scheduledWithdrawalsForGroupAndBeneficiary(
-            group,
-            forBeneficiary
-        );
+        uint256 withdrawalAmount =
+            account.scheduledWithdrawalsForGroupAndBeneficiary(group, forBeneficiary);
         RevokeNeighbours memory n = _revokeNeighbours(
-            group,
-            withdrawalAmount - _immediateWithdrawalAmount(forBeneficiary, group)
+            group, withdrawalAmount - _immediateWithdrawalAmount(forBeneficiary, group)
         );
         vm.prank(managerSigner);
         account.withdraw(

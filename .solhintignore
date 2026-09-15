@@ -4,6 +4,9 @@ pseudocode-contracts/
 # func-name-mixedcase, max-line-length) are written for contracts/; the Foundry
 # test-suite and deploy scripts use the forge-std naming conventions instead,
 # and the vendored OpenZeppelin sources are upstream code.
+#
+# test/ and script/ are formatted by `forge fmt` instead (`yarn fmt`), configured
+# under [fmt] in foundry.toml.
 test/
 script/
 @openzeppelin/

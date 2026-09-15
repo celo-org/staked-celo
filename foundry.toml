@@ -29,6 +29,31 @@ fs_permissions = [
 [lint]
 lint_on_build = false
 
+# `forge fmt` owns test/ and script/ only. The production contracts are formatted with
+# prettier-plugin-solidity instead (`yarn lint:sol:ci`); the two formatters disagree, so
+# contracts/ is ignored here, as are the vendored OpenZeppelin sources and the frozen
+# Hardhat-era tree. The settings below describe the style test/ and script/ were already
+# written in, so turning the formatter on was a mechanical reflow and nothing more.
+#
+# The ignore globs need the trailing "/*": a bare "contracts/**" matches the nested files
+# but not the ten sitting directly under contracts/, which forge would then reformat.
+[fmt]
+ignore = ["contracts/**/*", "@openzeppelin/**/*", "legacy/**/*"]
+line_length = 100
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+quote_style = "double"
+number_underscore = "preserve"
+# prettier, and with it the existing code, breaks the attributes out of a too-long function
+# header before it breaks up the parameter list; "params_first" would rewrap every such
+# header. Both styles are present because a header whose parameters do not fit ends up
+# parameter-per-line under either setting.
+multiline_func_header = "attributes_first"
+single_line_statement_blocks = "preserve"
+wrap_comments = false
+sort_imports = false
+
 [rpc_endpoints]
 celo = "https://forno.celo.org"
 alfajores = "https://alfajores-forno.celo-testnet.org/"

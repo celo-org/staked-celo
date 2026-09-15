@@ -48,11 +48,8 @@ contract UpdateV2ToV3Script is TaskBase {
         );
         _addOwner(proposal, newOwner);
 
-        (
-            address[] memory destinations,
-            uint256[] memory values,
-            bytes[] memory payloads
-        ) = proposal.build();
+        (address[] memory destinations, uint256[] memory values, bytes[] memory payloads) =
+            proposal.build();
 
         TaskConsole.log("DESTINATIONS", FormatLib.join(destinations));
         TaskConsole.log("VALUES", FormatLib.join(values));

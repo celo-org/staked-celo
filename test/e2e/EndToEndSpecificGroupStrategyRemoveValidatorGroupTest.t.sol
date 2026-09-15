@@ -74,10 +74,8 @@ contract EndToEndSpecificGroupStrategyRemoveValidatorGroupTest is EndToEndTestBa
     }
 
     function expectSumOfExpectedAndRealCeloInGroupsToEqual() internal view {
-        address[] memory allGroups = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory allGroups =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
         ExpectVsReal[] memory expectedVsReal = getRealVsExpectedCeloForGroups(manager, allGroups);
 
         uint256 expectedSum = 0;

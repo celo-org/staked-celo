@@ -31,16 +31,15 @@ library UpgradeProposalLib {
         address specificGroupStrategy,
         address defaultStrategy
     ) internal pure returns (bytes memory) {
-        return
-            abi.encodeWithSignature(
-                "setDependencies(address,address,address,address,address,address)",
-                stakedCelo,
-                account,
-                vote,
-                groupHealth,
-                specificGroupStrategy,
-                defaultStrategy
-            );
+        return abi.encodeWithSignature(
+            "setDependencies(address,address,address,address,address,address)",
+            stakedCelo,
+            account,
+            vote,
+            groupHealth,
+            specificGroupStrategy,
+            defaultStrategy
+        );
     }
 
     /// @notice Payload for `setPauser()` on the StakedCelo protocol contracts.
@@ -79,18 +78,14 @@ library UpgradeProposalLib {
     /// @param lesser The group with fewer votes, or address(0).
     /// @param greater The group with more votes, or address(0).
     /// @return The encoded calldata.
-    function activateGroupPayload(
-        address group,
-        address lesser,
-        address greater
-    ) internal pure returns (bytes memory) {
-        return
-            abi.encodeWithSignature(
-                "activateGroup(address,address,address)",
-                group,
-                lesser,
-                greater
-            );
+    function activateGroupPayload(address group, address lesser, address greater)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodeWithSignature(
+            "activateGroup(address,address,address)", group, lesser, greater
+        );
     }
 
     /// @notice Payload for `setAllowedToVoteOverMaxNumberOfGroups(bool)` on Account.

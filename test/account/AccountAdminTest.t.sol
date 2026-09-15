@@ -143,10 +143,7 @@ contract AccountAdminTest is AccountTestBase {
         vm.prank(managerSigner);
         _expectPaused();
         account.scheduleTransfer(
-            _addrs(groupAddresses[0]),
-            _amounts(1),
-            _addrs(groupAddresses[1]),
-            _amounts(1)
+            _addrs(groupAddresses[0]), _amounts(1), _addrs(groupAddresses[1]), _amounts(1)
         );
     }
 
@@ -195,12 +192,7 @@ contract AccountAdminTest is AccountTestBase {
         _pause();
         _expectPaused();
         account.revokeVotes(
-            groupAddresses[0],
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
-            0
+            groupAddresses[0], ADDRESS_ZERO, ADDRESS_ZERO, ADDRESS_ZERO, ADDRESS_ZERO, 0
         );
     }
 }

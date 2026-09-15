@@ -90,7 +90,7 @@ library TaskConsole {
     address internal constant CONSOLE = 0x000000000000000000636F6e736F6c652e6c6f67;
 
     function _send(bytes memory payload) private view {
-        (bool ok, ) = CONSOLE.staticcall(payload);
+        (bool ok,) = CONSOLE.staticcall(payload);
         ok;
     }
 

@@ -22,8 +22,7 @@ import "./TaskVm.sol";
  *      `bytes32` are 0x prefixed hex of the exact length.
  */
 library PayloadLib {
-    TaskVm private constant vm =
-        TaskVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    TaskVm private constant vm = TaskVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     /**
      * @notice Encodes a call to `signature` with `argsCsv`.
@@ -42,9 +41,7 @@ library PayloadLib {
         bytes memory payload = abi.encodePacked(bytes4(keccak256(bytes(signature))));
 
         string[] memory argTypes = _argumentTypes(signature);
-        string[] memory args = bytes(argsCsv).length == 0
-            ? new string[](0)
-            : vm.split(argsCsv, ",");
+        string[] memory args = bytes(argsCsv).length == 0 ? new string[](0) : vm.split(argsCsv, ",");
         require(argTypes.length == args.length, "payload: argument count mismatch");
 
         for (uint256 i = 0; i < args.length; i++) {
@@ -202,11 +199,11 @@ library PayloadLib {
     }
 
     /// @dev `value` as an unsigned integer that fits `width` bits.
-    function _parseUintOfWidth(
-        string memory argType,
-        string memory value,
-        uint256 width
-    ) private pure returns (uint256 parsed) {
+    function _parseUintOfWidth(string memory argType, string memory value, uint256 width)
+        private
+        pure
+        returns (uint256 parsed)
+    {
         if (!_isDecimal(value, false)) {
             revert(_invalid(argType, value));
         }
@@ -217,11 +214,11 @@ library PayloadLib {
     }
 
     /// @dev `value` as a signed integer in [-2**(width-1), 2**(width-1) - 1].
-    function _parseIntOfWidth(
-        string memory argType,
-        string memory value,
-        uint256 width
-    ) private pure returns (int256 parsed) {
+    function _parseIntOfWidth(string memory argType, string memory value, uint256 width)
+        private
+        pure
+        returns (int256 parsed)
+    {
         if (!_isDecimal(value, true)) {
             revert(_invalid(argType, value));
         }
@@ -251,11 +248,11 @@ library PayloadLib {
      *      characters. Used for `address` (40 digits) and `bytes32` (64 digits), both of
      *      which are right aligned in the word the caller builds from the result.
      */
-    function _parseHexOfLength(
-        string memory argType,
-        string memory value,
-        uint256 digits
-    ) private pure returns (uint256 parsed) {
+    function _parseHexOfLength(string memory argType, string memory value, uint256 digits)
+        private
+        pure
+        returns (uint256 parsed)
+    {
         bytes memory raw = bytes(value);
         if (raw.length != digits + 2 || raw[0] != "0" || (raw[1] != "x" && raw[1] != "X")) {
             revert(_invalid(argType, value));
@@ -323,11 +320,11 @@ library PayloadLib {
     }
 
     /// @dev `raw[start:end]` as a string.
-    function _slice(
-        bytes memory raw,
-        uint256 start,
-        uint256 end
-    ) private pure returns (string memory) {
+    function _slice(bytes memory raw, uint256 start, uint256 end)
+        private
+        pure
+        returns (string memory)
+    {
         bytes memory sliced = new bytes(end - start);
         for (uint256 i = 0; i < sliced.length; i++) {
             sliced[i] = raw[start + i];

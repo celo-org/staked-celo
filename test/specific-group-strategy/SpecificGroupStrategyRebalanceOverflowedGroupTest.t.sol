@@ -35,8 +35,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
     function test_rebalanceOverflowedGroup_ShouldRevertWhenFromGroupIsNotOverflowing() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupNotOverflowing.selector,
-                groupAddresses[0]
+                SpecificGroupStrategy.GroupNotOverflowing.selector, groupAddresses[0]
             )
         );
         specificGroupStrategy.rebalanceOverflowedGroup(groupAddresses[0]);
@@ -50,8 +49,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupStillOverflowing.selector,
-                groupAddresses[2]
+                SpecificGroupStrategy.GroupStillOverflowing.selector, groupAddresses[2]
             )
         );
         specificGroupStrategy.rebalanceOverflowedGroup(groupAddresses[2]);
@@ -182,8 +180,8 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
         vm.prank(depositor);
         manager.deposit{value: deposit}();
 
-        (address[] memory scheduledGroups, uint256[] memory scheduledVotes) = mockAccount
-            .getLastScheduledVotes();
+        (address[] memory scheduledGroups, uint256[] memory scheduledVotes) =
+            mockAccount.getLastScheduledVotes();
         for (uint256 i = 0; i < scheduledGroups.length; i++) {
             mockAccount.setCeloForGroup(scheduledGroups[i], scheduledVotes[i]);
         }
@@ -194,7 +192,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
         _whenThirdGroupOverflowing();
 
         _revokePending(voter, groupAddresses[2], thirdGroupCapacity);
-        (, originalOverflow, ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[2]);
+        (, originalOverflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[2]);
     }
 
     /// @dev beforeEach of describe("When 1:1").
@@ -231,10 +229,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
     function _assertTransfersFromActiveGroups(uint256 expectedMoved) private view {
         TransferValues memory values = _lastTransferValues();
 
-        _assertMembersAddresses(
-            values.fromGroups,
-            _addresses(groupAddresses[0], groupAddresses[1])
-        );
+        _assertMembersAddresses(values.fromGroups, _addresses(groupAddresses[0], groupAddresses[1]));
         assertEq(values.fromVotes[0] + values.fromVotes[1], expectedMoved);
 
         _assertMembersAddresses(values.toGroups, _addresses(groupAddresses[2]));

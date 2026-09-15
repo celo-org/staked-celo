@@ -28,9 +28,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         vm.prank(owner);
         specificGroupStrategy.blockGroup(groupAddresses[2]);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[2]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[2]);
         assertEq(expected, 0);
         assertEq(real, 100);
     }
@@ -46,9 +45,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setScheduledRevokeForGroup(groupAddresses[2], 50);
         mockAccount.setScheduledWithdrawalsForGroup(groupAddresses[2], 51);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[2]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[2]);
         assertEq(expected, 1);
         assertEq(real, 0);
     }
@@ -58,9 +56,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
     {
         setUpOverflowingSpecificStrategy();
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, firstGroupCapacity);
         assertEq(real, firstGroupCapacity);
     }
@@ -81,9 +78,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         setUpOverflowingSpecificStrategy();
         setUpGroupBecomesUnhealthy();
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 0);
         assertEq(real, 0);
     }
@@ -111,9 +107,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(groupAddresses[0]);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 0);
         assertEq(real, 50);
     }
@@ -126,9 +121,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[0], 50);
         mockAccount.setScheduledVotes(groupAddresses[0], 50);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, real);
     }
 
@@ -140,9 +134,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[0], 25);
         mockAccount.setScheduledVotes(groupAddresses[0], 25);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 100);
         assertEq(real, 50);
     }
@@ -153,9 +146,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         activateGroupsWithSplitCelo(2, 50);
         setUpGroupOnlyInActive();
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, real);
     }
 
@@ -168,9 +160,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[0], 30);
         mockAccount.setScheduledVotes(groupAddresses[0], 30);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 50);
         assertEq(real, 60);
     }
@@ -185,9 +176,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[0], 0);
         mockAccount.setCeloForGroup(groupAddresses[0], 150);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, real);
     }
 
@@ -200,9 +190,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setScheduledVotes(groupAddresses[0], 60);
         mockAccount.setVotesForGroup(groupAddresses[0], 0);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 150);
         assertEq(real, 60);
     }
@@ -217,9 +206,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setScheduledVotes(groupAddresses[0], 50);
         mockAccount.setVotesForGroup(groupAddresses[0], 0);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 300);
         assertEq(real, 50);
     }
@@ -234,9 +222,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setScheduledVotes(groupAddresses[0], 50);
         mockAccount.setVotesForGroup(groupAddresses[0], 0);
 
-        (uint256 expected, uint256 real) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 real) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[0]);
         assertEq(expected, 75);
         assertEq(real, 50);
     }
@@ -254,9 +241,8 @@ contract ManagerRebalanceTest is ManagerTestBase {
         manager.deposit{value: deposit}();
         mockAccount.setScheduledVotes(groupAddresses[2], thirdGroupCapacity);
 
-        (uint256 expected, uint256 actual) = manager.getExpectedAndActualCeloForGroup(
-            groupAddresses[2]
-        );
+        (uint256 expected, uint256 actual) =
+            manager.getExpectedAndActualCeloForGroup(groupAddresses[2]);
         assertEq(expected, thirdGroupCapacity);
         assertEq(actual, thirdGroupCapacity);
         assertEq(mockDefaultStrategy.totalStCeloInStrategy(), deposit - thirdGroupCapacity);
@@ -407,9 +393,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
 
         vm.prank(owner);
         mockDefaultStrategy.deactivateGroup(groupAddresses[1]);
-        vm.expectRevert(
-            abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1])
-        );
+        vm.expectRevert(abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1]));
         manager.rebalance(groupAddresses[0], groupAddresses[1]);
     }
 
@@ -436,9 +420,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
 
         vm.prank(owner);
         specificGroupStrategy.blockGroup(groupAddresses[1]);
-        vm.expectRevert(
-            abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1])
-        );
+        vm.expectRevert(abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1]));
         manager.rebalance(groupAddresses[0], groupAddresses[1]);
     }
 
@@ -450,10 +432,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         vm.prank(depositor);
         vm.expectRevert(abi.encodeWithSelector(Manager.CallerNotStrategy.selector, depositor));
         manager.scheduleTransferWithinStrategy(
-            new address[](0),
-            new address[](0),
-            new uint256[](0),
-            new uint256[](0)
+            new address[](0), new address[](0), new uint256[](0), new uint256[](0)
         );
     }
 
@@ -462,7 +441,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
     {
         address strategyAddress = address(manager.defaultStrategy());
         vm.prank(depositor);
-        (bool sent, ) = strategyAddress.call{value: 10 ether}("");
+        (bool sent,) = strategyAddress.call{value: 10 ether}("");
         assertTrue(sent);
 
         address[] memory fromGroups = arr(groupAddresses[6], groupAddresses[7]);
@@ -523,9 +502,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
     // =========================================================================
 
     function test_rebalanceOverflow_ShouldRevertWhenToGroupNotActive() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1])
-        );
+        vm.expectRevert(abi.encodeWithSelector(Manager.InvalidToGroup.selector, groupAddresses[1]));
         manager.rebalanceOverflow(groupAddresses[0], groupAddresses[1]);
     }
 
@@ -610,7 +587,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockDefaultStrategy.activateGroup(groupAddresses[1], ADDRESS_ZERO, ADDRESS_ZERO);
         mockDefaultStrategy.activateGroup(groupAddresses[2], ADDRESS_ZERO, groupAddresses[1]);
 
-        (originalTail, ) = mockDefaultStrategy.getGroupsTail();
+        (originalTail,) = mockDefaultStrategy.getGroupsTail();
         vm.prank(depositor);
         manager.changeStrategy(groupAddresses[0]);
         vm.prank(depositor);
@@ -622,7 +599,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
     /// @dev `beforeEach` of `When group becomes unhealthy`.
     function setUpGroupBecomesUnhealthy() private returns (address newTail) {
         revokeElection(groupAddresses[0]);
-        (newTail, ) = mockDefaultStrategy.getGroupsTail();
+        (newTail,) = mockDefaultStrategy.getGroupsTail();
         specificGroupStrategy.rebalanceWhenHealthChanged(groupAddresses[0]);
         updateGroupCelo();
     }
@@ -689,7 +666,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
     /// @dev `beforeEach` of `When having different active groups`.
     function setUpDifferentActiveGroups() private {
         for (uint256 i = 2; i < 4; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);

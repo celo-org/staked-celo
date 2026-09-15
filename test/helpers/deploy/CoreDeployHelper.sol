@@ -211,16 +211,12 @@ abstract contract CoreDeployHelper is CeloTestHelper {
 
         // Script 10: SpecificGroupStrategy.setDependencies
         specificGroupStrategy.setDependencies(
-            address(account),
-            address(groupHealth),
-            address(defaultStrategy)
+            address(account), address(groupHealth), address(defaultStrategy)
         );
 
         // Script 11: DefaultStrategy.setDependencies
         defaultStrategy.setDependencies(
-            address(account),
-            address(groupHealth),
-            address(specificGroupStrategy)
+            address(account), address(groupHealth), address(specificGroupStrategy)
         );
 
         // ================================================================
@@ -251,9 +247,8 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     ///      Called without prank — test contract owns MockRegistry.
     function _deployMockCeloInfrastructure() private {
         // Deploy MockRegistry via getCode (UNSAFE to import — Initializable collision)
-        bytes memory registryCode = IVmExtended(address(vm)).getCode(
-            "MockRegistry.sol:MockRegistry"
-        );
+        bytes memory registryCode =
+            IVmExtended(address(vm)).getCode("MockRegistry.sol:MockRegistry");
         address _mockRegistryAddr;
         assembly {
             _mockRegistryAddr := create(0, add(registryCode, 0x20), mload(registryCode))
@@ -319,8 +314,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     function _deployManagerProxy(address registry) private {
         Manager impl = new Manager();
         ERC1967Proxy proxy = new ERC1967Proxy(
-            address(impl),
-            abi.encodeWithSelector(Manager.initialize.selector, registry, deployer)
+            address(impl), abi.encodeWithSelector(Manager.initialize.selector, registry, deployer)
         );
         manager = Manager(address(proxy));
     }
@@ -332,10 +326,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
-                Account.initialize.selector,
-                registry,
-                address(manager),
-                deployer
+                Account.initialize.selector, registry, address(manager), deployer
             )
         );
         account = Account(payable(address(proxy)));
@@ -356,12 +347,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         Vote impl = new Vote();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(
-                Vote.initialize.selector,
-                registry,
-                deployer,
-                address(manager)
-            )
+            abi.encodeWithSelector(Vote.initialize.selector, registry, deployer, address(manager))
         );
         vote = Vote(address(proxy));
     }
@@ -372,11 +358,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         GroupHealth impl = new GroupHealth();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(
-                GroupHealth.initialize.selector,
-                registry,
-                multiSigProxy
-            )
+            abi.encodeWithSelector(GroupHealth.initialize.selector, registry, multiSigProxy)
         );
         groupHealth = GroupHealth(address(proxy));
     }
@@ -387,9 +369,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
-                SpecificGroupStrategy.initialize.selector,
-                deployer,
-                address(manager)
+                SpecificGroupStrategy.initialize.selector, deployer, address(manager)
             )
         );
         specificGroupStrategy = SpecificGroupStrategy(address(proxy));
@@ -401,11 +381,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         DefaultStrategy impl = new DefaultStrategy();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(
-                DefaultStrategy.initialize.selector,
-                deployer,
-                address(manager)
-            )
+            abi.encodeWithSelector(DefaultStrategy.initialize.selector, deployer, address(manager))
         );
         defaultStrategy = DefaultStrategy(address(proxy));
     }

@@ -24,9 +24,8 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     function test_getExpectedAndActualStCeloForGroup_ShouldReturn0WhenNoDeposit() public {
         _activateGroupsFromPrevious(3);
 
-        (uint256 expected, uint256 actual) = defaultStrategy.getExpectedAndActualStCeloForGroup(
-            groupAddresses[0]
-        );
+        (uint256 expected, uint256 actual) =
+            defaultStrategy.getExpectedAndActualStCeloForGroup(groupAddresses[0]);
         assertEq(expected, 0);
         assertEq(actual, 0);
     }
@@ -34,7 +33,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     /// @dev `describe("When deposited")` beforeEach of `#getExpectedAndActualStCeloForGroup()`.
     function _setUpExpectedAndActualDeposited() private {
         _activateGroupsFromPrevious(3);
-        (originalTail, ) = defaultStrategy.getGroupsTail();
+        (originalTail,) = defaultStrategy.getGroupsTail();
         manager.deposit{value: 100}();
     }
 
@@ -43,12 +42,11 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     {
         _setUpExpectedAndActualDeposited();
 
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         assertEq(head, originalTail);
 
-        (uint256 expected, uint256 actual) = defaultStrategy.getExpectedAndActualStCeloForGroup(
-            head
-        );
+        (uint256 expected, uint256 actual) =
+            defaultStrategy.getExpectedAndActualStCeloForGroup(head);
         assertEq(expected, 34);
         assertEq(actual, 100);
     }
@@ -58,9 +56,8 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
     {
         _setUpExpectedAndActualDeposited();
 
-        (uint256 expected, uint256 actual) = defaultStrategy.getExpectedAndActualStCeloForGroup(
-            groupAddresses[1]
-        );
+        (uint256 expected, uint256 actual) =
+            defaultStrategy.getExpectedAndActualStCeloForGroup(groupAddresses[1]);
         assertNotEq(groupAddresses[1], originalTail);
         assertEq(expected, 33);
         assertEq(actual, 0);
@@ -93,10 +90,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                DefaultStrategy.RebalanceNoExtraStCelo.selector,
-                groupAddresses[0],
-                0,
-                0
+                DefaultStrategy.RebalanceNoExtraStCelo.selector, groupAddresses[0], 0, 0
             )
         );
         mockDefaultStrategy.rebalance(groupAddresses[0], groupAddresses[1]);
@@ -107,7 +101,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
         _activateGroupsFromPrevious(3);
         manager.deposit{value: 49}();
         manager.deposit{value: 51}();
-        (currentHead, ) = defaultStrategy.getGroupsHead();
+        (currentHead,) = defaultStrategy.getGroupsHead();
     }
 
     function test_rebalance_WhenDeposited_ShouldHaveStCeloOnlyInTwoGroups() public {
@@ -150,10 +144,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                DefaultStrategy.RebalanceNoExtraStCelo.selector,
-                groupAddresses[0],
-                0,
-                33
+                DefaultStrategy.RebalanceNoExtraStCelo.selector, groupAddresses[0], 0, 33
             )
         );
         mockDefaultStrategy.rebalance(groupAddresses[0], currentHead);
@@ -168,10 +159,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                DefaultStrategy.RebalanceEnoughStCelo.selector,
-                groupAddresses[0],
-                50,
-                50
+                DefaultStrategy.RebalanceEnoughStCelo.selector, groupAddresses[0], 50, 50
             )
         );
         mockDefaultStrategy.rebalance(groupAddresses[1], groupAddresses[0]);

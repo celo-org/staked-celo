@@ -25,11 +25,7 @@ interface DevchainVm {
         pure
         returns (uint256);
 
-    function mockCall(
-        address callee,
-        bytes calldata data,
-        bytes calldata returnData
-    ) external;
+    function mockCall(address callee, bytes calldata data, bytes calldata returnData) external;
 
     function clearMockedCalls() external;
 
@@ -38,11 +34,7 @@ interface DevchainVm {
     function sign(uint256 privateKey, bytes32 digest)
         external
         pure
-        returns (
-            uint8 v,
-            bytes32 r,
-            bytes32 s
-        );
+        returns (uint8 v, bytes32 r, bytes32 s);
 
     function etch(address target, bytes calldata newRuntimeBytecode) external;
 }
@@ -73,11 +65,9 @@ interface ICeloValidators {
 
     function deaffiliate() external returns (bool);
 
-    function addFirstMember(
-        address validator,
-        address lesser,
-        address greater
-    ) external returns (bool);
+    function addFirstMember(address validator, address lesser, address greater)
+        external
+        returns (bool);
 
     function addMember(address validator) external returns (bool);
 
@@ -89,11 +79,9 @@ interface ICeloValidators {
 
     function halveSlashingMultiplier(address group) external;
 
-    function updateEcdsaPublicKey(
-        address account,
-        address signer,
-        bytes calldata ecdsaPublicKey
-    ) external returns (bool);
+    function updateEcdsaPublicKey(address account, address signer, bytes calldata ecdsaPublicKey)
+        external
+        returns (bool);
 
     function isValidatorGroup(address account) external view returns (bool);
 
@@ -102,15 +90,7 @@ interface ICeloValidators {
     function getValidatorGroup(address account)
         external
         view
-        returns (
-            address[] memory,
-            uint256,
-            uint256,
-            uint256,
-            uint256[] memory,
-            uint256,
-            uint256
-        );
+        returns (address[] memory, uint256, uint256, uint256, uint256[] memory, uint256, uint256);
 
     function getValidator(address account)
         external
@@ -191,11 +171,7 @@ interface ICeloGovernance is IGovernance {
         string calldata descriptionUrl
     ) external payable returns (uint256);
 
-    function upvote(
-        uint256 proposalId,
-        uint256 lesser,
-        uint256 greater
-    ) external returns (bool);
+    function upvote(uint256 proposalId, uint256 lesser, uint256 greater) external returns (bool);
 
     function approve(uint256 proposalId, uint256 index) external returns (bool);
 
@@ -205,26 +181,12 @@ interface ICeloGovernance is IGovernance {
 
     function getQueue() external view returns (uint256[] memory, uint256[] memory);
 
-    function getVoteTotals(uint256 proposalId)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
+    function getVoteTotals(uint256 proposalId) external view returns (uint256, uint256, uint256);
 
     function getVoteRecord(address account, uint256 index)
         external
         view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        );
+        returns (uint256, uint256, uint256, uint256, uint256, uint256);
 
     function getProposalStage(uint256 proposalId) external view returns (uint8);
 
@@ -299,9 +261,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         celoLockedGold = ICeloLockedGold(celoRegistry.getAddressForStringOrDie("LockedGold"));
         celoElection = IElection(celoRegistry.getAddressForStringOrDie("Election"));
         celoValidators = ICeloValidators(celoRegistry.getAddressForStringOrDie("Validators"));
-        celoEpochManager = ICeloEpochManager(
-            celoRegistry.getAddressForStringOrDie("EpochManager")
-        );
+        celoEpochManager = ICeloEpochManager(celoRegistry.getAddressForStringOrDie("EpochManager"));
         celoGoldToken = IGoldToken(celoRegistry.getAddressForStringOrDie("GoldToken"));
         celoGovernance = ICeloGovernance(celoRegistry.getAddressForStringOrDie("Governance"));
 
@@ -313,8 +273,8 @@ abstract contract DevchainHelper is MultiSigHelper {
         vm.label(address(celoGoldToken), "Celo:GoldToken");
         vm.label(address(celoGovernance), "Celo:Governance");
 
-        (validatorLockedGoldRequirement, ) = celoValidators.getValidatorLockedGoldRequirements();
-        (groupLockedGoldRequirement, ) = celoValidators.getGroupLockedGoldRequirements();
+        (validatorLockedGoldRequirement,) = celoValidators.getValidatorLockedGoldRequirements();
+        (groupLockedGoldRequirement,) = celoValidators.getGroupLockedGoldRequirements();
 
         devchainEpochNumber = celoEpochManager.getCurrentEpochNumber();
         syncEpochMock();
@@ -387,8 +347,8 @@ abstract contract DevchainHelper is MultiSigHelper {
         view
         returns (address lesser, address greater)
     {
-        (address[] memory groups, uint256[] memory votes) = celoElection
-            .getTotalVotesForEligibleValidatorGroups();
+        (address[] memory groups, uint256[] memory votes) =
+            celoElection.getTotalVotesForEligibleValidatorGroups();
 
         // Signed on purpose: the account tasks ask for neighbours after revoking more
         // than the group currently holds, which ContractKit handled with BigNumber math.
@@ -514,7 +474,7 @@ abstract contract DevchainHelper is MultiSigHelper {
 
     /// @notice Removes all members from `group`.
     function removeMembersFromGroup(address group) internal {
-        (address[] memory members, , , , , , ) = celoValidators.getValidatorGroup(group);
+        (address[] memory members,,,,,,) = celoValidators.getValidatorGroup(group);
         for (uint256 i = 0; i < members.length; i++) {
             vm.prank(group);
             celoValidators.removeMember(members[i]);
@@ -548,13 +508,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
         (uint8 v, bytes32 r, bytes32 s) = dvm.sign(walletPrivateKey[signer], digest);
         vm.prank(validator);
-        celoAccounts.authorizeValidatorSignerWithPublicKey(
-            signer,
-            v,
-            r,
-            s,
-            walletPublicKey[signer]
-        );
+        celoAccounts.authorizeValidatorSignerWithPublicKey(signer, v, r, s, walletPublicKey[signer]);
     }
 
     // =========================================================================
@@ -567,11 +521,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice Lock `amount` CELO and vote for `group`.
-    function voteForGroup(
-        address group,
-        address voter,
-        uint256 amount
-    ) internal {
+    function voteForGroup(address group, address voter, uint256 amount) internal {
         lockCelo(voter, amount);
         (address lesser, address greater) = findLesserAndGreaterAfterVote(group, int256(amount));
         vm.prank(voter);
@@ -640,9 +590,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         for (uint256 j = 0; j < validatorGroups.length; j++) {
             address validatorGroup = validatorGroups[j];
             if (celoValidators.isValidatorGroup(validatorGroup)) {
-                (address[] memory members, , , , , , ) = celoValidators.getValidatorGroup(
-                    validatorGroup
-                );
+                (address[] memory members,,,,,,) = celoValidators.getValidatorGroup(validatorGroup);
                 for (uint256 i = 0; i < members.length; i++) {
                     address signer = makeOneValidatorGroupUseSigner
                         ? makeValidatorUseSigner(members[i])
@@ -675,11 +623,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         bool update
     ) internal {
         revokeElectionOnMockValidatorGroupsAndUpdate(
-            IValidators(address(celoValidators)),
-            celoAccounts,
-            groupHealth,
-            validatorGroups,
-            update
+            IValidators(address(celoValidators)), celoAccounts, groupHealth, validatorGroups, update
         );
     }
 
@@ -705,7 +649,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         if (activateGroups) {
             address dsOwner = defaultStrategy.owner();
             for (uint256 i = 3; i > 0; i--) {
-                (address head, ) = defaultStrategy.getGroupsHead();
+                (address head,) = defaultStrategy.getGroupsHead();
                 vm.startPrank(dsOwner);
                 defaultStrategy.addActivatableGroup(groupAddresses[i - 1]);
                 defaultStrategy.activateGroup(groupAddresses[i - 1], ADDRESS_ZERO, head);
@@ -732,10 +676,8 @@ abstract contract DevchainHelper is MultiSigHelper {
         // margin of _overflowLockAmount covers the rounding, so a shortfall is a bug.
         require(sum <= toLock, "overflow: lock amount underestimated");
         for (uint256 i = 0; i < 3; i++) {
-            (address lesser, address greater) = findLesserAndGreaterAfterVote(
-                groupAddresses[i],
-                int256(votes[i])
-            );
+            (address lesser, address greater) =
+                findLesserAndGreaterAfterVote(groupAddresses[i], int256(votes[i]));
             vm.prank(voter);
             celoElection.vote(groupAddresses[i], votes[i], lesser, greater);
         }

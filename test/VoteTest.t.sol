@@ -68,12 +68,12 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
     function setUp() public {
         loadDevchain();
 
-        (depositor0, ) = randomSigner(300 ether);
-        (depositor1, ) = randomSigner(300 ether);
-        (nonStakedCelo, ) = randomSigner(100 ether);
-        (nonOwner, ) = randomSigner(100 ether);
-        (nonAccount, ) = randomSigner(100 ether);
-        (voter, ) = randomSigner(300 ether);
+        (depositor0,) = randomSigner(300 ether);
+        (depositor1,) = randomSigner(300 ether);
+        (nonStakedCelo,) = randomSigner(100 ether);
+        (nonOwner,) = randomSigner(100 ether);
+        (nonAccount,) = randomSigner(100 ether);
+        (voter,) = randomSigner(300 ether);
 
         createCeloAccount(voter);
         _registerGroups();
@@ -105,7 +105,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
     /// @dev Ten validator groups with one validator each; the first three get activated.
     function _registerGroups() private {
         for (uint256 i = 0; i < 10; i++) {
-            (address group, ) = randomSigner(11_000 ether);
+            (address group,) = randomSigner(11_000 ether);
             groupAddresses.push(group);
             if (i < 3) {
                 activatedGroupAddresses.push(group);
@@ -122,9 +122,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         vm.startPrank(owner);
         vote.setPauser();
         mockDefaultStrategy.setDependencies(
-            address(account),
-            address(mockGroupHealth),
-            address(specificGroupStrategy)
+            address(account), address(mockGroupHealth), address(specificGroupStrategy)
         );
         manager.setDependencies(
             address(stakedCelo),
@@ -143,11 +141,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         for (uint256 i = 0; i < activatedGroupAddresses.length; i++) {
             vm.startPrank(owner);
             mockDefaultStrategy.addActivatableGroup(activatedGroupAddresses[i]);
-            mockDefaultStrategy.activateGroup(
-                activatedGroupAddresses[i],
-                ADDRESS_ZERO,
-                previousKey
-            );
+            mockDefaultStrategy.activateGroup(activatedGroupAddresses[i], ADDRESS_ZERO, previousKey);
             vm.stopPrank();
             previousKey = activatedGroupAddresses[i];
         }
@@ -173,11 +167,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         vm.deal(depositor1, depositor1.balance + minDeposit);
         vm.prank(depositor1);
         proposalId = celoGovernance.propose{value: minDeposit}(
-            values,
-            destinations,
-            PROPOSAL_INPUT,
-            dataLengths,
-            DESCRIPTION_URL
+            values, destinations, PROPOSAL_INPUT, dataLengths, DESCRIPTION_URL
         );
 
         if (dequeue) {
@@ -204,10 +194,8 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         for (uint256 i = 0; i < activatedGroupAddresses.length; i++) {
             address group = activatedGroupAddresses[i];
             uint256 scheduledVotes = account.scheduledVotesForGroup(group);
-            (address lesser, address greater) = findLesserAndGreaterAfterVote(
-                group,
-                int256(scheduledVotes)
-            );
+            (address lesser, address greater) =
+                findLesserAndGreaterAfterVote(group, int256(scheduledVotes));
             vm.prank(depositor);
             account.activateAndVote(group, lesser, greater);
         }

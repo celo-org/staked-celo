@@ -35,10 +35,22 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      # prettier and solhint only; the project deliberately does not use `forge fmt`,
-      # whose formatting differs from prettier-plugin-solidity.
+      # prettier and solhint cover contracts/ only. `forge fmt` is never pointed at that
+      # tree: its formatting differs from prettier-plugin-solidity, and the contracts are
+      # the audited, bytecode-pinned sources.
       - name: Lint Solidity
         run: yarn lint:sol:ci
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # The test-suite and the deploy scripts are outside prettier's glob above and are
+      # listed in .solhintignore, so `forge fmt` is what keeps them consistent. It is
+      # configured under [fmt] in foundry.toml. Run `yarn fmt` to fix.
+      - name: Check test and script formatting
+        run: yarn fmt:check
 
   test:
     runs-on: ubuntu-latest

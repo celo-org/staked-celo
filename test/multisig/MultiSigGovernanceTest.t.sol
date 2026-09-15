@@ -25,9 +25,7 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
 
         vm.prank(address(mockGovernance));
         msig.governanceProposeAndExecute(
-            _singleAddress(address(proposalTester)),
-            _singleUint(0),
-            _singleBytes(txData)
+            _singleAddress(address(proposalTester)), _singleUint(0), _singleBytes(txData)
         );
 
         (address caller, uint256 value, uint256 arg) = proposalTester.getCall(0);
@@ -49,9 +47,7 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
 
         vm.prank(address(mockGovernance));
         msig.governanceProposeAndExecute(
-            _singleAddress(address(proposalTester)),
-            _singleUint(100),
-            _singleBytes(txData)
+            _singleAddress(address(proposalTester)), _singleUint(100), _singleBytes(txData)
         );
 
         assertEq(address(multiSig).balance, 200);
@@ -66,7 +62,8 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
     function test_GovernanceProposeAndExecute_AllowsGovernanceToCallMultipleFunctions() public {
         ProposalTester proposalTester = new ProposalTester();
         bytes memory txData1 = abi.encodeWithSelector(ProposalTester.testCall.selector, uint256(42));
-        bytes memory txData2 = abi.encodeWithSelector(ProposalTester.testCall.selector, uint256(1337));
+        bytes memory txData2 =
+            abi.encodeWithSelector(ProposalTester.testCall.selector, uint256(1337));
 
         address[] memory dests = new address[](2);
         dests[0] = address(proposalTester);
@@ -94,9 +91,7 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
 
         vm.prank(address(mockGovernance));
         msig.governanceProposeAndExecute(
-            _singleAddress(address(multiSig)),
-            _singleUint(0),
-            _singleBytes(txData)
+            _singleAddress(address(multiSig)), _singleUint(0), _singleBytes(txData)
         );
 
         assertTrue(msig.isOwner(nonOwner));
@@ -111,9 +106,7 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
 
         vm.prank(address(mockGovernance));
         msig.governanceProposeAndExecute(
-            _singleAddress(address(proposalTester)),
-            _singleUint(0),
-            _singleBytes(txData)
+            _singleAddress(address(proposalTester)), _singleUint(0), _singleBytes(txData)
         );
     }
 
@@ -122,7 +115,9 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
         uint256[] memory emptyVals = new uint256[](0);
         bytes[] memory emptyPayloads = new bytes[](0);
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, owner1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, owner1)
+        );
         vm.prank(owner1);
         msig.governanceProposeAndExecute(emptyDests, emptyVals, emptyPayloads);
     }
@@ -132,7 +127,9 @@ contract MultiSigGovernanceTest is MultiSigTestBase {
         uint256[] memory emptyVals = new uint256[](0);
         bytes[] memory emptyPayloads = new bytes[](0);
 
-        vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, nonOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(IMultiSigErrors.SenderNotGovernance.selector, nonOwner)
+        );
         vm.prank(nonOwner);
         msig.governanceProposeAndExecute(emptyDests, emptyVals, emptyPayloads);
     }

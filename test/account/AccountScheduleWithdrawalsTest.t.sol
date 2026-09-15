@@ -95,10 +95,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
         vm.prank(managerSigner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Account.WithdrawalAmountTooHigh.selector,
-                groupAddresses[2],
-                300,
-                310
+                Account.WithdrawalAmountTooHigh.selector, groupAddresses[2], 300, 310
             )
         );
         account.scheduleWithdrawals(beneficiary, groups, amounts);
@@ -173,8 +170,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
             for (uint256 i = 0; i < 3; i++) {
                 assertEq(
                     account.scheduledWithdrawalsForGroupAndBeneficiary(
-                        groupAddresses[i],
-                        beneficiary
+                        groupAddresses[i], beneficiary
                     ),
                     40
                 );
@@ -247,8 +243,7 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
             );
             assertEq(
                 account.scheduledWithdrawalsForGroupAndBeneficiary(
-                    groupAddresses[i],
-                    otherBeneficiary
+                    groupAddresses[i], otherBeneficiary
                 ),
                 30
             );

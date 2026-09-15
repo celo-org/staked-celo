@@ -45,14 +45,10 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     // =========================================================================
 
     event DependenciesSet(
-        address indexed account,
-        address indexed groupHealth,
-        address indexed specificGroupStrategy
+        address indexed account, address indexed groupHealth, address indexed specificGroupStrategy
     );
     event SortingParamsSet(
-        uint256 maxGroupsToDistributeTo,
-        uint256 maxGroupsToWithdrawFrom,
-        uint256 sortingLoopLimit
+        uint256 maxGroupsToDistributeTo, uint256 maxGroupsToWithdrawFrom, uint256 sortingLoopLimit
     );
     event MinCountOfActiveGroupsSet(uint256 minCount);
     event ActivatableGroupAdded(address indexed group);
@@ -151,15 +147,15 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     }
 
     function _createNamedTestAccounts() private {
-        (nonOwner, ) = randomSigner(100 ether);
+        (nonOwner,) = randomSigner(100 ether);
         pauser = owner;
-        (nonVote, ) = randomSigner(100_000 ether);
-        (nonStakedCelo, ) = randomSigner(100 ether);
-        (nonAccount, ) = randomSigner(100 ether);
-        (nonManager, ) = randomSigner(100 ether);
-        (voter, ) = randomSigner(10_000_000_000 ether);
-        (someone, ) = randomSigner(100 ether);
-        (mockSlasher, ) = randomSigner(100 ether);
+        (nonVote,) = randomSigner(100_000 ether);
+        (nonStakedCelo,) = randomSigner(100 ether);
+        (nonAccount,) = randomSigner(100 ether);
+        (nonManager,) = randomSigner(100 ether);
+        (voter,) = randomSigner(10_000_000_000 ether);
+        (someone,) = randomSigner(100 ether);
+        (mockSlasher,) = randomSigner(100 ether);
     }
 
     function _deployProtocolMocks() private {
@@ -181,9 +177,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
             address(mockDefaultStrategy)
         );
         mockDefaultStrategy.setDependencies(
-            address(mockAccount),
-            address(mockGroupHealth),
-            address(specificGroupStrategy)
+            address(mockAccount), address(mockGroupHealth), address(specificGroupStrategy)
         );
         vm.stopPrank();
     }
@@ -192,7 +186,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     ///      higher voting limit, matching the original fixture.
     function _registerValidatorGroups() private {
         for (uint256 i = 0; i < 11; i++) {
-            (address group, ) = randomSigner(21_000 ether);
+            (address group,) = randomSigner(21_000 ether);
             groupAddresses.push(group);
         }
         for (uint256 i = 0; i < 11; i++) {
@@ -213,7 +207,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     /// @dev Activates the first `count` groups, always passing the current head as `greater`.
     function _activateGroupsFromHead(uint256 count) internal {
         for (uint256 i = 0; i < count; i++) {
-            (address head, ) = defaultStrategy.getGroupsHead();
+            (address head,) = defaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -235,10 +229,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     /// @dev Shorthand for `updateGroupCeloBasedOnProtocolStCelo` with this fixture's contracts.
     function _updateGroupCelo() internal {
         updateGroupCeloBasedOnProtocolStCelo(
-            mockDefaultStrategy,
-            specificGroupStrategy,
-            mockAccount,
-            manager
+            mockDefaultStrategy, specificGroupStrategy, mockAccount, manager
         );
     }
 

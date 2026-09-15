@@ -38,7 +38,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
 
         address approver = celoGovernance.approver();
         vm.prank(depositor1);
-        (bool success, ) = approver.call{value: 10 ether}("");
+        (bool success,) = approver.call{value: 10 ether}("");
         require(success, "could not fund the approver");
     }
 
@@ -80,18 +80,17 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
 
         assertEq(voteRecord.yesVotes, depositor1VotingPower);
 
-        (uint256 yesVotesProposal1, , ) = celoGovernance.getVoteTotals(proposalId);
+        (uint256 yesVotesProposal1,,) = celoGovernance.getVoteTotals(proposalId);
         assertEq(yesVotesProposal1, depositor1VotingPower);
 
-        (uint256 yesVotesProposal2, , ) = celoGovernance.getVoteTotals(proposalId2);
+        (uint256 yesVotesProposal2,,) = celoGovernance.getVoteTotals(proposalId2);
         assertEq(yesVotesProposal2, depositor1VotingPower + depositor0VotedWeight);
 
         vm.prank(depositor0);
         manager.voteProposal(proposalId2, 1, 0, depositor0VotedWeight, 0);
 
-        (uint256 yesAfterChangeToNo, uint256 noAfterChangeToNo, ) = celoGovernance.getVoteTotals(
-            proposalId2
-        );
+        (uint256 yesAfterChangeToNo, uint256 noAfterChangeToNo,) =
+            celoGovernance.getVoteTotals(proposalId2);
         assertEq(yesAfterChangeToNo, depositor1VotingPower);
         assertEq(noAfterChangeToNo, depositor0VotedWeight);
 
@@ -130,8 +129,8 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
         vm.prank(depositor1);
         manager.changeStrategy(specificGroupStrategyDifferentFromActive);
 
-        (uint256 stCeloInStrategyBeforeChangeStrategy, , ) = specificGroupStrategy
-            .getStCeloInGroup(specificGroupStrategyDifferentFromActive);
+        (uint256 stCeloInStrategyBeforeChangeStrategy,,) =
+            specificGroupStrategy.getStCeloInGroup(specificGroupStrategyDifferentFromActive);
         assertEq(stCeloInStrategyBeforeChangeStrategy, AMOUNT_OF_CELO_TO_DEPOSIT);
     }
 
@@ -169,10 +168,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
     }
 
     /// @dev Ports GovernanceWrapper.propose for a proposal with a single `owner()` transaction.
-    function _propose(address destination, string memory descriptionUrl)
-        private
-        returns (uint256)
-    {
+    function _propose(address destination, string memory descriptionUrl) private returns (uint256) {
         address[] memory destinations = new address[](1);
         destinations[0] = destination;
         uint256[] memory values = new uint256[](1);
@@ -181,13 +177,8 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
 
         uint256 minDeposit = celoGovernance.minDeposit();
         vm.prank(depositor1);
-        return
-            celoGovernance.propose{value: minDeposit}(
-                values,
-                destinations,
-                PROPOSAL_INPUT,
-                dataLengths,
-                descriptionUrl
-            );
+        return celoGovernance.propose{value: minDeposit}(
+            values, destinations, PROPOSAL_INPUT, dataLengths, descriptionUrl
+        );
     }
 }

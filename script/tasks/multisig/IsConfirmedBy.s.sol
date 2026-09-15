@@ -28,14 +28,12 @@ contract IsConfirmedByScript is TaskBase {
     /// @param multiSigContract The MultiSig contract to read from.
     /// @param proposalId The ID of the proposal.
     /// @param ownerAddress The owner address to check.
-    function execute(
-        IMultiSigTask multiSigContract,
-        uint256 proposalId,
-        address ownerAddress
-    ) internal view {
+    function execute(IMultiSigTask multiSigContract, uint256 proposalId, address ownerAddress)
+        internal
+        view
+    {
         TaskConsole.log(
-            "is Proposal confirmed:",
-            multiSigContract.isConfirmedBy(proposalId, ownerAddress)
+            "is Proposal confirmed:", multiSigContract.isConfirmedBy(proposalId, ownerAddress)
         );
     }
 }

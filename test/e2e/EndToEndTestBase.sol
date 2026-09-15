@@ -81,11 +81,8 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         // MULTISIG_REQUIRED_CONFIRMATIONS = 1.
         deployCore(REGISTRY_ADDRESS, 1, 1, 1);
 
-        groupHealthMock = upgradeToMockGroupHealthE2E(
-            multiSig,
-            multisigOwner0,
-            address(groupHealth)
-        );
+        groupHealthMock =
+            upgradeToMockGroupHealthE2E(multiSig, multisigOwner0, address(groupHealth));
         electMockValidatorGroupsAndUpdate(groupHealthMock, _groupsToElect());
         activateValidators(activatedGroupAddresses);
     }
@@ -188,7 +185,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
 
     /// @notice Adds and activates `groupAddresses` in DefaultStrategy through the MultiSig.
     function activateValidators(address[] memory groupAddresses) internal {
-        (address nextGroup, ) = defaultStrategy.getGroupsTail();
+        (address nextGroup,) = defaultStrategy.getGroupsTail();
 
         address[] memory destinations = new address[](1);
         destinations[0] = address(defaultStrategy);
@@ -198,30 +195,16 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         for (uint256 i = 0; i < groupAddresses.length; i++) {
             require(groupHealthMock.isGroupValid(groupAddresses[i]), "not a valid group");
 
-            payloads[0] = abi.encodeWithSignature(
-                "addActivatableGroup(address)",
-                groupAddresses[i]
-            );
+            payloads[0] = abi.encodeWithSignature("addActivatableGroup(address)", groupAddresses[i]);
             submitAndExecuteMultiSigProposal(
-                multiSig,
-                destinations,
-                values,
-                payloads,
-                multisigOwner0
+                multiSig, destinations, values, payloads, multisigOwner0
             );
 
             payloads[0] = abi.encodeWithSignature(
-                "activateGroup(address,address,address)",
-                groupAddresses[i],
-                ADDRESS_ZERO,
-                nextGroup
+                "activateGroup(address,address,address)", groupAddresses[i], ADDRESS_ZERO, nextGroup
             );
             submitAndExecuteMultiSigProposal(
-                multiSig,
-                destinations,
-                values,
-                payloads,
-                multisigOwner0
+                multiSig, destinations, values, payloads, multisigOwner0
             );
 
             nextGroup = groupAddresses[i];
@@ -234,24 +217,18 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
 
     /// @notice Ports the ACCOUNT_ACTIVATE_AND_VOTE task (activateAndVoteHelper.ts).
     function activateAndVote() internal {
-        address[] memory groupList = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory groupList =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
 
         for (uint256 i = 0; i < groupList.length; i++) {
             address group = groupList[i];
-            bool canActivateForGroup = celoElection.hasActivatablePendingVotes(
-                address(account),
-                group
-            );
+            bool canActivateForGroup =
+                celoElection.hasActivatablePendingVotes(address(account), group);
             uint256 amountScheduled = account.scheduledVotesForGroup(group);
 
             if (amountScheduled > 0 || canActivateForGroup) {
-                (address lesser, address greater) = findLesserAndGreaterAfterVote(
-                    group,
-                    int256(amountScheduled)
-                );
+                (address lesser, address greater) =
+                    findLesserAndGreaterAfterVote(group, int256(amountScheduled));
                 vm.prank(taskSigner);
                 account.activateAndVote(group, lesser, greater);
             }
@@ -260,10 +237,8 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
 
     /// @notice Ports the ACCOUNT_REVOKE task (revokeHelper.ts).
     function revoke() internal {
-        address[] memory groupList = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory groupList =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
 
         for (uint256 i = 0; i < groupList.length; i++) {
             address group = groupList[i];
@@ -285,17 +260,13 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
 
     /// @notice Ports the ACCOUNT_WITHDRAW task (withdrawalHelper.ts).
     function withdraw(address beneficiary) internal {
-        address[] memory groupList = getGroupsOfAllStrategies(
-            defaultStrategy,
-            specificGroupStrategy
-        );
+        address[] memory groupList =
+            getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
 
         for (uint256 i = 0; i < groupList.length; i++) {
             address group = groupList[i];
-            uint256 scheduledWithdrawalAmount = account.scheduledWithdrawalsForGroupAndBeneficiary(
-                group,
-                beneficiary
-            );
+            uint256 scheduledWithdrawalAmount =
+                account.scheduledWithdrawalsForGroupAndBeneficiary(group, beneficiary);
             if (scheduledWithdrawalAmount == 0) continue;
 
             RevokeNeighbours memory n = _revokeNeighbours(group, scheduledWithdrawalAmount);
@@ -332,24 +303,19 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
 
         if (immediateWithdrawalAmount < scheduledAmount) {
             uint256 remainingToRevokeAmount = scheduledAmount - immediateWithdrawalAmount;
-            uint256 pendingVotes = celoElection.getPendingVotesForGroupByAccount(
-                group,
-                address(account)
-            );
-            uint256 toRevokeFromPending = remainingToRevokeAmount < pendingVotes
-                ? remainingToRevokeAmount
-                : pendingVotes;
+            uint256 pendingVotes =
+                celoElection.getPendingVotesForGroupByAccount(group, address(account));
+            uint256 toRevokeFromPending =
+                remainingToRevokeAmount < pendingVotes ? remainingToRevokeAmount : pendingVotes;
 
-            (n.lesserAfterPendingRevoke, n.greaterAfterPendingRevoke) = (
-                findLesserAndGreaterAfterVote(group, -int256(toRevokeFromPending))
-            );
+            (n.lesserAfterPendingRevoke, n.greaterAfterPendingRevoke) =
+            (findLesserAndGreaterAfterVote(group, -int256(toRevokeFromPending)));
 
             // Revoking pending votes happens before revoking active votes in the same
             // transaction, so the neighbours of the active revocation are computed from the
             // full remaining amount.
-            (n.lesserAfterActiveRevoke, n.greaterAfterActiveRevoke) = (
-                findLesserAndGreaterAfterVote(group, -int256(remainingToRevokeAmount))
-            );
+            (n.lesserAfterActiveRevoke, n.greaterAfterActiveRevoke) =
+            (findLesserAndGreaterAfterVote(group, -int256(remainingToRevokeAmount)));
         }
 
         n.index = _findAddressIndex(group);
@@ -396,11 +362,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     /// @dev Asserts `real` is within `range` of `expected` (expectBigNumberInRange).
-    function assertInRange(
-        uint256 real,
-        uint256 expected,
-        uint256 range
-    ) internal pure {
+    function assertInRange(uint256 real, uint256 expected, uint256 range) internal pure {
         if (real + range < expected) {
             revert(_outOfRangeMessage("below", real, expected, range));
         }
@@ -410,24 +372,22 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     /// @dev Revert message of `assertInRange`, carrying the values that failed the comparison.
-    function _outOfRangeMessage(
-        string memory side,
-        uint256 real,
-        uint256 expected,
-        uint256 range
-    ) private pure returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    "value ",
-                    side,
-                    " expected range: ",
-                    vm.toString(real),
-                    " vs ",
-                    vm.toString(expected),
-                    " +- ",
-                    vm.toString(range)
-                )
-            );
+    function _outOfRangeMessage(string memory side, uint256 real, uint256 expected, uint256 range)
+        private
+        pure
+        returns (string memory)
+    {
+        return string(
+            abi.encodePacked(
+                "value ",
+                side,
+                " expected range: ",
+                vm.toString(real),
+                " vs ",
+                vm.toString(expected),
+                " +- ",
+                vm.toString(range)
+            )
+        );
     }
 }

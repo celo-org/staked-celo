@@ -145,8 +145,8 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         setUpSpecificStrategyWithOverflow();
         depositSpecificOverflow();
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, SPECIFIC_OVERFLOW_DEPOSIT);
         assertEq(overflowAmount, SPECIFIC_OVERFLOW_DEPOSIT - firstGroupCapacity);
     }
@@ -181,8 +181,8 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         setUpSpecificStrategyWithOverflow();
         uint256 capacityInStCelo = setUpRatioAndDeposit(200 ether);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, SPECIFIC_OVERFLOW_DEPOSIT / 2);
         assertEq(overflowAmount, SPECIFIC_OVERFLOW_DEPOSIT / 2 - capacityInStCelo);
     }
@@ -217,8 +217,8 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         setUpSpecificStrategyWithOverflow();
         uint256 capacityInStCelo = setUpRatioAndDeposit(50 ether);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, SPECIFIC_OVERFLOW_DEPOSIT * 2);
         assertEq(overflowAmount, SPECIFIC_OVERFLOW_DEPOSIT * 2 - capacityInStCelo);
     }
@@ -268,8 +268,8 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         uint256 deposit = setUpUnhealthyOverflow();
         depositSecondTime();
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(total, DEPOSIT2 + deposit);
         assertEq(overflow, DEPOSIT_OVER_CAPACITY);
         // there is only deposit2 since rebalanceWhenHealthChanged was not called
@@ -296,8 +296,8 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         uint256 deposit2InStCelo = manager.toStakedCelo(DEPOSIT2);
         depositSecondTime();
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(total, deposit + deposit2InStCelo);
         assertEq(overflow, DEPOSIT_OVER_CAPACITY);
         assertEq(unhealthy, deposit2InStCelo);
@@ -365,8 +365,7 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         (address[] memory groups, uint256[] memory votes) = lastScheduledVotes();
         assertMembers(groups, arr(groupAddresses[0], groupAddresses[1]));
         assertMembers(
-            votes,
-            arr(firstGroupCapacity, SPECIFIC_OVERFLOW_DEPOSIT - firstGroupCapacity)
+            votes, arr(firstGroupCapacity, SPECIFIC_OVERFLOW_DEPOSIT - firstGroupCapacity)
         );
     }
 }

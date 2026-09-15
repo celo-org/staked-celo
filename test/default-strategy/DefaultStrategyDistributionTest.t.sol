@@ -20,13 +20,8 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
     /// @dev `.to.emit(defaultStrategyContract, name)` without `withArgs`: only the event
     ///      signature and the emitter are checked.
     function _expectEventFromStrategy() private {
-        IVmExpectEmitFrom(address(vm)).expectEmit(
-            false,
-            false,
-            false,
-            false,
-            address(mockDefaultStrategy)
-        );
+        IVmExpectEmitFrom(address(vm))
+            .expectEmit(false, false, false, false, address(mockDefaultStrategy));
     }
 
     // =========================================================================
@@ -35,10 +30,7 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
 
     function test_generateDepositVoteDistribution_CannotBeCalledByANonManagerAddress() public {
         vm.expectRevert(
-            abi.encodeWithSelector(
-                DefaultStrategy.CallerNotManagerNorStrategy.selector,
-                nonManager
-            )
+            abi.encodeWithSelector(DefaultStrategy.CallerNotManagerNorStrategy.selector, nonManager)
         );
         vm.prank(nonManager);
         mockDefaultStrategy.generateDepositVoteDistribution(10, 10, ADDRESS_ZERO);
@@ -60,10 +52,7 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
 
     function test_generateWithdrawalVoteDistribution_CannotBeCalledByANonManagerAddress() public {
         vm.expectRevert(
-            abi.encodeWithSelector(
-                DefaultStrategy.CallerNotManagerNorStrategy.selector,
-                nonManager
-            )
+            abi.encodeWithSelector(DefaultStrategy.CallerNotManagerNorStrategy.selector, nonManager)
         );
         vm.prank(nonManager);
         mockDefaultStrategy.generateWithdrawalVoteDistribution(10);
@@ -90,8 +79,7 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
     function _setUpMigration() private {
         for (uint256 i = 0; i < 3; i++) {
             mockDefaultStrategy.addToStrategyTotalStCeloVotesPublic(
-                groupAddresses[i],
-                migrationVotes[i]
+                groupAddresses[i], migrationVotes[i]
             );
         }
     }

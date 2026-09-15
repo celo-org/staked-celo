@@ -94,3 +94,7 @@ how to use the helper.
   arguments (lesser/greater, owners, balances) before pranking.
 - Do not modify anything under `contracts/`. The production bytecode must stay byte-identical
   to the Hardhat build (`scripts/bytecode-compat-check.py`).
+- Formatting here is `forge fmt`, not prettier: run `yarn fmt` before committing, and CI runs
+  `yarn fmt:check`. The settings live under `[fmt]` in `foundry.toml`. `contracts/` goes the
+  other way round, prettier and solhint, and is on the `ignore` list under `[fmt]` so that
+  neither formatter reaches the other's tree.

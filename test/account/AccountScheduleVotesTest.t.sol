@@ -61,9 +61,7 @@ contract AccountScheduleVotesTest is AccountTestBase {
         address[] memory groups = _addrs(groupAddresses[0]);
         uint256[] memory votes = _amounts(100, 30);
         vm.prank(managerSigner);
-        vm.expectRevert(
-            abi.encodeWithSelector(Account.GroupsAndVotesArrayLengthsMismatch.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Account.GroupsAndVotesArrayLengthsMismatch.selector));
         account.scheduleVotes{value: 100}(groups, votes);
     }
 
@@ -71,9 +69,7 @@ contract AccountScheduleVotesTest is AccountTestBase {
         address[] memory groups = _addrs(groupAddresses[0], groupAddresses[1]);
         uint256[] memory votes = _amounts(100);
         vm.prank(managerSigner);
-        vm.expectRevert(
-            abi.encodeWithSelector(Account.GroupsAndVotesArrayLengthsMismatch.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Account.GroupsAndVotesArrayLengthsMismatch.selector));
         account.scheduleVotes{value: 100}(groups, votes);
     }
 

@@ -10,8 +10,7 @@ import "./TaskVm.sol";
  *         pasted straight into the next command.
  */
 library FormatLib {
-    TaskVm private constant vm =
-        TaskVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    TaskVm private constant vm = TaskVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     /// @notice Joins addresses with commas.
     function join(address[] memory values) internal pure returns (string memory out) {

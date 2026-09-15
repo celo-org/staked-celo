@@ -28,9 +28,8 @@ contract EncodeProposalPayloadScript is TaskBase {
     /// @notice Reads the signature and arguments from the environment and prints the payload.
     function run() external view {
         string memory contractName = vm.envOr("CONTRACT", string(""));
-        address destination = bytes(contractName).length == 0
-            ? ADDRESS_ZERO
-            : deploymentAddress(contractName);
+        address destination =
+            bytes(contractName).length == 0 ? ADDRESS_ZERO : deploymentAddress(contractName);
 
         execute(destination, vm.envString("FUNCTION_SIGNATURE"), vm.envOr("ARGS", string("")));
     }
@@ -42,11 +41,11 @@ contract EncodeProposalPayloadScript is TaskBase {
      * @param argsCsv The comma separated arguments, empty when there are none.
      * @return payload The encoded calldata.
      */
-    function execute(
-        address destination,
-        string memory signature,
-        string memory argsCsv
-    ) internal view returns (bytes memory payload) {
+    function execute(address destination, string memory signature, string memory argsCsv)
+        internal
+        view
+        returns (bytes memory payload)
+    {
         payload = PayloadLib.encodePayload(signature, argsCsv);
 
         if (destination != ADDRESS_ZERO) {

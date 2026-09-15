@@ -50,7 +50,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpGroupsActivated();
         withdrawAs(depositor2, 77);
 
-        (address currentHead, ) = mockDefaultStrategy.getGroupsHead();
+        (address currentHead,) = mockDefaultStrategy.getGroupsHead();
         assertNotEq(currentHead, originalHead);
     }
 
@@ -60,7 +60,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpGroupsActivated();
         withdrawAs(depositor2, 77);
 
-        (address currentTail, ) = mockDefaultStrategy.getGroupsTail();
+        (address currentTail,) = mockDefaultStrategy.getGroupsTail();
         assertEq(currentTail, originalHead);
     }
 
@@ -79,10 +79,10 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpGroupsActivated();
         withdrawAs(depositor2, 77);
 
-        (address headAfterWithdrawal1, ) = mockDefaultStrategy.getGroupsHead();
+        (address headAfterWithdrawal1,) = mockDefaultStrategy.getGroupsHead();
         withdrawAs(depositor2, 77);
 
-        (address currentHead, ) = mockDefaultStrategy.getGroupsHead();
+        (address currentHead,) = mockDefaultStrategy.getGroupsHead();
         assertNotEq(currentHead, headAfterWithdrawal1);
     }
 
@@ -92,10 +92,10 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpGroupsActivated();
         withdrawAs(depositor2, 77);
 
-        (address tailAfterWithdrawal1, ) = mockDefaultStrategy.getGroupsTail();
+        (address tailAfterWithdrawal1,) = mockDefaultStrategy.getGroupsTail();
         withdrawAs(depositor2, 77);
 
-        (address currentTail, ) = mockDefaultStrategy.getGroupsTail();
+        (address currentTail,) = mockDefaultStrategy.getGroupsTail();
         assertEq(currentTail, tailAfterWithdrawal1);
     }
 
@@ -327,8 +327,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         vm.prank(depositor);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector,
-                groupAddresses[0]
+                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector, groupAddresses[0]
             )
         );
         manager.withdraw(110);
@@ -343,7 +342,9 @@ contract ManagerWithdrawTest is ManagerTestBase {
     {
         setUpVotedDifferentFromActive();
 
-        assertMembers(getDefaultGroups(defaultStrategy()), arr(groupAddresses[0], groupAddresses[1]));
+        assertMembers(
+            getDefaultGroups(defaultStrategy()), arr(groupAddresses[0], groupAddresses[1])
+        );
         assertEq(getSpecificGroups(specificGroupStrategy), arr(groupAddresses[2]));
     }
 
@@ -380,7 +381,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         specificGroupStrategy.blockGroup(groupAddresses[2]);
         specificGroupStrategy.rebalanceWhenHealthChanged(groupAddresses[2]);
 
-        (address groupHead, ) = mockDefaultStrategy.getGroupsHead();
+        (address groupHead,) = mockDefaultStrategy.getGroupsHead();
         updateGroupCelo();
         withdrawAs(depositor, 100);
 
@@ -398,8 +399,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         vm.prank(depositor);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector,
-                groupAddresses[2]
+                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector, groupAddresses[2]
             )
         );
         manager.withdraw(110);
@@ -411,7 +411,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpVotedDifferentFromActive();
         setUpStrategyBlocked();
 
-        (address head, ) = mockDefaultStrategy.getGroupsHead();
+        (address head,) = mockDefaultStrategy.getGroupsHead();
         updateGroupCelo();
         withdrawAs(depositor, SPECIFIC_WITHDRAWAL);
 
@@ -419,8 +419,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         assertEq(groups, arr(head));
         assertEq(withdrawals, arr(SPECIFIC_WITHDRAWAL));
 
-        (uint256 stCelo, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[2]);
+        (uint256 stCelo, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[2]);
         assertEq(stCelo, 0);
         assertEq(overflow, 0);
         assertEq(unhealthy, 0);
@@ -433,7 +433,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpStrategyBlocked();
 
         uint256 toWithdraw = SPECIFIC_WITHDRAWAL - 10;
-        (address head, ) = mockDefaultStrategy.getGroupsHead();
+        (address head,) = mockDefaultStrategy.getGroupsHead();
         updateGroupCelo();
         withdrawAs(depositor, toWithdraw);
 
@@ -441,8 +441,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         assertEq(groups, arr(head));
         assertEq(withdrawals, arr(toWithdraw));
 
-        (uint256 stCelo, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[2]);
+        (uint256 stCelo, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[2]);
         assertEq(stCelo, 10);
         assertEq(overflow, 0);
         assertEq(unhealthy, 10);
@@ -482,8 +482,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         vm.prank(depositor);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector,
-                groupAddresses[1]
+                SpecificGroupStrategy.CantWithdrawAccordingToStrategy.selector, groupAddresses[1]
             )
         );
         manager.withdraw(110);
@@ -500,8 +499,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         uint256 toWithdraw = 5 ether;
         withdrawAs(depositor, toWithdraw);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, overflowDeposit - toWithdraw);
         assertEq(overflowAmount, overflowDeposit - firstGroupCapacity - toWithdraw);
     }
@@ -524,7 +523,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpCloseToVotingLimit();
         withdrawAs(depositor, 5 ether);
 
-        (, uint256 overflow, ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
+        (, uint256 overflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(mockDefaultStrategy.totalStCeloInStrategy(), overflow);
     }
 
@@ -534,8 +533,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpCloseToVotingLimit();
         withdrawAs(depositor, 20 ether);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, overflowDeposit - 20 ether);
         assertEq(overflowAmount, 0);
     }
@@ -550,8 +549,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         uint256 overflowBefore = overflowDeposit - firstGroupCapacity;
         (address[] memory groups, uint256[] memory votes) = lastScheduledWithdrawals();
         assertMembers(
-            groups,
-            arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
+            groups, arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
         );
         assertMembers(
             votes,
@@ -570,7 +568,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         setUpCloseToVotingLimit();
         withdrawAs(depositor, 20 ether);
 
-        (, uint256 overflow, ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
+        (, uint256 overflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(mockDefaultStrategy.totalStCeloInStrategy(), overflow);
     }
 
@@ -582,8 +580,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         updateGroupCelo();
         withdrawAs(depositor, 20 ether);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, overflowDeposit - 20 ether);
         assertEq(overflowAmount, 0);
     }
@@ -600,8 +598,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         uint256 overflowBefore = overflowDeposit - firstGroupCapacity;
         (address[] memory groups, uint256[] memory votes) = lastScheduledWithdrawals();
         assertMembers(
-            groups,
-            arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
+            groups, arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
         );
         assertMembers(
             votes,
@@ -622,7 +619,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         updateGroupCelo();
         withdrawAs(depositor, 20 ether);
 
-        (, uint256 overflow, ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
+        (, uint256 overflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(mockDefaultStrategy.totalStCeloInStrategy(), overflow);
     }
 
@@ -633,8 +630,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         mockAccount.setTotalCelo(overflowDeposit / 2);
         withdrawAs(depositor, 20 ether);
 
-        (uint256 stCeloInStrategy, uint256 overflowAmount, ) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 stCeloInStrategy, uint256 overflowAmount,) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(stCeloInStrategy, overflowDeposit - 20 ether);
         assertEq(overflowAmount, 0);
     }
@@ -650,8 +647,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         uint256 overflowBefore = overflowDeposit - firstGroupCapacity;
         (address[] memory groups, uint256[] memory votes) = lastScheduledWithdrawals();
         assertMembers(
-            groups,
-            arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
+            groups, arr(groupAddresses[0], groupAddresses[1], groupAddresses[2], groupAddresses[0])
         );
         assertMembers(
             votes,
@@ -671,7 +667,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         mockAccount.setTotalCelo(overflowDeposit / 2);
         withdrawAs(depositor, 20 ether);
 
-        (, uint256 overflow, ) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
+        (, uint256 overflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(mockDefaultStrategy.totalStCeloInStrategy(), overflow);
     }
 
@@ -697,8 +693,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         uint256 deposit = setUpUnhealthyOverflow();
         depositToUnhealthyGroup();
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(total, DEPOSIT2 + deposit);
         assertEq(overflow, DEPOSIT_OVER_CAPACITY);
         // there is only deposit2 since rebalanceWhenHealthChanged was not called
@@ -714,8 +710,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         updateGroupCelo();
         withdrawAs(depositor, 14 ether);
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(total, DEPOSIT2 + deposit - 14 ether);
         assertEq(overflow, 0);
         assertEq(unhealthy, 1 ether);
@@ -747,8 +743,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         updateGroupCelo();
         withdrawAs(depositor, 14 ether);
 
-        (uint256 total, uint256 overflow, uint256 unhealthy) = specificGroupStrategy
-            .getStCeloInGroup(groupAddresses[0]);
+        (uint256 total, uint256 overflow, uint256 unhealthy) =
+            specificGroupStrategy.getStCeloInGroup(groupAddresses[0]);
         assertEq(total, DEPOSIT2 + deposit - 14 ether);
         assertEq(overflow, 0);
         assertEq(unhealthy, 1 ether);
@@ -779,7 +775,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
     function setUpGroupsActivated() private {
         address nextGroup = ADDRESS_ZERO;
         for (uint256 i = 0; i < 3; i++) {
-            (address tail, ) = mockDefaultStrategy.getGroupsTail();
+            (address tail,) = mockDefaultStrategy.getGroupsTail();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], nextGroup, tail);
@@ -789,13 +785,13 @@ contract ManagerWithdrawTest is ManagerTestBase {
             manager.deposit{value: 100}();
         }
 
-        (originalHead, ) = mockDefaultStrategy.getGroupsHead();
+        (originalHead,) = mockDefaultStrategy.getGroupsHead();
     }
 
     /// @dev `beforeEach` of `#withdraw() > stCELO burning`.
     function setUpBurning() private {
         for (uint256 i = 0; i < 3; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -849,7 +845,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
     function setUpVotedIsActiveGroup() private {
         uint256[] memory withdrawals = arr(uint256(40), uint256(50));
         for (uint256 i = 0; i < 2; i++) {
-            (address head, ) = mockDefaultStrategy.getGroupsHead();
+            (address head,) = mockDefaultStrategy.getGroupsHead();
             vm.prank(owner);
             mockDefaultStrategy.addActivatableGroup(groupAddresses[i]);
             mockDefaultStrategy.activateGroup(groupAddresses[i], ADDRESS_ZERO, head);
@@ -873,8 +869,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         vm.prank(depositor);
         manager.deposit{value: overflowDeposit}();
         rebalanceDefaultGroups(defaultStrategy());
-        (originalDefaultHead, ) = mockDefaultStrategy.getGroupsHead();
-        (previousOfHead, ) = mockDefaultStrategy.getGroupPreviousAndNext(originalDefaultHead);
+        (originalDefaultHead,) = mockDefaultStrategy.getGroupsHead();
+        (previousOfHead,) = mockDefaultStrategy.getGroupPreviousAndNext(originalDefaultHead);
         updateGroupCelo();
         originalOverflow = specificGroupStrategy.totalStCeloOverflow();
     }
@@ -910,8 +906,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
     }
 
     function headAndPrevious() private view returns (address head, address previousHead) {
-        (head, ) = mockDefaultStrategy.getGroupsHead();
-        (previousHead, ) = mockDefaultStrategy.getGroupPreviousAndNext(head);
+        (head,) = mockDefaultStrategy.getGroupsHead();
+        (previousHead,) = mockDefaultStrategy.getGroupPreviousAndNext(head);
     }
 
     /// @dev Ports `sum(withdrawals)` of the stCELO burning block.

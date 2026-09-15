@@ -121,13 +121,11 @@ contract DeployCoreScriptTest is DevchainHelper {
 
     function test_strategyImplementationsAreTheCompiledArtifacts() public {
         _assertArtifactCode(
-            "SpecificGroupStrategy.sol:SpecificGroupStrategy",
-            deployScript.specificGroupStrategy()
+            "SpecificGroupStrategy.sol:SpecificGroupStrategy", deployScript.specificGroupStrategy()
         );
         _assertArtifactCode("DefaultStrategy.sol:DefaultStrategy", deployScript.defaultStrategy());
         _assertArtifactCode(
-            "RebasedStakedCelo.sol:RebasedStakedCelo",
-            deployScript.rebasedStakedCelo()
+            "RebasedStakedCelo.sol:RebasedStakedCelo", deployScript.rebasedStakedCelo()
         );
     }
 
@@ -166,9 +164,7 @@ contract DeployCoreScriptTest is DevchainHelper {
     }
 
     function test_strategyDependenciesAreWired() public {
-        IStrategyDependencies specific = IStrategyDependencies(
-            deployScript.specificGroupStrategy()
-        );
+        IStrategyDependencies specific = IStrategyDependencies(deployScript.specificGroupStrategy());
         assertEq(specific.account(), deployScript.account());
         assertEq(specific.groupHealth(), deployScript.groupHealth());
         assertEq(specific.defaultStrategy(), deployScript.defaultStrategy());
@@ -264,7 +260,7 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
             healthyGroups.push(group);
             electedSigners[i] = signer;
         }
-        (unelectedGroup, ) = _registerGroupWithOneValidator();
+        (unelectedGroup,) = _registerGroupWithOneValidator();
         _electSigners(electedSigners);
 
         deployScript = new DeployCore();
@@ -378,14 +374,14 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
         DefaultStrategy strategy = _defaultStrategy();
         assertEq(strategy.getNumberOfGroups(), 3);
 
-        (address head, ) = strategy.getGroupsHead();
+        (address head,) = strategy.getGroupsHead();
         assertEq(head, healthyGroups[0]);
 
         // The list runs from the head towards the tail along the `previous` pointers.
-        (address previous, ) = strategy.getGroupPreviousAndNext(head);
+        (address previous,) = strategy.getGroupPreviousAndNext(head);
         assertEq(previous, healthyGroups[1]);
 
-        (address tail, ) = strategy.getGroupsTail();
+        (address tail,) = strategy.getGroupsTail();
         assertEq(tail, healthyGroups[2]);
     }
 }

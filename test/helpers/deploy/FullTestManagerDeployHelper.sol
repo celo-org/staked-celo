@@ -164,9 +164,8 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
      *      test contract) and setAddressFor needs no prank either.
      */
     function _deployMockCeloInfrastructure() private {
-        bytes memory registryCode = IVmExtended(address(vm)).getCode(
-            "MockRegistry.sol:MockRegistry"
-        );
+        bytes memory registryCode =
+            IVmExtended(address(vm)).getCode("MockRegistry.sol:MockRegistry");
         address _mockRegistryAddr;
         assembly {
             _mockRegistryAddr := create(0, add(registryCode, 0x20), mload(registryCode))
@@ -200,8 +199,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     function _deployManagerProxy(address registry) private {
         Manager impl = new Manager();
         ERC1967Proxy proxy = new ERC1967Proxy(
-            address(impl),
-            abi.encodeWithSelector(Manager.initialize.selector, registry, owner)
+            address(impl), abi.encodeWithSelector(Manager.initialize.selector, registry, owner)
         );
         manager = Manager(address(proxy));
     }
@@ -210,8 +208,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     function _deployMockGroupHealthProxy(address registry) private {
         MockGroupHealth impl = new MockGroupHealth();
         ERC1967Proxy proxy = new ERC1967Proxy(
-            address(impl),
-            abi.encodeWithSelector(GroupHealth.initialize.selector, registry, owner)
+            address(impl), abi.encodeWithSelector(GroupHealth.initialize.selector, registry, owner)
         );
         mockGroupHealth = MockGroupHealth(address(proxy));
     }
@@ -233,9 +230,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
             abi.encodeWithSelector(
-                SpecificGroupStrategy.initialize.selector,
-                owner,
-                address(manager)
+                SpecificGroupStrategy.initialize.selector, owner, address(manager)
             )
         );
         specificGroupStrategy = SpecificGroupStrategy(address(proxy));
@@ -248,12 +243,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         Account impl = new Account();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(
-                Account.initialize.selector,
-                registry,
-                address(manager),
-                owner
-            )
+            abi.encodeWithSelector(Account.initialize.selector, registry, address(manager), owner)
         );
         account = Account(payable(address(proxy)));
     }
@@ -273,12 +263,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         Vote impl = new Vote();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeWithSelector(
-                Vote.initialize.selector,
-                registry,
-                owner,
-                address(manager)
-            )
+            abi.encodeWithSelector(Vote.initialize.selector, registry, owner, address(manager))
         );
         vote = Vote(address(proxy));
     }
@@ -302,16 +287,12 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
 
         // SpecificGroupStrategy.setDependencies(account, groupHealth, defaultStrategy)
         specificGroupStrategy.setDependencies(
-            address(account),
-            address(mockGroupHealth),
-            address(mockDefaultStrategy)
+            address(account), address(mockGroupHealth), address(mockDefaultStrategy)
         );
 
         // DefaultStrategy.setDependencies(account, groupHealth, specificGroupStrategy)
         mockDefaultStrategy.setDependencies(
-            address(account),
-            address(mockGroupHealth),
-            address(specificGroupStrategy)
+            address(account), address(mockGroupHealth), address(specificGroupStrategy)
         );
 
         vm.stopPrank();

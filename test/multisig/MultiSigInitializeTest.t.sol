@@ -15,16 +15,12 @@ contract MultiSigInitializeTest is MultiSigTestBase {
     }
 
     /// @dev Deploy a new MultiSig behind proxy (for initialize tests), reusing `msImpl`.
-    function _multiSigInitialize(
-        address msImpl,
-        address[] memory _owners,
-        uint256 _required
-    ) internal returns (address) {
+    function _multiSigInitialize(address msImpl, address[] memory _owners, uint256 _required)
+        internal
+        returns (address)
+    {
         bytes memory initData = abi.encodeWithSelector(
-            bytes4(keccak256("initialize(address[],uint256,uint256)")),
-            _owners,
-            _required,
-            7 * DAY
+            bytes4(keccak256("initialize(address[],uint256,uint256)")), _owners, _required, 7 * DAY
         );
         ERC1967Proxy proxy = new ERC1967Proxy(msImpl, initData);
         return address(proxy);

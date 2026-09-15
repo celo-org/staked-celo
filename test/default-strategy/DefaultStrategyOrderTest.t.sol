@@ -60,14 +60,14 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     function _setUpDepositedToTailOnly(uint256 loopLimit) private {
         _setUpActiveGroups();
         _setSortingParams(loopLimit);
-        (originalTail, ) = defaultStrategy.getGroupsTail();
+        (originalTail,) = defaultStrategy.getGroupsTail();
         _depositIncreasingAmounts();
     }
 
     /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
     function _setUpDepositedToTailOnlyUpdated(uint256 loopLimit) private {
         _setUpDepositedToTailOnly(loopLimit);
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         mockDefaultStrategy.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
     }
 
@@ -75,7 +75,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     function _setUpDepositedToMoreGroups() private {
         _setUpActiveGroups();
         _setSortingParams(0);
-        (originalTail, ) = defaultStrategy.getGroupsTail();
+        (originalTail,) = defaultStrategy.getGroupsTail();
 
         prepareOverflow(defaultStrategy, voter, groupAddresses, false);
         _storeOrderedGroups();
@@ -85,12 +85,10 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
     function _setUpDepositedToMoreGroupsUpdated() private {
         _setUpDepositedToMoreGroups();
-        (address head, ) = defaultStrategy.getGroupsHead();
+        (address head,) = defaultStrategy.getGroupsHead();
         mockDefaultStrategy.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
         mockDefaultStrategy.updateActiveGroupOrder(
-            originalOrderedGroups[1].group,
-            head,
-            ADDRESS_ZERO
+            originalOrderedGroups[1].group, head, ADDRESS_ZERO
         );
     }
 
@@ -112,7 +110,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     function _setUpWithdrawingBase(uint256 loopLimit) private {
         _setUpActiveGroups();
         _depositIncreasingAmounts();
-        (originalHead, ) = defaultStrategy.getGroupsHead();
+        (originalHead,) = defaultStrategy.getGroupsHead();
         _setSortingParams(loopLimit);
         assertTrue(defaultStrategy.sorted());
     }
@@ -127,7 +125,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
     function _setUpWithdrawFromOneGroupUpdated(uint256 loopLimit) private {
         _setUpWithdrawFromOneGroup(loopLimit);
-        (address tail, ) = defaultStrategy.getGroupsTail();
+        (address tail,) = defaultStrategy.getGroupsTail();
         mockDefaultStrategy.updateActiveGroupOrder(originalHead, ADDRESS_ZERO, tail);
     }
 
@@ -142,17 +140,13 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
     function _setUpWithdrawFromMoreGroupsUpdated(uint256 loopLimit) private {
         _setUpWithdrawFromMoreGroups(loopLimit);
-        (address tail, ) = defaultStrategy.getGroupsTail();
+        (address tail,) = defaultStrategy.getGroupsTail();
         uint256 count = originalOrderedGroups.length;
         mockDefaultStrategy.updateActiveGroupOrder(
-            originalOrderedGroups[count - 2].group,
-            ADDRESS_ZERO,
-            tail
+            originalOrderedGroups[count - 2].group, ADDRESS_ZERO, tail
         );
         mockDefaultStrategy.updateActiveGroupOrder(
-            originalOrderedGroups[count - 1].group,
-            ADDRESS_ZERO,
-            tail
+            originalOrderedGroups[count - 1].group, ADDRESS_ZERO, tail
         );
     }
 
@@ -226,7 +220,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToTailOnlyUpdated(0);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertEq(currentHead, originalTail);
     }
 
@@ -235,7 +229,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToTailOnlyUpdated(0);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertNotEq(currentTail, originalTail);
     }
 
@@ -278,7 +272,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToTailOnlyUpdated(1);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertEq(currentHead, originalTail);
     }
 
@@ -287,7 +281,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToTailOnlyUpdated(1);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertNotEq(currentTail, originalTail);
     }
 
@@ -330,7 +324,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToMoreGroupsUpdated();
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertEq(currentHead, originalTail);
     }
 
@@ -339,7 +333,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpDepositedToMoreGroupsUpdated();
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertNotEq(currentTail, originalTail);
     }
 
@@ -408,7 +402,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromOneGroupUpdated(0);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertEq(currentTail, originalHead);
     }
 
@@ -417,7 +411,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromOneGroupUpdated(0);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertNotEq(currentHead, originalHead);
     }
 
@@ -460,7 +454,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromMoreGroupsUpdated(0);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertEq(currentTail, originalHead);
     }
 
@@ -469,7 +463,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromMoreGroupsUpdated(0);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertNotEq(currentHead, originalHead);
     }
 
@@ -512,7 +506,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromOneGroupUpdated(1);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertEq(currentTail, originalHead);
     }
 
@@ -521,7 +515,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromOneGroupUpdated(1);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertNotEq(currentHead, originalHead);
     }
 
@@ -564,7 +558,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromMoreGroupsUpdated(1);
 
-        (address currentTail, ) = defaultStrategy.getGroupsTail();
+        (address currentTail,) = defaultStrategy.getGroupsTail();
         assertEq(currentTail, originalHead);
     }
 
@@ -573,7 +567,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     {
         _setUpWithdrawFromMoreGroupsUpdated(1);
 
-        (address currentHead, ) = defaultStrategy.getGroupsHead();
+        (address currentHead,) = defaultStrategy.getGroupsHead();
         assertNotEq(currentHead, originalHead);
     }
 

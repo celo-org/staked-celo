@@ -204,12 +204,19 @@ worked examples for submitting, confirming, scheduling and executing a MultiSig 
 
 ## Linting
 
-Solidity only, with prettier and solhint. `forge fmt` is deliberately not used: its
-formatting differs from `prettier-plugin-solidity`.
+Solidity only, and the tree decides the tool. `contracts/` is formatted by prettier and
+linted by solhint; `test/` and `script/` are formatted by `forge fmt`. The two formatters
+disagree, so neither is ever pointed at the other's tree: `contracts/` is listed in the
+`ignore` list under `[fmt]` in [foundry.toml](foundry.toml), and `test/` and `script/` are
+outside prettier's glob and listed in [.solhintignore](.solhintignore). The split exists
+because the solhint rules (ordering, `func-name-mixedcase`, line length) are written for
+production contracts, while the test-suite follows the forge-std conventions.
 
 ```sh
-yarn lint:sol      # format and fix
-yarn lint:sol:ci   # check only, what CI runs
+yarn lint:sol      # contracts/: format and fix
+yarn lint:sol:ci   # contracts/: check only, what CI runs
+yarn fmt           # test/ and script/: format
+yarn fmt:check     # test/ and script/: check only, what CI runs
 ```
 
 A husky pre-commit hook runs `lint-staged` on staged `*.sol` files. Set
@@ -222,7 +229,7 @@ jobs on every push and pull request:
 
 | Job | What it does |
 | --- | --- |
-| `lint` | `yarn lint:sol:ci` - prettier and solhint over `contracts/` |
+| `lint` | `yarn lint:sol:ci` - prettier and solhint over `contracts/` - and `yarn fmt:check` - `forge fmt` over `test/` and `script/` |
 | `test` | prepares the devchain fixture, `forge build`, `forge test -vvv` |
 | `bytecode` | `scripts/bytecode-compat-check.py` against the pinned reference |
 | `compatibility` | `scripts/abi-compat-check.py` against `releases/4` |

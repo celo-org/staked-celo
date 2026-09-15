@@ -18,13 +18,8 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
     /// @dev `.to.emit(specificGroupStrategy, name)` without `withArgs`: only the event
     ///      signature and the emitter are checked.
     function _expectEventFromStrategy() private {
-        IVmExpectEmitFrom(address(vm)).expectEmit(
-            false,
-            false,
-            false,
-            false,
-            address(specificGroupStrategy)
-        );
+        IVmExpectEmitFrom(address(vm))
+            .expectEmit(false, false, false, false, address(specificGroupStrategy));
     }
 
     // =========================================================================
@@ -44,11 +39,7 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
         _whenCalledThroughManagerWithdrawWithSpecificStrategy();
 
         _expectEventFromStrategy();
-        emit WithdrawalVoteDistributionGenerated(
-            ADDRESS_ZERO,
-            new address[](0),
-            new uint256[](0)
-        );
+        emit WithdrawalVoteDistributionGenerated(ADDRESS_ZERO, new address[](0), new uint256[](0));
         vm.prank(depositor);
         manager.withdraw(0.5 ether);
     }

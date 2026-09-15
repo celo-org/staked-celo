@@ -48,8 +48,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     function test_rebalanceWhenHealthChanged_ShouldRevertWhenHealthyAndNoUnhealthyStCelo() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupBalanced.selector,
-                specificGroupAddress
+                SpecificGroupStrategy.GroupBalanced.selector, specificGroupAddress
             )
         );
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroupAddress);
@@ -75,8 +74,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                SpecificGroupStrategy.GroupBalanced.selector,
-                specificGroupAddress
+                SpecificGroupStrategy.GroupBalanced.selector, specificGroupAddress
             )
         );
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroupAddress);
@@ -452,9 +450,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     /// @dev beforeEach of describe("When group is unhealthy").
     function _whenGroupIsUnhealthy() private {
         revokeElectionOnMockValidatorGroupsAndUpdate(
-            mockGroupHealth,
-            _addresses(specificGroupAddress),
-            true
+            mockGroupHealth, _addresses(specificGroupAddress), true
         );
     }
 
@@ -469,9 +465,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         vm.prank(depositor);
         manager.deposit{value: deposit}();
         revokeElectionOnMockValidatorGroupsAndUpdate(
-            mockGroupHealth,
-            _addresses(specificGroupAddress),
-            true
+            mockGroupHealth, _addresses(specificGroupAddress), true
         );
     }
 
@@ -480,7 +474,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         _whenCeloDepositedInGroup();
 
         _prepareOverflow();
-        (tail, ) = mockDefaultStrategy.getGroupsTail();
+        (tail,) = mockDefaultStrategy.getGroupsTail();
     }
 
     /// @dev beforeEach of describe("When group becomes healthy again").
@@ -490,7 +484,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         mockAccount.setCeloForGroup(specificGroupAddress, deposit);
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroupAddress);
 
-        (head, ) = mockDefaultStrategy.getGroupsHead();
+        (head,) = mockDefaultStrategy.getGroupsHead();
         electMockValidatorGroupsAndUpdate(mockGroupHealth, _addresses(specificGroupAddress));
         _updateGroupCelo();
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroupAddress);
@@ -526,7 +520,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     function _whenRatio1To1UnblockedAgain() private {
         _whenRatio1To1();
 
-        (head, ) = mockDefaultStrategy.getGroupsHead();
+        (head,) = mockDefaultStrategy.getGroupsHead();
         vm.prank(owner);
         specificGroupStrategy.unblockGroup(specificOverflowingGroup);
         _updateGroupCelo();
@@ -551,7 +545,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     function _whenThereIsMoreCeloThanStCeloUnblockedAgain() private {
         _whenThereIsMoreCeloThanStCelo();
 
-        (head, ) = mockDefaultStrategy.getGroupsHead();
+        (head,) = mockDefaultStrategy.getGroupsHead();
         vm.prank(owner);
         specificGroupStrategy.unblockGroup(specificOverflowingGroup);
         _updateGroupCelo();
@@ -576,7 +570,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     function _whenThereIsLessCeloThanStCeloUnblockedAgain() private {
         _whenThereIsLessCeloThanStCelo();
 
-        (head, ) = mockDefaultStrategy.getGroupsHead();
+        (head,) = mockDefaultStrategy.getGroupsHead();
         vm.prank(owner);
         specificGroupStrategy.unblockGroup(specificOverflowingGroup);
         _updateGroupCelo();
