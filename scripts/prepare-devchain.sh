@@ -9,6 +9,9 @@
 # genesis "alloc" map, so this script extracts the `accounts` section into
 # test/devchain/allocs.json and the block environment into test/devchain/meta.json.
 #
+# The package version is pinned in package.json's devDependencies; set
+# DEVCHAIN_ANVIL_VERSION to override it for a one-off run.
+#
 # Usage:
 #   scripts/prepare-devchain.sh            # uses node_modules or downloads the package
 #   DEVCHAIN_STATE=/path/l2-devchain.json scripts/prepare-devchain.sh
@@ -18,8 +21,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT/test/devchain"
 PKG="@celo/devchain-anvil"
-VERSION="${DEVCHAIN_ANVIL_VERSION:-17.0.7}"
+
+# package.json is the single source of truth for the pinned version.
+# DEVCHAIN_ANVIL_VERSION overrides it, e.g. to try a bump before editing package.json.
+DEFAULT_VERSION="$(python3 - "$ROOT/package.json" <<'EOF'
+import json, sys
+
+with open(sys.argv[1]) as f:
+    pkg = json.load(f)
+
+print(pkg["devDependencies"]["@celo/devchain-anvil"].lstrip("^~"))
+EOF
+)"
+VERSION="${DEVCHAIN_ANVIL_VERSION:-$DEFAULT_VERSION}"
 STATE="${DEVCHAIN_STATE:-}"
+
+echo "using $PKG@$VERSION"
 
 mkdir -p "$OUT_DIR"
 

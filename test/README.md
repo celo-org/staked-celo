@@ -60,6 +60,10 @@ scripts/prepare-devchain.sh      # writes test/devchain/allocs.json + meta.json 
 forge test
 ```
 
+The package version is pinned once, in `package.json`'s `devDependencies`; the script reads
+it as its default (override with `DEVCHAIN_ANVIL_VERSION` for a one-off run) and CI's fixture
+cache key follows the same file, so bumping the pin is a one-line `package.json` change.
+
 `DevchainHelper.loadDevchain()` loads the allocs, sets block number and timestamp, resolves
 the core contracts from the Registry and pins the epoch number. Notable differences to the
 ganache devchain the TypeScript suite was written for:

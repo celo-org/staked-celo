@@ -13,8 +13,6 @@ on:
 env:
   # Keep in sync with mise.toml, which pins the same version for local development.
   FOUNDRY_VERSION: v1.8.1
-  # Consumed by scripts/prepare-devchain.sh and used as the fixture cache key.
-  DEVCHAIN_ANVIL_VERSION: 17.0.7
   # The release the upgradeable contracts must stay storage- and ABI-compatible with.
   COMPATIBILITY_BASELINE: releases/4
 
@@ -68,7 +66,8 @@ jobs:
           path: |
             test/devchain/allocs.json
             test/devchain/meta.json
-          key: devchain-${{ env.DEVCHAIN_ANVIL_VERSION }}-${{ hashFiles('scripts/prepare-devchain.sh') }}
+          # The pinned version lives in package.json, so the cache key follows it.
+          key: devchain-${{ hashFiles('package.json', 'scripts/prepare-devchain.sh') }}
 
       - name: Prepare the devchain fixture
         run: scripts/prepare-devchain.sh

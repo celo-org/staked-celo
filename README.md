@@ -88,7 +88,9 @@ Withdrawal flow:
   pinned because the compiler settings and the cheatcodes the suite uses must match CI.
 - **node and yarn**, for two things only: the Solidity linters (`yarn lint:sol`) and the
   `@celo/devchain-anvil` package that `scripts/prepare-devchain.sh` extracts the test
-  fixture from. Nothing in the build, the tests or the deployment runs on node.
+  fixture from. Nothing in the build, the tests or the deployment runs on node. The
+  package's version is pinned once, in `package.json`'s `devDependencies`; CI's fixture
+  cache key follows the same file.
 - **python3**, for `scripts/bytecode-compat-check.py` and `scripts/abi-compat-check.py`.
 
 ```sh
