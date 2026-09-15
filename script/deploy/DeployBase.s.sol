@@ -24,6 +24,12 @@ interface DeployVm {
         view
         returns (string memory);
 
+    function envOr(
+        string calldata name,
+        string calldata delim,
+        address[] calldata defaultValue
+    ) external view returns (address[] memory);
+
     function exists(string calldata path) external view returns (bool);
 
     function readFile(string calldata path) external view returns (string memory);
