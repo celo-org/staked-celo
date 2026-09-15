@@ -37,7 +37,6 @@ becomes `test_deposit_WhenThereAreActiveGroups_DistributesVotes`.
 ```
 CeloTestHelper            constants, named accounts, epoch/time utils, strategy helpers (utils.ts)
 └── MultiSigHelper        submitAndExecuteMultiSigProposal (utils-multisig.ts)
-    ├── ValidatorHelper   validator registration against the *mock* Celo contracts
     └── DevchainHelper    validator registration, voting, rewards against the *real* Celo contracts
 TestAccountDeployHelper   fixtures of legacy/deploy/test/*.ts (TestPausable, TestAccount, TestVote, ...)
 FullTestManagerDeployHelper  the FullTestManager fixture (Manager + strategies + Account + StakedCelo + Vote)
