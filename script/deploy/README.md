@@ -71,8 +71,9 @@ forge script script/deploy/DeployCore.s.sol \
   --ledger --sender <ledger address>   # or --private-key "$DEPLOYER_PRIVATE_KEY"
 ```
 
-Drop `--broadcast` for a dry run; everything is simulated and the addresses are printed,
-but note that the deployment records are still written (see "Failed runs").
+Drop `--broadcast` for a dry run; everything is simulated and the addresses are printed.
+The deployment records are written even then, but a record whose address holds no code on
+the target chain is ignored by the next run, so a dry run can be followed by the real one.
 
 `contracts/`, `test/` and `script/` are compiled with one and the same profile, so `out/`
 holds exactly one artifact per contract and nothing has to be skipped or cleaned before a
@@ -203,7 +204,9 @@ the Forge artifacts in `out/` and the transaction details from
 ### Idempotency
 
 Like hardhat-deploy, a contract that already has a record is reused and its deployment is
-skipped, and the wiring steps are skipped once ownership has moved to the MultiSig:
+skipped (unless the recorded address has no code on the chain, which is what a dry run or
+a failed broadcast leaves behind), and the wiring steps are skipped once ownership has
+moved to the MultiSig:
 
 ```
 MultiSig: reused 0xA9e6...

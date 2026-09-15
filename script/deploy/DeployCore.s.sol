@@ -192,10 +192,23 @@ contract DeployCore is DeployBase {
     ///      deployed, or the one recorded in `deployments/<network>/`. Zero when the
     ///      contract still has to be deployed.
     function _reused(address current, string memory name) private view returns (address) {
-        address existing = current != address(0) ? current : readDeploymentAddress(name);
-        if (existing != address(0)) {
-            DeployLog.a(string(abi.encodePacked(name, ": reused")), existing);
+        if (current != address(0)) {
+            return current;
         }
+        address existing = readDeploymentAddress(name);
+        if (existing == address(0)) {
+            return address(0);
+        }
+        // A dry run writes records too, so a record may point at an address that was never
+        // deployed. Reusing it would skip the deployment and fail at the first call.
+        if (existing.code.length == 0) {
+            DeployLog.a(
+                string(abi.encodePacked(name, ": record has no code on this chain, deploying")),
+                existing
+            );
+            return address(0);
+        }
+        DeployLog.a(string(abi.encodePacked(name, ": reused")), existing);
         return existing;
     }
 

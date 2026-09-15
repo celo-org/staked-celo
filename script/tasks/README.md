@@ -28,7 +28,7 @@ script signer flags:
 
 | Hardhat | forge |
 | --- | --- |
-| `--use-ledger` | `--ledger` (add `--mnemonic-derivation-path` if not the default) |
+| `--use-ledger` | `--ledger --sender <ledger address>` (add `--mnemonic-derivation-path` if not the default; without `--sender` the simulation runs as Forge's default account and owner-only calls revert before the device signs) |
 | `--use-node-account --account <addr>` | `--unlocked --sender <addr>` |
 | `DEPLOYER_PRIVATE_KEY` in the environment | `--private-key $DEPLOYER_PRIVATE_KEY` |
 
@@ -119,18 +119,18 @@ NETWORK=alfajores forge script script/tasks/multisig/EncodeManagerSetDependencie
 NETWORK=alfajores \
 DESTINATIONS=0x… VALUES=0 PAYLOADS=0x114e6b37… \
   forge script script/tasks/multisig/SubmitProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger
+  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
 ```
 
 Confirm, schedule and execute it:
 
 ```bash
 PROPOSAL_ID=7 forge script script/tasks/multisig/ConfirmProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger
+  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
 PROPOSAL_ID=7 forge script script/tasks/multisig/ScheduleProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger
+  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
 PROPOSAL_ID=7 forge script script/tasks/multisig/ExecuteProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger
+  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
 ```
 
 Run the daily account maintenance with a private key:

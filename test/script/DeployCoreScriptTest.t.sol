@@ -10,6 +10,12 @@ interface ScriptTestVm {
     function getDeployedCode(string calldata what) external view returns (bytes memory);
 
     function setEnv(string calldata name, string calldata value) external;
+
+    function writeJson(string calldata json, string calldata path) external;
+
+    function createDir(string calldata path, bool recursive) external;
+
+    function removeDir(string calldata path, bool recursive) external;
 }
 
 /// @dev Vote keeps its dependencies in internal storage; getVoteWeight is the cheapest
@@ -483,5 +489,65 @@ contract DeployCoreEnvConfigTest is CeloTestHelper {
 
     function _signerName(uint256 index) private pure returns (string memory) {
         return string(abi.encodePacked("MULTISIG_SIGNER_", vm.toString(index)));
+    }
+}
+
+/// @dev Exposes the record-driven path of DeployCore to a test: records are read and
+///      written under `deployments/<network>/` exactly as in a broadcast run.
+contract DeployCoreRecordHarness is DeployCore {
+    function runWithRecords(CoreConfig memory coreConfig, string memory networkName) external {
+        network = networkName;
+        useDeploymentRecords = true;
+        deployer = coreConfig.deployer;
+        config = coreConfig;
+        vm.startPrank(deployer, deployer);
+        _deployAll();
+        vm.stopPrank();
+    }
+}
+
+/**
+ * @title DeployCoreStaleRecordTest
+ * @notice A dry run writes deployment records without deploying anything. The next run
+ *         must not trust such a record: an address without code is deployed again.
+ */
+contract DeployCoreStaleRecordTest is DevchainHelper {
+    ScriptTestVm internal constant svm =
+        ScriptTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    string internal constant NETWORK = "stale-record-test";
+    address internal constant NO_CODE = 0x000000000000000000000000000000000000dEaD;
+
+    DeployCoreRecordHarness internal harness;
+
+    function setUp() public {
+        loadDevchain();
+        _initNamedAccounts();
+        vm.deal(deployer, 10_000 ether);
+        harness = new DeployCoreRecordHarness();
+        svm.createDir(string(abi.encodePacked("deployments/", NETWORK)), true);
+        svm.writeJson(
+            '{"address":"0x000000000000000000000000000000000000dEaD"}',
+            string(abi.encodePacked("deployments/", NETWORK, "/Manager.json"))
+        );
+    }
+
+    function test_recordWithoutCodeIsNotReused() public {
+        DeployCore.CoreConfig memory config;
+        config.deployer = deployer;
+        config.timeLockMinDelay = DAY;
+        config.timeLockDelay = 3 * DAY;
+        config.requiredConfirmations = 1;
+        config.multiSigOwners = new address[](1);
+        config.multiSigOwners[0] = multisigOwner0;
+
+        harness.runWithRecords(config, NETWORK);
+
+        address manager = harness.manager();
+        assertNotEq(manager, NO_CODE);
+        assertTrue(manager.code.length > 0);
+        assertEq(harness.readDeploymentAddress("Manager"), manager);
+
+        svm.removeDir(string(abi.encodePacked("deployments/", NETWORK)), true);
     }
 }
