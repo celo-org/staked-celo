@@ -27,7 +27,11 @@ re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 
 Either spelling of the owner set works, so the encrypted per-network env files
-(`yarn keys:decrypt`, `scripts/key_placer.sh`) can be used as they are; `.env.example`
+(`yarn keys:decrypt`, `scripts/key_placer.sh`) can be used as they are. Forge itself only
+reads `.env`, so start the scripts through `scripts/with-env.sh <network> ...` (or
+`yarn with-env <network> ...`), which exports `.env.<network>` first, e.g.
+`scripts/with-env.sh staging forge script script/deploy/DeployCore.s.sol --rpc-url staging ...`;
+variables already exported win over the file. `.env.example`
 shows the canonical form and keeps the legacy one commented out next to it. When neither
 yields a single owner the script stops with
 `set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ...` instead of failing

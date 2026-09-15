@@ -26,7 +26,8 @@
     "fmt:check": "forge fmt --check test script",
     "prepare": "husky install",
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
-    "keys:encrypt": "bash scripts/key_placer.sh encrypt"
+    "keys:encrypt": "bash scripts/key_placer.sh encrypt",
+    "with-env": "scripts/with-env.sh"
   },
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",

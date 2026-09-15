@@ -89,6 +89,15 @@ forge script <script> --rpc-url <celo|sepolia|alfajores|staging|local> [--broadc
 
 ## Environment variables
 
+The encrypted per-network files (`yarn keys:decrypt` writes `.env.staging` and
+`.env.alfajores`) are loaded by `scripts/with-env.sh <network> <command>`, since Forge
+only reads `.env` by itself:
+
+```bash
+scripts/with-env.sh staging forge script script/tasks/multisig/GetOwners.s.sol --rpc-url staging
+```
+
+
 | Variable | Replaces | Format |
 | --- | --- | --- |
 | `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `sepolia`, `alfajores` or `staging`; optional, derived from the chain id (42220, 11142220, 44787, 1101) |
