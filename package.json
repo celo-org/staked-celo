@@ -31,6 +31,7 @@
   "author": "Celo Labs Inc.",
   "license": "LGPL-3.0-only",
   "lint-staged": {
-    "*.sol": "yarn lint:sol"
+    "contracts/**/*.sol": "yarn lint:sol",
+    "{test,script}/**/*.sol": "forge fmt"
   }
 }
