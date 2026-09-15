@@ -231,3 +231,161 @@ contract DeployCoreScriptTest is DevchainHelper {
         return abi.decode(data, (address));
     }
 }
+
+/**
+ * @title DeployCoreValidatorGroupsTest
+ * @notice Covers the `VALIDATOR_GROUPS` part of the sequence: deploy/05 records the health
+ *         of every listed group and deploy/11 activates the healthy ones in the
+ *         DefaultStrategy.
+ * @dev GroupHealth considers a group healthy when one of its members' signers is in the
+ *      elected set, which on the L2 devchain comes from EpochManager. The devchain's own
+ *      validators are elected, but their groups are anvil development accounts that the
+ *      test also uses elsewhere, so freshly registered groups are elected through a mock of
+ *      the two EpochManager views Election reads the set from.
+ */
+contract DeployCoreValidatorGroupsTest is DevchainHelper {
+    uint256 internal constant REQUIRED_CONFIRMATIONS = 3;
+
+    DeployCore internal deployScript;
+
+    /// @dev Three registered groups whose single member is elected.
+    address[] internal healthyGroups;
+    /// @dev A registered group whose member is not elected.
+    address internal unelectedGroup;
+
+    function setUp() public {
+        loadDevchain();
+        _initNamedAccounts();
+        vm.deal(deployer, 10_000 ether);
+
+        address[] memory electedSigners = new address[](3);
+        for (uint256 i = 0; i < 3; i++) {
+            (address group, address signer) = _registerGroupWithOneValidator();
+            healthyGroups.push(group);
+            electedSigners[i] = signer;
+        }
+        (unelectedGroup, ) = _registerGroupWithOneValidator();
+        _electSigners(electedSigners);
+
+        deployScript = new DeployCore();
+        deployScript.runInProcess(deployer, _config());
+    }
+
+    /// @dev Register a validator group with a single member and return the group together
+    ///      with the signer of that member, which is what GroupHealth looks for in the
+    ///      elected set.
+    function _registerGroupWithOneValidator() private returns (address group, address signer) {
+        group = createWallet();
+        registerValidatorGroup(group);
+        address validator = createWallet();
+        registerValidatorAndAddToGroupMembers(group, validator);
+        signer = celoAccounts.getValidatorSigner(validator);
+    }
+
+    /// @dev Make `signers` the elected set. Election reports the set of the current epoch
+    ///      straight from EpochManager on the L2 devchain, and running the real epoch
+    ///      process would need the oracles the devchain fixture does not have.
+    function _electSigners(address[] memory signers) private {
+        dvm.mockCall(
+            address(celoEpochManager),
+            abi.encodeWithSelector(ICeloEpochManager.numberOfElectedInCurrentSet.selector),
+            abi.encode(signers.length)
+        );
+        for (uint256 i = 0; i < signers.length; i++) {
+            dvm.mockCall(
+                address(celoEpochManager),
+                abi.encodeWithSelector(ICeloEpochManager.getElectedSignerByIndex.selector, i),
+                abi.encode(signers[i])
+            );
+        }
+    }
+
+    /// @dev The unhealthy group and a repeated entry are listed on purpose: the script has
+    ///      to skip both instead of reverting.
+    function _config() private view returns (DeployCore.CoreConfig memory config) {
+        config.timeLockMinDelay = DAY;
+        config.timeLockDelay = 3 * DAY;
+        config.requiredConfirmations = REQUIRED_CONFIRMATIONS;
+
+        address[] memory owners = new address[](5);
+        owners[0] = multisigOwner0;
+        owners[1] = multisigOwner1;
+        owners[2] = multisigOwner2;
+        owners[3] = multisigOwner3;
+        owners[4] = multisigOwner4;
+        config.multiSigOwners = owners;
+
+        address[] memory groups = new address[](5);
+        groups[0] = healthyGroups[0];
+        groups[1] = healthyGroups[1];
+        groups[2] = unelectedGroup;
+        groups[3] = healthyGroups[2];
+        groups[4] = healthyGroups[0];
+        config.validatorGroups = groups;
+    }
+
+    function _groupHealth() private view returns (GroupHealth) {
+        return GroupHealth(deployScript.groupHealth());
+    }
+
+    function _defaultStrategy() private view returns (DefaultStrategy) {
+        return DefaultStrategy(deployScript.defaultStrategy());
+    }
+
+    // =========================================================================
+    //                            GROUP HEALTH
+    // =========================================================================
+
+    function test_healthIsRecordedForEveryListedGroup() public {
+        assertTrue(_groupHealth().isGroupValid(healthyGroups[0]));
+        assertTrue(_groupHealth().isGroupValid(healthyGroups[1]));
+        assertTrue(_groupHealth().isGroupValid(healthyGroups[2]));
+        assertFalse(_groupHealth().isGroupValid(unelectedGroup));
+    }
+
+    // =========================================================================
+    //                            ACTIVATION
+    // =========================================================================
+
+    function test_healthyGroupsAreActiveInTheListedOrder() public {
+        _assertActiveInListedOrder();
+    }
+
+    function test_unhealthyGroupIsNotActivated() public {
+        assertFalse(_defaultStrategy().isActive(unelectedGroup));
+    }
+
+    function test_noGroupIsLeftActivatable() public {
+        assertEq(_defaultStrategy().activatableGroupsCount(), 0);
+    }
+
+    /// @dev A second run finds the protocol deployed and the DefaultStrategy owned by the
+    ///      MultiSig, so it touches neither the health records nor the active groups.
+    function test_secondRunSkipsTheGroups() public {
+        address strategyBefore = deployScript.defaultStrategy();
+
+        deployScript.runInProcess(deployer, _config());
+
+        assertEq(deployScript.defaultStrategy(), strategyBefore);
+        assertEq(deployScript.groupHealth(), address(_groupHealth()));
+        _assertActiveInListedOrder();
+        assertEq(_defaultStrategy().activatableGroupsCount(), 0);
+    }
+
+    /// @dev The three healthy groups, most CELO first. They all hold none, so the order is
+    ///      the one they were listed in.
+    function _assertActiveInListedOrder() private {
+        DefaultStrategy strategy = _defaultStrategy();
+        assertEq(strategy.getNumberOfGroups(), 3);
+
+        (address head, ) = strategy.getGroupsHead();
+        assertEq(head, healthyGroups[0]);
+
+        // The list runs from the head towards the tail along the `previous` pointers.
+        (address previous, ) = strategy.getGroupPreviousAndNext(head);
+        assertEq(previous, healthyGroups[1]);
+
+        (address tail, ) = strategy.getGroupsTail();
+        assertEq(tail, healthyGroups[2]);
+    }
+}

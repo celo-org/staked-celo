@@ -22,6 +22,7 @@ re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes | Comma separated owner addresses. Replaces `MULTISIG_SIGNER_0..4`; the addresses must be distinct. |
 | `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 44787 -> `alfajores`, anything else -> `local`. |
+| `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 
 `UpgradeImplementation` needs `CONTRACT` and, for `CONTRACT=MultiSig` only,
@@ -85,6 +86,49 @@ The scripts broadcast EIP-1559 transactions. Add `--legacy` when the node expose
 fee or fee history - an anvil started from a `--load-state` snapshot, for example. An
 anvil started with `--init <genesis>` as described below does have a base fee, so
 `--legacy` is not needed there.
+
+### Validator groups
+
+`VALIDATOR_GROUPS` gives the protocol the groups it votes for on a first deployment, the
+same way it did in `legacy/deploy/05` and `legacy/deploy/11`:
+
+- right after `GroupHealth` is deployed, `updateGroupHealth(group)` is called for every
+  listed group, which records whether the group is a registered validator group with an
+  elected member and an untouched slashing multiplier;
+- right after `DefaultStrategy.setDependencies`, every listed group that came out healthy
+  is passed to `addActivatableGroup(group)` and then `activateGroup(group, 0, tail)`.
+
+Groups are activated in descending order of the CELO the `Account` holds for them
+(`Account.getCeloForGroup`), which on a first deployment is zero everywhere, so they end
+up in the sorted list in the order they were listed in - the first entry becomes the head.
+
+The two steps are skipped, with a log line, in the situations the Hardhat scripts skipped
+them in:
+
+```
+GroupHealth: reused 0x1b6b...                                   # health is not refreshed
+DefaultStrategy: owned by MultiSig, propose setDependencies through the MultiSig
+DefaultStrategy: Manager owned by MultiSig, activate the groups through it
+DefaultStrategy: group is not healthy, not activated 0x5409...
+DefaultStrategy: group already active 0x70997...
+```
+
+`addActivatableGroup` is `onlyOwner`, so the groups can only be activated while the
+deployer still owns the `DefaultStrategy` - that is, during the run that deploys it. Once
+the MultiSig owns it, `addActivatableGroup` and `activateGroup` have to go through a
+proposal, the same as `setDependencies`. A group that is already activatable or already
+active is left alone, so an interrupted run can simply be repeated.
+
+Add `--gas-estimate-multiplier 200` whenever `VALIDATOR_GROUPS` is set. While it walks the
+elected validator set, `updateGroupHealth` flags the group members in a scratch mapping
+and clears it again, and the clearing earns a storage refund. Forge sizes the transaction
+from the gas the simulation reports *after* that refund (plus 30%), which is less than the
+transaction needs while it runs, so the broadcast fails even though the simulation and an
+`eth_call` both succeed:
+
+```
+Error: Transaction Failure: 0x3312...
+```
 
 ### Library linking
 
@@ -217,11 +261,35 @@ A full run is 29 transactions: nine implementations, the `AddressSortedLinkedLis
 library, nine proxies, four `setDependencies` calls and six `transferOwnership` calls.
 `deployments/local/` and `broadcast/` are git-ignored.
 
-## Not ported
+### Deploying and mining, the `deploy:devchain` recipe
 
-- `VALIDATOR_GROUPS` handling from `legacy/deploy/05` and `legacy/deploy/11` (calling
-  `updateGroupHealth` and `activateGroup` for a list of groups after a first deployment).
-- `deploy:devchain`, which mined extra blocks after deploying through Hardhat.
+`yarn deploy:devchain` was `hardhat deploy --network devchain && ts-node scripts/mineBlocks.ts`:
+deploy, then mine 35 blocks so that the epoch based logic of the core contracts has some
+history behind it. The Forge equivalent is the command above followed by
+`scripts/mine-blocks.sh`, which sends one `anvil_mine` for the whole batch:
+
+```sh
+NETWORK=local \
+TIME_LOCK_MIN_DELAY=86400 TIME_LOCK_DELAY=259200 MULTISIG_REQUIRED_CONFIRMATIONS=3 \
+MULTISIG_OWNERS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,0x90F79bf6EB2c4f870365E785982E1f101E93b906,0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
+VALIDATOR_GROUPS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
+forge script script/deploy/DeployCore.s.sol \
+  --disable-code-size-limit \
+  --gas-estimate-multiplier 200 \
+  --rpc-url http://localhost:8545 --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+scripts/mine-blocks.sh 35 http://localhost:8545
+```
+
+Those three `VALIDATOR_GROUPS` are the validator groups the devchain genesis registers,
+and their members are the elected set, so all three come out healthy and end up active in
+the `DefaultStrategy`. (They double as MultiSig owners above only because both lists are
+made of the anvil development accounts.)
+
+`scripts/mine-blocks.sh [blocks] [rpc-url]` defaults to 35 blocks on
+`http://localhost:8545` and documents the equivalent call for hardhat node, ganache and
+`geth --dev`. A real network needs none of it: its validators produce the blocks.
 
 ## Tests
 
@@ -231,3 +299,8 @@ of broadcasting and writes no records. It checks the proxies, the wiring, the ow
 transfers and that each implementation is byte-for-byte the compiled artifact, apart from
 the immutable slots the artifact leaves zeroed (`UUPSUpgradeable.__self` everywhere, plus
 `MultiSig.minDelay`).
+
+A second suite in the same file runs the sequence with `VALIDATOR_GROUPS` set: it registers
+four validator groups on the devchain, puts the members of three of them in the elected set
+and checks that those three end up healthy and active in the listed order, that the fourth
+is skipped as unhealthy, and that a second run leaves all of it untouched.

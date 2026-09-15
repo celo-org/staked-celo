@@ -36,6 +36,8 @@ import {RebasedStakedCelo} from "../../contracts/RebasedStakedCelo.sol";
  *      Optional:
  *        NETWORK                         Deployments directory name; defaults to the
  *                                        chain id mapping (celo / alfajores / local).
+ *        VALIDATOR_GROUPS                Comma separated validator groups to make
+ *                                        healthy and activate; empty by default.
  */
 contract DeployCore is DeployBase {
     /// @notice Parameters that used to come from `.env` and hardhat-deploy named accounts.
@@ -44,6 +46,7 @@ contract DeployCore is DeployBase {
         uint256 timeLockDelay;
         uint256 requiredConfirmations;
         address[] multiSigOwners;
+        address[] validatorGroups;
     }
 
     CoreConfig internal config;
@@ -77,6 +80,8 @@ contract DeployCore is DeployBase {
 
     /// @notice Run the exact same sequence in-process, impersonating `broadcaster` and
     ///         without touching the deployment records. Used by the tests.
+    /// @dev Calling this twice on the same instance reuses what the first call deployed,
+    ///      which is what `deployments/<network>/` does for a second `run()`.
     /// @param broadcaster The address the deployment is attributed to.
     /// @param coreConfig The MultiSig parameters to deploy with.
     function runInProcess(address broadcaster, CoreConfig memory coreConfig) external {
@@ -117,6 +122,18 @@ contract DeployCore is DeployBase {
         config.timeLockDelay = vm.envUint("TIME_LOCK_DELAY");
         config.requiredConfirmations = vm.envUint("MULTISIG_REQUIRED_CONFIRMATIONS");
         config.multiSigOwners = vm.envAddress("MULTISIG_OWNERS", ",");
+        config.validatorGroups = vm.envOr("VALIDATOR_GROUPS", ",", new address[](0));
+    }
+
+    /// @dev Address to reuse for `name`: the one an earlier step of this script already
+    ///      deployed, or the one recorded in `deployments/<network>/`. Zero when the
+    ///      contract still has to be deployed.
+    function _reused(address current, string memory name) private view returns (address) {
+        address existing = current != address(0) ? current : readDeploymentAddress(name);
+        if (existing != address(0)) {
+            DeployLog.a(string(abi.encodePacked(name, ": reused")), existing);
+        }
+        return existing;
     }
 
     // =========================================================================
@@ -126,9 +143,8 @@ contract DeployCore is DeployBase {
     /// @dev deploy/00: MultiSig. `minDelay` is a constructor argument, the owner set and
     ///      the proposal delay are initializer arguments.
     function _deployMultiSig() private {
-        multiSig = readDeploymentAddress("MultiSig");
+        multiSig = _reused(multiSig, "MultiSig");
         if (multiSig != address(0)) {
-            DeployLog.a("MultiSig: reused", multiSig);
             return;
         }
         address implementation = address(new MultiSig(config.timeLockMinDelay));
@@ -147,9 +163,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/01: Manager, initially owned by the deployer so it can be wired up.
     function _deployManager() private {
-        manager = readDeploymentAddress("Manager");
+        manager = _reused(manager, "Manager");
         if (manager != address(0)) {
-            DeployLog.a("Manager: reused", manager);
             return;
         }
         address implementation = address(new Manager());
@@ -163,9 +178,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/02: Account. Its initializer registers the proxy as a Celo account.
     function _deployAccount() private {
-        account = readDeploymentAddress("Account");
+        account = _reused(account, "Account");
         if (account != address(0)) {
-            DeployLog.a("Account: reused", account);
             return;
         }
         address implementation = address(new Account());
@@ -184,9 +198,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/03: StakedCelo.
     function _deployStakedCelo() private {
-        stakedCelo = readDeploymentAddress("StakedCelo");
+        stakedCelo = _reused(stakedCelo, "StakedCelo");
         if (stakedCelo != address(0)) {
-            DeployLog.a("StakedCelo: reused", stakedCelo);
             return;
         }
         address implementation = address(new StakedCelo());
@@ -200,9 +213,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/04: Vote.
     function _deployVote() private {
-        vote = readDeploymentAddress("Vote");
+        vote = _reused(vote, "Vote");
         if (vote != address(0)) {
-            DeployLog.a("Vote: reused", vote);
             return;
         }
         address implementation = address(new Vote());
@@ -222,9 +234,8 @@ contract DeployCore is DeployBase {
     /// @dev deploy/05: GroupHealth, owned by the MultiSig from the start because it needs
     ///      no wiring afterwards.
     function _deployGroupHealth() private {
-        groupHealth = readDeploymentAddress("GroupHealth");
+        groupHealth = _reused(groupHealth, "GroupHealth");
         if (groupHealth != address(0)) {
-            DeployLog.a("GroupHealth: reused", groupHealth);
             return;
         }
         address implementation = address(new GroupHealth());
@@ -238,13 +249,25 @@ contract DeployCore is DeployBase {
         );
         _recordProxyDeployment("GroupHealth", groupHealth, implementation);
         DeployLog.a("GroupHealth: deployed", groupHealth);
+        _updateValidatorGroupHealth();
+    }
+
+    /// @dev deploy/05, second part: record the health of every `VALIDATOR_GROUPS` entry.
+    ///      `updateGroupHealth` is permissionless, but like the Hardhat script this only
+    ///      runs right after a fresh GroupHealth deployment, so re-running the script
+    ///      against an existing deployment still sends no transactions.
+    function _updateValidatorGroupHealth() private {
+        for (uint256 i = 0; i < config.validatorGroups.length; i++) {
+            address group = config.validatorGroups[i];
+            GroupHealth(groupHealth).updateGroupHealth(group);
+            DeployLog.a("GroupHealth: health recorded for", group);
+        }
     }
 
     /// @dev deploy/06: SpecificGroupStrategy.
     function _deploySpecificGroupStrategy() private {
-        specificGroupStrategy = readDeploymentAddress("SpecificGroupStrategy");
+        specificGroupStrategy = _reused(specificGroupStrategy, "SpecificGroupStrategy");
         if (specificGroupStrategy != address(0)) {
-            DeployLog.a("SpecificGroupStrategy: reused", specificGroupStrategy);
             return;
         }
         address implementation = address(new SpecificGroupStrategy());
@@ -258,9 +281,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/07: DefaultStrategy. Forge deploys and links AddressSortedLinkedList.
     function _deployDefaultStrategy() private {
-        defaultStrategy = readDeploymentAddress("DefaultStrategy");
+        defaultStrategy = _reused(defaultStrategy, "DefaultStrategy");
         if (defaultStrategy != address(0)) {
-            DeployLog.a("DefaultStrategy: reused", defaultStrategy);
             return;
         }
         address implementation = address(new DefaultStrategy());
@@ -274,9 +296,8 @@ contract DeployCore is DeployBase {
 
     /// @dev deploy/13: RebasedStakedCelo, owned by the MultiSig from the start.
     function _deployRebasedStakedCelo() private {
-        rebasedStakedCelo = readDeploymentAddress("RebasedStakedCelo");
+        rebasedStakedCelo = _reused(rebasedStakedCelo, "RebasedStakedCelo");
         if (rebasedStakedCelo != address(0)) {
-            DeployLog.a("RebasedStakedCelo: reused", rebasedStakedCelo);
             return;
         }
         address implementation = address(new RebasedStakedCelo());
@@ -346,6 +367,89 @@ contract DeployCore is DeployBase {
             specificGroupStrategy
         );
         DeployLog.s("DefaultStrategy: dependencies set");
+        _activateValidatorGroups();
+    }
+
+    /// @dev deploy/11, second part: activate every healthy `VALIDATOR_GROUPS` entry in the
+    ///      DefaultStrategy, the group holding the most CELO first. `addActivatableGroup`
+    ///      is `onlyOwner`, so this only works while the deployer still owns the strategy.
+    function _activateValidatorGroups() private {
+        if (config.validatorGroups.length == 0) {
+            return;
+        }
+        // The Hardhat script used the Manager to detect an upgrade of an already deployed
+        // protocol, where activating a group is part of the upgrade proposal instead.
+        if (IOwnable(manager).owner() == multiSig) {
+            DeployLog.s(
+                "DefaultStrategy: Manager owned by MultiSig, activate the groups through it"
+            );
+            return;
+        }
+        address[] memory groups = _groupsByCeloDescending();
+        for (uint256 i = 0; i < groups.length; i++) {
+            _activateValidatorGroup(groups[i]);
+        }
+    }
+
+    /// @dev Make one group activatable and activate it at the tail of the sorted list.
+    ///      Groups the strategy already knows are left alone, so listing a group twice or
+    ///      resuming an interrupted run does not revert.
+    function _activateValidatorGroup(address group) private {
+        DefaultStrategy strategy = DefaultStrategy(defaultStrategy);
+        if (strategy.isActive(group)) {
+            DeployLog.a("DefaultStrategy: group already active", group);
+            return;
+        }
+        if (!GroupHealth(groupHealth).isGroupValid(group)) {
+            DeployLog.a("DefaultStrategy: group is not healthy, not activated", group);
+            return;
+        }
+        if (!_isActivatable(group)) {
+            strategy.addActivatableGroup(group);
+        }
+        // Every group starts with no stCELO, so each one goes in below the current tail
+        // and the list ends up in the order the groups were sorted in.
+        (address tail, ) = strategy.getGroupsTail();
+        strategy.activateGroup(group, address(0), tail);
+        DeployLog.a("DefaultStrategy: group activated", group);
+    }
+
+    /// @dev Whether the DefaultStrategy already holds `group` in its activatable set.
+    function _isActivatable(address group) private view returns (bool) {
+        DefaultStrategy strategy = DefaultStrategy(defaultStrategy);
+        uint256 count = strategy.activatableGroupsCount();
+        for (uint256 i = 0; i < count; i++) {
+            if (strategy.getActivatableGroupAt(i) == group) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// @dev `VALIDATOR_GROUPS` ordered by the CELO the Account holds for each group, most
+    ///      first. The sort is stable, so groups holding the same amount - all of them on
+    ///      a first deployment - keep the order they were listed in.
+    function _groupsByCeloDescending() private view returns (address[] memory groups) {
+        uint256 length = config.validatorGroups.length;
+        groups = new address[](length);
+        uint256[] memory celo = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            groups[i] = config.validatorGroups[i];
+            celo[i] = Account(payable(account)).getCeloForGroup(groups[i]);
+        }
+        // Insertion sort; the list is as long as an environment variable makes it.
+        for (uint256 i = 1; i < length; i++) {
+            address group = groups[i];
+            uint256 value = celo[i];
+            uint256 j = i;
+            while (j > 0 && celo[j - 1] < value) {
+                groups[j] = groups[j - 1];
+                celo[j] = celo[j - 1];
+                j--;
+            }
+            groups[j] = group;
+            celo[j] = value;
+        }
     }
 
     /// @dev deploy/12: hand the six deployer owned contracts over to the MultiSig.
