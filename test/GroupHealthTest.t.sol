@@ -184,8 +184,11 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     function test_isGroupValid_WhenUpdatedInvalid_ShouldReturnInvalid() public {
         _setUpValidityUpdatedInvalid();
 
+        // The original asserted the untouched nonManager address; kept, and the group whose
+        // health was actually updated with unelected members is asserted as well.
         bool valid = mockGroupHealth.isGroupValid(nonManager);
         assertFalse(valid);
+        assertFalse(mockGroupHealth.isGroupValid(activatedGroupAddresses[0]));
     }
 
     // Test 3: When valid group and updated -> should be valid
