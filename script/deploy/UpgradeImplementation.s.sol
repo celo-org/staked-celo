@@ -46,6 +46,11 @@ contract UpgradeImplementation is DeployBase {
         string memory name = vm.envString("CONTRACT");
         address proxy = readDeploymentAddress(name);
         require(proxy != address(0), "UpgradeImplementation: no deployment record");
+        // A record left behind by a DeployCore dry run names a proxy that was never deployed.
+        require(
+            proxy.code.length > 0,
+            "UpgradeImplementation: proxy record points at an address without code on this chain"
+        );
 
         DeployLog.a(string(abi.encodePacked(name, ": proxy")), proxy);
         DeployLog.a(

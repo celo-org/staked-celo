@@ -48,7 +48,9 @@ echo "using $SOURCE"
 
 mkdir -p "$OUT_DIR"
 
-if [[ -f "$OUT_DIR/allocs.json" && -f "$OUT_DIR/meta.json" && "${FORCE:-0}" != "1" ]]; then
+# An explicit state file may be regenerated in place, so it is always re-extracted; the
+# cache only serves the pinned package, whose contents are fixed by its version.
+if [[ -z "$STATE" && -f "$OUT_DIR/allocs.json" && -f "$OUT_DIR/meta.json" && "${FORCE:-0}" != "1" ]]; then
   RECORDED="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("source",""))' "$OUT_DIR/meta.json")"
   if [[ "$RECORDED" == "$SOURCE" ]]; then
     echo "devchain fixture already present in $OUT_DIR and up to date (set FORCE=1 to regenerate)"
