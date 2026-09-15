@@ -12,6 +12,9 @@ import {GroupHealth} from "../../contracts/GroupHealth.sol";
 import {SpecificGroupStrategy} from "../../contracts/SpecificGroupStrategy.sol";
 import {DefaultStrategy} from "../../contracts/DefaultStrategy.sol";
 import {RebasedStakedCelo} from "../../contracts/RebasedStakedCelo.sol";
+import {
+    AddressSortedLinkedList
+} from "../../contracts/common/linkedlists/AddressSortedLinkedList.sol";
 
 /// @dev UUPS upgrade entry point, implemented by every protocol proxy.
 interface IUUPS {
@@ -34,9 +37,11 @@ interface IUUPS {
  */
 contract UpgradeImplementation is DeployBase {
     /// @notice Deploy the new implementation and upgrade the proxy when possible.
+    /// @dev The broadcaster is read from inside the broadcast rather than from
+    ///      `msg.sender`, which with `--ledger` and no `--sender` is forge's default
+    ///      simulation sender and not the account that signs.
     function run() external {
         _initNetwork();
-        deployer = msg.sender;
 
         string memory name = vm.envString("CONTRACT");
         address proxy = readDeploymentAddress(name);
@@ -48,15 +53,29 @@ contract UpgradeImplementation is DeployBase {
         );
 
         vm.startBroadcast();
+        deployer = _readBroadcaster("UpgradeImplementation");
         address implementation = _deployImplementation(name);
         bool upgraded = _upgradeOrPrintPayload(proxy, implementation);
         vm.stopBroadcast();
 
         _recordImplementationDeployment(name, implementation);
+        _recordLinkedLibrary(name);
         if (upgraded) {
             _recordProxyDeployment(name, proxy, implementation);
         }
         DeployLog.a(string(abi.encodePacked(name, ": new implementation")), implementation);
+    }
+
+    /// @dev DefaultStrategy is the one contract here that links a library, and forge
+    ///      deploys a fresh AddressSortedLinkedList alongside the implementation. It is a
+    ///      contract of its own on chain and needs verifying, so its record has to be
+    ///      refreshed too - otherwise it keeps pointing at the previous deployment.
+    function _recordLinkedLibrary(string memory name) private {
+        if (keccak256(bytes(name)) != keccak256("DefaultStrategy")) {
+            return;
+        }
+        _recordImplementationDeployment("AddressSortedLinkedList", address(AddressSortedLinkedList));
+        DeployLog.a("AddressSortedLinkedList: linked", address(AddressSortedLinkedList));
     }
 
     /// @dev Upgrade the proxy if the broadcaster owns it, otherwise print what has to be

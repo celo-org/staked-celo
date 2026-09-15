@@ -15,7 +15,7 @@ import "./TaskInterfaces.sol";
  *      Environment variables read here:
  *        NETWORK  optional, one of celo | sepolia | alfajores | staging. Defaults to the
  *                 network matching the chain id (42220 -> celo, 11142220 -> sepolia,
- *                 44787 -> alfajores).
+ *                 44787 -> alfajores, 1101 -> staging).
  */
 abstract contract TaskBase {
     /// @dev Foundry cheatcode address (same one forge-std uses).
@@ -36,6 +36,10 @@ abstract contract TaskBase {
     /// @notice Alfajores testnet chain id. The testnet Celo Sepolia replaces.
     uint256 internal constant ALFAJORES_CHAIN_ID = 44787;
 
+    /// @notice Staging chain id, as the Hardhat tooling knew it
+    ///         (legacy/lib/helpers/interfaceHelper.ts).
+    uint256 internal constant STAGING_CHAIN_ID = 1101;
+
     /**
      * @notice Name of the deployments directory to read contract addresses from.
      * @return The value of the NETWORK env var, or the network matching the chain id.
@@ -53,6 +57,9 @@ abstract contract TaskBase {
         }
         if (block.chainid == ALFAJORES_CHAIN_ID) {
             return "alfajores";
+        }
+        if (block.chainid == STAGING_CHAIN_ID) {
+            return "staging";
         }
         revert("set NETWORK: chain id has no default deployments directory");
     }

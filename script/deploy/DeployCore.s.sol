@@ -41,12 +41,15 @@ import {
  *                                        still carry.
  *      Optional:
  *        NETWORK                         Deployments directory name; defaults to the chain
- *                                        id mapping (celo / sepolia / alfajores / local).
+ *                                        id mapping (celo / sepolia / alfajores / staging /
+ *                                        local).
  *        VALIDATOR_GROUPS                Comma separated validator groups to make
  *                                        healthy and activate; empty by default.
  *
  *      DEPLOYER, the Hardhat named account, is not read: the deployer is the signer forge
- *      is given (--ledger, --private-key, --account).
+ *      is given (--ledger, --private-key, --account). --ledger needs --sender next to it,
+ *      because the address is only known to the device; without it the run stops before the
+ *      first transaction instead of handing the protocol to forge's default sender.
  */
 contract DeployCore is DeployBase {
     /// @notice Parameters that used to come from `.env` and hardhat-deploy named accounts.
@@ -56,6 +59,9 @@ contract DeployCore is DeployBase {
         uint256 requiredConfirmations;
         address[] multiSigOwners;
         address[] validatorGroups;
+        /// @dev The account the deployment is attributed to and that initially owns the
+        ///      wired contracts. `run()` fills it in from the broadcast, the tests set it.
+        address deployer;
     }
 
     CoreConfig internal config;
@@ -81,28 +87,32 @@ contract DeployCore is DeployBase {
 
     /// @notice Deploy the protocol against the connected node, broadcasting every
     ///         transaction from the configured signer.
+    /// @dev The deployer is read from inside the broadcast rather than from `msg.sender`:
+    ///      the two differ whenever the signer is not the simulation sender, which is
+    ///      exactly the `--ledger` without `--sender` case, and the contracts would then be
+    ///      initialized as owned by an account nobody holds the key to.
     function run() external {
         _initNetwork();
-        deployer = msg.sender;
         config = _configFromEnv();
         vm.startBroadcast();
+        deployer = _readBroadcaster("DeployCore");
+        config.deployer = deployer;
         _deployAll();
         vm.stopBroadcast();
         _logSummary();
     }
 
-    /// @notice Run the exact same sequence in-process, impersonating `broadcaster` and
-    ///         without touching the deployment records. Used by the tests.
+    /// @notice Run the exact same sequence in-process, impersonating `coreConfig.deployer`
+    ///         and without touching the deployment records. Used by the tests.
     /// @dev Calling this twice on the same instance reuses what the first call deployed,
     ///      which is what `deployments/<network>/` does for a second `run()`.
-    /// @param broadcaster The address the deployment is attributed to.
-    /// @param coreConfig The MultiSig parameters to deploy with.
-    function runInProcess(address broadcaster, CoreConfig memory coreConfig) external {
+    /// @param coreConfig The MultiSig parameters and the deployer to deploy with.
+    function runInProcess(CoreConfig memory coreConfig) external {
         network = "in-process";
         useDeploymentRecords = false;
-        deployer = broadcaster;
+        deployer = coreConfig.deployer;
         config = coreConfig;
-        vm.startPrank(broadcaster, broadcaster);
+        vm.startPrank(deployer, deployer);
         _deployAll();
         vm.stopPrank();
     }

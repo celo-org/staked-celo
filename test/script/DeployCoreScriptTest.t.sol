@@ -62,11 +62,13 @@ contract DeployCoreScriptTest is DevchainHelper {
         vm.deal(deployer, 10_000 ether);
 
         deployScript = new DeployCore();
-        deployScript.runInProcess(deployer, _config());
+        deployScript.runInProcess(_config());
     }
 
     /// @dev MultiSig parameters, standing in for the TIME_LOCK_* environment variables.
+    ///      `run()` reads the deployer out of the broadcast; in process it is passed in.
     function _config() private view returns (DeployCore.CoreConfig memory config) {
+        config.deployer = deployer;
         config.timeLockMinDelay = DAY;
         config.timeLockDelay = 3 * DAY;
         config.requiredConfirmations = REQUIRED_CONFIRMATIONS;
@@ -266,7 +268,7 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
         _electSigners(electedSigners);
 
         deployScript = new DeployCore();
-        deployScript.runInProcess(deployer, _config());
+        deployScript.runInProcess(_config());
     }
 
     /// @dev Register a validator group with a single member and return the group together
@@ -301,6 +303,7 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
     /// @dev The unhealthy group and a repeated entry are listed on purpose: the script has
     ///      to skip both instead of reverting.
     function _config() private view returns (DeployCore.CoreConfig memory config) {
+        config.deployer = deployer;
         config.timeLockMinDelay = DAY;
         config.timeLockDelay = 3 * DAY;
         config.requiredConfirmations = REQUIRED_CONFIRMATIONS;
@@ -362,7 +365,7 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
     function test_secondRunSkipsTheGroups() public {
         address strategyBefore = deployScript.defaultStrategy();
 
-        deployScript.runInProcess(deployer, _config());
+        deployScript.runInProcess(_config());
 
         assertEq(deployScript.defaultStrategy(), strategyBefore);
         assertEq(deployScript.groupHealth(), address(_groupHealth()));

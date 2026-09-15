@@ -158,6 +158,14 @@ exclusion list. See the `compatibility` job in
 [.github/workflows/solidity.yml](.github/workflows/solidity.yml) for how the baseline is
 checked out and overlaid.
 
+The overlay shares the toolchain config (`foundry.toml`, `scripts/`), so both sides compile
+with identical settings. The dependencies are not shared: the baseline gets its own
+OpenZeppelin sources, vendored from the versions its `package.json` pins by
+`scripts/vendor-openzeppelin.sh --root baseline`. Handing it the current `@openzeppelin`
+tree instead would put a later OpenZeppelin upgrade on both sides at once, and an
+incompatible change to an inherited OpenZeppelin storage variable would cancel out of the
+diff rather than being reported.
+
 ## Deployment
 
 `script/deploy/DeployCore.s.sol` deploys the whole protocol and
@@ -168,8 +176,11 @@ Both read their parameters from the environment; `.env.example` lists the variab
 ```sh
 forge script script/deploy/DeployCore.s.sol \
   --disable-code-size-limit \
-  --rpc-url celo --broadcast --ledger
+  --rpc-url celo --broadcast --ledger --sender <ledger address>
 ```
+
+The scripts take the deployer from the broadcasting account and stop when Forge's default
+simulation sender is all they see, so `--ledger` always needs `--sender`.
 
 Read [script/deploy/README.md](script/deploy/README.md) before deploying: it documents the
 required environment variables, why `--disable-code-size-limit` is needed, the deployment
@@ -195,7 +206,7 @@ forge's (`--ledger`, `--unlocked --sender`, `--private-key`):
 
 ```sh
 PROPOSAL_ID=7 forge script script/tasks/multisig/ConfirmProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger
+  --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 ```
 
 [script/tasks/README.md](script/tasks/README.md) has the full mapping table - MultiSig,

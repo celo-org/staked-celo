@@ -739,3 +739,107 @@ contract PayloadEncodingTest is CeloTestHelper {
         assertTrue(keccak256(encoder.encodePayload(signature, argsCsv)) == keccak256(expected));
     }
 }
+
+/**
+ * @dev Election stub returning a fixed eligible group list. The core contract returns the
+ *      groups ordered from most to least votes, and so does this.
+ */
+contract EligibleGroupsStub {
+    address[] private groups;
+    uint256[] private votes;
+
+    function setGroups(address[] memory newGroups, uint256[] memory newVotes) external {
+        groups = newGroups;
+        votes = newVotes;
+    }
+
+    function getTotalVotesForEligibleValidatorGroups()
+        external
+        view
+        returns (address[] memory, uint256[] memory)
+    {
+        return (groups, votes);
+    }
+}
+
+/**
+ * @title ElectionLibNeighbourTest
+ * @notice Covers script/tasks/lib/ElectionLib.sol's neighbour search for the deltas the
+ *         account tasks actually pass it: revoking or withdrawing more than the group holds
+ *         right now, and a group that has dropped out of the eligible list entirely. Both
+ *         leave the group below every other one, which is what the caller has to be told
+ *         instead of the panic unsigned arithmetic would raise.
+ * @dev A stub stands in for Election: only the eligible group list is read, and a fixed one
+ *      makes the expected neighbours exact.
+ */
+contract ElectionLibNeighbourTest is CeloTestHelper {
+    /// @dev Votes of the three groups, most first.
+    uint256 internal constant MOST_VOTES = 100 ether;
+    uint256 internal constant MIDDLE_VOTES = 50 ether;
+    uint256 internal constant FEWEST_VOTES = 10 ether;
+
+    IElectionLookup internal election;
+    address internal mostVoted;
+    address internal middleVoted;
+    address internal fewestVoted;
+
+    function setUp() public {
+        mostVoted = makeAddr("most-voted-group");
+        middleVoted = makeAddr("middle-voted-group");
+        fewestVoted = makeAddr("fewest-voted-group");
+
+        address[] memory groups = new address[](3);
+        groups[0] = mostVoted;
+        groups[1] = middleVoted;
+        groups[2] = fewestVoted;
+
+        uint256[] memory votes = new uint256[](3);
+        votes[0] = MOST_VOTES;
+        votes[1] = MIDDLE_VOTES;
+        votes[2] = FEWEST_VOTES;
+
+        EligibleGroupsStub stub = new EligibleGroupsStub();
+        stub.setGroups(groups, votes);
+        election = IElectionLookup(address(stub));
+    }
+
+    /// @dev The group keeps a positive vote total: it moves down the list but stays in it.
+    function test_revokeWithinTheGroupTotal() public view {
+        (address lesser, address greater) = ElectionLib.findLesserAndGreaterAfterVote(
+            election, mostVoted, -int256(MOST_VOTES - 2 * FEWEST_VOTES)
+        );
+
+        assertEq(greater, middleVoted);
+        assertEq(lesser, fewestVoted);
+    }
+
+    /// @dev More is revoked than the group holds. The total goes negative rather than
+    ///      panicking, and the group belongs below every eligible one.
+    function test_revokeLargerThanTheGroupTotal() public view {
+        (address lesser, address greater) =
+            ElectionLib.findLesserAndGreaterAfterVote(election, middleVoted, -int256(MOST_VOTES));
+
+        assertEq(greater, fewestVoted);
+        assertEq(lesser, ADDRESS_ZERO);
+    }
+
+    /// @dev The group is not eligible any more, so it holds nothing in this list. Any
+    ///      revoke is larger than that.
+    function test_revokeForAGroupThatIsNoLongerEligible() public {
+        (address lesser, address greater) = ElectionLib.findLesserAndGreaterAfterVote(
+            election, makeAddr("ineligible-group"), -int256(FEWEST_VOTES)
+        );
+
+        assertEq(greater, fewestVoted);
+        assertEq(lesser, ADDRESS_ZERO);
+    }
+
+    /// @dev The voting direction is unchanged: the group moves up the list.
+    function test_voteMovesTheGroupUp() public view {
+        (address lesser, address greater) =
+            ElectionLib.findLesserAndGreaterAfterVote(election, fewestVoted, int256(MIDDLE_VOTES));
+
+        assertEq(greater, mostVoted);
+        assertEq(lesser, middleVoted);
+    }
+}

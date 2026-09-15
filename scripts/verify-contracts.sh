@@ -28,7 +28,7 @@
 #   CELOSCAN_API_KEY=... scripts/verify-contracts.sh --watch celo
 #
 # Known networks: celo (42220), sepolia (Celo Sepolia, 11142220), alfajores (44787) and
-# staging. Anything else needs CHAIN_ID and ETH_RPC_URL.
+# staging (1101). Anything else needs CHAIN_ID and ETH_RPC_URL.
 #
 # Options:
 #   --dry-run         print the forge commands instead of running them
@@ -135,9 +135,10 @@ case "$NETWORK" in
     HAS_EXPLORER=1
     ;;
   staging)
-    # The staging network is not defined in legacy/hardhat.config.ts beyond its RPC URL
-    # and has no public explorer, so its chain id has to come from the node or CHAIN_ID.
-    CHAIN=""
+    # legacy/hardhat.config.ts describes staging by its RPC URL alone, but the Hardhat
+    # tooling told the network apart by this chain id
+    # (legacy/lib/helpers/interfaceHelper.ts). No public explorer covers it.
+    CHAIN="1101"
     RPC_URL="https://staging-forno.celo-networks-dev.org/"
     HAS_EXPLORER=0
     ;;

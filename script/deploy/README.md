@@ -22,7 +22,7 @@ re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
 | `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The Hardhat era named accounts, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
-| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 44787 -> `alfajores`, anything else -> `local`. |
+| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 44787 -> `alfajores`, 1101 -> `staging`, anything else -> `local`. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 
@@ -41,6 +41,20 @@ The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--accou
 is ignored here. `DEPLOYER_PRIVATE_KEY` from `.env` is not read either; pass it explicitly
 as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
 
+Which account that is, is read out of the broadcast itself (`vm.readCallers()` inside
+`vm.startBroadcast()`) rather than from `msg.sender`. The two are not the same account when
+the signer is not the simulation sender: with `--ledger` and no `--sender`, `msg.sender` is
+Forge's default sender `0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38` while the transactions
+are signed by the device, and taking the deployer from it would initialize every contract
+as owned by an address nobody holds the key to. A run that reaches the broadcast with that
+default sender stops before the first transaction:
+
+```
+DeployCore: pass --sender/--private-key/--ledger with --sender
+```
+
+`UpgradeImplementation` does the same, and uses the broadcaster for its `owner()` check.
+
 The registry address passed to `Manager`, `Account`, `Vote` and `GroupHealth` is
 `address(0)`, exactly as in the Hardhat scripts: `UsingRegistryUpgradeable` treats the
 zero address as "use the canonical Registry at `0x0...ce10`".
@@ -54,7 +68,7 @@ forge script script/deploy/DeployCore.s.sol \
   --disable-code-size-limit \
   --rpc-url celo \
   --broadcast \
-  --ledger            # or --private-key "$DEPLOYER_PRIVATE_KEY"
+  --ledger --sender <ledger address>   # or --private-key "$DEPLOYER_PRIVATE_KEY"
 ```
 
 Drop `--broadcast` for a dry run; everything is simulated and the addresses are printed,
@@ -66,9 +80,10 @@ deploy. `--disable-code-size-limit` is the only extra flag a mainnet deploy need
 
 ### Signing with a Ledger
 
-`--ledger` signs with the first account of the default derivation path. Pass
-`--sender <address>` as well so the simulation runs as the account that will actually
-broadcast, and `--mnemonic-derivation-paths "m/44'/60'/0'/0/<i>"` to use another account.
+`--ledger` signs with the first account of the default derivation path. `--sender
+<address>` is required next to it: the simulation has to run as the account that will
+actually broadcast, and the script stops if it does not. Use
+`--mnemonic-derivation-paths "m/44'/60'/0'/0/<i>"` for another account.
 The device has to be unlocked with the Ethereum app open and blind signing enabled -
 every transaction here is a contract creation or a contract call.
 
@@ -213,7 +228,7 @@ addresses that hold no code. The three files of one contract always have to go t
 ```sh
 CONTRACT=Manager forge script script/deploy/UpgradeImplementation.s.sol \
   --disable-code-size-limit \
-  --rpc-url celo --broadcast --ledger
+  --rpc-url celo --broadcast --ledger --sender <ledger address>
 ```
 
 The script deploys the new implementation, then:
@@ -244,6 +259,14 @@ the same thing by letting the transaction revert on chain.
 
 `MultiSig` has no `owner()` - it authorizes its own upgrades through a proposal - so
 `CONTRACT=MultiSig` always prints the payload.
+
+`CONTRACT=DefaultStrategy` also redeploys `AddressSortedLinkedList`: Forge links the
+library into every new implementation it builds, and the library is a contract of its own
+on chain. `AddressSortedLinkedList_Implementation.json` is rewritten with the new address
+on that path, the same way `DeployCore` records it, so the verification script does not
+keep submitting the library of the previous deployment. Pass `--libraries ...` (see
+"Library linking") to link an already deployed one instead, in which case the record simply
+keeps pointing at it.
 
 ## Verifying deployed contracts
 
@@ -277,7 +300,7 @@ it from `<Name>_Proxy.json` as
 | --- | --- |
 | `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `ETHERSCAN_API_KEY` (the name in `.env.example`) and `CELO_SCAN_API_KEY` (the Hardhat era one) are accepted too. Without one only Sourcify is used - it needs no key. |
 | `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
-| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220), `sepolia` (11142220), `alfajores` (44787) and `staging`; for anything else it asks the node. |
+| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220), `sepolia` (11142220), `alfajores` (44787) and `staging` (1101); for anything else it asks the node. |
 | `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
 
 ### Why this works with contracts deployed before the port
@@ -354,7 +377,7 @@ parameter itself and covers the chains forge has no entry for.
 | `celo` | 42220 | yes | `https://api.etherscan.io/v2/api?chainid=42220` |
 | `sepolia` (Celo Sepolia) | 11142220 | yes | `https://api.etherscan.io/v2/api?chainid=11142220` |
 | `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | not covered, see below |
-| `staging` | from the node, or `CHAIN_ID` | no | none |
+| `staging` | 1101 | no | none |
 
 Mainnet and Celo Sepolia are fully covered. `sourcify.dev/server/chains` lists Celo
 Mainnet and `Celo Sepolia Testnet` (11142220) as supported, and Etherscan V2 lists both
@@ -366,9 +389,10 @@ Etherscan V2 comes back as `Missing or unsupported chainid parameter`. That leav
 `deployments/alfajores/` with no verifier; the script still builds the command, which
 starts working again the day the chain is listed. New testnet deployments belong on Celo
 Sepolia instead. `staging` is never described beyond its RPC URL in
-`legacy/hardhat.config.ts`, has no chain id written down anywhere and no public explorer;
-its records can only be verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a service that
-supports it.
+`legacy/hardhat.config.ts`; its chain id, 1101, comes from
+`legacy/lib/helpers/interfaceHelper.ts`, which is how the Hardhat tooling told the network
+apart. No public explorer covers it, so its records can only be verified by pointing
+`CHAIN_ID` and `ETH_RPC_URL` at a service that supports it.
 
 ## Local devchain
 

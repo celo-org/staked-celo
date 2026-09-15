@@ -29,13 +29,13 @@ library ElectionLib {
         (address[] memory groups, uint256[] memory votes) =
             electionContract.getTotalVotesForEligibleValidatorGroups();
 
-        uint256 total = _totalAfterVote(groups, votes, group, delta);
+        int256 total = _totalAfterVote(groups, votes, group, delta);
 
         for (uint256 i = 0; i < groups.length; i++) {
             if (groups[i] == group) {
                 continue;
             }
-            if (votes[i] <= total) {
+            if (int256(votes[i]) <= total) {
                 lesser = groups[i];
                 break;
             }
@@ -68,19 +68,22 @@ library ElectionLib {
     }
 
     /// @dev Current votes of `group` shifted by `delta`.
+    ///      Signed on purpose, the way ContractKit's BigNumber math was: the account tasks
+    ///      ask for the neighbours after revoking or withdrawing more than the group holds
+    ///      right now, and a group that has dropped out of the eligible list holds nothing
+    ///      at all here. Unsigned arithmetic would panic on both instead of placing the
+    ///      group at the tail of the list, which is where a negative total belongs.
     function _totalAfterVote(
         address[] memory groups,
         uint256[] memory votes,
         address group,
         int256 delta
-    ) private pure returns (uint256) {
-        uint256 current = 0;
+    ) private pure returns (int256) {
         for (uint256 i = 0; i < groups.length; i++) {
             if (groups[i] == group) {
-                current = votes[i];
-                break;
+                return int256(votes[i]) + delta;
             }
         }
-        return delta >= 0 ? current + uint256(delta) : current - uint256(-delta);
+        return delta;
     }
 }

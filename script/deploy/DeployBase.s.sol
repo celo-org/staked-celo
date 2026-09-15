@@ -68,6 +68,8 @@ interface DeployVm {
 
     function stopBroadcast() external;
 
+    function readCallers() external returns (uint8 callerMode, address msgSender, address txOrigin);
+
     function startPrank(address msgSender, address txOrigin) external;
 
     function stopPrank() external;
@@ -150,6 +152,10 @@ abstract contract DeployBase {
     ///         scripts passed for every registry aware contract.
     address internal constant CANONICAL_REGISTRY = address(0);
 
+    /// @notice The sender forge simulates with when the run was given none. It holds no key
+    ///         and owns nothing, so a deployment attributed to it would be unrecoverable.
+    address internal constant FORGE_DEFAULT_SENDER = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
+
     /// @notice Name of the deployments directory for the target network.
     string internal network;
 
@@ -159,6 +165,26 @@ abstract contract DeployBase {
 
     /// @notice The address the deployment transactions originate from.
     address internal deployer;
+
+    // =========================================================================
+    //                             BROADCASTER
+    // =========================================================================
+
+    /// @notice The address the transactions of this run are signed by.
+    /// @dev Has to be called inside a broadcast context: `msg.sender` is the account forge
+    ///      simulates the script contract's own call with, which with `--ledger` and no
+    ///      `--sender` is the default sender rather than the device. Only the broadcast
+    ///      knows who actually signs, and `readCallers` is what reports it.
+    /// @param scriptName Name used in the error message.
+    function _readBroadcaster(string memory scriptName) internal returns (address broadcaster) {
+        (, broadcaster,) = vm.readCallers();
+        require(
+            broadcaster != FORGE_DEFAULT_SENDER,
+            string(
+                abi.encodePacked(scriptName, ": pass --sender/--private-key/--ledger with --sender")
+            )
+        );
+    }
 
     // =========================================================================
     //                              NETWORK
@@ -185,6 +211,11 @@ abstract contract DeployBase {
         // Alfajores, the testnet Celo Sepolia replaces.
         if (block.chainid == 44787) {
             return "alfajores";
+        }
+        // The staging network, which the Hardhat tooling reached through its `local`
+        // network and told apart by this chain id (legacy/lib/helpers/interfaceHelper.ts).
+        if (block.chainid == 1101) {
+            return "staging";
         }
         return "local";
     }
