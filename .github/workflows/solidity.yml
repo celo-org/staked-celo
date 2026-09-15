@@ -146,17 +146,31 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
 
+      # scripts/vendor-openzeppelin.sh below runs `npm pack`. Nothing from
+      # package.json is installed here, so this is free to track a supported release.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
       # The baseline release predates the Foundry migration, so it carries no
       # foundry.toml and no vendored OpenZeppelin. Overlaying the current toolchain
-      # onto its contracts/ builds them with exactly the settings used here, which is
-      # what makes the two out/ directories comparable. The baseline imports the same
-      # "@openzeppelin/..." paths, so the vendored copy resolves without remappings.
+      # config onto its contracts/ builds them with exactly the settings used here,
+      # which is what makes the two out/ directories comparable.
+      #
+      # The dependencies are the exception: each side is vendored from its own
+      # package.json, so the baseline gets the OpenZeppelin versions it pinned. Copying
+      # the current @openzeppelin tree over instead would put a future OpenZeppelin
+      # upgrade on both sides at once, and an incompatible change to an inherited
+      # OpenZeppelin storage variable would then cancel out of the diff rather than
+      # being reported. The baseline imports the same "@openzeppelin/..." paths, so the
+      # vendored copy resolves without remappings.
       - name: Overlay the current toolchain onto the baseline
         run: |
           cp foundry.toml baseline/foundry.toml
-          rm -rf baseline/@openzeppelin baseline/scripts
-          cp -R @openzeppelin baseline/@openzeppelin
+          rm -rf baseline/scripts
           cp -R scripts baseline/scripts
+          scripts/vendor-openzeppelin.sh --root baseline
 
       - name: Build the current contracts
         run: forge build
