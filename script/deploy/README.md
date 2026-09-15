@@ -154,14 +154,26 @@ Records are written to `deployments/<network>/` in the hardhat-deploy layout the
 scripts read:
 
 ```
-Manager.json                                 { address: <proxy>, implementation: <logic>, contract, chainId, deployer }
+Manager.json                                 { address: <proxy>, implementation: <logic>, args, contract, chainId, deployer }
 Manager_Proxy.json                           same as above
-Manager_Implementation.json                  { address: <logic>, contract, chainId, deployer }
-AddressSortedLinkedList_Implementation.json  { address: <library>, contract, chainId, deployer }
+Manager_Implementation.json                  { address: <logic>, args, contract, chainId, deployer }
+AddressSortedLinkedList_Implementation.json  { address: <library>, args, contract, chainId, deployer }
 ```
 
-The `abi`, `receipt` and `args` fields hardhat-deploy wrote are not reproduced; the ABI
-comes from the Forge artifacts in `out/` and the transaction details from
+`args` holds the constructor arguments in the shape hardhat-deploy wrote them: the
+implementation address and the initializer calldata for a proxy record, `minDelay` for the
+`MultiSig` implementation, and an empty array for the implementations that take none.
+`scripts/verify-contracts.sh` ABI-encodes them; an explorer cannot reproduce the creation
+code without them. Numbers are written as decimal strings rather than as JSON numbers -
+Forge's serializer is typed, and both `cast abi-encode` and the verification script read
+either form.
+
+A proxy record refreshed by `UpgradeImplementation` is the one exception: the proxy was
+constructed by an earlier run and its arguments are not known there, so `args` comes out
+empty and verification falls back to `--guess-constructor-args`.
+
+The `abi` and `receipt` fields hardhat-deploy wrote are not reproduced; the ABI comes from
+the Forge artifacts in `out/` and the transaction details from
 `broadcast/DeployCore.s.sol/<chainId>/run-latest.json`.
 
 ### Idempotency
@@ -249,7 +261,7 @@ it from `<Name>_Proxy.json` as
 
 | Variable | Meaning |
 | --- | --- |
-| `CELOSCAN_API_KEY` | Celoscan key. `CELO_SCAN_API_KEY` (the name in `.env.example`) is accepted too. Without one only Sourcify is used - it needs no key. |
+| `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `CELO_SCAN_API_KEY` (the name in `.env.example`) and `ETHERSCAN_API_KEY` are accepted too. Without one only Sourcify is used - it needs no key. |
 | `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
 | `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220) and `alfajores` (44787); for anything else it asks the node. |
 | `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
@@ -272,14 +284,20 @@ back from Sourcify as `bytecode_length_mismatch` or a partial match. That is a c
 result, not a tooling problem: verify those addresses from the commit they were deployed
 from. The script exits non-zero when any submission fails.
 
-### Proxies and constructor arguments
+### Constructor arguments
 
 `ERC1967Proxy(address _logic, bytes _data)` takes the implementation and the initializer
-calldata, and Celoscan needs both to reproduce the creation code. The script takes them
-from the `args` field of the hardhat-deploy record and ABI-encodes them with `cast`.
-Records written by `DeployCore` have no `args`, so there it falls back to
-`--guess-constructor-args`, which recovers them from the creation code on chain. Right
-after a deploy they can also be read out of
+calldata, and the `MultiSig` implementation takes `uint256 _minDelay`. An explorer only
+reproduces the creation code when it is given them, so a submission without them fails for
+those addresses.
+
+The script takes the values from the `args` field of the deployment record and ABI-encodes
+them against the constructor of the matching artifact in `out/`, so a contract whose
+constructor changes needs no change here. Records written by `DeployCore` carry `args`
+just as the hardhat-deploy ones do; a record that has none - one from a `DeployCore` run
+that predates the field, or a proxy record refreshed by `UpgradeImplementation` - falls
+back to `--guess-constructor-args`, which recovers the arguments from the creation code on
+chain. Right after a deploy they can also be read out of
 `broadcast/DeployCore.s.sol/<chainId>/run-latest.json` and passed by hand:
 
 ```sh
@@ -287,6 +305,10 @@ forge verify-contract <proxy> \
   '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy' \
   --chain 42220 --verifier sourcify \
   --constructor-args "$(cast abi-encode 'constructor(address,bytes)' <implementation> <initializeCalldata>)"
+
+forge verify-contract <multiSigImplementation> contracts/common/MultiSig.sol:MultiSig \
+  --chain 42220 --verifier sourcify \
+  --constructor-args "$(cast abi-encode 'constructor(uint256)' 345600)"
 ```
 
 ### The linked library
@@ -301,20 +323,34 @@ forces the address in anyway, for a verifier that cannot.
 
 ### Networks
 
-Only mainnet has an `[etherscan]` entry in `foundry.toml`; the script carries the Celoscan
-endpoints itself, so nothing has to be added there.
+Celoscan is served by the unified **Etherscan V2** API: one host, `https://api.etherscan.io/v2/api`,
+with the chain picked by a `chainid` query parameter. The per-explorer V1 endpoints it
+replaced (`api.celoscan.io`, `api-alfajores.celoscan.io`) were retired in August 2025 and
+now answer every request with `You are using a deprecated V1 endpoint`. An
+**etherscan.io** API key is what V2 authenticates with, and one key covers every chain in
+it.
 
-| Network | Chain | Sourcify | Celoscan |
+Forge resolves that endpoint on its own from `--chain` for the chains it knows, which is
+why the `[etherscan]` entry in `foundry.toml` needs a key and a chain but no `url`. It
+does *not* append `chainid` to a `--verifier-url` it is handed, so the script passes the
+parameter itself and covers the chains forge has no entry for.
+
+| Network | Chain | Sourcify | Etherscan V2 |
 | --- | --- | --- | --- |
-| `celo` | 42220 | yes | `https://api.celoscan.io/api` |
-| `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | `https://api-alfajores.celoscan.io/api` |
+| `celo` | 42220 | yes | `https://api.etherscan.io/v2/api?chainid=42220` |
+| `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | not covered, see below |
 | `staging` | from the node, or `CHAIN_ID` | no | none |
 
 Only mainnet is fully covered. Sourcify answers `Chain 44787 not found` for Alfajores and
-lists Baklava (62320) as unsupported, so `deployments/alfajores/` can only be verified on
-Celoscan. `staging` is never described beyond its RPC URL in `legacy/hardhat.config.ts`,
-has no chain id written down anywhere and no public explorer; its records can only be
-verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a service that supports it.
+lists Baklava (62320) as unsupported. Etherscan V2 lists Celo Mainnet (42220) and Celo
+Sepolia (11142220) and no longer lists Alfajores
+(`https://api.etherscan.io/v2/chainlist`), so a submission for 44787 comes back as
+`Missing or unsupported chainid parameter`. That leaves `deployments/alfajores/` with no
+verifier for the time being; the script still builds the command, which starts working
+again the day the chain is listed. `staging` is never described beyond its
+RPC URL in `legacy/hardhat.config.ts`, has no chain id written down anywhere and no public
+explorer; its records can only be verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a
+service that supports it.
 
 ## Local devchain
 

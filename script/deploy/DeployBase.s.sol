@@ -48,6 +48,12 @@ interface DeployVm {
         string calldata value
     ) external returns (string memory);
 
+    function serializeString(
+        string calldata objectKey,
+        string calldata valueKey,
+        string[] calldata values
+    ) external returns (string memory);
+
     function serializeUint(string calldata objectKey, string calldata valueKey, uint256 value)
         external
         returns (string memory);
@@ -69,6 +75,8 @@ interface DeployVm {
     function toString(address value) external pure returns (string memory);
 
     function toString(bytes calldata value) external pure returns (string memory);
+
+    function toString(uint256 value) external pure returns (string memory);
 }
 
 /// @dev Ownership surface shared by every upgradeable protocol contract.
@@ -117,6 +125,11 @@ library DeployLog {
  *        <Name>.json                -> address = proxy, implementation = logic
  *        <Name>_Proxy.json          -> address = proxy, implementation = logic
  *        <Name>_Implementation.json -> address = logic
+ *
+ *      Each record also carries the `args` array hardhat-deploy wrote, so that
+ *      `scripts/verify-contracts.sh` can ABI-encode the constructor arguments of the
+ *      proxy and of an implementation that takes some instead of guessing them from the
+ *      creation code on chain.
  *
  *      The `abi` field written by hardhat-deploy is not reproduced; consumers read the
  *      ABI from the Foundry artifacts in `out/` instead.
@@ -192,24 +205,85 @@ abstract contract DeployBase {
         return vm.parseJsonAddress(vm.readFile(path), ".address");
     }
 
-    /// @notice Write the three records hardhat-deploy produces for a proxied contract.
+    /// @notice Refresh the three records of a proxy that is already on chain, e.g. after
+    ///         an upgrade.
+    /// @dev The proxy was constructed by an earlier run, so its constructor arguments are
+    ///      not known here and the records carry none; verification recovers them from
+    ///      the creation code on chain instead.
     /// @param name The contract name, e.g. `Manager`.
     /// @param proxy The ERC1967 proxy address.
     /// @param implementation The logic contract address.
     function _recordProxyDeployment(string memory name, address proxy, address implementation)
         internal
     {
-        _writeRecord(name, name, proxy, implementation);
-        _writeRecord(string(abi.encodePacked(name, "_Proxy")), name, proxy, implementation);
+        string[] memory noArgs = new string[](0);
+        _writeRecord(name, name, proxy, implementation, noArgs);
+        _writeRecord(string(abi.encodePacked(name, "_Proxy")), name, proxy, implementation, noArgs);
         _recordImplementationDeployment(name, implementation);
+    }
+
+    /// @notice Write the three records hardhat-deploy produces for a proxied contract.
+    /// @param name The contract name, e.g. `Manager`.
+    /// @param proxy The ERC1967 proxy address.
+    /// @param implementation The logic contract address.
+    /// @param initializeCalldata The call the proxy runs on construction.
+    function _recordProxyDeployment(
+        string memory name,
+        address proxy,
+        address implementation,
+        bytes memory initializeCalldata
+    ) internal {
+        _recordProxyDeployment(name, proxy, implementation, initializeCalldata, new string[](0));
+    }
+
+    /// @notice Write the three records for a proxied contract whose implementation takes
+    ///         constructor arguments.
+    /// @param name The contract name, e.g. `MultiSig`.
+    /// @param proxy The ERC1967 proxy address.
+    /// @param implementation The logic contract address.
+    /// @param initializeCalldata The call the proxy runs on construction.
+    /// @param implementationArgs The implementation constructor arguments.
+    function _recordProxyDeployment(
+        string memory name,
+        address proxy,
+        address implementation,
+        bytes memory initializeCalldata,
+        string[] memory implementationArgs
+    ) internal {
+        string[] memory proxyArgs = new string[](2);
+        proxyArgs[0] = vm.toString(implementation);
+        proxyArgs[1] = vm.toString(initializeCalldata);
+        _writeRecord(name, name, proxy, implementation, proxyArgs);
+        _writeRecord(
+            string(abi.encodePacked(name, "_Proxy")), name, proxy, implementation, proxyArgs
+        );
+        _recordImplementationDeployment(name, implementation, implementationArgs);
     }
 
     /// @notice Write the `<Name>_Implementation.json` record.
     /// @param name The contract name, e.g. `Manager`.
     /// @param implementation The logic contract address.
     function _recordImplementationDeployment(string memory name, address implementation) internal {
+        _recordImplementationDeployment(name, implementation, new string[](0));
+    }
+
+    /// @notice Write the `<Name>_Implementation.json` record of a contract that takes
+    ///         constructor arguments.
+    /// @param name The contract name, e.g. `MultiSig`.
+    /// @param implementation The logic contract address.
+    /// @param args The constructor arguments, decimal for numbers and `0x` prefixed for
+    ///        addresses and byte strings.
+    function _recordImplementationDeployment(
+        string memory name,
+        address implementation,
+        string[] memory args
+    ) internal {
         _writeRecord(
-            string(abi.encodePacked(name, "_Implementation")), name, implementation, address(0)
+            string(abi.encodePacked(name, "_Implementation")),
+            name,
+            implementation,
+            address(0),
+            args
         );
     }
 
@@ -218,7 +292,8 @@ abstract contract DeployBase {
         string memory fileName,
         string memory contractName,
         address recorded,
-        address implementation
+        address implementation,
+        string[] memory args
     ) private {
         if (!useDeploymentRecords) {
             return;
@@ -227,13 +302,12 @@ abstract contract DeployBase {
         vm.serializeAddress(fileName, "address", recorded);
         vm.serializeString(fileName, "contract", contractName);
         vm.serializeUint(fileName, "chainId", block.chainid);
-        string memory json;
-        if (implementation == address(0)) {
-            json = vm.serializeAddress(fileName, "deployer", deployer);
-        } else {
-            vm.serializeAddress(fileName, "deployer", deployer);
-            json = vm.serializeAddress(fileName, "implementation", implementation);
+        vm.serializeAddress(fileName, "deployer", deployer);
+        if (implementation != address(0)) {
+            vm.serializeAddress(fileName, "implementation", implementation);
         }
+        // `args` goes last: the serializer returns the object as it stands after the call.
+        string memory json = vm.serializeString(fileName, "args", args);
         vm.writeJson(json, deploymentPath(fileName));
     }
 

@@ -151,16 +151,20 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new MultiSig(config.timeLockMinDelay));
-        multiSig = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(
-                MultiSig.initialize.selector,
-                config.multiSigOwners,
-                config.requiredConfirmations,
-                config.timeLockDelay
-            )
+        bytes memory initializeCalldata = abi.encodeWithSelector(
+            MultiSig.initialize.selector,
+            config.multiSigOwners,
+            config.requiredConfirmations,
+            config.timeLockDelay
         );
-        _recordProxyDeployment("MultiSig", multiSig, implementation);
+        multiSig = _deployProxy(implementation, initializeCalldata);
+        // The only implementation with a constructor argument, and the only one whose
+        // record therefore needs `args` of its own.
+        string[] memory implementationArgs = new string[](1);
+        implementationArgs[0] = vm.toString(config.timeLockMinDelay);
+        _recordProxyDeployment(
+            "MultiSig", multiSig, implementation, initializeCalldata, implementationArgs
+        );
         DeployLog.a("MultiSig: deployed", multiSig);
     }
 
@@ -171,11 +175,10 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new Manager());
-        manager = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(Manager.initialize.selector, CANONICAL_REGISTRY, deployer)
-        );
-        _recordProxyDeployment("Manager", manager, implementation);
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(Manager.initialize.selector, CANONICAL_REGISTRY, deployer);
+        manager = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment("Manager", manager, implementation, initializeCalldata);
         DeployLog.a("Manager: deployed", manager);
     }
 
@@ -186,13 +189,11 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new Account());
-        account = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(
-                Account.initialize.selector, CANONICAL_REGISTRY, manager, deployer
-            )
+        bytes memory initializeCalldata = abi.encodeWithSelector(
+            Account.initialize.selector, CANONICAL_REGISTRY, manager, deployer
         );
-        _recordProxyDeployment("Account", account, implementation);
+        account = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment("Account", account, implementation, initializeCalldata);
         DeployLog.a("Account: deployed", account);
     }
 
@@ -203,11 +204,10 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new StakedCelo());
-        stakedCelo = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(StakedCelo.initialize.selector, manager, deployer)
-        );
-        _recordProxyDeployment("StakedCelo", stakedCelo, implementation);
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(StakedCelo.initialize.selector, manager, deployer);
+        stakedCelo = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment("StakedCelo", stakedCelo, implementation, initializeCalldata);
         DeployLog.a("StakedCelo: deployed", stakedCelo);
     }
 
@@ -218,11 +218,10 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new Vote());
-        vote = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(Vote.initialize.selector, CANONICAL_REGISTRY, deployer, manager)
-        );
-        _recordProxyDeployment("Vote", vote, implementation);
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(Vote.initialize.selector, CANONICAL_REGISTRY, deployer, manager);
+        vote = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment("Vote", vote, implementation, initializeCalldata);
         DeployLog.a("Vote: deployed", vote);
     }
 
@@ -234,11 +233,10 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new GroupHealth());
-        groupHealth = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(GroupHealth.initialize.selector, CANONICAL_REGISTRY, multiSig)
-        );
-        _recordProxyDeployment("GroupHealth", groupHealth, implementation);
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(GroupHealth.initialize.selector, CANONICAL_REGISTRY, multiSig);
+        groupHealth = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment("GroupHealth", groupHealth, implementation, initializeCalldata);
         DeployLog.a("GroupHealth: deployed", groupHealth);
         _updateValidatorGroupHealth();
     }
@@ -262,11 +260,12 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new SpecificGroupStrategy());
-        specificGroupStrategy = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(SpecificGroupStrategy.initialize.selector, deployer, manager)
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(SpecificGroupStrategy.initialize.selector, deployer, manager);
+        specificGroupStrategy = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment(
+            "SpecificGroupStrategy", specificGroupStrategy, implementation, initializeCalldata
         );
-        _recordProxyDeployment("SpecificGroupStrategy", specificGroupStrategy, implementation);
         DeployLog.a("SpecificGroupStrategy: deployed", specificGroupStrategy);
     }
 
@@ -277,11 +276,12 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new DefaultStrategy());
-        defaultStrategy = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(DefaultStrategy.initialize.selector, deployer, manager)
+        bytes memory initializeCalldata =
+            abi.encodeWithSelector(DefaultStrategy.initialize.selector, deployer, manager);
+        defaultStrategy = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment(
+            "DefaultStrategy", defaultStrategy, implementation, initializeCalldata
         );
-        _recordProxyDeployment("DefaultStrategy", defaultStrategy, implementation);
         // The library Forge linked is a contract of its own on chain and has to be
         // verified separately, so record where it ended up.
         _recordImplementationDeployment("AddressSortedLinkedList", address(AddressSortedLinkedList));
@@ -296,13 +296,13 @@ contract DeployCore is DeployBase {
             return;
         }
         address implementation = address(new RebasedStakedCelo());
-        rebasedStakedCelo = _deployProxy(
-            implementation,
-            abi.encodeWithSelector(
-                RebasedStakedCelo.initialize.selector, stakedCelo, account, multiSig
-            )
+        bytes memory initializeCalldata = abi.encodeWithSelector(
+            RebasedStakedCelo.initialize.selector, stakedCelo, account, multiSig
         );
-        _recordProxyDeployment("RebasedStakedCelo", rebasedStakedCelo, implementation);
+        rebasedStakedCelo = _deployProxy(implementation, initializeCalldata);
+        _recordProxyDeployment(
+            "RebasedStakedCelo", rebasedStakedCelo, implementation, initializeCalldata
+        );
         DeployLog.a("RebasedStakedCelo: deployed", rebasedStakedCelo);
     }
 

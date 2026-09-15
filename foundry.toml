@@ -61,7 +61,10 @@ staging = "https://staging-forno.celo-networks-dev.org/"
 local = "http://localhost:8545"
 
 [etherscan]
-celo = { key = "${CELOSCAN_API_KEY}", chain = 42220, url = "https://api.celoscan.io/api" }
+# No `url`: Celoscan is served by the unified Etherscan V2 API, which forge picks for the
+# chain on its own. The V1 endpoint that used to be spelled out here (api.celoscan.io) was
+# retired in August 2025 and answers every request with "deprecated V1 endpoint".
+celo = { key = "${CELOSCAN_API_KEY}", chain = 42220 }
 
 [fuzz]
 runs = 256
