@@ -86,6 +86,21 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     /// @notice Deploy all protocol contracts with a MockRegistry, replicating
     ///         the full production deploy sequence from scripts 00-13.
     function deployCoreWithMockRegistry() internal {
+        deployCoreWithMockRegistry(3 * DAY, 3 * DAY, 1);
+    }
+
+    /// @notice Same as the no-argument variant, but with MultiSig timing parameters of
+    ///         the caller's choosing. Tests that only care about what a proposal does,
+    ///         not about how long it takes, deploy with a one second delay.
+    /// @param minDelay MultiSig constructor argument (TIME_LOCK_MIN_DELAY).
+    /// @param delay MultiSig time lock delay (TIME_LOCK_DELAY). Must be >= minDelay.
+    /// @param requiredConfirmations MultiSig confirmations needed to schedule a proposal
+    ///        (MULTISIG_REQUIRED_CONFIRMATIONS).
+    function deployCoreWithMockRegistry(
+        uint256 minDelay,
+        uint256 delay,
+        uint256 requiredConfirmations
+    ) internal {
         _initNamedAccounts();
 
         // ================================================================
@@ -98,7 +113,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         // ================================================================
         _deployMockCeloInfrastructure();
 
-        deployCore(mockRegistryAddr, 3 * DAY, 3 * DAY, 1);
+        deployCore(mockRegistryAddr, minDelay, delay, requiredConfirmations);
     }
 
     /// @notice Deploy all protocol contracts against an existing registry, replicating

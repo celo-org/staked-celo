@@ -344,6 +344,9 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
 
     /// @notice Deploy MockManager (direct) + StakedCelo behind proxy.
     ///         Replicates deploy/test/staked_celo.ts + mock_manager.ts [tag: TestStakedCelo].
+    /// @dev The Hardhat fixture initialised StakedCelo with the Manager proxy and the test then
+    ///      called setManager(mockManager); initialising with MockManager straight away reaches
+    ///      the same end state.
     function deployTestStakedCelo() internal {
         _initNamedAccounts();
         vm.startPrank(deployer);

@@ -20,7 +20,9 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     address internal nonOwner;
 
     function setUp() public {
-        deployCoreWithMockRegistry();
+        // The original fixture set TIME_LOCK_MIN_DELAY, TIME_LOCK_DELAY and
+        // MULTISIG_REQUIRED_CONFIRMATIONS to 1 before deploying.
+        deployCoreWithMockRegistry(1, 1, 1);
         nonOwner = randomAddress();
     }
 
@@ -42,6 +44,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_StakedCelo_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(stakedCelo));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(stakedCelo), impl);
     }
 
@@ -65,19 +68,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_StakedCelo_canUpdateImplementationViaMultiSig() public {
         StakedCelo newImpl = new StakedCelo();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(stakedCelo);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(stakedCelo), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(stakedCelo)), address(newImpl));
     }
 
     function test_StakedCelo_nonOwnerCannotTransferOwnership() public {
@@ -112,6 +106,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_Account_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(account));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(account), impl);
     }
 
@@ -135,19 +130,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_Account_canUpdateImplementationViaMultiSig() public {
         Account newImpl = new Account();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(account);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(account), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(account)), address(newImpl));
     }
 
     function test_Account_nonOwnerCannotTransferOwnership() public {
@@ -173,7 +159,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
         Manager implContract = Manager(payable(impl));
 
         vm.expectRevert("Initializable: contract is already initialized");
-        implContract.initialize(mockRegistryAddr, randomAddress());
+        implContract.initialize(randomAddress(), randomAddress());
     }
 
     function test_Manager_isOwnedByMultiSig() public {
@@ -182,6 +168,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_Manager_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(manager));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(manager), impl);
     }
 
@@ -205,19 +192,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_Manager_canUpdateImplementationViaMultiSig() public {
         Manager newImpl = new Manager();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(manager);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(manager), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(manager)), address(newImpl));
     }
 
     function test_Manager_nonOwnerCannotTransferOwnership() public {
@@ -252,6 +230,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_RebasedStakedCelo_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(rebasedStakedCelo));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(rebasedStakedCelo), impl);
     }
 
@@ -275,19 +254,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_RebasedStakedCelo_canUpdateImplementationViaMultiSig() public {
         RebasedStakedCelo newImpl = new RebasedStakedCelo();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(rebasedStakedCelo);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(rebasedStakedCelo), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(rebasedStakedCelo)), address(newImpl));
     }
 
     function test_RebasedStakedCelo_nonOwnerCannotTransferOwnership() public {
@@ -313,7 +283,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
         Vote implContract = Vote(payable(impl));
 
         vm.expectRevert("Initializable: contract is already initialized");
-        implContract.initialize(mockRegistryAddr, randomAddress(), randomAddress());
+        implContract.initialize(randomAddress(), randomAddress(), randomAddress());
     }
 
     function test_Vote_isOwnedByMultiSig() public {
@@ -322,6 +292,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_Vote_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(vote));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(vote), impl);
     }
 
@@ -345,19 +316,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_Vote_canUpdateImplementationViaMultiSig() public {
         Vote newImpl = new Vote();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(vote);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(vote), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(vote)), address(newImpl));
     }
 
     function test_Vote_nonOwnerCannotTransferOwnership() public {
@@ -392,6 +354,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_DefaultStrategy_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(defaultStrategy));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(defaultStrategy), impl);
     }
 
@@ -415,19 +378,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_DefaultStrategy_canUpdateImplementationViaMultiSig() public {
         DefaultStrategy newImpl = new DefaultStrategy();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(defaultStrategy);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(defaultStrategy), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(defaultStrategy)), address(newImpl));
     }
 
     function test_DefaultStrategy_nonOwnerCannotTransferOwnership() public {
@@ -462,6 +416,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_SpecificGroupStrategy_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(specificGroupStrategy));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(specificGroupStrategy), impl);
     }
 
@@ -485,19 +440,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_SpecificGroupStrategy_canUpdateImplementationViaMultiSig() public {
         SpecificGroupStrategy newImpl = new SpecificGroupStrategy();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(specificGroupStrategy);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(specificGroupStrategy), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(specificGroupStrategy)), address(newImpl));
     }
 
     function test_SpecificGroupStrategy_nonOwnerCannotTransferOwnership() public {
@@ -523,7 +469,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
         GroupHealth implContract = GroupHealth(payable(impl));
 
         vm.expectRevert("Initializable: contract is already initialized");
-        implContract.initialize(mockRegistryAddr, randomAddress());
+        implContract.initialize(randomAddress(), randomAddress());
     }
 
     function test_GroupHealth_isOwnedByMultiSig() public {
@@ -532,6 +478,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
 
     function test_GroupHealth_proxyAddressNotEqualImplementation() public {
         address impl = _getImplementation(address(groupHealth));
+        assertNotEq(impl, ADDRESS_ZERO);
         assertNotEq(address(groupHealth), impl);
     }
 
@@ -555,19 +502,10 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     function test_GroupHealth_canUpdateImplementationViaMultiSig() public {
         GroupHealth newImpl = new GroupHealth();
 
-        address[] memory destinations = new address[](1);
-        destinations[0] = address(groupHealth);
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory payloads = new bytes[](1);
-        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", address(newImpl));
-
-        submitAndExecuteMultiSigProposal(multiSig, destinations, values, payloads, multisigOwner0);
+        _upgradeViaMultiSig(address(groupHealth), address(newImpl));
 
         // Verify implementation was updated
-        assertEq(_getImplementation(destinations[0]), address(newImpl));
+        assertEq(_getImplementation(address(groupHealth)), address(newImpl));
     }
 
     function test_GroupHealth_nonOwnerCannotTransferOwnership() public {
@@ -587,6 +525,31 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     // =========================================================================
     //                        HELPER FUNCTIONS
     // =========================================================================
+
+    /// @dev Upgrade a proxy through the MultiSig, asserting that the proxy emits Upgraded.
+    ///      Same steps as MultiSigHelper.submitAndExecuteMultiSigProposal, spelled out here
+    ///      so that the event expectation sits on the execution rather than the submission:
+    ///      submitProposal emits ProposalScheduled, which would consume the expectation.
+    function _upgradeViaMultiSig(address proxy, address newImpl) internal {
+        address[] memory destinations = new address[](1);
+        destinations[0] = proxy;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory payloads = new bytes[](1);
+        payloads[0] = abi.encodeWithSignature("upgradeTo(address)", newImpl);
+
+        vm.prank(multisigOwner0);
+        uint256 proposalId = multiSig.submitProposal(destinations, values, payloads);
+
+        vm.warp(block.timestamp + multiSig.delay() + 1);
+
+        vm.expectEmit(true, false, false, false, proxy);
+        emit Upgraded(newImpl);
+        vm.prank(multisigOwner0);
+        multiSig.executeProposal(proposalId);
+    }
 
     /// @dev Get the implementation address from a proxy using ERC1967 slot
     function _getImplementation(address proxy) internal view returns (address impl) {

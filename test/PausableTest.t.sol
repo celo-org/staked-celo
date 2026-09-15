@@ -44,7 +44,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_pause_whenPaused_blocksCallPausable() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.expectRevert(abi.encodeWithSelector(Pausable.Paused.selector));
         pausableTest.callPausable();
     }
@@ -52,7 +52,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_pause_whenPaused_allowsCallAlways() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         uint256 numberBefore = pausableTest.numberCalls();
         assertEq(numberBefore, 0);
         pausableTest.callAlways();
@@ -67,7 +67,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_unpause_setsContractToUnpaused() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.prank(pauser);
         pausableTest.unpause();
         assertFalse(pausableTest.isPaused());
@@ -76,7 +76,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_unpause_emitsContractUnpausedEvent() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.expectEmit(true, true, true, true, address(pausableTest));
         emit ContractUnpaused();
         vm.prank(pauser);
@@ -86,7 +86,7 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_unpause_cannotBeCalledByNonPauser() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.expectRevert(abi.encodeWithSelector(Pausable.OnlyPauser.selector));
         vm.prank(nonPauser);
         pausableTest.unpause();
@@ -96,10 +96,10 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_unpause_onceUnpaused_allowsCallPausable() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.prank(pauser);
         pausableTest.unpause();
-        
+
         uint256 numberBefore = pausableTest.numberCalls();
         assertEq(numberBefore, 0);
         pausableTest.callPausable();
@@ -110,10 +110,10 @@ contract PausableTestTest is TestAccountDeployHelper {
     function test_unpause_onceUnpaused_allowsCallAlways() public {
         vm.prank(pauser);
         pausableTest.pause();
-        
+
         vm.prank(pauser);
         pausableTest.unpause();
-        
+
         uint256 numberBefore = pausableTest.numberCalls();
         assertEq(numberBefore, 0);
         pausableTest.callAlways();
@@ -143,7 +143,7 @@ contract PausableTestTest is TestAccountDeployHelper {
 
     function test_setPauser_whenChanged_allowsNewPauserToPause() public {
         pausableTest.setPauser(nonPauser);
-        
+
         vm.prank(nonPauser);
         pausableTest.pause();
         assertTrue(pausableTest.isPaused());
@@ -151,7 +151,7 @@ contract PausableTestTest is TestAccountDeployHelper {
 
     function test_setPauser_whenChanged_blocksOldPauser() public {
         pausableTest.setPauser(nonPauser);
-        
+
         vm.expectRevert(abi.encodeWithSelector(Pausable.OnlyPauser.selector));
         vm.prank(pauser);
         pausableTest.pause();
