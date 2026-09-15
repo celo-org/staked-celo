@@ -18,11 +18,14 @@ Two things are compared for every non-excluded contract under contracts/:
                   renamed. Struct definitions reachable from the layout must keep
                   their members, and enum definitions must keep the order of
                   theirs: the layout only records that a slot holds a one byte
-                  enum, not what its values stand for. New variables are fine as
-                  long as they sit past the end of the baseline layout; anything
-                  placed inside the baseline region (typically by shrinking a
-                  __gap) is reported for manual review because only a human can
-                  tell a deliberate gap reservation from an accidental overlap.
+                  enum, not what its values stand for. A user defined value type
+                  must likewise keep its underlying type, because `type Amount is
+                  uint256` and `type Amount is int256` are the same slot under the
+                  same name. New variables are fine as long as they sit past the
+                  end of the baseline layout; anything placed inside the baseline
+                  region (typically by shrinking a __gap) is reported for manual
+                  review because only a human can tell a deliberate gap
+                  reservation from an accidental overlap.
 
                   Growing a type is only free where nothing sits behind it. Array
                   elements are stored back to back from the array's base slot, so
@@ -70,6 +73,9 @@ AST_ID = re.compile(r"(t_(?:struct|enum|contract|userDefinedValueType)\([^)]*\))
 # Unlike the layout's label it is not qualified by the declaring contract.
 ENUM_TYPE = re.compile(r"t_enum\(([^)]*)\)")
 
+# The same for a user defined value type, `Amount` in t_userDefinedValueType(Amount)42.
+VALUE_TYPE = re.compile(r"t_userDefinedValueType\(([^)]*)\)")
+
 ERROR = "ERROR"
 REVIEW = "REVIEW"
 
@@ -78,35 +84,58 @@ def normalize_type(type_id):
     return AST_ID.sub(r"\1", type_id)
 
 
-def enum_definitions(ast):
-    """Yields (qualified name, member names) for every enum of one source unit AST.
+def declarations(ast):
+    """Every file level and contract level node of one source unit AST.
 
-    Solidity only allows an enum at file or contract level, so the two outermost
-    node lists are the whole search space - no need to walk the statement trees.
-    `canonicalName` is what the storage layout's label spells out ("Vault.Status"),
-    and is just the declared name for a file level enum.
+    Solidity only allows an enum or a user defined value type at either level, so the
+    two outermost node lists are the whole search space - no need to walk the statement
+    trees. `canonicalName` is what the storage layout's label spells out
+    ("Vault.Status"), and is just the declared name for a file level declaration.
     """
     for node in (ast or {}).get("nodes") or []:
-        for candidate in (node, *(node.get("nodes") or [])):
-            if candidate.get("nodeType") != "EnumDefinition":
-                continue
-            name = candidate.get("canonicalName") or candidate.get("name")
-            if name:
-                yield name, [member.get("name") for member in candidate.get("members") or []]
+        yield node
+        yield from node.get("nodes") or []
 
 
-def lookup_enum(enums, label):
-    """Member list of an enum, or None when the build does not pin it down.
+def enum_definitions(ast):
+    """Yields (qualified name, member names) for every enum of one source unit AST."""
+    for node in declarations(ast):
+        if node.get("nodeType") != "EnumDefinition":
+            continue
+        name = node.get("canonicalName") or node.get("name")
+        if name:
+            yield name, [member.get("name") for member in node.get("members") or []]
+
+
+def value_type_definitions(ast):
+    """Yields (qualified name, underlying type) for every user defined value type.
+
+    The underlying type appears nowhere in the storage layout: `Amount` reads as one
+    32 byte slot whether it wraps a uint256 or an int256, and even the type identifier
+    spells out no more than the name, so it has to come from the AST.
+    """
+    for node in declarations(ast):
+        if node.get("nodeType") != "UserDefinedValueTypeDefinition":
+            continue
+        name = node.get("canonicalName") or node.get("name")
+        descriptions = (node.get("underlyingType") or {}).get("typeDescriptions") or {}
+        underlying = descriptions.get("typeString") or descriptions.get("typeIdentifier")
+        if name and underlying:
+            yield name, underlying
+
+
+def lookup_definition(definitions, label):
+    """What the ASTs say a named type is made of, or None when they do not pin it down.
 
     The layout's label is qualified, the type identifier is not, so the lookup falls
     back to the declared name. Several contracts may declare the same name; that is
-    only good enough while they all declare the same members.
+    only good enough while they all declare it the same way.
     """
-    if label in enums:
-        return enums[label]
+    if label in definitions:
+        return definitions[label]
     declared = label.rsplit(".", 1)[-1]
-    matches = [members for name, members in enums.items() if name.rsplit(".", 1)[-1] == declared]
-    if matches and all(members == matches[0] for members in matches):
+    matches = [made_of for name, made_of in definitions.items() if name.rsplit(".", 1)[-1] == declared]
+    if matches and all(made_of == matches[0] for made_of in matches):
         return matches[0]
     return None
 
@@ -114,11 +143,12 @@ def lookup_enum(enums, label):
 def load_artifacts(out_dir, exclude, source_prefix):
     """Maps contract name -> artifact for the compiled sources under source_prefix.
 
-    Returns the enum definitions of the whole build alongside, the excluded sources
-    included: an enum a checked contract stores is often declared by an interface or
-    by one of the inherited OpenZeppelin contracts, whose own layout is not checked.
+    Returns the AST level definitions of the whole build alongside, keyed by kind, the
+    excluded sources included: an enum or a value type a checked contract stores is
+    often declared by an interface or by one of the inherited OpenZeppelin contracts,
+    whose own layout is not checked.
     """
-    artifacts, enums = {}, {}
+    artifacts, definitions = {}, {"enum": {}, "value_type": {}}
     for root, dirs, files in os.walk(out_dir):
         dirs[:] = [d for d in dirs if d != "build-info"]
         for filename in files:
@@ -132,7 +162,8 @@ def load_artifacts(out_dir, exclude, source_prefix):
                 continue
             with open(os.path.join(root, filename)) as f:
                 artifact = json.load(f)
-            enums.update(enum_definitions(artifact.get("ast")))
+            definitions["enum"].update(enum_definitions(artifact.get("ast")))
+            definitions["value_type"].update(value_type_definitions(artifact.get("ast")))
             target = artifact.get("metadata", {}).get("settings", {}).get("compilationTarget")
             if not target:
                 continue
@@ -140,7 +171,7 @@ def load_artifacts(out_dir, exclude, source_prefix):
             if not source.startswith(source_prefix) or exclude.search(name):
                 continue
             artifacts[name] = artifact
-    return artifacts, enums
+    return artifacts, definitions
 
 
 def slot_span(entry, types):
@@ -185,6 +216,23 @@ def enum_label(type_id, definition):
     return match.group(1) if match else None
 
 
+def value_type_label(type_id, definition):
+    """Qualified name of a user defined value type, e.g. `Vault.Amount`, or None.
+
+    solc writes the canonical name out as the layout label - `Vault.Amount` for a
+    contract level declaration, the bare name for a file level one - with none of the
+    `enum ` style prefix it puts in front of an enum's. The identifier carries the
+    unqualified name only and serves as the fallback.
+    """
+    if not type_id.startswith("t_userDefinedValueType("):
+        return None
+    label = (definition or {}).get("label")
+    if label:
+        return label
+    match = VALUE_TYPE.match(type_id)
+    return match.group(1) if match else None
+
+
 def array_length(label):
     match = re.fullmatch(r".*\[(\d+)\]", label)
     return int(match.group(1)) if match else None
@@ -194,7 +242,7 @@ def type_size(definition):
     return int(definition.get("numberOfBytes", 32))
 
 
-def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, enums, stride, path):
+def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, reached, stride, path):
     """Compares two type definitions and everything reachable from them.
 
     Both sides are walked in lockstep so each identifier is resolved in its own
@@ -207,10 +255,11 @@ def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, enu
     turn). It is cleared again under a mapping value, whose entries are each
     addressed by their own hash and so have nothing sitting behind them.
 
-    `enums` collects the enum types the walk reaches, keyed by the pair of names the
-    two sides know them under, so their members can be compared against the ASTs
-    afterwards. The layout itself says no more than "one byte", so a reordered enum
-    is invisible here.
+    `reached` collects the enum and user defined value types the walk reaches, keyed by
+    kind and then by the pair of names the two sides know them under, so what they are
+    made of can be compared against the ASTs afterwards. The layout itself says no more
+    than "one byte" for an enum and "one slot named Amount" for a value type, so a
+    reordered enum and a re-wrapped value type are both invisible here.
 
     `path` is the access path the type was reached by, e.g. `withdrawals[key][i]`,
     and only serves to make the findings readable.
@@ -227,14 +276,27 @@ def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, enu
 
     base_enum = enum_label(base_id, base_type)
     if base_enum:
-        enums.setdefault((base_enum, enum_label(cur_id, cur_type)), path)
+        reached["enum"].setdefault((base_enum, enum_label(cur_id, cur_type)), path)
+
+    base_value_type = value_type_label(base_id, base_type)
+    if base_value_type:
+        reached["value_type"].setdefault((base_value_type, value_type_label(cur_id, cur_type)), path)
 
     # Only array types carry a `base`, both the static t_array(...)N_storage and
     # the dynamic t_array(...)dyn_storage kind: in either the elements are packed
     # one after another, so the element size is the distance between them.
     if "base" in base_type and "base" in cur_type:
         check_type(
-            name, base_type["base"], base_types, cur_type["base"], cur_types, findings, seen, enums, True, f"{path}[i]"
+            name,
+            base_type["base"],
+            base_types,
+            cur_type["base"],
+            cur_types,
+            findings,
+            seen,
+            reached,
+            True,
+            f"{path}[i]",
         )
     if "value" in base_type and "value" in cur_type:
         check_type(
@@ -245,15 +307,25 @@ def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, enu
             cur_types,
             findings,
             seen,
-            enums,
+            reached,
             False,
             f"{path}[key]",
         )
-    # The key decides which slot an entry hashes to, so an enum used as one carries
-    # the same meaning as an enum that is stored. Nothing else about a key can move.
+    # The key decides which slot an entry hashes to, so an enum or a value type used as
+    # one carries the same meaning as one that is stored. Nothing else about a key can
+    # move.
     if "key" in base_type and "key" in cur_type:
         check_type(
-            name, base_type["key"], base_types, cur_type["key"], cur_types, findings, seen, enums, False, f"{path}[key]"
+            name,
+            base_type["key"],
+            base_types,
+            cur_type["key"],
+            cur_types,
+            findings,
+            seen,
+            reached,
+            False,
+            f"{path}[key]",
         )
 
     label = base_type.get("label", base_id)
@@ -308,7 +380,7 @@ def check_type(name, base_id, base_types, cur_id, cur_types, findings, seen, enu
                     cur_types,
                     findings,
                     seen,
-                    enums,
+                    reached,
                     stride,
                     f"{path}.{base_member['label']}",
                 )
@@ -363,9 +435,9 @@ def check_enums(name, reached, base_enums, cur_enums, findings):
     mean. The member lists only exist in the ASTs, which is why they are looked up
     per build and by name.
     """
-    for (base_name, cur_name), path in sorted(reached.items()):
-        base_members = lookup_enum(base_enums, base_name)
-        cur_members = lookup_enum(cur_enums, cur_name or base_name)
+    for (base_name, cur_name), path in sorted(reached.items(), key=lambda item: item[0][0]):
+        base_members = lookup_definition(base_enums, base_name)
+        cur_members = lookup_definition(cur_enums, cur_name or base_name)
         missing = [
             side for side, members in (("baseline", base_members), ("current", cur_members)) if members is None
         ]
@@ -394,6 +466,46 @@ def check_enums(name, reached, base_enums, cur_enums, findings):
                     name,
                     f"enum {base_name} gained member(s) {added} at the end; the values already stored keep "
                     "their meaning - confirm nothing switches on the member count",
+                )
+            )
+
+
+def check_user_defined_value_types(name, reached, base_value_types, cur_value_types, findings):
+    """Compares the underlying types of the value types the layout walk reached.
+
+    `type Amount is uint256` and `type Amount is int256` occupy the same slot under the
+    same name, and even share a type identifier once the AST id is stripped, so the
+    layout cannot tell one from the other. Swapping them makes every stored value above
+    int256.max read back negative, which is why the underlying type is looked up in the
+    ASTs per build, the way an enum's members are.
+    """
+    # Sorted by the baseline name alone: the current one is None where the walk found
+    # something other than a value type opposite, and None does not order against a str.
+    for (base_name, cur_name), path in sorted(reached.items(), key=lambda item: item[0][0]):
+        base_underlying = lookup_definition(base_value_types, base_name)
+        cur_underlying = lookup_definition(cur_value_types, cur_name or base_name)
+        missing = [
+            side
+            for side, underlying in (("baseline", base_underlying), ("current", cur_underlying))
+            if underlying is None
+        ]
+        if missing:
+            findings.append(
+                (
+                    REVIEW,
+                    name,
+                    f"value type {base_name} at {path} is not in the {' or the '.join(missing)} build's "
+                    "ASTs; its underlying type could not be compared",
+                )
+            )
+        elif base_underlying != cur_underlying:
+            findings.append(
+                (
+                    ERROR,
+                    name,
+                    f"value type {base_name} at {path} wraps {cur_underlying} instead of "
+                    f"{base_underlying}; the slot is unchanged, so every value already stored is "
+                    "reinterpreted",
                 )
             )
 
@@ -463,13 +575,13 @@ def check_gaps(name, base_storage, base_types, cur_storage, cur_types, findings)
         )
 
 
-def check_storage(name, baseline, current, base_enums, cur_enums, findings):
+def check_storage(name, baseline, current, base_definitions, cur_definitions, findings):
     base_layout = baseline.get("storageLayout") or {"storage": [], "types": {}}
     cur_layout = current.get("storageLayout") or {"storage": [], "types": {}}
     base_storage, base_types = base_layout["storage"], base_layout.get("types") or {}
     cur_storage, cur_types = cur_layout["storage"], cur_layout.get("types") or {}
 
-    seen_structs, reached_enums = set(), {}
+    seen_structs, reached = set(), {"enum": {}, "value_type": {}}
     cur_at = {position(entry): entry for entry in cur_storage}
 
     # Variables are matched by the slot and offset they occupy, never by their index
@@ -521,13 +633,16 @@ def check_storage(name, baseline, current, base_enums, cur_enums, findings):
                 cur_types,
                 findings,
                 seen_structs,
-                reached_enums,
+                reached,
                 False,
                 label,
             )
 
     check_gaps(name, base_storage, base_types, cur_storage, cur_types, findings)
-    check_enums(name, reached_enums, base_enums, cur_enums, findings)
+    check_enums(name, reached["enum"], base_definitions["enum"], cur_definitions["enum"], findings)
+    check_user_defined_value_types(
+        name, reached["value_type"], base_definitions["value_type"], cur_definitions["value_type"], findings
+    )
 
     base_at = {position(entry) for entry in base_storage}
     base_end = layout_end(base_storage, base_types)
@@ -687,8 +802,8 @@ def main(argv=None):
             sys.exit(f"not a directory: {directory} (run `forge build` first)")
 
     exclude = re.compile(args.exclude)
-    baseline, base_enums = load_artifacts(args.baseline, exclude, args.source_prefix)
-    current, cur_enums = load_artifacts(args.current, exclude, args.source_prefix)
+    baseline, base_definitions = load_artifacts(args.baseline, exclude, args.source_prefix)
+    current, cur_definitions = load_artifacts(args.current, exclude, args.source_prefix)
     if not baseline:
         sys.exit(f"no contracts found under {args.baseline}; is it a Foundry out/ directory?")
 
@@ -701,7 +816,7 @@ def main(argv=None):
         if name not in current:
             findings.append((ERROR, name, "contract is gone from the current build"))
         else:
-            check_storage(name, baseline[name], current[name], base_enums, cur_enums, findings)
+            check_storage(name, baseline[name], current[name], base_definitions, cur_definitions, findings)
             check_abi(name, baseline[name], current[name], findings)
         results.append((name, findings))
         errors.extend(f for f in findings if f[0] == ERROR)

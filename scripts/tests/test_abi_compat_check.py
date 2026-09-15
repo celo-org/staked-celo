@@ -123,6 +123,72 @@ def enum_vault(members, ast_id, nested=False, with_ast=True):
     return artifact("Vault", storage, types, ast=enum_ast("Vault", "Status", members) if with_ast else None)
 
 
+def value_type_ast(contract, value_type, underlying):
+    """A source unit AST holding one `type Amount is uint256`, shaped the way solc emits it."""
+    return {
+        "nodeType": "SourceUnit",
+        "nodes": [
+            {
+                "nodeType": "ContractDefinition",
+                "name": contract,
+                "nodes": [
+                    {
+                        "nodeType": "UserDefinedValueTypeDefinition",
+                        "name": value_type,
+                        "canonicalName": f"{contract}.{value_type}",
+                        "underlyingType": {
+                            "nodeType": "ElementaryTypeName",
+                            "name": underlying,
+                            "typeDescriptions": {
+                                "typeIdentifier": f"t_{underlying}",
+                                "typeString": underlying,
+                            },
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def value_type_vault(underlying, ast_id, shape="direct", with_ast=True):
+    """A Vault storing an `Amount`: on its own, as a struct member or as a mapping key.
+
+    solc writes out the same `t_userDefinedValueType(Amount)<id>` of the same width for
+    every underlying type of that width, and labels it with the canonical name either
+    way, so what `Amount` wraps shows up in the AST only - which is what `with_ast` can
+    withhold.
+    """
+    value_id = f"t_userDefinedValueType(Amount){ast_id}"
+    types = {
+        "t_uint256": UINT256,
+        value_id: {"encoding": "inplace", "label": "Vault.Amount", "numberOfBytes": "32"},
+    }
+    if shape == "struct_member":
+        struct_id = f"t_struct(Entry){ast_id}_storage"
+        types[struct_id] = {
+            "encoding": "inplace",
+            "label": "struct Vault.Entry",
+            "numberOfBytes": "64",
+            "members": [slot_entry("amount", 0, value_id), slot_entry("fee", 1, "t_uint256")],
+        }
+        storage = [slot_entry("entry", 0, struct_id)]
+    elif shape == "mapping_key":
+        mapping_id = f"t_mapping({value_id},t_uint256)"
+        types[mapping_id] = {
+            "encoding": "mapping",
+            "label": "mapping(Vault.Amount => uint256)",
+            "numberOfBytes": "32",
+            "key": value_id,
+            "value": "t_uint256",
+        }
+        storage = [slot_entry("byAmount", 0, mapping_id)]
+    else:
+        storage = [slot_entry("total", 0, value_id)]
+    ast = value_type_ast("Vault", "Amount", underlying) if with_ast else None
+    return artifact("Vault", storage, types, ast=ast)
+
+
 def padded_vault(members, ast_id):
     """An `Entry[]` whose element is a single slot, however many uint128s sit in it."""
     struct_id = f"t_struct(Entry){ast_id}_storage"
@@ -541,6 +607,46 @@ class CompatCheckTest(unittest.TestCase):
             {"Vault": enum_vault(["Pending", "Active"], 1)},
             {"Vault": enum_vault(["Pending", "Active"], 7, with_ast=False)},
             "enum Vault.Status at status is not in the current build's ASTs",
+        )
+
+    # A user defined value type keeps its name, its label and its width when what it
+    # wraps changes, so the layout is byte for byte the same and the underlying type has
+    # to be read out of the AST - otherwise `type Amount is int256` replacing
+    # `type Amount is uint256` reads every balance above int256.max back as negative.
+    def test_unchanged_value_type_is_compatible(self):
+        self.assert_compatible(
+            {"Vault": value_type_vault("uint256", 5)},
+            {"Vault": value_type_vault("uint256", 11)},
+        )
+
+    def test_changed_underlying_type_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": value_type_vault("uint256", 5)},
+            {"Vault": value_type_vault("int256", 11)},
+            "value type Vault.Amount at total wraps int256 instead of uint256",
+        )
+
+    def test_changed_underlying_type_of_a_struct_member_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": value_type_vault("uint256", 5, shape="struct_member")},
+            {"Vault": value_type_vault("int256", 11, shape="struct_member")},
+            "value type Vault.Amount at entry.amount wraps int256 instead of uint256",
+        )
+
+    # A value type used as a mapping key decides which slot an entry hashes to, so a
+    # value that now means something else sends every lookup somewhere else.
+    def test_changed_underlying_type_of_a_mapping_key_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": value_type_vault("uint256", 5, shape="mapping_key")},
+            {"Vault": value_type_vault("int256", 11, shape="mapping_key")},
+            "value type Vault.Amount at byAmount[key] wraps int256 instead of uint256",
+        )
+
+    def test_value_type_without_a_definition_is_a_review(self):
+        self.assert_review_only(
+            {"Vault": value_type_vault("uint256", 5)},
+            {"Vault": value_type_vault("uint256", 11, with_ast=False)},
+            "value type Vault.Amount at total is not in the current build's ASTs",
         )
 
 
