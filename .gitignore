@@ -9,10 +9,9 @@ node_modules/
 .idea
 
 # decrypted environment configs
-.env.staging
-.env.alfajores
-.env.local
 .env
+.env.*
+!.env.example
 
 # Foundry
 out/

@@ -38,6 +38,8 @@ abstract contract TaskBase {
 
     /// @notice Staging chain id, as the Hardhat tooling knew it
     ///         (legacy/lib/helpers/interfaceHelper.ts).
+    /// @dev Default chain id of anvil (and Hardhat), where DeployCore writes deployments/local.
+    uint256 internal constant LOCAL_CHAIN_ID = 31337;
     uint256 internal constant STAGING_CHAIN_ID = 1101;
 
     /**
@@ -60,6 +62,9 @@ abstract contract TaskBase {
         }
         if (block.chainid == STAGING_CHAIN_ID) {
             return "staging";
+        }
+        if (block.chainid == LOCAL_CHAIN_ID) {
+            return "local";
         }
         revert("set NETWORK: chain id has no default deployments directory");
     }

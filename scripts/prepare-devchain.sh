@@ -58,7 +58,12 @@ if [[ -f "$OUT_DIR/allocs.json" && -f "$OUT_DIR/meta.json" && "${FORCE:-0}" != "
 fi
 
 if [[ -z "$STATE" ]]; then
-  if [[ -f "$ROOT/node_modules/$PKG/devchain/l2-devchain.json" ]]; then
+  INSTALLED=""
+  if [[ -f "$ROOT/node_modules/$PKG/package.json" ]]; then
+    INSTALLED="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("version",""))' "$ROOT/node_modules/$PKG/package.json")"
+  fi
+  # The installed package is only a shortcut when it is the requested version.
+  if [[ "$INSTALLED" == "$VERSION" && -f "$ROOT/node_modules/$PKG/devchain/l2-devchain.json" ]]; then
     STATE="$ROOT/node_modules/$PKG/devchain/l2-devchain.json"
   else
     TMP="$(mktemp -d)"

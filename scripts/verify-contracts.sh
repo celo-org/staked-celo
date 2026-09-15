@@ -351,6 +351,11 @@ verify_proxy() {
   address="$(record_address "$record")"
   [[ -n $address ]] || die "$record has no address"
 
+  if ! has_code "$address"; then
+    echo "warning: $record points at an address without code on chain $CHAIN, skipping it (dry-run leftover?)" >&2
+    return 0
+  fi
+
   read_record_args "$record"
   if [[ ${#RECORD_ARGS[@]} -eq 2 ]]; then
     extra+=(
