@@ -409,7 +409,8 @@ contract DeployCoreEnvHarness is DeployCore {
  * @title DeployCoreEnvConfigTest
  * @notice Covers how DeployCore reads its configuration: the canonical `MULTISIG_OWNERS`
  *         and the Hardhat era `MULTISIG_SIGNER_0` .. `MULTISIG_SIGNER_4`, which the
- *         encrypted per-network env files (`yarn keys:decrypt`) still carry.
+ *         encrypted per-network env files (`yarn keys:decrypt`) still carry, and the
+ *         optional `VALIDATOR_GROUPS`.
  * @dev Everything lives in one test on purpose. Environment variables belong to the
  *      process rather than to the EVM state forge snapshots after `setUp`, so a second
  *      test function would see whatever this one set last - and forge is free to run the
@@ -424,10 +425,12 @@ contract DeployCoreEnvConfigTest is CeloTestHelper {
     address internal constant SIGNER_2 = 0x5bC1C4C1D67C5E4384189302BC653A611568a788;
     address internal constant OWNER_0 = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address internal constant OWNER_1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address internal constant GROUP_0 = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
+    address internal constant GROUP_1 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
 
     uint256 internal constant REQUIRED_CONFIRMATIONS = 3;
 
-    function test_ownersComeFromEitherSpellingOfTheOwnerSet() public {
+    function test_ownerSetAndValidatorGroupsComeFromTheEnvironment() public {
         DeployCoreEnvHarness harness = new DeployCoreEnvHarness();
         _setCommonEnv();
         _clearOwnerEnv();
@@ -467,6 +470,27 @@ contract DeployCoreEnvConfigTest is CeloTestHelper {
         assertEq(owners.length, 2);
         assertEq(owners[0], OWNER_0);
         assertEq(owners[1], OWNER_1);
+
+        // VALIDATOR_GROUPS is optional, and an explicitly empty value is how a run turns
+        // the activation off when `.env.<network>` sets the variable
+        // (`VALIDATOR_GROUPS= scripts/with-env.sh ...`). It has to read as no groups
+        // rather than as one unparsable address.
+        svm.setEnv("VALIDATOR_GROUPS", "");
+        assertEq(harness.configFromEnv().validatorGroups.length, 0);
+        svm.setEnv("VALIDATOR_GROUPS", "  ");
+        assertEq(harness.configFromEnv().validatorGroups.length, 0);
+
+        // A list is split on the comma, with the spaces around an entry ignored.
+        svm.setEnv(
+            "VALIDATOR_GROUPS",
+            string(abi.encodePacked(vm.toString(GROUP_0), ", ", vm.toString(GROUP_1)))
+        );
+        address[] memory groups = harness.configFromEnv().validatorGroups;
+        assertEq(groups.length, 2);
+        assertEq(groups[0], GROUP_0);
+        assertEq(groups[1], GROUP_1);
+
+        svm.setEnv("VALIDATOR_GROUPS", "");
 
         _clearOwnerEnv();
     }

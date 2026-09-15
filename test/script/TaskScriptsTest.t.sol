@@ -10,7 +10,17 @@ import "../../script/tasks/lib/GroupsLib.sol";
 import "../../script/tasks/lib/ManagerTaskLib.sol";
 import "../../script/tasks/lib/MultiSigTaskLib.sol";
 import "../../script/tasks/lib/PayloadLib.sol";
+import "../../script/tasks/lib/TaskBase.sol";
 import "../../script/tasks/lib/UpgradeProposalLib.sol";
+
+/// @dev Cheatcodes used only by the stale record test, cast onto the usual address.
+interface TaskScriptTestVm {
+    function writeJson(string calldata json, string calldata path) external;
+
+    function createDir(string calldata path, bool recursive) external;
+
+    function removeDir(string calldata path, bool recursive) external;
+}
 
 /**
  * @title TaskScriptsTestBase
@@ -841,5 +851,66 @@ contract ElectionLibNeighbourTest is CeloTestHelper {
 
         assertEq(greater, mostVoted);
         assertEq(lesser, middleVoted);
+    }
+}
+
+/**
+ * @dev The record driven path of the multiSig upgrade scripts: the implementation address
+ *      comes out of `<Name>_Implementation.json` and becomes an `upgradeTo` payload,
+ *      exactly the way script/tasks/multisig/UpdateV3ToV4.s.sol builds one. The
+ *      deployments directory is passed in rather than taken from `NETWORK`, which belongs
+ *      to the process and would leak into every other test in the run.
+ */
+contract UpgradeProposalRecordHarness is TaskBase {
+    string private deployments;
+
+    constructor(string memory deploymentsNetwork) {
+        deployments = deploymentsNetwork;
+    }
+
+    function networkName() internal view override returns (string memory) {
+        return deployments;
+    }
+
+    function upgradeToPayloadFromRecord(string memory name) external view returns (bytes memory) {
+        return UpgradeProposalLib.upgradeToPayload(
+            deploymentAddress(string(abi.encodePacked(name, "_Implementation")))
+        );
+    }
+}
+
+/**
+ * @title UpgradeProposalStaleRecordTest
+ * @notice Forge writes the deployment records during the simulation phase, so an
+ *         `UpgradeImplementation` run without `--broadcast` leaves
+ *         `<Name>_Implementation.json` naming a contract that was never deployed. The
+ *         upgrade proposal has to stop there rather than propose an `upgradeTo` that would
+ *         leave the proxy delegating to an address with no code.
+ */
+contract UpgradeProposalStaleRecordTest is CeloTestHelper {
+    TaskScriptTestVm internal constant svm =
+        TaskScriptTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    string internal constant NETWORK = "stale-implementation-test";
+    address internal constant NO_CODE = 0x000000000000000000000000000000000000dEaD;
+
+    function test_implementationRecordWithoutCodeIsRefused() public {
+        UpgradeProposalRecordHarness harness = new UpgradeProposalRecordHarness(NETWORK);
+        string memory directory = string(abi.encodePacked("deployments/", NETWORK));
+        svm.createDir(directory, true);
+        svm.writeJson(
+            string(abi.encodePacked('{"address":"', vm.toString(NO_CODE), '"}')),
+            string(abi.encodePacked(directory, "/Manager_Implementation.json"))
+        );
+
+        vm.expectRevert(
+            bytes(
+                "record Manager_Implementation.json points at an address without code "
+                "on this chain (dry-run leftover?)"
+            )
+        );
+        harness.upgradeToPayloadFromRecord("Manager");
+
+        svm.removeDir(directory, true);
     }
 }

@@ -44,7 +44,7 @@ abstract contract TaskBase {
      * @notice Name of the deployments directory to read contract addresses from.
      * @return The value of the NETWORK env var, or the network matching the chain id.
      */
-    function networkName() internal view returns (string memory) {
+    function networkName() internal view virtual returns (string memory) {
         string memory fromEnv = vm.envOr("NETWORK", string(""));
         if (bytes(fromEnv).length > 0) {
             return fromEnv;
@@ -66,13 +66,30 @@ abstract contract TaskBase {
 
     /**
      * @notice Reads a deployed contract address from deployments/<network>/<name>.json.
-     * @param name The hardhat-deploy deployment name, for example "Manager".
+     * @param name The hardhat-deploy deployment name, for example "Manager" or
+     *        "Manager_Implementation".
+     * @dev Forge writes deployment records during the simulation phase too, so a deploy or
+     *      upgrade run without `--broadcast` leaves records for contracts that were never
+     *      deployed. A record is only usable once the address it names holds code on the
+     *      connected chain; proposing an `upgradeTo` to an implementation that does not
+     *      exist would leave the proxy delegating to nothing.
      * @return The `address` field of the deployment file.
      */
     function deploymentAddress(string memory name) internal view returns (address) {
         string memory path =
             string(abi.encodePacked("deployments/", networkName(), "/", name, ".json"));
-        return vm.parseJsonAddress(vm.readFile(path), ".address");
+        address recorded = vm.parseJsonAddress(vm.readFile(path), ".address");
+        require(
+            recorded.code.length > 0,
+            string(
+                abi.encodePacked(
+                    "record ",
+                    name,
+                    ".json points at an address without code on this chain (dry-run leftover?)"
+                )
+            )
+        );
+        return recorded;
     }
 
     /**

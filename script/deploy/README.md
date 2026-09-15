@@ -275,6 +275,30 @@ keep submitting the library of the previous deployment. Pass `--libraries ...` (
 "Library linking") to link an already deployed one instead, in which case the record simply
 keeps pointing at it.
 
+### A run without `--broadcast` rewrites the record too
+
+Forge simulates the whole script before it broadcasts anything, and the records are written
+by that simulation. `UpgradeImplementation` therefore rewrites
+`<Name>_Implementation.json` - and, for `CONTRACT=DefaultStrategy`,
+`AddressSortedLinkedList_Implementation.json` - even without `--broadcast`, naming an
+implementation that only ever existed inside the simulation and holds no code on the chain.
+The run says so after it prints the new implementation:
+
+```
+note: deployments/celo/Manager_Implementation.json was written by the simulation as well;
+      it only names a deployed contract once this run was broadcast.
+      A dry run has to be repeated with --broadcast, which deploys again and
+      replaces the record with the address that went on chain.
+```
+
+Nothing has to be cleaned up: repeating the run with `--broadcast` deploys a fresh
+implementation and overwrites the record with the address that went on chain, so the dry
+run's address is never reused. Until then the leftover is refused rather than acted on -
+the MultiSig upgrade tasks stop with `record <Name>_Implementation.json points at an
+address without code on this chain (dry-run leftover?)` instead of proposing an `upgradeTo`
+that would leave the proxy delegating to nothing, and `scripts/verify-contracts.sh` warns
+and skips the record instead of submitting it.
+
 ## Verifying deployed contracts
 
 `scripts/verify-contracts.sh` (also `yarn verify`) replaces `yarn verify:deploy`

@@ -64,6 +64,26 @@ contract UpgradeImplementation is DeployBase {
             _recordProxyDeployment(name, proxy, implementation);
         }
         DeployLog.a(string(abi.encodePacked(name, ": new implementation")), implementation);
+        _warnRecordsComeFromTheSimulation(name);
+    }
+
+    /// @dev Forge simulates the whole script before it broadcasts anything, and the records
+    ///      are written by that simulation. Without `--broadcast` they therefore name an
+    ///      implementation that exists nowhere but in the simulation, which the upgrade
+    ///      proposal tasks and `scripts/verify-contracts.sh` both refuse to use.
+    function _warnRecordsComeFromTheSimulation(string memory name) private view {
+        DeployLog.s(
+            string(
+                abi.encodePacked(
+                    "note: ",
+                    deploymentPath(string(abi.encodePacked(name, "_Implementation"))),
+                    " was written by the simulation as well;"
+                )
+            )
+        );
+        DeployLog.s("      it only names a deployed contract once this run was broadcast.");
+        DeployLog.s("      A dry run has to be repeated with --broadcast, which deploys again and");
+        DeployLog.s("      replaces the record with the address that went on chain.");
     }
 
     /// @dev DefaultStrategy is the one contract here that links a library, and forge

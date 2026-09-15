@@ -7,9 +7,18 @@ pragma solidity 0.8.11;
  */
 library UpgradeProposalLib {
     /// @notice Payload for `upgradeTo(address)` on an ERC1967 proxy.
+    /// @dev The implementation normally comes out of `<Name>_Implementation.json`, which a
+    ///      deploy or upgrade run writes during simulation as well: without `--broadcast`
+    ///      the record names a contract that was never deployed. Upgrading a proxy to it
+    ///      would leave it delegating to an address with no code, so the payload is
+    ///      refused rather than proposed.
     /// @param implementation The new implementation address.
     /// @return The encoded calldata.
-    function upgradeToPayload(address implementation) internal pure returns (bytes memory) {
+    function upgradeToPayload(address implementation) internal view returns (bytes memory) {
+        require(
+            implementation.code.length > 0,
+            "upgradeTo target has no code on this chain (dry-run leftover?)"
+        );
         return abi.encodeWithSignature("upgradeTo(address)", implementation);
     }
 

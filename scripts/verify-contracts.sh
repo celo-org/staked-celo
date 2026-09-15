@@ -13,6 +13,11 @@
 # deployments/<network>/<Name>_Implementation.json and the ERC1967 proxy in front of it
 # from deployments/<network>/<Name>_Proxy.json.
 #
+# An implementation record whose address holds no code on the target chain is skipped with
+# a warning instead: Forge writes the deployment records during the simulation phase, so a
+# deploy or upgrade run without --broadcast leaves a record naming a contract that was
+# never deployed.
+#
 # Both can have constructor arguments - the proxy always takes the implementation address
 # and the initializer calldata, and the MultiSig implementation takes `minDelay` - and an
 # explorer only reproduces the creation code when it is given them. They are taken from
@@ -173,6 +178,17 @@ record_address() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("address") or "")' "$1"
 }
 
+# Whether an address holds code on the target chain. Forge writes the deployment records
+# during the simulation phase, so a deploy or upgrade run without --broadcast leaves
+# records naming contracts that were never deployed; there is nothing to verify at such an
+# address. Without a reachable node there is nothing to ask, and the record is trusted.
+has_code() {
+  local code
+  [[ -n $RPC_URL ]] || return 0
+  code="$(cast code "$1" --rpc-url "$RPC_URL" 2>/dev/null)" || return 0
+  [[ -n $code && $code != "0x" ]]
+}
+
 # The constructor arguments of a deployment record, one per line. Numbers are printed in
 # the decimal form `cast abi-encode` expects; nothing is printed when there are none.
 record_args() {
@@ -291,6 +307,11 @@ verify_implementation() {
   local address src signature extra=()
   address="$(record_address "$record")"
   [[ -n $address ]] || die "$record has no address"
+  if ! has_code "$address"; then
+    echo "warning: $record points at an address without code on chain $CHAIN," \
+      "skipping it (dry-run leftover?)" >&2
+    return 0
+  fi
   src="$(source_path "$name")"
   [[ -n $src ]] || die "no source file for $name under contracts/"
 

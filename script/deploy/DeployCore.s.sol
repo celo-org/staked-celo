@@ -145,7 +145,44 @@ contract DeployCore is DeployBase {
         coreConfig.timeLockDelay = vm.envUint("TIME_LOCK_DELAY");
         coreConfig.requiredConfirmations = vm.envUint("MULTISIG_REQUIRED_CONFIRMATIONS");
         coreConfig.multiSigOwners = _multiSigOwnersFromEnv();
-        coreConfig.validatorGroups = vm.envOr("VALIDATOR_GROUPS", ",", new address[](0));
+        coreConfig.validatorGroups = _validatorGroupsFromEnv();
+    }
+
+    /// @dev `VALIDATOR_GROUPS`, comma separated and empty by default.
+    ///      Read as a string and split by hand rather than through
+    ///      `vm.envOr(name, ",", new address[](0))`: that form only falls back to the
+    ///      default when the variable is unset, and an explicitly empty value reaches the
+    ///      address parser as one empty entry and fails. Setting it empty is the
+    ///      documented way to deploy without activating any group
+    ///      (`VALIDATOR_GROUPS= scripts/with-env.sh ...`).
+    function _validatorGroupsFromEnv() private view returns (address[] memory groups) {
+        string memory list = _trim(vm.envOr("VALIDATOR_GROUPS", string("")));
+        if (bytes(list).length == 0) {
+            return new address[](0);
+        }
+        string[] memory entries = vm.split(list, ",");
+        groups = new address[](entries.length);
+        for (uint256 i = 0; i < entries.length; i++) {
+            groups[i] = vm.parseAddress(_trim(entries[i]));
+        }
+    }
+
+    /// @dev Strips leading and trailing spaces, so that "a, b" reads the same as "a,b".
+    function _trim(string memory value) private pure returns (string memory) {
+        bytes memory raw = bytes(value);
+        uint256 start = 0;
+        uint256 end = raw.length;
+        while (start < end && raw[start] == 0x20) {
+            start++;
+        }
+        while (end > start && raw[end - 1] == 0x20) {
+            end--;
+        }
+        bytes memory trimmed = new bytes(end - start);
+        for (uint256 i = 0; i < trimmed.length; i++) {
+            trimmed[i] = raw[start + i];
+        }
+        return string(trimmed);
     }
 
     /// @dev The MultiSig owner set, from either spelling of it.

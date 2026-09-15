@@ -24,11 +24,6 @@ interface DeployVm {
         view
         returns (string memory);
 
-    function envOr(string calldata name, string calldata delim, address[] calldata defaultValue)
-        external
-        view
-        returns (address[] memory);
-
     function exists(string calldata path) external view returns (bool);
 
     function readFile(string calldata path) external view returns (string memory);
@@ -39,6 +34,11 @@ interface DeployVm {
         returns (address);
 
     function parseAddress(string calldata value) external pure returns (address);
+
+    function split(string calldata input, string calldata delimiter)
+        external
+        pure
+        returns (string[] memory);
 
     function serializeAddress(string calldata objectKey, string calldata valueKey, address value)
         external
