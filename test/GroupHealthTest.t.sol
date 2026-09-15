@@ -1,95 +1,31 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
+import "./helpers/DevchainHelper.sol";
 import "./helpers/deploy/TestAccountDeployHelper.sol";
-import "./helpers/ValidatorHelper.sol";
 
-/// @dev Extended MockValidators with getValidatorGroup support.
-///      The standard MockValidators doesn't implement IValidators.getValidatorGroup,
-///      which is needed by GroupHealth._isGroupPartiallyValid().
-///      This contract adds that function with proper slashing multiplier tracking.
-contract GroupHealthTestValidators {
-    uint256 private constant FIXED1_UINT = 1000000000000000000000000;
+/// @dev Group size configuration of the real Celo Validators contract. Declared locally because
+///      `ICeloValidators` in `DevchainHelper` only covers what the other suites need.
+interface ICeloValidatorsMaxGroupSize {
+    function maxGroupSize() external view returns (uint256);
 
-    mapping(address => bool) public isValidator;
-    mapping(address => bool) public isValidatorGroup;
-    mapping(address => address[]) private _members;
-    mapping(address => address) private _affiliations;
-    mapping(address => uint256) private _slashingMultiplier;
-
-    function setValidatorGroup(address group) external {
-        isValidatorGroup[group] = true;
-        if (_slashingMultiplier[group] == 0) {
-            _slashingMultiplier[group] = FIXED1_UINT;
-        }
-    }
-
-    function setValidator(address account) external {
-        isValidator[account] = true;
-    }
-
-    function affiliate(address group) external returns (bool) {
-        _affiliations[msg.sender] = group;
-        return true;
-    }
-
-    function setMembers(address group, address[] calldata members) external {
-        _members[group] = members;
-    }
-
-    function getGroupNumMembers(address group) public view returns (uint256) {
-        return _members[group].length;
-    }
-
-    // Required by GroupHealth._isGroupPartiallyValid via IValidators interface
-    function getValidatorGroup(address group)
-        external
-        view
-        returns (
-            address[] memory,
-            uint256,
-            uint256,
-            uint256,
-            uint256[] memory,
-            uint256,
-            uint256
-        )
-    {
-        return (_members[group], 0, 0, 0, new uint256[](0), _slashingMultiplier[group], 0);
-    }
-
-    function halveSlashingMultiplier(address group) external {
-        _slashingMultiplier[group] = _slashingMultiplier[group] / 2;
-    }
-
-    function deregisterValidatorGroup(uint256) external returns (bool) {
-        isValidatorGroup[msg.sender] = false;
-        return true;
-    }
-
-    function addSlasher(string calldata) external {
-        // no-op, matches MockLockedGold pattern
-    }
+    function setMaxGroupSize(uint256 size) external returns (bool);
 }
 
-/// @dev Extended accounts mock with getValidatorSigner.
-///      The standard MockAccountsCelo (from TestAccountDeployHelper) only has createAccount().
-///      GroupHealth._isGroupPartiallyValid() also needs getValidatorSigner(address).
-contract GroupHealthTestAccounts {
-    function createAccount() external pure returns (bool) {
-        return true;
-    }
-
-    function getValidatorSigner(address account) external pure returns (address) {
-        return account;
-    }
-
-    function isAccount(address) external pure returns (bool) {
-        return true;
-    }
-}
-
-contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
+/**
+ * @title GroupHealthTest
+ * @notice Port of legacy/test-ts/group-health.test.ts (`describe("GroupHealth")`).
+ * @dev Ports the `before()` hook of the TypeScript suite: ten validator groups with three
+ *      validators each are registered against the real Celo core contracts of the devchain and
+ *      MockGroupHealth is deployed against the devchain registry. The original pulled
+ *      MockGroupHealth out of the "FullTestManager" Hardhat fixture; `deploy/test/group_health.ts`
+ *      is tagged for both fixtures, so `deployTestGroupHealth(REGISTRY_ADDRESS)` deploys the very
+ *      same contract and nothing else of that fixture is touched by this suite.
+ *
+ *      `setUp()` runs before every test, which is what the `evm_snapshot` / `evm_revert` pair of
+ *      the original did. Nested `beforeEach` blocks become `_setUp...()` helpers.
+ */
+contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     // =========================================================================
     //                          EVENTS (for vm.expectEmit)
     // =========================================================================
@@ -103,71 +39,89 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
     //                          TEST STATE
     // =========================================================================
 
-    address nonManager;
-    address _pauser;
-    address _mockSlasher;
+    address internal nonManager;
+    address internal _pauser;
+    address internal _mockSlasher;
 
-    address[] groups;
-    address[] activatedGroups;
-    address[] activatedGroupAddresses;
-    address[] allGroupAddresses;
-    address[] allValidators;
-    address[] allValidatorAddresses;
+    address[] internal activatedGroupAddresses;
+    address[] internal allGroupAddresses;
+    address[] internal allValidatorAddresses;
 
-    // Extended mocks
-    GroupHealthTestValidators ghValidators;
-    GroupHealthTestAccounts ghAccounts;
+    /// @dev Members per validator group, as in the original `validatorMembers = 3`.
+    uint256 internal constant VALIDATOR_MEMBERS = 3;
 
     // =========================================================================
     //                          SETUP
     // =========================================================================
 
     function setUp() public {
-        // Deploy base fixture (MockGroupHealth + MockValidators + MockElection + MockLockedGold)
-        deployTestGroupHealth();
+        loadDevchain();
 
-        // Deploy extended mocks with getValidatorGroup + getValidatorSigner
-        ghValidators = new GroupHealthTestValidators();
-        ghAccounts = new GroupHealthTestAccounts();
-
-        // Re-register extended mocks in MockRegistry
-        address registryOwner = IMockRegistryForValidator(mockRegistryAddr).owner();
-        vm.startPrank(registryOwner);
-        IRegistry(mockRegistryAddr).setAddressFor("Validators", address(ghValidators));
-        IRegistry(mockRegistryAddr).setAddressFor("Accounts", address(ghAccounts));
-        vm.stopPrank();
-
-        // Update mockValidators reference for ValidatorHelper compatibility
-        mockValidators = MockValidators(address(ghValidators));
-
-        // Set up test accounts
         (nonManager, ) = randomSigner(100 ether);
         (_mockSlasher, ) = randomSigner(100 ether);
+
+        deployTestGroupHealth(REGISTRY_ADDRESS);
         _pauser = owner;
 
-        // Register 10 groups with 3 validators each
-        uint256 validatorMembers = 3;
+        _raiseMaxGroupSize(VALIDATOR_MEMBERS);
+        _registerGroups();
+
+        // The original repeated this inside the group loop; the resulting state is the same.
+        vm.prank(owner);
+        mockGroupHealth.setPauser();
+    }
+
+    /// @dev Ambiguous because both CeloTestHelper and DevchainHelper define it.
+    function mineToNextEpoch() internal override(CeloTestHelper, DevchainHelper) {
+        super.mineToNextEpoch();
+    }
+
+    /// @dev Ambiguous because both CeloTestHelper and DevchainHelper define it.
+    function currentEpochNumber()
+        internal
+        view
+        override(CeloTestHelper, DevchainHelper)
+        returns (uint256)
+    {
+        return super.currentEpochNumber();
+    }
+
+    /// @dev Ten validator groups with three validators each; the first three are the
+    ///      `activatedGroups` of the original.
+    function _registerGroups() private {
         for (uint256 i = 0; i < 10; i++) {
-            (address group, ) = randomSigner(11000 ether * validatorMembers);
-            groups.push(group);
+            (address group, ) = randomSigner(11_000 ether * VALIDATOR_MEMBERS);
+            allGroupAddresses.push(group);
             if (i < 3) {
                 activatedGroupAddresses.push(group);
-                activatedGroups.push(group);
             }
-            allGroupAddresses.push(group);
 
-            registerValidatorGroup(mockValidators, mockLockedGold, group, validatorMembers);
+            registerValidatorGroup(group, VALIDATOR_MEMBERS);
 
-            for (uint256 j = 0; j < validatorMembers; j++) {
-                (address validator, ) = randomSigner(11000 ether);
-                allValidators.push(validator);
+            for (uint256 j = 0; j < VALIDATOR_MEMBERS; j++) {
+                address validator = createWallet(11_000 ether);
                 allValidatorAddresses.push(validator);
-                registerValidatorAndAddToGroupMembers(mockValidators, mockLockedGold, group, validator);
+                registerValidatorAndAddToGroupMembers(group, validator);
             }
-
-            vm.prank(owner);
-            mockGroupHealth.setPauser();
         }
+    }
+
+    /**
+     * @dev Deviation: the anvil devchain caps a validator group at two members, while the ganache
+     *      devchain the Hardhat suite ran against allowed more. The cap is raised on the real
+     *      Validators contract so the groups really have the three members the original
+     *      registers.
+     */
+    function _raiseMaxGroupSize(uint256 size) private {
+        ICeloValidatorsMaxGroupSize groupSize = ICeloValidatorsMaxGroupSize(
+            address(celoValidators)
+        );
+        if (groupSize.maxGroupSize() >= size) {
+            return;
+        }
+        address validatorsOwner = celoValidators.owner();
+        vm.prank(validatorsOwner);
+        groupSize.setMaxGroupSize(size);
     }
 
     // =========================================================================
@@ -181,64 +135,50 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         return arr;
     }
 
-    /// @dev Elect activated groups and update health.
+    /// @dev `electMockValidatorGroupsAndUpdate(validatorsWrapper, gh, activatedGroupAddresses)`.
     function _electAndUpdateActivatedGroups() internal {
+        electMockValidatorGroupsAndUpdate(mockGroupHealth, activatedGroupAddresses);
+    }
+
+    /// @dev Elect first activated group without updating health. Returns mockedIndexes.
+    function _electFirstGroupNoUpdate() internal returns (uint256[] memory) {
+        return
+            electMockValidatorGroupsAndUpdate(
+                mockGroupHealth,
+                _toArray(activatedGroupAddresses[0]),
+                false,
+                false,
+                true
+            );
+    }
+
+    /// @dev `electMockValidatorGroupsAndUpdate(..., activatedGroupAddresses, false, false)`.
+    function _setupForUpdateGroupHealth() internal {
         electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
+            mockGroupHealth,
             activatedGroupAddresses,
+            false,
             false,
             true
         );
     }
 
-    /// @dev Set up groups as valid: elect + update for all activated groups.
-    function _setupValidGroups() internal {
-        _electAndUpdateActivatedGroups();
-    }
-
-    /// @dev Elect first activated group without updating health. Returns mockedIndexes.
-    function _electFirstGroupNoUpdate() internal returns (uint256[] memory) {
-        return electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
-            _toArray(activatedGroupAddresses[0]),
-            false,
-            false
-        );
-    }
-
-    /// @dev Make a group valid, then set up for markGroupHealthy tests.
-    function _setupForUpdateGroupHealth() internal {
-        electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
-            activatedGroupAddresses,
-            false,
-            false
-        );
+    /// @dev The `beforeEach` of `describe("When validity updated (invalid)")`.
+    function _setUpValidityUpdatedInvalid() internal {
+        for (uint256 i = 0; i < 150; i++) {
+            mockGroupHealth.setElectedValidator(i, nonManager);
+        }
+        mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
     }
 
     /// @dev Shorthand for revokeElectionOnMockValidatorGroupsAndUpdate.
     function _revokeElection(address[] memory validatorGroups, bool update) internal {
-        revokeElectionOnMockValidatorGroupsAndUpdate(
-            IValidators(address(ghValidators)),
-            IAccounts(address(ghAccounts)),
-            mockGroupHealth,
-            validatorGroups,
-            update
-        );
+        revokeElectionOnMockValidatorGroupsAndUpdate(mockGroupHealth, validatorGroups, update);
     }
 
     /// @dev Shorthand for updateGroupSlashingMultiplier.
     function _slashGroup(address group) internal {
-        updateGroupSlashingMultiplier(
-            mockRegistryAddr,
-            mockLockedGold,
-            mockValidators,
-            group,
-            _mockSlasher
-        );
+        updateGroupSlashingMultiplier(group, _mockSlasher);
     }
 
     // =========================================================================
@@ -251,70 +191,43 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         assertFalse(valid);
     }
 
-    // Test 2: When validity updated (invalid) → should return invalid
+    // Test 2: When validity updated (invalid) -> should return invalid
     function test_isGroupValid_WhenUpdatedInvalid_ShouldReturnInvalid() public {
-        // Setup: set 150 elected validators to nonManager
-        for (uint256 i = 0; i < 150; i++) {
-            mockGroupHealth.setElectedValidator(i, nonManager);
-        }
-        mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
+        _setUpValidityUpdatedInvalid();
 
         bool valid = mockGroupHealth.isGroupValid(nonManager);
         assertFalse(valid);
     }
 
-    // Test 3: When valid group and updated → should be valid
+    // Test 3: When valid group and updated -> should be valid
     function test_isGroupValid_WhenValidAndUpdated_ShouldBeValid() public {
-        // Setup: invalid election + valid election
-        for (uint256 i = 0; i < 150; i++) {
-            mockGroupHealth.setElectedValidator(i, nonManager);
-        }
-        mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
-
+        _setUpValidityUpdatedInvalid();
         _electAndUpdateActivatedGroups();
 
         bool valid = mockGroupHealth.isGroupValid(activatedGroupAddresses[0]);
         assertTrue(valid);
     }
 
-    // Test 4: Next epoch, updated to valid → should return valid
+    // Test 4: Next epoch, updated to valid -> should return valid
     function test_isGroupValid_NextEpoch_UpdatedToValid_ShouldReturnValid() public {
-        // Setup: invalid election + valid election
-        for (uint256 i = 0; i < 150; i++) {
-            mockGroupHealth.setElectedValidator(i, nonManager);
-        }
-        mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
+        _setUpValidityUpdatedInvalid();
         _electAndUpdateActivatedGroups();
 
-        // Mine to next epoch
         mineToNextEpoch();
 
-        // Re-elect first group and update
-        electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
-            _toArray(activatedGroupAddresses[0]),
-            false,
-            true
-        );
+        electMockValidatorGroupsAndUpdate(mockGroupHealth, _toArray(activatedGroupAddresses[0]));
 
         bool valid = mockGroupHealth.isGroupValid(activatedGroupAddresses[0]);
         assertTrue(valid);
     }
 
-    // Test 5: Next epoch, updated to invalid → should return invalid
+    // Test 5: Next epoch, updated to invalid -> should return invalid
     function test_isGroupValid_NextEpoch_UpdatedToInvalid_ShouldReturnInvalid() public {
-        // Setup: invalid election + valid election
-        for (uint256 i = 0; i < 150; i++) {
-            mockGroupHealth.setElectedValidator(i, nonManager);
-        }
-        mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
+        _setUpValidityUpdatedInvalid();
         _electAndUpdateActivatedGroups();
 
-        // Mine to next epoch
         mineToNextEpoch();
 
-        // Revoke election for first group and update
         _revokeElection(_toArray(activatedGroupAddresses[0]), true);
 
         bool valid = mockGroupHealth.isGroupValid(activatedGroupAddresses[0]);
@@ -340,7 +253,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
         assertTrue(mockGroupHealth.isGroupValid(activatedGroupAddresses[0]));
 
-        _slashGroup(activatedGroups[0]);
+        _slashGroup(activatedGroupAddresses[0]);
 
         vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
@@ -353,7 +266,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
         assertTrue(mockGroupHealth.isGroupValid(activatedGroupAddresses[0]));
 
-        removeMembersFromGroup(mockValidators, activatedGroups[0]);
+        removeMembersFromGroup(activatedGroupAddresses[0]);
 
         vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
@@ -366,7 +279,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         mockGroupHealth.updateGroupHealth(activatedGroupAddresses[0]);
         assertTrue(mockGroupHealth.isGroupValid(activatedGroupAddresses[0]));
 
-        deregisterValidatorGroup(mockValidators, activatedGroups[0]);
+        deregisterValidatorGroup(activatedGroupAddresses[0]);
 
         vm.expectEmit(true, true, true, true, address(mockGroupHealth));
         emit GroupHealthUpdated(activatedGroupAddresses[0], false);
@@ -393,11 +306,8 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
     // Test 11: Reverts when group is already healthy
     function test_markGroupHealthy_RevertsWhenGroupAlreadyHealthy() public {
         uint256[] memory mockedIndexes = electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
-            activatedGroupAddresses,
-            false,
-            true
+            mockGroupHealth,
+            activatedGroupAddresses
         );
 
         vm.expectRevert(
@@ -427,7 +337,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         uint256[] memory mockedIndexes = _electFirstGroupNoUpdate();
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
 
-        _slashGroup(activatedGroups[0]);
+        _slashGroup(activatedGroupAddresses[0]);
 
         mockGroupHealth.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
@@ -438,7 +348,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         uint256[] memory mockedIndexes = _electFirstGroupNoUpdate();
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
 
-        deregisterValidatorGroup(mockValidators, activatedGroups[0]);
+        deregisterValidatorGroup(activatedGroupAddresses[0]);
 
         mockGroupHealth.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
@@ -460,7 +370,7 @@ contract GroupHealthTest is TestAccountDeployHelper, ValidatorHelper {
         uint256[] memory mockedIndexes = _electFirstGroupNoUpdate();
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
 
-        removeMembersFromGroup(mockValidators, activatedGroups[0]);
+        removeMembersFromGroup(activatedGroupAddresses[0]);
 
         mockGroupHealth.markGroupHealthy(activatedGroupAddresses[0], mockedIndexes);
         assertFalse(mockGroupHealth.isGroupValid(allGroupAddresses[0]));
