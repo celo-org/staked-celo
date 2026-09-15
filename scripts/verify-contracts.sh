@@ -27,6 +27,9 @@
 #   scripts/verify-contracts.sh celo Manager
 #   CELOSCAN_API_KEY=... scripts/verify-contracts.sh --watch celo
 #
+# Known networks: celo (42220), sepolia (Celo Sepolia, 11142220), alfajores (44787) and
+# staging. Anything else needs CHAIN_ID and ETH_RPC_URL.
+#
 # Options:
 #   --dry-run         print the forge commands instead of running them
 #   --watch           wait for each submission to be processed
@@ -40,9 +43,9 @@
 # Environment:
 #   CELOSCAN_API_KEY  when set, every contract is also submitted to Celoscan. Celoscan is
 #                     part of the Etherscan V2 API, so this is an etherscan.io key and it
-#                     works for every chain in that API. CELO_SCAN_API_KEY (the name used
-#                     by the Hardhat era .env) and ETHERSCAN_API_KEY are accepted as well.
-#                     Sourcify needs no key.
+#                     works for every chain in that API. ETHERSCAN_API_KEY (the name in
+#                     .env.example) and CELO_SCAN_API_KEY (the Hardhat era one) are
+#                     accepted as well. Sourcify needs no key.
 #   LIBRARY_ADDRESS   AddressSortedLinkedList address, for deployment records that do not
 #                     carry it.
 #   CHAIN_ID          chain id override, for a network this script has no entry for.
@@ -101,7 +104,6 @@ done
   usage >&2
   exit 1
 }
-[[ -d "deployments/$NETWORK" ]] || die "no deployments/$NETWORK directory"
 
 # --- network -----------------------------------------------------------------
 
@@ -118,7 +120,16 @@ case "$NETWORK" in
     RPC_URL="https://forno.celo.org"
     HAS_EXPLORER=1
     ;;
+  sepolia)
+    # Celo Sepolia, the current testnet. Etherscan V2 lists it, and so does
+    # sourcify.dev/server/chains ("Celo Sepolia Testnet", supported: true).
+    CHAIN="11142220"
+    RPC_URL="https://forno.celo-sepolia.celo-testnet.org/"
+    HAS_EXPLORER=1
+    ;;
   alfajores)
+    # Being retired: neither Etherscan V2 nor Sourcify covers 44787 any more. The
+    # commands are still built, and start working again if the chain is ever listed.
     CHAIN="44787"
     RPC_URL="https://alfajores-forno.celo-testnet.org/"
     HAS_EXPLORER=1
@@ -338,6 +349,22 @@ verify_proxy() {
 
 # --- run ---------------------------------------------------------------------
 
+TARGETS="Sourcify"
+if [[ -n $API_KEY && -n $EXPLORER_API ]]; then
+  TARGETS="Sourcify and Celoscan"
+fi
+echo "network $NETWORK (chain $CHAIN), verifying on $TARGETS"
+if [[ -n $EXPLORER_API ]]; then
+  echo "explorer $EXPLORER_API"
+fi
+
+# Nothing has been deployed to this network, which is not an error: the script is also
+# run to see which endpoints a network resolves to.
+if [[ ! -d "deployments/$NETWORK" ]]; then
+  echo "no deployments/$NETWORK directory, nothing to verify"
+  exit 0
+fi
+
 VERIFY_ALL=0
 if [[ ${#NAMES[@]} -eq 0 ]]; then
   VERIFY_ALL=1
@@ -345,12 +372,6 @@ if [[ ${#NAMES[@]} -eq 0 ]]; then
     NAMES+=("$(basename "$record" _Implementation.json)")
   done
 fi
-
-TARGETS="Sourcify"
-if [[ -n $API_KEY && -n $EXPLORER_API ]]; then
-  TARGETS="Sourcify and Celoscan"
-fi
-echo "network $NETWORK (chain $CHAIN), verifying on $TARGETS"
 echo
 
 for name in "${NAMES[@]}"; do

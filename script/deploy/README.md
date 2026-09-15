@@ -20,17 +20,26 @@ re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
 | `TIME_LOCK_MIN_DELAY` | yes | MultiSig constructor argument, in seconds. |
 | `TIME_LOCK_DELAY` | yes | MultiSig proposal delay, in seconds. Must be `>= TIME_LOCK_MIN_DELAY`. |
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
-| `MULTISIG_OWNERS` | yes | Comma separated owner addresses. Replaces `MULTISIG_SIGNER_0..4`; the addresses must be distinct. |
-| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 44787 -> `alfajores`, anything else -> `local`. |
+| `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
+| `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The Hardhat era named accounts, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
+| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 44787 -> `alfajores`, anything else -> `local`. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
+
+Either spelling of the owner set works, so the encrypted per-network env files
+(`yarn keys:decrypt`, `scripts/key_placer.sh`) can be used as they are; `.env.example`
+shows the canonical form and keeps the legacy one commented out next to it. When neither
+yields a single owner the script stops with
+`set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ...` instead of failing
+somewhere inside the MultiSig initializer.
 
 `UpgradeImplementation` needs `CONTRACT` and, for `CONTRACT=MultiSig` only,
 `TIME_LOCK_MIN_DELAY` - it is an immutable constructor argument of the implementation.
 
-The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--account`),
-not a `DEPLOYER` variable. `DEPLOYER_PRIVATE_KEY` from `.env` can still be passed
-explicitly as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
+The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--account`), not a
+`DEPLOYER` variable - `DEPLOYER` is still in `.env.example` for the Hardhat era tooling and
+is ignored here. `DEPLOYER_PRIVATE_KEY` from `.env` is not read either; pass it explicitly
+as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
 
 The registry address passed to `Manager`, `Account`, `Vote` and `GroupHealth` is
 `address(0)`, exactly as in the Hardhat scripts: `UsingRegistryUpgradeable` treats the
@@ -248,10 +257,15 @@ eval "$(mise env -s zsh)"
 scripts/verify-contracts.sh --dry-run celo        # print the forge commands
 scripts/verify-contracts.sh --watch celo          # everything, waiting for each result
 scripts/verify-contracts.sh celo Manager          # one contract
+scripts/verify-contracts.sh --dry-run sepolia     # Celo Sepolia
 CELOSCAN_API_KEY=... scripts/verify-contracts.sh --watch celo
 
 yarn verify --watch celo                          # same thing through package.json
 ```
+
+A network with no `deployments/<network>/` directory is not an error: the script prints the
+chain, the explorer endpoint and `nothing to verify`, which is the quickest way to see what
+a network resolves to.
 
 Each contract has two addresses on chain and both are submitted: the implementation from
 `<Name>_Implementation.json` as `contracts/<Name>.sol:<Name>`, and the proxy in front of
@@ -261,9 +275,9 @@ it from `<Name>_Proxy.json` as
 
 | Variable | Meaning |
 | --- | --- |
-| `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `CELO_SCAN_API_KEY` (the name in `.env.example`) and `ETHERSCAN_API_KEY` are accepted too. Without one only Sourcify is used - it needs no key. |
+| `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `ETHERSCAN_API_KEY` (the name in `.env.example`) and `CELO_SCAN_API_KEY` (the Hardhat era one) are accepted too. Without one only Sourcify is used - it needs no key. |
 | `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
-| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220) and `alfajores` (44787); for anything else it asks the node. |
+| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220), `sepolia` (11142220), `alfajores` (44787) and `staging`; for anything else it asks the node. |
 | `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
 
 ### Why this works with contracts deployed before the port
@@ -338,19 +352,23 @@ parameter itself and covers the chains forge has no entry for.
 | Network | Chain | Sourcify | Etherscan V2 |
 | --- | --- | --- | --- |
 | `celo` | 42220 | yes | `https://api.etherscan.io/v2/api?chainid=42220` |
+| `sepolia` (Celo Sepolia) | 11142220 | yes | `https://api.etherscan.io/v2/api?chainid=11142220` |
 | `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | not covered, see below |
 | `staging` | from the node, or `CHAIN_ID` | no | none |
 
-Only mainnet is fully covered. Sourcify answers `Chain 44787 not found` for Alfajores and
-lists Baklava (62320) as unsupported. Etherscan V2 lists Celo Mainnet (42220) and Celo
-Sepolia (11142220) and no longer lists Alfajores
-(`https://api.etherscan.io/v2/chainlist`), so a submission for 44787 comes back as
-`Missing or unsupported chainid parameter`. That leaves `deployments/alfajores/` with no
-verifier for the time being; the script still builds the command, which starts working
-again the day the chain is listed. `staging` is never described beyond its
-RPC URL in `legacy/hardhat.config.ts`, has no chain id written down anywhere and no public
-explorer; its records can only be verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a
-service that supports it.
+Mainnet and Celo Sepolia are fully covered. `sourcify.dev/server/chains` lists Celo
+Mainnet and `Celo Sepolia Testnet` (11142220) as supported, and Etherscan V2 lists both
+(`https://api.etherscan.io/v2/chainlist`).
+
+Alfajores is the one being retired, and neither verifier covers it: Sourcify has no entry
+for 44787 at all (it does list Baklava, 62320, as unsupported), and a submission to
+Etherscan V2 comes back as `Missing or unsupported chainid parameter`. That leaves
+`deployments/alfajores/` with no verifier; the script still builds the command, which
+starts working again the day the chain is listed. New testnet deployments belong on Celo
+Sepolia instead. `staging` is never described beyond its RPC URL in
+`legacy/hardhat.config.ts`, has no chain id written down anywhere and no public explorer;
+its records can only be verified by pointing `CHAIN_ID` and `ETH_RPC_URL` at a service that
+supports it.
 
 ## Local devchain
 
@@ -443,3 +461,8 @@ A second suite in the same file runs the sequence with `VALIDATOR_GROUPS` set: i
 four validator groups on the devchain, puts the members of three of them in the elected set
 and checks that those three end up healthy and active in the listed order, that the fourth
 is skipped as unhealthy, and that a second run leaves all of it untouched.
+
+A third suite covers `_configFromEnv` on its own, without a devchain: it sets
+`MULTISIG_SIGNER_0` .. `MULTISIG_SIGNER_2` and checks they become the owner set, that a hole
+in the numbering ends it, that `MULTISIG_OWNERS` wins once it is set, and that neither
+spelling being set stops the run with a message naming both.

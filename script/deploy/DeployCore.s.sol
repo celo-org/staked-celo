@@ -35,12 +35,18 @@ import {
  *        TIME_LOCK_MIN_DELAY             MultiSig constructor argument, in seconds.
  *        TIME_LOCK_DELAY                 MultiSig proposal delay, in seconds.
  *        MULTISIG_REQUIRED_CONFIRMATIONS Confirmations needed to execute a proposal.
- *        MULTISIG_OWNERS                 Comma separated list of MultiSig owners.
+ *        MULTISIG_OWNERS                 Comma separated list of MultiSig owners, or the
+ *                                        Hardhat era MULTISIG_SIGNER_0, MULTISIG_SIGNER_1,
+ *                                        ... which the encrypted per-network env files
+ *                                        still carry.
  *      Optional:
- *        NETWORK                         Deployments directory name; defaults to the
- *                                        chain id mapping (celo / alfajores / local).
+ *        NETWORK                         Deployments directory name; defaults to the chain
+ *                                        id mapping (celo / sepolia / alfajores / local).
  *        VALIDATOR_GROUPS                Comma separated validator groups to make
  *                                        healthy and activate; empty by default.
+ *
+ *      DEPLOYER, the Hardhat named account, is not read: the deployer is the signer forge
+ *      is given (--ledger, --private-key, --account).
  */
 contract DeployCore is DeployBase {
     /// @notice Parameters that used to come from `.env` and hardhat-deploy named accounts.
@@ -53,6 +59,10 @@ contract DeployCore is DeployBase {
     }
 
     CoreConfig internal config;
+
+    /// @notice How far the `MULTISIG_SIGNER_<i>` scan goes. `MultiSig.MAX_OWNER_COUNT`;
+    ///         the initializer rejects a longer owner set anyway.
+    uint256 internal constant MAX_MULTISIG_SIGNER_VARS = 50;
 
     // Proxy addresses of the deployed protocol.
     address public multiSig;
@@ -74,7 +84,7 @@ contract DeployCore is DeployBase {
     function run() external {
         _initNetwork();
         deployer = msg.sender;
-        _loadConfigFromEnv();
+        config = _configFromEnv();
         vm.startBroadcast();
         _deployAll();
         vm.stopBroadcast();
@@ -120,12 +130,52 @@ contract DeployCore is DeployBase {
     }
 
     /// @dev Read the MultiSig parameters from the environment.
-    function _loadConfigFromEnv() internal {
-        config.timeLockMinDelay = vm.envUint("TIME_LOCK_MIN_DELAY");
-        config.timeLockDelay = vm.envUint("TIME_LOCK_DELAY");
-        config.requiredConfirmations = vm.envUint("MULTISIG_REQUIRED_CONFIRMATIONS");
-        config.multiSigOwners = vm.envAddress("MULTISIG_OWNERS", ",");
-        config.validatorGroups = vm.envOr("VALIDATOR_GROUPS", ",", new address[](0));
+    function _configFromEnv() internal view returns (CoreConfig memory coreConfig) {
+        coreConfig.timeLockMinDelay = vm.envUint("TIME_LOCK_MIN_DELAY");
+        coreConfig.timeLockDelay = vm.envUint("TIME_LOCK_DELAY");
+        coreConfig.requiredConfirmations = vm.envUint("MULTISIG_REQUIRED_CONFIRMATIONS");
+        coreConfig.multiSigOwners = _multiSigOwnersFromEnv();
+        coreConfig.validatorGroups = vm.envOr("VALIDATOR_GROUPS", ",", new address[](0));
+    }
+
+    /// @dev The MultiSig owner set, from either spelling of it.
+    ///      `MULTISIG_OWNERS` is the canonical one. When it is empty the Hardhat era
+    ///      `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... are read instead, which is what
+    ///      the encrypted per-network env files (`yarn keys:decrypt`) still carry.
+    function _multiSigOwnersFromEnv() private view returns (address[] memory owners) {
+        string memory list = vm.envOr("MULTISIG_OWNERS", string(""));
+        if (bytes(list).length > 0) {
+            return vm.envAddress("MULTISIG_OWNERS", ",");
+        }
+        owners = _multiSigSignersFromEnv();
+        require(
+            owners.length > 0, "set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ..."
+        );
+    }
+
+    /// @dev `MULTISIG_SIGNER_<i>` from 0 upwards, stopping at the first one that is unset
+    ///      or empty. The addresses are parsed by hand so that an empty value reads as the
+    ///      end of the list rather than as a parse failure.
+    function _multiSigSignersFromEnv() private view returns (address[] memory signers) {
+        address[] memory found = new address[](MAX_MULTISIG_SIGNER_VARS);
+        uint256 count = 0;
+        while (count < found.length) {
+            string memory value = vm.envOr(_multiSigSignerName(count), string(""));
+            if (bytes(value).length == 0) {
+                break;
+            }
+            found[count] = vm.parseAddress(value);
+            count++;
+        }
+        signers = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            signers[i] = found[i];
+        }
+    }
+
+    /// @dev `MULTISIG_SIGNER_<index>`.
+    function _multiSigSignerName(uint256 index) private pure returns (string memory) {
+        return string(abi.encodePacked("MULTISIG_SIGNER_", vm.toString(index)));
     }
 
     /// @dev Address to reuse for `name`: the one an earlier step of this script already

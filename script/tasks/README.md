@@ -9,8 +9,9 @@ preserved.
 
 - Contract addresses come from `deployments/<network>/<Name>.json` (the `address` field of
   the hardhat-deploy files). The directory is picked by the `NETWORK` environment variable,
-  defaulting to the network matching the chain id (42220 -> `celo`, 44787 -> `alfajores`).
-  Set `NETWORK` explicitly for `staging` or when running against a fork.
+  defaulting to the network matching the chain id (42220 -> `celo`, 11142220 -> `sepolia`,
+  44787 -> `alfajores`). Set `NETWORK` explicitly for `staging` or when running against a
+  fork.
 - Celo core contracts (Election, LockedGold, Governance, ...) are resolved through the
   Registry at `0x000000000000000000000000000000000000ce10`, the same way the protocol
   contracts resolve them.
@@ -37,10 +38,11 @@ Read-only scripts need no signer. Scripts that send transactions only simulate u
 ## Common flags
 
 ```
-forge script <script> --rpc-url <celo|alfajores|staging|local> [--broadcast] [signer flags]
+forge script <script> --rpc-url <celo|sepolia|alfajores|staging|local> [--broadcast] [signer flags]
 ```
 
-`--rpc-url` accepts the aliases declared in `foundry.toml`.
+`--rpc-url` accepts the aliases declared in `foundry.toml`. `sepolia` is Celo Sepolia
+(11142220), the current testnet; `alfajores` (44787) is the one it replaces.
 
 ## MultiSig tasks
 
@@ -89,7 +91,7 @@ forge script <script> --rpc-url <celo|alfajores|staging|local> [--broadcast] [si
 
 | Variable | Replaces | Format |
 | --- | --- | --- |
-| `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `alfajores` or `staging`; optional, derived from the chain id |
+| `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `sepolia`, `alfajores` or `staging`; optional, derived from the chain id |
 | `DESTINATIONS` | `--destinations` | comma separated addresses |
 | `VALUES` | `--values` | comma separated integers (wei) |
 | `PAYLOADS` | `--payloads` | comma separated `0x` payloads |

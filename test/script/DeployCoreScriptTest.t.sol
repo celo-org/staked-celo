@@ -8,6 +8,8 @@ import {IOwnable} from "../../script/deploy/DeployBase.s.sol";
 /// @dev Cheatcodes used only by this test, cast onto the usual cheatcode address.
 interface ScriptTestVm {
     function getDeployedCode(string calldata what) external view returns (bytes memory);
+
+    function setEnv(string calldata name, string calldata value) external;
 }
 
 /// @dev Vote keeps its dependencies in internal storage; getVoteWeight is the cheapest
@@ -383,5 +385,100 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
 
         (address tail,) = strategy.getGroupsTail();
         assertEq(tail, healthyGroups[2]);
+    }
+}
+
+/// @dev Makes DeployCore's environment parsing callable from a test. Nothing is deployed
+///      through this harness, so it needs no devchain.
+contract DeployCoreEnvHarness is DeployCore {
+    function configFromEnv() external view returns (CoreConfig memory) {
+        return _configFromEnv();
+    }
+}
+
+/**
+ * @title DeployCoreEnvConfigTest
+ * @notice Covers how DeployCore reads its configuration: the canonical `MULTISIG_OWNERS`
+ *         and the Hardhat era `MULTISIG_SIGNER_0` .. `MULTISIG_SIGNER_4`, which the
+ *         encrypted per-network env files (`yarn keys:decrypt`) still carry.
+ * @dev Everything lives in one test on purpose. Environment variables belong to the
+ *      process rather than to the EVM state forge snapshots after `setUp`, so a second
+ *      test function would see whatever this one set last - and forge is free to run the
+ *      two in either order, or at the same time.
+ */
+contract DeployCoreEnvConfigTest is CeloTestHelper {
+    ScriptTestVm internal constant svm =
+        ScriptTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    address internal constant SIGNER_0 = 0x0a692a271DfAf2d36E46f50269c932511B55e871;
+    address internal constant SIGNER_1 = 0x2B73d814BA2231606f9d856C7C20423915F96711;
+    address internal constant SIGNER_2 = 0x5bC1C4C1D67C5E4384189302BC653A611568a788;
+    address internal constant OWNER_0 = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    address internal constant OWNER_1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+
+    uint256 internal constant REQUIRED_CONFIRMATIONS = 3;
+
+    function test_ownersComeFromEitherSpellingOfTheOwnerSet() public {
+        DeployCoreEnvHarness harness = new DeployCoreEnvHarness();
+        _setCommonEnv();
+        _clearOwnerEnv();
+
+        // Neither spelling set: the run has to stop with a message naming both.
+        vm.expectRevert(bytes("set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ..."));
+        harness.configFromEnv();
+
+        // The Hardhat era variables, read consecutively from zero.
+        svm.setEnv(_signerName(0), vm.toString(SIGNER_0));
+        svm.setEnv(_signerName(1), vm.toString(SIGNER_1));
+        svm.setEnv(_signerName(2), vm.toString(SIGNER_2));
+
+        DeployCore.CoreConfig memory config = harness.configFromEnv();
+        assertEq(config.multiSigOwners.length, 3);
+        assertEq(config.multiSigOwners[0], SIGNER_0);
+        assertEq(config.multiSigOwners[1], SIGNER_1);
+        assertEq(config.multiSigOwners[2], SIGNER_2);
+        // The rest of the configuration is read exactly as before.
+        assertEq(config.timeLockMinDelay, DAY);
+        assertEq(config.timeLockDelay, 3 * DAY);
+        assertEq(config.requiredConfirmations, REQUIRED_CONFIRMATIONS);
+
+        // A hole in the numbering ends the owner set rather than skipping an entry.
+        svm.setEnv(_signerName(1), "");
+        address[] memory upToTheGap = harness.configFromEnv().multiSigOwners;
+        assertEq(upToTheGap.length, 1);
+        assertEq(upToTheGap[0], SIGNER_0);
+        svm.setEnv(_signerName(1), vm.toString(SIGNER_1));
+
+        // MULTISIG_OWNERS wins whenever it is set.
+        svm.setEnv(
+            "MULTISIG_OWNERS",
+            string(abi.encodePacked(vm.toString(OWNER_0), ",", vm.toString(OWNER_1)))
+        );
+        address[] memory owners = harness.configFromEnv().multiSigOwners;
+        assertEq(owners.length, 2);
+        assertEq(owners[0], OWNER_0);
+        assertEq(owners[1], OWNER_1);
+
+        _clearOwnerEnv();
+    }
+
+    /// @dev The variables that are not about the owner set.
+    function _setCommonEnv() private {
+        svm.setEnv("TIME_LOCK_MIN_DELAY", vm.toString(DAY));
+        svm.setEnv("TIME_LOCK_DELAY", vm.toString(3 * DAY));
+        svm.setEnv("MULTISIG_REQUIRED_CONFIRMATIONS", vm.toString(REQUIRED_CONFIRMATIONS));
+    }
+
+    /// @dev Empty out both spellings, so that the test does not depend on what the
+    ///      surrounding shell or a local `.env` happens to hold.
+    function _clearOwnerEnv() private {
+        svm.setEnv("MULTISIG_OWNERS", "");
+        for (uint256 i = 0; i < 5; i++) {
+            svm.setEnv(_signerName(i), "");
+        }
+    }
+
+    function _signerName(uint256 index) private pure returns (string memory) {
+        return string(abi.encodePacked("MULTISIG_SIGNER_", vm.toString(index)));
     }
 }

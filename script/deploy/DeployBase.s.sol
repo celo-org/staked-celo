@@ -38,6 +38,8 @@ interface DeployVm {
         pure
         returns (address);
 
+    function parseAddress(string calldata value) external pure returns (address);
+
     function serializeAddress(string calldata objectKey, string calldata valueKey, address value)
         external
         returns (string memory);
@@ -176,6 +178,11 @@ abstract contract DeployBase {
         if (block.chainid == 42220) {
             return "celo";
         }
+        // Celo Sepolia, the current testnet.
+        if (block.chainid == 11142220) {
+            return "sepolia";
+        }
+        // Alfajores, the testnet Celo Sepolia replaces.
         if (block.chainid == 44787) {
             return "alfajores";
         }

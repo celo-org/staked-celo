@@ -13,8 +13,9 @@ import "./TaskInterfaces.sol";
  *      `forge script --ledger | --private-key | --unlocked --sender` instead.
  *
  *      Environment variables read here:
- *        NETWORK  optional, one of celo | alfajores | staging. Defaults to the network
- *                 matching the chain id (42220 -> celo, 44787 -> alfajores).
+ *        NETWORK  optional, one of celo | sepolia | alfajores | staging. Defaults to the
+ *                 network matching the chain id (42220 -> celo, 11142220 -> sepolia,
+ *                 44787 -> alfajores).
  */
 abstract contract TaskBase {
     /// @dev Foundry cheatcode address (same one forge-std uses).
@@ -29,7 +30,10 @@ abstract contract TaskBase {
     /// @notice Celo mainnet chain id.
     uint256 internal constant CELO_CHAIN_ID = 42220;
 
-    /// @notice Alfajores testnet chain id.
+    /// @notice Celo Sepolia testnet chain id. The current testnet.
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11142220;
+
+    /// @notice Alfajores testnet chain id. The testnet Celo Sepolia replaces.
     uint256 internal constant ALFAJORES_CHAIN_ID = 44787;
 
     /**
@@ -43,6 +47,9 @@ abstract contract TaskBase {
         }
         if (block.chainid == CELO_CHAIN_ID) {
             return "celo";
+        }
+        if (block.chainid == SEPOLIA_CHAIN_ID) {
+            return "sepolia";
         }
         if (block.chainid == ALFAJORES_CHAIN_ID) {
             return "alfajores";
