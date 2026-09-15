@@ -167,14 +167,20 @@ Both read their parameters from the environment; `.env.example` lists the variab
 
 ```sh
 forge script script/deploy/DeployCore.s.sol \
-  --skip 'test/**' --disable-code-size-limit \
+  --disable-code-size-limit \
   --rpc-url celo --broadcast --ledger
 ```
 
 Read [script/deploy/README.md](script/deploy/README.md) before deploying: it documents the
-required environment variables, why the extra flags are needed, the build hygiene rules,
-the deployment records written under `deployments/<network>/`, and how a failed run must be
-cleaned up.
+required environment variables, why `--disable-code-size-limit` is needed, the deployment
+records written under `deployments/<network>/`, and how a failed run must be cleaned up.
+
+### Addresses and ABIs for integrators
+
+- Addresses: `deployments/<network>/<Name>.json` (`address` is the proxy,
+  `<Name>_Implementation.json` the current implementation).
+- ABIs: `forge build` writes them to `out/<Name>.sol/<Name>.json` (`abi` field), or print one
+  with `forge inspect <Name> abi`. The Hardhat `artifacts/` directory no longer exists.
 
 ## Operational tasks
 
