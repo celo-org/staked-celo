@@ -174,6 +174,11 @@ required environment variables, why the extra flags are needed, the build hygien
 the deployment records written under `deployments/<network>/`, and how a failed run must be
 cleaned up.
 
+`yarn verify <network>` (`scripts/verify-contracts.sh`) publishes the sources of everything
+under `deployments/<network>/` to Sourcify and, with `CELOSCAN_API_KEY` set, to Celoscan.
+It replaces `yarn verify:deploy`; because the production build is byte-identical to the
+Hardhat one, contracts deployed before the port still verify from these sources.
+
 ## Operational tasks
 
 Every `yarn hardhat stakedCelo:*` task has a forge script counterpart under
