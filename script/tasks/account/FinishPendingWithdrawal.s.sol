@@ -15,7 +15,7 @@ import "../lib/AccountTaskLib.sol";
  *
  * Usage:
  *   BENEFICIARY=0x... forge script script/tasks/account/FinishPendingWithdrawal.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract FinishPendingWithdrawalScript is TaskBase {
     /// @notice Reads BENEFICIARY from the environment and finishes its released withdrawals.

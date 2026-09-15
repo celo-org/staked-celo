@@ -36,13 +36,25 @@ EOF
 VERSION="${DEVCHAIN_ANVIL_VERSION:-$DEFAULT_VERSION}"
 STATE="${DEVCHAIN_STATE:-}"
 
-echo "using $PKG@$VERSION"
+# Provenance of the fixture, recorded in meta.json so that a different state file or
+# package version regenerates the fixture instead of silently reusing the old one.
+if [[ -n "$STATE" ]]; then
+  SOURCE="state:$STATE"
+else
+  SOURCE="npm:$PKG@$VERSION"
+fi
+
+echo "using $SOURCE"
 
 mkdir -p "$OUT_DIR"
 
 if [[ -f "$OUT_DIR/allocs.json" && -f "$OUT_DIR/meta.json" && "${FORCE:-0}" != "1" ]]; then
-  echo "devchain fixture already present in $OUT_DIR (set FORCE=1 to regenerate)"
-  exit 0
+  RECORDED="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("source",""))' "$OUT_DIR/meta.json")"
+  if [[ "$RECORDED" == "$SOURCE" ]]; then
+    echo "devchain fixture already present in $OUT_DIR and up to date (set FORCE=1 to regenerate)"
+    exit 0
+  fi
+  echo "devchain fixture in $OUT_DIR was built from '${RECORDED:-unknown}', regenerating"
 fi
 
 if [[ -z "$STATE" ]]; then
@@ -58,10 +70,10 @@ if [[ -z "$STATE" ]]; then
 fi
 
 echo "extracting allocs from $STATE ..."
-python3 - "$STATE" "$OUT_DIR" <<'EOF'
+python3 - "$STATE" "$OUT_DIR" "$SOURCE" <<'EOF'
 import json, sys, os
 
-state_path, out_dir = sys.argv[1], sys.argv[2]
+state_path, out_dir, source = sys.argv[1], sys.argv[2], sys.argv[3]
 state = json.load(open(state_path))
 
 allocs = {}
@@ -82,6 +94,7 @@ meta = {
     "blockNumber": int(state["block"]["number"], 16),
     "timestamp": int(state["block"]["timestamp"], 16),
     "bestBlockNumber": state.get("best_block_number", 0),
+    "source": source,
 }
 with open(os.path.join(out_dir, "meta.json"), "w") as f:
     json.dump(meta, f, indent=2)

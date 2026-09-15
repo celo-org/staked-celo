@@ -15,7 +15,7 @@ import "../lib/ManagerTaskLib.sol";
  *
  * Usage:
  *   AMOUNT=1000000000000000000 forge script script/tasks/manager/Withdraw.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract WithdrawScript is TaskBase {
     /// @notice Reads AMOUNT from the environment and withdraws as the broadcaster.

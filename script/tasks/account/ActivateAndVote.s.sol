@@ -14,7 +14,7 @@ import "../lib/AccountTaskLib.sol";
  *
  * Usage:
  *   forge script script/tasks/account/ActivateAndVote.s.sol --rpc-url celo \
- *     --broadcast --ledger
+ *     --broadcast --ledger --sender <ledger address>
  */
 contract ActivateAndVoteScript is TaskBase {
     /// @notice Activates and votes for every group the protocol is voting for.

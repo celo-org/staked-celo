@@ -15,7 +15,7 @@ import "../lib/MultiSigTaskLib.sol";
  *
  * Usage:
  *   PROPOSAL_ID=3 forge script script/tasks/multisig/RevokeConfirmation.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract RevokeConfirmationScript is TaskBase {
     /// @notice Reads PROPOSAL_ID from the environment and revokes as the broadcaster.

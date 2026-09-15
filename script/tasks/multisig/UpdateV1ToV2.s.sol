@@ -22,7 +22,7 @@ import "../lib/UpgradeProposalLib.sol";
  *
  * Usage:
  *   VALIDATOR_GROUPS=0xA,0xB forge script script/tasks/multisig/UpdateV1ToV2.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract UpdateV1ToV2Script is TaskBase {
     using ProposalBuilder for ProposalBuilder.Proposal;

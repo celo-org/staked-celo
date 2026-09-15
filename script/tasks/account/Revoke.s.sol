@@ -13,7 +13,7 @@ import "../lib/AccountTaskLib.sol";
  *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
  *
  * Usage:
- *   forge script script/tasks/account/Revoke.s.sol --rpc-url celo --broadcast --ledger
+ *   forge script script/tasks/account/Revoke.s.sol --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract RevokeScript is TaskBase {
     /// @notice Revokes the scheduled votes of every group the protocol is voting for.

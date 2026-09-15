@@ -15,7 +15,7 @@ import "../lib/AccountTaskLib.sol";
  *
  * Usage:
  *   BENEFICIARY=0x... forge script script/tasks/account/Withdraw.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract WithdrawScript is TaskBase {
     /// @notice Reads BENEFICIARY from the environment and withdraws for it.

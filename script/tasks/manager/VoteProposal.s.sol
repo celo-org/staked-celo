@@ -19,7 +19,7 @@ import "../lib/ManagerTaskLib.sol";
  *
  * Usage:
  *   PROPOSAL_ID=42 YES=1000 forge script script/tasks/manager/VoteProposal.s.sol \
- *     --rpc-url celo --broadcast --ledger
+ *     --rpc-url celo --broadcast --ledger --sender <ledger address>
  */
 contract VoteProposalScript is TaskBase {
     /// @notice Reads the vote from the environment and casts it as the broadcaster.

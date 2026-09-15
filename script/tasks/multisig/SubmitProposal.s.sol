@@ -19,7 +19,7 @@ import "../lib/MultiSigTaskLib.sol";
  * Usage:
  *   DESTINATIONS=0xA,0xB VALUES=0,0 PAYLOADS=0x...,0x... \
  *     forge script script/tasks/multisig/SubmitProposal.s.sol --rpc-url celo \
- *     --broadcast --ledger
+ *     --broadcast --ledger --sender <ledger address>
  */
 contract SubmitProposalScript is TaskBase {
     /// @notice Reads the proposal from the environment and submits it as the broadcaster.
