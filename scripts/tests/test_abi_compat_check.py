@@ -22,7 +22,10 @@ checker = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(checker)
 
 UINT256 = {"encoding": "inplace", "label": "uint256", "numberOfBytes": "32"}
+UINT128 = {"encoding": "inplace", "label": "uint128", "numberOfBytes": "16"}
 ADDRESS = {"encoding": "inplace", "label": "address", "numberOfBytes": "20"}
+
+GAP_TYPE = "t_array(t_uint256){}_storage"
 
 ABI = [
     {
@@ -40,18 +43,108 @@ ABI = [
     },
 ]
 
+RECEIVE = {"type": "receive", "stateMutability": "payable"}
+PAYABLE_FALLBACK = {"type": "fallback", "stateMutability": "payable"}
+PLAIN_FALLBACK = {"type": "fallback", "stateMutability": "nonpayable"}
+
 
 def slot_entry(label, slot, type_id, offset=0):
     """One entry of storageLayout.storage, or one struct member; solc shapes them alike."""
     return {"label": label, "slot": str(slot), "offset": offset, "type": type_id}
 
 
-def artifact(name, storage, types, abi=ABI):
-    return {
+def artifact(name, storage, types, abi=ABI, ast=None):
+    content = {
         "metadata": {"settings": {"compilationTarget": {f"contracts/{name}.sol": name}}},
         "storageLayout": {"storage": list(storage), "types": dict(types)},
         "abi": list(abi),
     }
+    if ast is not None:
+        content["ast"] = ast
+    return content
+
+
+def gap_types(*lengths):
+    """Types map carrying a uint256[N] for every gap length the fixture spells out."""
+    types = {"t_uint256": UINT256, "t_address": ADDRESS}
+    for length in lengths:
+        types[GAP_TYPE.format(length)] = {
+            "encoding": "inplace",
+            "label": f"uint256[{length}]",
+            "numberOfBytes": str(32 * length),
+            "base": "t_uint256",
+        }
+    return types
+
+
+def enum_ast(contract, enum, members):
+    """A source unit AST holding one contract level enum, shaped the way solc emits it."""
+    return {
+        "nodeType": "SourceUnit",
+        "nodes": [
+            {
+                "nodeType": "ContractDefinition",
+                "name": contract,
+                "nodes": [
+                    {
+                        "nodeType": "EnumDefinition",
+                        "name": enum,
+                        "canonicalName": f"{contract}.{enum}",
+                        "members": [{"nodeType": "EnumValue", "name": member} for member in members],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def enum_vault(members, ast_id, nested=False, with_ast=True):
+    """A Vault storing a `Status`, either directly or as a member of a struct.
+
+    The layout says no more than "one byte" either way, so the member list has to come
+    from the AST - which is what `with_ast` can withhold.
+    """
+    enum_id = f"t_enum(Status){ast_id}"
+    types = {
+        "t_uint256": UINT256,
+        enum_id: {"encoding": "inplace", "label": "enum Vault.Status", "numberOfBytes": "1"},
+    }
+    if nested:
+        struct_id = f"t_struct(Entry){ast_id}_storage"
+        types[struct_id] = {
+            "encoding": "inplace",
+            "label": "struct Vault.Entry",
+            "numberOfBytes": "64",
+            "members": [slot_entry("amount", 0, "t_uint256"), slot_entry("status", 1, enum_id)],
+        }
+        storage = [slot_entry("entry", 0, struct_id)]
+    else:
+        storage = [slot_entry("status", 0, enum_id)]
+    return artifact("Vault", storage, types, ast=enum_ast("Vault", "Status", members) if with_ast else None)
+
+
+def padded_vault(members, ast_id):
+    """An `Entry[]` whose element is a single slot, however many uint128s sit in it."""
+    struct_id = f"t_struct(Entry){ast_id}_storage"
+    array_id = f"t_array({struct_id})dyn_storage"
+    types = {
+        "t_uint128": UINT128,
+        struct_id: {
+            "encoding": "inplace",
+            "label": "struct Vault.Entry",
+            "numberOfBytes": "32",
+            "members": [
+                slot_entry(label, 0, "t_uint128", offset=16 * index) for index, label in enumerate(members)
+            ],
+        },
+        array_id: {
+            "encoding": "dynamic_array",
+            "label": "struct Vault.Entry[]",
+            "numberOfBytes": "32",
+            "base": struct_id,
+        },
+    }
+    return artifact("Vault", [slot_entry("entries", 0, array_id)], types)
 
 
 def entry_types(shape, members, ast_id):
@@ -171,6 +264,12 @@ class CompatCheckTest(unittest.TestCase):
             self.assertIn(needle, output)
         return output
 
+    def assert_compatible(self, baseline, current):
+        status, output = self.run_check(baseline, current)
+        self.assertEqual(status, 0, output)
+        self.assertIn("compatible with the baseline (0 item(s) flagged for review)", output)
+        return output
+
     # A struct that is an array element may not grow: the elements sit back to back
     # from the array's base slot, so a wider element moves all the ones behind it.
     def test_appended_member_in_dynamic_array_element_is_an_error(self):
@@ -200,6 +299,17 @@ class CompatCheckTest(unittest.TestCase):
             {"Vault": vault("struct_of_array", ["value"], 1)},
             {"Vault": vault("struct_of_array", ["value", "timestamp"], 7)},
             "gained member(s) timestamp at entries.items[i]",
+        )
+
+    # An element that gains a member without getting wider - the member lands in the
+    # padding the element already carried - leaves the stride, and everything stored
+    # behind the first element, exactly where it was.
+    def test_member_appended_within_array_element_padding_is_a_review(self):
+        self.assert_review_only(
+            {"Vault": padded_vault(["amount"], 1)},
+            {"Vault": padded_vault(["amount", "fee"], 7)},
+            "gained member(s) fee at entries[i]",
+            "appended within padding",
         )
 
     # A mapping value has nothing behind it: every entry starts at its own hash.
@@ -234,12 +344,10 @@ class CompatCheckTest(unittest.TestCase):
         )
 
     def test_unchanged_layout_is_compatible(self):
-        status, output = self.run_check(
+        self.assert_compatible(
             {"Vault": vault("dynamic_array", ["value", "timestamp"], 1)},
             {"Vault": vault("dynamic_array", ["value", "timestamp"], 7)},
         )
-        self.assertEqual(status, 0, output)
-        self.assertIn("compatible with the baseline (0 item(s) flagged for review)", output)
 
     def test_removed_function_and_event_are_errors(self):
         self.assert_rejected(
@@ -249,39 +357,190 @@ class CompatCheckTest(unittest.TestCase):
             "event Deposited(address) was removed",
         )
 
+    # receive() and fallback() have no signature to key them by, so they are compared
+    # on their own. Losing either turns a plain transfer into a revert.
+    def test_removed_receive_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": vault("mapping", ["value"], 1, abi=ABI + [RECEIVE])},
+            {"Vault": vault("mapping", ["value"], 7)},
+            "receive() was removed",
+        )
+
+    def test_removed_fallback_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": vault("mapping", ["value"], 1, abi=ABI + [PAYABLE_FALLBACK])},
+            {"Vault": vault("mapping", ["value"], 7)},
+            "fallback() was removed",
+        )
+
+    def test_fallback_that_stops_being_payable_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": vault("mapping", ["value"], 1, abi=ABI + [PAYABLE_FALLBACK])},
+            {"Vault": vault("mapping", ["value"], 7, abi=ABI + [PLAIN_FALLBACK])},
+            "fallback() changed mutability from payable to nonpayable",
+        )
+
+    def test_kept_receive_is_compatible(self):
+        self.assert_compatible(
+            {"Vault": vault("mapping", ["value"], 1, abi=ABI + [RECEIVE])},
+            {"Vault": vault("mapping", ["value"], 7, abi=ABI + [RECEIVE])},
+        )
+
     # Shrinking a __gap is how new variables are added to an upgradeable contract,
     # so it stays a review item: only a human can tell it from an accidental overlap.
     def test_shrunk_gap_is_a_review(self):
-        gap_types = {
-            "t_uint256": UINT256,
-            "t_address": ADDRESS,
-            "t_array(t_uint256)50_storage": {
-                "encoding": "inplace",
-                "label": "uint256[50]",
-                "numberOfBytes": "1600",
-                "base": "t_uint256",
-            },
-            "t_array(t_uint256)49_storage": {
-                "encoding": "inplace",
-                "label": "uint256[49]",
-                "numberOfBytes": "1568",
-                "base": "t_uint256",
-            },
-        }
-        baseline = artifact("Vault", [slot_entry("__gap", 0, "t_array(t_uint256)50_storage")], gap_types)
+        types = gap_types(49, 50)
+        baseline = artifact("Vault", [slot_entry("__gap", 0, GAP_TYPE.format(50))], types)
         current = artifact(
             "Vault",
             [
-                slot_entry("__gap", 0, "t_array(t_uint256)49_storage"),
+                slot_entry("__gap", 0, GAP_TYPE.format(49)),
                 slot_entry("treasury", 49, "t_address"),
             ],
-            gap_types,
+            types,
         )
         self.assert_review_only(
             {"Vault": baseline},
             {"Vault": current},
             "reserved gap __gap shrank from 50 to 49 slots",
             "new variable treasury sits at slot 49",
+        )
+
+    # The usual spelling of the same upgrade: the new variable is declared in front of
+    # the gap, which pushes the gap back a slot and shifts the list position of
+    # everything behind it without moving a byte of state.
+    def test_gap_consumed_by_a_new_variable_is_a_review(self):
+        types = gap_types(49, 50)
+        baseline = artifact(
+            "Vault",
+            [slot_entry("treasury", 0, "t_address"), slot_entry("__gap", 1, GAP_TYPE.format(50))],
+            types,
+        )
+        current = artifact(
+            "Vault",
+            [
+                slot_entry("treasury", 0, "t_address"),
+                slot_entry("keeper", 1, "t_address"),
+                slot_entry("__gap", 2, GAP_TYPE.format(49)),
+            ],
+            types,
+        )
+        self.assert_review_only({"Vault": baseline}, {"Vault": current}, "consumed 1 gap slot(s)")
+
+    def test_gap_consumption_that_moves_a_later_variable_is_an_error(self):
+        types = gap_types(50)
+        baseline = artifact(
+            "Vault",
+            [
+                slot_entry("treasury", 0, "t_address"),
+                slot_entry("__gap", 1, GAP_TYPE.format(50)),
+                slot_entry("keeper", 51, "t_address"),
+            ],
+            types,
+        )
+        # The gap was not shortened to pay for `minter`, so `keeper` is pushed out.
+        current = artifact(
+            "Vault",
+            [
+                slot_entry("treasury", 0, "t_address"),
+                slot_entry("minter", 1, "t_address"),
+                slot_entry("__gap", 2, GAP_TYPE.format(50)),
+                slot_entry("keeper", 52, "t_address"),
+            ],
+            types,
+        )
+        self.assert_rejected(
+            {"Vault": baseline},
+            {"Vault": current},
+            "variable keeper moved from slot 51+0 to slot 52+0",
+        )
+
+    def test_consuming_more_slots_than_the_gap_reserved_is_an_error(self):
+        types = gap_types(50, 51)
+        baseline = artifact("Vault", [slot_entry("__gap", 0, GAP_TYPE.format(50))], types)
+        current = artifact(
+            "Vault",
+            [slot_entry("keeper", 0, "t_address"), slot_entry("__gap", 1, GAP_TYPE.format(51))],
+            types,
+        )
+        self.assert_rejected(
+            {"Vault": baseline},
+            {"Vault": current},
+            "reserved by __gap at slot 0 now hold data reaching to slot 52",
+        )
+
+    def test_variable_replaced_at_its_slot_is_an_error(self):
+        types = gap_types(50)
+        baseline = artifact(
+            "Vault",
+            [slot_entry("treasury", 0, "t_address"), slot_entry("__gap", 1, GAP_TYPE.format(50))],
+            types,
+        )
+        current = artifact(
+            "Vault",
+            [slot_entry("keeper", 0, "t_address"), slot_entry("__gap", 1, GAP_TYPE.format(50))],
+            types,
+        )
+        self.assert_rejected({"Vault": baseline}, {"Vault": current}, "slot 0+0 held treasury, now holds keeper")
+
+    def test_variable_that_changed_type_is_an_error(self):
+        types = gap_types(50)
+        baseline = artifact("Vault", [slot_entry("treasury", 0, "t_address")], types)
+        current = artifact("Vault", [slot_entry("treasury", 0, "t_uint256")], types)
+        self.assert_rejected(
+            {"Vault": baseline},
+            {"Vault": current},
+            "variable treasury changed type from address to uint256",
+        )
+
+    # An enum is one byte in the layout whatever it holds, so the member list has to
+    # be read out of the AST: reordering it reinterprets every value already stored.
+    def test_unchanged_enum_is_compatible(self):
+        self.assert_compatible(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Pending", "Active"], 7)},
+        )
+
+    def test_appended_enum_member_is_a_review(self):
+        self.assert_review_only(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Pending", "Active", "Frozen"], 7)},
+            "enum Vault.Status gained member(s) Frozen at the end",
+        )
+
+    def test_reordered_enum_members_are_an_error(self):
+        self.assert_rejected(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Active", "Pending"], 7)},
+            "enum Vault.Status: value 0 was Pending, is now Active",
+        )
+
+    def test_enum_member_inserted_before_the_existing_ones_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Draft", "Pending", "Active"], 7)},
+            "enum Vault.Status: value 0 was Pending, is now Draft",
+        )
+
+    def test_removed_enum_member_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Pending"], 7)},
+            "enum Vault.Status: member Active (value 1) was removed",
+        )
+
+    def test_reordered_enum_inside_a_struct_is_an_error(self):
+        self.assert_rejected(
+            {"Vault": enum_vault(["Pending", "Active"], 1, nested=True)},
+            {"Vault": enum_vault(["Active", "Pending"], 7, nested=True)},
+            "enum Vault.Status: value 0 was Pending, is now Active",
+        )
+
+    def test_enum_without_a_definition_is_a_review(self):
+        self.assert_review_only(
+            {"Vault": enum_vault(["Pending", "Active"], 1)},
+            {"Vault": enum_vault(["Pending", "Active"], 7, with_ast=False)},
+            "enum Vault.Status at status is not in the current build's ASTs",
         )
 
 
