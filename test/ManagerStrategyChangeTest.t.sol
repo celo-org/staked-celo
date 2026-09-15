@@ -1,92 +1,87 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity 0.8.11;
 
+import "./helpers/DevchainHelper.sol";
 import "./helpers/deploy/FullTestManagerDeployHelper.sol";
-import "./helpers/ValidatorHelper.sol";
-
-/// @dev Extended VM interface for mockCall cheatcode (not in CeloTestVm).
-interface IVmMockCall {
-    function mockCall(address callee, bytes calldata data, bytes calldata returnData) external;
-}
 
 /**
  * @title ManagerStrategyChangeTest
- * @notice Tests Manager.changeStrategy behavior — delayed transfer pattern.
- * @dev Migrated from test-ts/manager-strategy-change.test.ts (145 LOC, 1 test).
- *      Verifies that changeStrategy does NOT schedule transfers immediately,
- *      but rebalance() does.
+ * @notice Port of legacy/test-ts/manager-strategy-change.test.ts
+ *         (`describe("Manager strategy change: delayed transfer")`).
+ * @dev Two validator groups with one validator each are registered against the real Celo core
+ *      contracts of the devchain, elected on MockGroupHealth and activated in DefaultStrategy,
+ *      exactly like the `before()` / `beforeEach()` pair of the original. `setUp()` runs before
+ *      every test, which is what the Hardhat fixture re-deployment did.
+ *
+ * @dev Deviation: the original deployed the production "core" fixture, upgraded its GroupHealth
+ *      proxy to MockGroupHealth through the MultiSig and activated the groups through MultiSig
+ *      proposals. The port uses the `FullTestManager` fixture against the devchain registry,
+ *      which deploys MockGroupHealth directly and leaves the strategies owned by `owner`, so the
+ *      groups are activated with a plain owner call. The contracts under test (Manager, Account,
+ *      DefaultStrategy) and their wiring are the same either way.
  */
-contract ManagerStrategyChangeTest is FullTestManagerDeployHelper, ValidatorHelper {
-    address depositor;
-    address group0;
-    address group1;
+contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelper {
+    address internal depositor;
+    address internal group0;
+    address internal group1;
 
     function setUp() public {
-        // Phase 1: Deploy full Manager fixture
-        deployFullTestManager();
+        loadDevchain();
+        deployFullTestManager(REGISTRY_ADDRESS);
 
-        // Phase 2: Create depositor with 1000 CELO
         (depositor, ) = randomSigner(1000 ether);
 
-        // Phase 3: Create 2 validator groups, each with 1 validator member
-        address validator0;
-        address validator1;
+        group0 = _registerGroupWithValidator();
+        group1 = _registerGroupWithValidator();
 
-        (group0, ) = randomSigner(21000 ether);
-        registerValidatorGroup(mockValidators, mockLockedGold, group0, 1);
-        (validator0, ) = randomSigner(11000 ether);
-        registerValidatorAndAddToGroupMembers(mockValidators, mockLockedGold, group0, validator0);
-
-        (group1, ) = randomSigner(21000 ether);
-        registerValidatorGroup(mockValidators, mockLockedGold, group1, 1);
-        (validator1, ) = randomSigner(11000 ether);
-        registerValidatorAndAddToGroupMembers(mockValidators, mockLockedGold, group1, validator1);
-
-        // Phase 4: Elect mock validator groups and set health
-        // MockValidators lacks getValidatorGroup(), so we cannot use
-        // updateGroupHealth. Instead: set elected validators, then set validity directly.
         address[] memory groups = new address[](2);
         groups[0] = group0;
         groups[1] = group1;
-        electMockValidatorGroupsAndUpdate(
-            mockValidators,
-            address(mockGroupHealth),
-            groups,
-            false, // don't revoke
-            false  // DON'T update (MockValidators.getValidatorGroup doesn't exist)
-        );
-        mockGroupHealth.setGroupValidity(group0, true);
-        mockGroupHealth.setGroupValidity(group1, true);
+        electMockValidatorGroupsAndUpdate(mockGroupHealth, groups);
 
-        // Phase 5: Activate validators in DefaultStrategy
-        // FullTestManagerDeployHelper sets `owner` as DefaultStrategy owner (no MultiSig),
-        // so we call addActivatableGroup/activateGroup directly via prank.
-        DefaultStrategy ds = DefaultStrategy(address(mockDefaultStrategy));
-        vm.startPrank(owner);
+        _activateGroups(groups);
+    }
 
-        (address nextGroup, ) = ds.getGroupsTail();
+    /// @dev Ambiguous because both CeloTestHelper and DevchainHelper define it.
+    function mineToNextEpoch() internal override(CeloTestHelper, DevchainHelper) {
+        super.mineToNextEpoch();
+    }
 
-        ds.addActivatableGroup(group0);
-        ds.activateGroup(group0, address(0), nextGroup);
-        nextGroup = group0;
+    /// @dev Ambiguous because both CeloTestHelper and DevchainHelper define it.
+    function currentEpochNumber()
+        internal
+        view
+        override(CeloTestHelper, DevchainHelper)
+        returns (uint256)
+    {
+        return super.currentEpochNumber();
+    }
 
-        ds.addActivatableGroup(group1);
-        ds.activateGroup(group1, address(0), nextGroup);
+    /// @dev One validator group with a single validator member.
+    function _registerGroupWithValidator() private returns (address group) {
+        (group, ) = randomSigner(21_000 ether);
+        registerValidatorGroup(group, 1);
+        registerValidatorAndAddToGroupMembers(group, createWallet(11_000 ether));
+    }
 
-        vm.stopPrank();
+    /// @dev Ports `activateValidators(...)` from utils-validators.ts.
+    function _activateGroups(address[] memory groups) private {
+        (address nextGroup, ) = mockDefaultStrategy.getGroupsTail();
 
-        // Phase 6: Mock Election.getNumVotesReceivable to return max
-        // MockElection hardcodes getNumVotesReceivable() to 0, preventing any deposits.
-        // In the TS test, the real Celo Election contract handles this. We mock it here.
-        IVmMockCall(address(vm)).mockCall(
-            address(mockElection),
-            abi.encodeWithSelector(IElection.getNumVotesReceivable.selector),
-            abi.encode(type(uint256).max)
-        );
+        for (uint256 i = 0; i < groups.length; i++) {
+            require(mockGroupHealth.isGroupValid(groups[i]), "not a valid group");
+
+            vm.startPrank(owner);
+            mockDefaultStrategy.addActivatableGroup(groups[i]);
+            mockDefaultStrategy.activateGroup(groups[i], ADDRESS_ZERO, nextGroup);
+            vm.stopPrank();
+
+            nextGroup = groups[i];
+        }
     }
 
     /// @notice changeStrategy should NOT schedule transfers immediately; rebalance should.
-    /// @dev Migrated from: it("should NOT schedule transfers immediately on strategy change")
+    /// @dev Ports it("should NOT schedule transfers immediately on strategy change").
     function test_StrategyChange_ShouldNotScheduleTransfersImmediately() public {
         // Deposit to default strategy
         uint256 depositAmount = 100 ether;
