@@ -63,6 +63,11 @@ broadcast, and `--mnemonic-derivation-paths "m/44'/60'/0'/0/<i>"` to use another
 The device has to be unlocked with the Ethereum app open and blind signing enabled -
 every transaction here is a contract creation or a contract call.
 
+The Ledger path was not exercised during the Foundry migration (the scripts were run with
+a private key against a local devchain and read-only against mainnet). Before the first
+real use, run the script once without `--broadcast` with the device attached, and confirm
+the printed sender matches the expected Ledger account.
+
 ### Why `--disable-code-size-limit`
 
 Three implementations are larger than the 24576 byte EIP-170 limit under the production
