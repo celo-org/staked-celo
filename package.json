@@ -22,6 +22,8 @@
     "lint": "yarn run lint:sol",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
+    "fmt": "forge fmt test script",
+    "fmt:check": "forge fmt --check test script",
     "prepare": "husky install",
     "keys:decrypt": "bash scripts/key_placer.sh decrypt",
     "keys:encrypt": "bash scripts/key_placer.sh encrypt"
