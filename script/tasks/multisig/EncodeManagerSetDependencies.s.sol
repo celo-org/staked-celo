@@ -13,7 +13,7 @@ import "../lib/UpgradeProposalLib.sol";
  *      the deployment files, so that step has no counterpart here.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/multisig/EncodeManagerSetDependencies.s.sol --rpc-url celo

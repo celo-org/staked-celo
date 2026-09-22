@@ -22,15 +22,15 @@ re-running a single `deploy/NN_*.ts` file to push a new implementation.
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
 | `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The Hardhat era named accounts, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
-| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 44787 -> `alfajores`, 1101 -> `staging`, anything else -> `local`. |
+| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, anything else -> `local`. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 
-Either spelling of the owner set works, so the encrypted per-network env files
-(`yarn keys:decrypt`, `scripts/key_placer.sh`) can be used as they are. Forge itself only
-reads `.env`, so start the scripts through `scripts/with-env.sh <network> ...` (or
-`yarn with-env <network> ...`), which exports `.env.<network>` first, e.g.
-`scripts/with-env.sh staging forge script script/deploy/DeployCore.s.sol --rpc-url staging ...`;
+Either spelling of the owner set works, so a per-network env file written for the Hardhat
+tooling can be used as it is. Forge itself only reads `.env`, so start the scripts through
+`scripts/with-env.sh <network> ...` (or `yarn with-env <network> ...`), which exports
+`.env.<network>` first, e.g.
+`scripts/with-env.sh celo forge script script/deploy/DeployCore.s.sol --rpc-url celo ...`;
 variables already exported win over the file. `.env.example`
 shows the canonical form and keeps the legacy one commented out next to it. When neither
 yields a single owner the script stops with
@@ -331,7 +331,7 @@ it from `<Name>_Proxy.json` as
 | --- | --- |
 | `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `ETHERSCAN_API_KEY` (the name in `.env.example`) and `CELO_SCAN_API_KEY` (the Hardhat era one) are accepted too. Without one only Sourcify is used - it needs no key. |
 | `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
-| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220), `sepolia` (11142220), `alfajores` (44787) and `staging` (1101); for anything else it asks the node. |
+| `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220) and `sepolia` (11142220); for anything else it asks the node. |
 | `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
 
 ### Why this works with contracts deployed before the port
@@ -392,9 +392,9 @@ forces the address in anyway, for a verifier that cannot.
 ### Networks
 
 Celoscan is served by the unified **Etherscan V2** API: one host, `https://api.etherscan.io/v2/api`,
-with the chain picked by a `chainid` query parameter. The per-explorer V1 endpoints it
-replaced (`api.celoscan.io`, `api-alfajores.celoscan.io`) were retired in August 2025 and
-now answer every request with `You are using a deprecated V1 endpoint`. An
+with the chain picked by a `chainid` query parameter. The per-explorer V1 endpoint it
+replaced (`api.celoscan.io`) was retired in August 2025 and now answers every request
+with `You are using a deprecated V1 endpoint`. An
 **etherscan.io** API key is what V2 authenticates with, and one key covers every chain in
 it.
 
@@ -407,23 +407,13 @@ parameter itself and covers the chains forge has no entry for.
 | --- | --- | --- | --- |
 | `celo` | 42220 | yes | `https://api.etherscan.io/v2/api?chainid=42220` |
 | `sepolia` (Celo Sepolia) | 11142220 | yes | `https://api.etherscan.io/v2/api?chainid=11142220` |
-| `alfajores` | 44787 | no, the chain is not in `sourcify.dev/server/chains` | not covered, see below |
-| `staging` | 1101 | no | none |
 
 Mainnet and Celo Sepolia are fully covered. `sourcify.dev/server/chains` lists Celo
 Mainnet and `Celo Sepolia Testnet` (11142220) as supported, and Etherscan V2 lists both
 (`https://api.etherscan.io/v2/chainlist`).
 
-Alfajores is the one being retired, and neither verifier covers it: Sourcify has no entry
-for 44787 at all (it does list Baklava, 62320, as unsupported), and a submission to
-Etherscan V2 comes back as `Missing or unsupported chainid parameter`. That leaves
-`deployments/alfajores/` with no verifier; the script still builds the command, which
-starts working again the day the chain is listed. New testnet deployments belong on Celo
-Sepolia instead. `staging` is never described beyond its RPC URL in
-the Hardhat config; its chain id, 1101, comes from
-its `lib/helpers/interfaceHelper.ts`, which is how the Hardhat tooling told the network
-apart. No public explorer covers it, so its records can only be verified by pointing
-`CHAIN_ID` and `ETH_RPC_URL` at a service that supports it.
+Any other chain needs `CHAIN_ID` and `ETH_RPC_URL`, and is only verifiable if a service
+covers it.
 
 ## Local devchain
 

@@ -13,9 +13,9 @@ import "./TaskInterfaces.sol";
  *      `forge script --ledger | --private-key | --unlocked --sender` instead.
  *
  *      Environment variables read here:
- *        NETWORK  optional, one of celo | sepolia | alfajores | staging. Defaults to the
- *                 network matching the chain id (42220 -> celo, 11142220 -> sepolia,
- *                 44787 -> alfajores, 1101 -> staging).
+ *        NETWORK  optional, one of celo | sepolia | local. Defaults to the network
+ *                 matching the chain id (42220 -> celo, 11142220 -> sepolia,
+ *                 31337 -> local).
  */
 abstract contract TaskBase {
     /// @dev Foundry cheatcode address (same one forge-std uses).
@@ -33,14 +33,9 @@ abstract contract TaskBase {
     /// @notice Celo Sepolia testnet chain id. The current testnet.
     uint256 internal constant SEPOLIA_CHAIN_ID = 11142220;
 
-    /// @notice Alfajores testnet chain id. The testnet Celo Sepolia replaces.
-    uint256 internal constant ALFAJORES_CHAIN_ID = 44787;
-
-    /// @notice Staging chain id, as the Hardhat tooling knew it
-    ///         (the Hardhat era lib/helpers/interfaceHelper.ts).
-    /// @dev Default chain id of anvil (and Hardhat), where DeployCore writes deployments/local.
+    /// @notice Default chain id of anvil (and Hardhat), where DeployCore writes
+    ///         deployments/local.
     uint256 internal constant LOCAL_CHAIN_ID = 31337;
-    uint256 internal constant STAGING_CHAIN_ID = 1101;
 
     /**
      * @notice Name of the deployments directory to read contract addresses from.
@@ -56,12 +51,6 @@ abstract contract TaskBase {
         }
         if (block.chainid == SEPOLIA_CHAIN_ID) {
             return "sepolia";
-        }
-        if (block.chainid == ALFAJORES_CHAIN_ID) {
-            return "alfajores";
-        }
-        if (block.chainid == STAGING_CHAIN_ID) {
-            return "staging";
         }
         if (block.chainid == LOCAL_CHAIN_ID) {
             return "local";

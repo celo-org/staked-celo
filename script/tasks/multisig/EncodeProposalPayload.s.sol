@@ -18,7 +18,7 @@ import "../lib/PayloadLib.sol";
  *   ARGS                optional. Comma separated arguments; empty for a no-argument call.
  *   CONTRACT            optional. Deployment name, e.g. "Manager". When set, the address of
  *                       that deployment is printed as the proposal destination.
- *   NETWORK             optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK             optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   CONTRACT=Manager FUNCTION_SIGNATURE='upgradeTo(address)' ARGS=0x... \

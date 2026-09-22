@@ -10,7 +10,7 @@ import "../lib/AccountTaskLib.sol";
  *         `yarn hardhat stakedCelo:account:revoke`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/account/Revoke.s.sol --rpc-url celo --broadcast --ledger --sender <ledger address>

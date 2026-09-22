@@ -14,7 +14,7 @@ import "../lib/MultiSigTaskLib.sol";
  *   DESTINATIONS  required. Comma separated addresses the operations are targeted at.
  *   VALUES        required. Comma separated CELO values involved in the proposal.
  *   PAYLOADS      required. Comma separated hex payloads of the proposal.
- *   NETWORK       optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK       optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   DESTINATIONS=0xA,0xB VALUES=0,0 PAYLOADS=0x...,0x... \

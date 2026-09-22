@@ -9,7 +9,7 @@ import "../lib/TaskBase.sol";
  *         groups. Replaces `yarn hardhat stakedCelo:account:voteOverMax`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/account/CheckAllowedToVoteOverMaxNumberOfGroups.s.sol \

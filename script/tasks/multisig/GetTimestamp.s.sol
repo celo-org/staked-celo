@@ -10,7 +10,7 @@ import "../lib/TaskBase.sol";
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.
- *   NETWORK      optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK      optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   PROPOSAL_ID=3 forge script script/tasks/multisig/GetTimestamp.s.sol --rpc-url celo

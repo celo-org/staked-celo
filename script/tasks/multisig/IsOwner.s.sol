@@ -10,7 +10,7 @@ import "../lib/TaskBase.sol";
  *
  * Environment variables:
  *   OWNER_ADDRESS  required. The address of the multiSig contract owner.
- *   NETWORK        optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK        optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   OWNER_ADDRESS=0x... forge script script/tasks/multisig/IsOwner.s.sol --rpc-url celo

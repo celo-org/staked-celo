@@ -8,7 +8,7 @@ import "../lib/TaskBase.sol";
  * @notice Get multiSig owners. Replaces `yarn hardhat stakedCelo:multiSig:getOwners`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/multisig/GetOwners.s.sol --rpc-url celo

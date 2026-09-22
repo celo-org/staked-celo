@@ -12,10 +12,9 @@ import "../lib/UpgradeProposalLib.sol";
  *         `yarn hardhat stakedCelo:multiSig:update:v2:v3`.
  *
  * Environment variables:
- *   NETWORK             optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK             optional. Deployments directory: celo | sepolia | local.
  *   NEW_MULTISIG_OWNER  optional. Owner added by the proposal; defaults to the address the
- *                       Hardhat task hardcoded. The addOwner operation is skipped on
- *                       alfajores, as it was in the Hardhat task.
+ *                       Hardhat task hardcoded.
  *
  * Usage:
  *   forge script script/tasks/multisig/UpdateV2ToV3.s.sol --rpc-url celo
@@ -23,7 +22,7 @@ import "../lib/UpgradeProposalLib.sol";
 contract UpdateV2ToV3Script is TaskBase {
     using ProposalBuilder for ProposalBuilder.Proposal;
 
-    /// @dev The owner the Hardhat task added on every network except alfajores.
+    /// @dev The owner the Hardhat task added.
     address internal constant DEFAULT_NEW_OWNER = 0x01AAe13F65fB90B490E6614adE0bffFA57AC5bbc;
 
     /// @dev Minimum number of active groups the proposal sets on DefaultStrategy.
@@ -81,11 +80,8 @@ contract UpdateV2ToV3Script is TaskBase {
         }
     }
 
-    /// @dev The Hardhat task never added the owner on alfajores.
+    /// @dev MultiSig.addOwner for the new owner.
     function _addOwner(ProposalBuilder.Proposal memory proposal, address newOwner) private view {
-        if (keccak256(bytes(networkName())) == keccak256("alfajores")) {
-            return;
-        }
         require(newOwner != ADDRESS_ZERO, "Invalid Owner address");
         proposal.add(deploymentAddress("MultiSig"), UpgradeProposalLib.addOwnerPayload(newOwner));
     }

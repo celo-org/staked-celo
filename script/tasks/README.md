@@ -10,8 +10,7 @@ preserved.
 - Contract addresses come from `deployments/<network>/<Name>.json` (the `address` field of
   the hardhat-deploy files). The directory is picked by the `NETWORK` environment variable,
   defaulting to the network matching the chain id (42220 -> `celo`, 11142220 -> `sepolia`,
-  44787 -> `alfajores`, 1101 -> `staging`, 31337 -> `local`). Set `NETWORK` explicitly when running against a
-  fork.
+  31337 -> `local`). Set `NETWORK` explicitly when running against a fork.
 - Celo core contracts (Election, LockedGold, Governance, ...) are resolved through the
   Registry at `0x000000000000000000000000000000000000ce10`, the same way the protocol
   contracts resolve them.
@@ -38,11 +37,11 @@ Read-only scripts need no signer. Scripts that send transactions only simulate u
 ## Common flags
 
 ```
-forge script <script> --rpc-url <celo|sepolia|alfajores|staging|local> [--broadcast] [signer flags]
+forge script <script> --rpc-url <celo|sepolia|local> [--broadcast] [signer flags]
 ```
 
 `--rpc-url` accepts the aliases declared in `foundry.toml`. `sepolia` is Celo Sepolia
-(11142220), the current testnet; `alfajores` (44787) is the one it replaces.
+(11142220), the current testnet.
 
 ## MultiSig tasks
 
@@ -89,18 +88,17 @@ forge script <script> --rpc-url <celo|sepolia|alfajores|staging|local> [--broadc
 
 ## Environment variables
 
-The encrypted per-network files (`yarn keys:decrypt` writes `.env.staging` and
-`.env.alfajores`) are loaded by `scripts/with-env.sh <network> <command>`, since Forge
-only reads `.env` by itself:
+A per-network `.env.<network>` file is loaded by `scripts/with-env.sh <network> <command>`,
+since Forge only reads `.env` by itself:
 
 ```bash
-scripts/with-env.sh staging forge script script/tasks/multisig/GetOwners.s.sol --rpc-url staging
+scripts/with-env.sh celo forge script script/tasks/multisig/GetOwners.s.sol --rpc-url celo
 ```
 
 
 | Variable | Replaces | Format |
 | --- | --- | --- |
-| `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `sepolia`, `alfajores`, `staging` or `local`; optional, derived from the chain id (42220, 11142220, 44787, 1101, 31337) |
+| `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `sepolia` or `local`; optional, derived from the chain id (42220, 11142220, 31337) |
 | `DESTINATIONS` | `--destinations` | comma separated addresses |
 | `VALUES` | `--values` | comma separated integers (wei) |
 | `PAYLOADS` | `--payloads` | comma separated `0x` payloads |
@@ -119,27 +117,27 @@ scripts/with-env.sh staging forge script script/tasks/multisig/GetOwners.s.sol -
 
 ## Examples
 
-Prepare and submit a Manager `setDependencies` proposal on Alfajores with a Ledger:
+Prepare and submit a Manager `setDependencies` proposal on Celo Sepolia with a Ledger:
 
 ```bash
-NETWORK=alfajores forge script script/tasks/multisig/EncodeManagerSetDependencies.s.sol \
-  --rpc-url alfajores
+NETWORK=sepolia forge script script/tasks/multisig/EncodeManagerSetDependencies.s.sol \
+  --rpc-url sepolia
 
-NETWORK=alfajores \
+NETWORK=sepolia \
 DESTINATIONS=0x… VALUES=0 PAYLOADS=0x114e6b37… \
   forge script script/tasks/multisig/SubmitProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
+  --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 ```
 
 Confirm, schedule and execute it:
 
 ```bash
 PROPOSAL_ID=7 forge script script/tasks/multisig/ConfirmProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
+  --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 PROPOSAL_ID=7 forge script script/tasks/multisig/ScheduleProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
+  --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 PROPOSAL_ID=7 forge script script/tasks/multisig/ExecuteProposal.s.sol \
-  --rpc-url alfajores --broadcast --ledger --sender <ledger address>
+  --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 ```
 
 Run the daily account maintenance with a private key:

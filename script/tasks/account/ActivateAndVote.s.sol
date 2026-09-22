@@ -10,7 +10,7 @@ import "../lib/AccountTaskLib.sol";
  *         `yarn hardhat stakedCelo:account:activateAndVote`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/account/ActivateAndVote.s.sol --rpc-url celo \

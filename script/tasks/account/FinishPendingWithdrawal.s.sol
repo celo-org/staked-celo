@@ -11,7 +11,7 @@ import "../lib/AccountTaskLib.sol";
  *
  * Environment variables:
  *   BENEFICIARY  required. The address of the beneficiary to withdraw for.
- *   NETWORK      optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK      optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   BENEFICIARY=0x... forge script script/tasks/account/FinishPendingWithdrawal.s.sol \
