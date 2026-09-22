@@ -17,7 +17,6 @@ use_literal_content = true
 bytecode_hash = "ipfs"
 cbor_metadata = true
 celo = true
-ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
@@ -74,9 +73,3 @@ local = "http://localhost:8545"
 celo = { key = "${CELOSCAN_API_KEY}", chain = 42220 }
 sepolia = { key = "${CELOSCAN_API_KEY}", chain = 11142220 }
 
-[fuzz]
-runs = 256
-
-[invariant]
-runs = 256
-depth = 500
