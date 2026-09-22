@@ -1,5 +1,5 @@
 {
-  "comment": "Digests of the creation and runtime bytecode of every contract under contracts/. Regenerate with `forge build && scripts/bytecode-compat-check.py --update-reference scripts/bytecode-reference.json` whenever a contract change is intended, and review the resulting diff as carefully as the contract change.",
+  "comment": "Digests of the creation and runtime bytecode of every contract under contracts/. Regenerate with `forge build && scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-reference.json` whenever a contract change is intended, and review the resulting diff as carefully as the contract change.",
   "algorithm": "sha256 of the lowercase hex digits, without the 0x prefix",
   "contracts": {
     "contracts/Account.sol:Account": {

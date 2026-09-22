@@ -3,10 +3,10 @@
 # Verifies the deployed staked-CELO contracts from the sources in this repository.
 #
 # The production profile reproduces the build the Hardhat toolchain produced byte for
-# byte, metadata trailer included (see foundry.toml and scripts/bytecode-compat-check.py),
+# byte, metadata trailer included (see foundry.toml and scripts/bytecode-compat-check.ts),
 # so a contract deployed before the move to Foundry still verifies as a full match as
 # long as its source has not changed since. Run
-# `python3 scripts/bytecode-compat-check.py --deployments <network>` first to see which
+# `node scripts/bytecode-compat-check.ts --deployments <network>` first to see which
 # implementations the current sources still reproduce.
 #
 # For every contract the script verifies two addresses: the implementation from
@@ -160,7 +160,10 @@ fi
 # --- deployment records ------------------------------------------------------
 
 record_address() {
-  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("address") or "")' "$1"
+  node --input-type=module -e '
+import { readFileSync } from "node:fs";
+process.stdout.write(JSON.parse(readFileSync(process.argv[1], "utf8")).address || "");
+' "$1"
 }
 
 # Whether an address holds code on the target chain. Forge writes the deployment records
@@ -177,11 +180,12 @@ has_code() {
 # The constructor arguments of a deployment record, one per line. Numbers are printed in
 # the decimal form `cast abi-encode` expects; nothing is printed when there are none.
 record_args() {
-  python3 - "$1" <<'PY'
-import json, sys
-for arg in json.load(open(sys.argv[1])).get("args") or []:
-    print(arg if isinstance(arg, str) else json.dumps(arg))
-PY
+  node --input-type=module -e '
+import { readFileSync } from "node:fs";
+for (const arg of JSON.parse(readFileSync(process.argv[1], "utf8")).args || []) {
+  console.log(typeof arg === "string" ? arg : JSON.stringify(arg));
+}
+' "$1"
 }
 
 # The `constructor(...)` signature of a compiled contract, empty when it takes no
@@ -190,24 +194,20 @@ PY
 constructor_signature() {
   local artifact="out/$1.sol/$1.json"
   [[ -f $artifact ]] || die "no artifact $artifact; run forge build"
-  python3 - "$artifact" <<'PY'
-import json, sys
-
-
-def canonical(item):
-    """The ABI type of one input, with tuples spelled out as `(type,...)`."""
-    kind = item["type"]
-    if kind.startswith("tuple"):
-        inner = ",".join(canonical(component) for component in item["components"])
-        return "(%s)%s" % (inner, kind[len("tuple"):])
-    return kind
-
-
-for entry in json.load(open(sys.argv[1]))["abi"]:
-    if entry.get("type") == "constructor" and entry.get("inputs"):
-        print("constructor(%s)" % ",".join(canonical(i) for i in entry["inputs"]))
-        break
-PY
+  node --input-type=module -e '
+import { readFileSync } from "node:fs";
+// The ABI type of one input, with tuples spelled out as (type,...).
+const canonical = (item) =>
+  item.type.startsWith("tuple")
+    ? "(" + item.components.map((c) => canonical(c)).join(",") + ")" + item.type.slice(5)
+    : item.type;
+for (const entry of JSON.parse(readFileSync(process.argv[1], "utf8")).abi) {
+  if (entry.type === "constructor" && (entry.inputs || []).length) {
+    console.log("constructor(" + entry.inputs.map(canonical).join(",") + ")");
+    break;
+  }
+}
+' "$artifact"
 }
 
 # `record_args` as an array. bash 3.2, the version macOS ships, has neither `mapfile` nor
@@ -231,10 +231,12 @@ library_address() {
     return
   fi
   local from_strategy
-  from_strategy="$(python3 -c 'import json,sys
-try: d = json.load(open(sys.argv[1]))
-except OSError: d = {}
-print(d.get("libraries", {}).get(sys.argv[2]) or "")' \
+  from_strategy="$(node --input-type=module -e '
+import { existsSync, readFileSync } from "node:fs";
+const [file, name] = process.argv.slice(1);
+const record = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+process.stdout.write((record.libraries || {})[name] || "");
+' \
     "deployments/$NETWORK/DefaultStrategy_Implementation.json" "$LIBRARY_NAME")"
   if [[ -n $from_strategy ]]; then
     echo "$from_strategy"

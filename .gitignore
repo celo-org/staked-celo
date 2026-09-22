@@ -30,7 +30,3 @@ baseline/
 
 # forge script broadcast logs
 broadcast/
-
-
-# python bytecode caches (scripts/tests)
-__pycache__/

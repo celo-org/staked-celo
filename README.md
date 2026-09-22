@@ -87,12 +87,14 @@ Withdrawal flow:
 - **Foundry 1.8.1.** `mise.toml` pins it, so `mise install` followed by
   `eval "$(mise env -s zsh)"` is enough. Without mise: `foundryup -i 1.8.1`. The version is
   pinned because the compiler settings and the cheatcodes the suite uses must match CI.
-- **node and yarn**, for two things only: the Solidity linters (`yarn lint:sol`) and the
-  `@celo/devchain-anvil` package that `scripts/prepare-devchain.sh` extracts the test
-  fixture from. Nothing in the build, the tests or the deployment runs on node. The
-  package's version is pinned once, in `package.json`'s `devDependencies`; CI's fixture
-  cache key follows the same file.
-- **python3**, for `scripts/bytecode-compat-check.py` and `scripts/abi-compat-check.py`.
+- **Node 24 and yarn.** Everything under `scripts/` is TypeScript that node runs straight
+  from source with its native type stripping, which is why `package.json`'s `engines`
+  floor is 24; nothing compiles it, and nothing in the build, the tests or the deployment
+  runs on node either. yarn installs three things: the Solidity linters (`yarn lint:sol`),
+  `typescript` for `yarn typecheck`, and the `@celo/devchain-anvil` package that
+  `scripts/prepare-devchain.sh` extracts the test fixture from. That package's version is
+  pinned once, in `package.json`'s `devDependencies`; CI's fixture cache key follows the
+  same file.
 
 ```sh
 mise install && eval "$(mise env -s zsh)"
@@ -130,7 +132,7 @@ digest of the creation and runtime bytecode of every contract under `contracts/`
 
 ```sh
 forge build
-python3 scripts/bytecode-compat-check.py --reference scripts/bytecode-reference.json
+node scripts/bytecode-compat-check.ts --reference scripts/bytecode-reference.json
 ```
 
 CI runs this on every push. It fails on any contract edit and on any change to the compiler
@@ -139,7 +141,7 @@ contract change is intended, regenerate the reference in the same commit and rev
 diff as carefully as the contract diff:
 
 ```sh
-python3 scripts/bytecode-compat-check.py --update-reference scripts/bytecode-reference.json
+node scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-reference.json
 ```
 
 `yarn bytecode:check` is an alias for the checking form.
@@ -166,11 +168,14 @@ upgrading, currently `releases/4`. CI builds that release with the current toolc
 compares the two `out/` directories:
 
 ```sh
-python3 scripts/abi-compat-check.py --baseline baseline/out --current out
+node scripts/abi-compat-check.ts --baseline baseline/out --current out
 ```
 
 This replaces the Hardhat-based `@celo/contract-compatibility-check` and keeps its contract
-exclusion list. See the `compatibility` job in
+exclusion list. Its rules are the only thing standing between an upgrade and a corrupted
+proxy, so they carry their own unit tests: `yarn test:scripts` (`node --test
+'scripts/tests/**/*.test.ts'`), which CI runs ahead of the two builds. See the
+`compatibility` job in
 [.github/workflows/solidity.yml](.github/workflows/solidity.yml) for how the baseline is
 checked out and overlaid.
 
@@ -235,7 +240,7 @@ worked examples for submitting, confirming, scheduling and executing a MultiSig 
 
 ## Linting
 
-Solidity only, and the tree decides the tool. `contracts/` is formatted by prettier and
+For Solidity the tree decides the tool. `contracts/` is formatted by prettier and
 linted by solhint; `test/` and `script/` are formatted by `forge fmt`. The two formatters
 disagree, so neither is ever pointed at the other's tree: `contracts/` is listed in the
 `ignore` list under `[fmt]` in [foundry.toml](foundry.toml), and `test/` and `script/` are
@@ -243,15 +248,22 @@ outside prettier's glob and listed in [.solhintignore](.solhintignore). The spli
 because the solhint rules (ordering, `func-name-mixedcase`, line length) are written for
 production contracts, while the test-suite follows the forge-std conventions.
 
+The TypeScript under `scripts/` is formatted by prettier too, and `tsc` is what type-checks
+it: node strips the types to run it, so nothing else ever looks at them.
+
 ```sh
 yarn lint:sol      # contracts/: format and fix
 yarn lint:sol:ci   # contracts/: check only, what CI runs
 yarn fmt           # test/ and script/: format
 yarn fmt:check     # test/ and script/: check only, what CI runs
+yarn lint:ts       # scripts/: format
+yarn lint:ts:ci    # scripts/: check only, what CI runs
+yarn typecheck     # scripts/: tsc --noEmit
+yarn lint          # contracts/ and scripts/: lint:sol and lint:ts
 ```
 
-A husky pre-commit hook runs `lint-staged` on staged `*.sol` files. Set
-`STAKED_CELO_DISABLE_PRECOMIT=1` to skip it.
+A husky pre-commit hook runs `lint-staged` on staged `*.sol` and `scripts/**/*.ts` files.
+Set `STAKED_CELO_DISABLE_PRECOMIT=1` to skip it.
 
 ## CI
 
@@ -260,10 +272,10 @@ jobs on every push and pull request:
 
 | Job | What it does |
 | --- | --- |
-| `lint` | `yarn lint:sol:ci` - prettier and solhint over `contracts/` - and `yarn fmt:check` - `forge fmt` over `test/` and `script/` |
+| `lint` | `yarn lint:sol:ci` - prettier and solhint over `contracts/` - `yarn fmt:check` - `forge fmt` over `test/` and `script/` - plus `yarn typecheck` and `yarn lint:ts:ci` over `scripts/` |
 | `test` | prepares the devchain fixture, `forge build`, `forge test -vvv` |
-| `bytecode` | `scripts/bytecode-compat-check.py` against the pinned reference |
-| `compatibility` | `scripts/abi-compat-check.py` against `releases/4` |
+| `bytecode` | `scripts/bytecode-compat-check.ts` against the pinned reference |
+| `compatibility` | `yarn test:scripts`, then `scripts/abi-compat-check.ts` against `releases/4` |
 
 ## Hardhat era code
 

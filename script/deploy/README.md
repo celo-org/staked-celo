@@ -338,13 +338,13 @@ it from `<Name>_Proxy.json` as
 
 The production profile reproduces the Hardhat build byte for byte, metadata trailer
 included - that is what `foundry.toml` pins (`solc 0.8.11`, `evm istanbul`, optimizer off,
-`use_literal_content`, `bytecode_hash = "ipfs"`) and what `scripts/bytecode-compat-check.py`
+`use_literal_content`, `bytecode_hash = "ipfs"`) and what `scripts/bytecode-compat-check.ts`
 checks on every CI run. A contract deployed by the Hardhat tooling therefore still verifies
 as a full match from these sources, as long as the source itself has not changed since it
 was deployed. Check which implementations still qualify before submitting anything:
 
 ```sh
-python3 scripts/bytecode-compat-check.py --deployments celo
+node scripts/bytecode-compat-check.ts --deployments celo
 ```
 
 Contracts reported as `DIFF` there have been edited since they were deployed and will come
@@ -424,20 +424,24 @@ that. `anvil --load-state` on the original `l2-devchain.json` is not an option; 
 1.8.1 rejects the 716 MB snapshot.
 
 ```sh
-python3 - <<'PY'
-import json
-alloc = json.load(open("test/devchain/allocs.json"))
-meta = json.load(open("test/devchain/meta.json"))
-for account in alloc.values():
-    account["nonce"] = hex(int(str(account["nonce"]), 0))
-json.dump({
-    "config": {"chainId": 31337},
-    "timestamp": hex(meta["timestamp"]),
-    "gasLimit": "0x1c9c380",
-    "difficulty": "0x0",
-    "alloc": alloc,
-}, open("/tmp/devchain-genesis.json", "w"))
-PY
+node --input-type=module -e '
+import { readFileSync, writeFileSync } from "node:fs";
+const alloc = JSON.parse(readFileSync("test/devchain/allocs.json", "utf8"));
+const meta = JSON.parse(readFileSync("test/devchain/meta.json", "utf8"));
+for (const account of Object.values(alloc)) {
+  account.nonce = "0x" + BigInt(account.nonce).toString(16);
+}
+writeFileSync(
+  "/tmp/devchain-genesis.json",
+  JSON.stringify({
+    config: { chainId: 31337 },
+    timestamp: "0x" + meta.timestamp.toString(16),
+    gasLimit: "0x1c9c380",
+    difficulty: "0x0",
+    alloc,
+  })
+);
+'
 
 anvil --celo --disable-code-size-limit --init /tmp/devchain-genesis.json
 ```

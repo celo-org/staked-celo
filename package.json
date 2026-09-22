@@ -2,26 +2,36 @@
   "name": "staked-celo",
   "version": "1.0.0",
   "description": "A liquid staking derivative for CELO",
+  "type": "module",
   "repository": {
     "url": "https://github.com/celo-org/staked-celo"
   },
+  "engines": {
+    "node": ">=24"
+  },
   "devDependencies": {
     "@celo/devchain-anvil": "17.0.7",
+    "@types/node": "^24",
     "husky": ">=6",
     "lint-staged": ">=10",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "1.0.0-beta.19",
-    "solhint": "git+https://github.com/celo-org/solhint.git"
+    "solhint": "git+https://github.com/celo-org/solhint.git",
+    "typescript": "^5.9"
   },
   "scripts": {
     "build": "forge build",
     "test": "forge test",
+    "test:scripts": "node --test 'scripts/tests/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
     "prepare-devchain": "scripts/prepare-devchain.sh",
     "verify": "scripts/verify-contracts.sh",
-    "bytecode:check": "python3 scripts/bytecode-compat-check.py --reference scripts/bytecode-reference.json",
-    "lint": "yarn run lint:sol",
+    "bytecode:check": "node scripts/bytecode-compat-check.ts --reference scripts/bytecode-reference.json",
+    "lint": "yarn run lint:sol && yarn run lint:ts",
     "lint:sol": "prettier --write contracts/*.sol contracts/**/*.sol && solhint **/*.sol --fix --max-warnings 0",
     "lint:sol:ci": "prettier --check contracts/*.sol contracts/**/*.sol && solhint **/*.sol --max-warnings 0",
+    "lint:ts": "prettier --write 'scripts/**/*.ts'",
+    "lint:ts:ci": "prettier --check 'scripts/**/*.ts'",
     "fmt": "forge fmt test script",
     "fmt:check": "forge fmt --check test script",
     "prepare": "husky install",
@@ -33,6 +43,7 @@
   "license": "LGPL-3.0-only",
   "lint-staged": {
     "contracts/**/*.sol": "yarn lint:sol",
-    "{test,script}/**/*.sol": "forge fmt"
+    "{test,script}/**/*.sol": "forge fmt",
+    "scripts/**/*.ts": "prettier --write"
   }
 }

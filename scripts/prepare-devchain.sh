@@ -22,17 +22,23 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$ROOT/test/devchain"
 PKG="@celo/devchain-anvil"
 
+# Prints one top-level field of a JSON file, empty when it is not set. node is a
+# prerequisite of this script anyway: `npm pack` below runs on it.
+json_field() {
+  node --input-type=module -e '
+import { readFileSync } from "node:fs";
+const [file, field] = process.argv.slice(1);
+process.stdout.write(String(JSON.parse(readFileSync(file, "utf8"))[field] ?? ""));
+' "$1" "$2"
+}
+
 # package.json is the single source of truth for the pinned version.
 # DEVCHAIN_ANVIL_VERSION overrides it, e.g. to try a bump before editing package.json.
-DEFAULT_VERSION="$(python3 - "$ROOT/package.json" <<'EOF'
-import json, sys
-
-with open(sys.argv[1]) as f:
-    pkg = json.load(f)
-
-print(pkg["devDependencies"]["@celo/devchain-anvil"].lstrip("^~"))
-EOF
-)"
+DEFAULT_VERSION="$(node --input-type=module -e '
+import { readFileSync } from "node:fs";
+const pkg = JSON.parse(readFileSync(process.argv[1], "utf8"));
+process.stdout.write(pkg.devDependencies["@celo/devchain-anvil"].replace(/^[\^~]+/, ""));
+' "$ROOT/package.json")"
 VERSION="${DEVCHAIN_ANVIL_VERSION:-$DEFAULT_VERSION}"
 STATE="${DEVCHAIN_STATE:-}"
 
@@ -51,7 +57,7 @@ mkdir -p "$OUT_DIR"
 # An explicit state file may be regenerated in place, so it is always re-extracted; the
 # cache only serves the pinned package, whose contents are fixed by its version.
 if [[ -z "$STATE" && -f "$OUT_DIR/allocs.json" && -f "$OUT_DIR/meta.json" && "${FORCE:-0}" != "1" ]]; then
-  RECORDED="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("source",""))' "$OUT_DIR/meta.json")"
+  RECORDED="$(json_field "$OUT_DIR/meta.json" source)"
   if [[ "$RECORDED" == "$SOURCE" ]]; then
     echo "devchain fixture already present in $OUT_DIR and up to date (set FORCE=1 to regenerate)"
     exit 0
@@ -62,7 +68,7 @@ fi
 if [[ -z "$STATE" ]]; then
   INSTALLED=""
   if [[ -f "$ROOT/node_modules/$PKG/package.json" ]]; then
-    INSTALLED="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("version",""))' "$ROOT/node_modules/$PKG/package.json")"
+    INSTALLED="$(json_field "$ROOT/node_modules/$PKG/package.json" version)"
   fi
   # The installed package is only a shortcut when it is the requested version.
   if [[ "$INSTALLED" == "$VERSION" && -f "$ROOT/node_modules/$PKG/devchain/l2-devchain.json" ]]; then
@@ -77,35 +83,7 @@ if [[ -z "$STATE" ]]; then
 fi
 
 echo "extracting allocs from $STATE ..."
-python3 - "$STATE" "$OUT_DIR" "$SOURCE" <<'EOF'
-import json, sys, os
-
-state_path, out_dir, source = sys.argv[1], sys.argv[2], sys.argv[3]
-state = json.load(open(state_path))
-
-allocs = {}
-for address, record in state["accounts"].items():
-    entry = {"balance": record.get("balance", "0x0"), "nonce": record.get("nonce", 0)}
-    code = record.get("code")
-    if code and code != "0x":
-        entry["code"] = code
-    storage = record.get("storage") or {}
-    if storage:
-        entry["storage"] = storage
-    allocs[address] = entry
-
-with open(os.path.join(out_dir, "allocs.json"), "w") as f:
-    json.dump(allocs, f, separators=(",", ":"))
-
-meta = {
-    "blockNumber": int(state["block"]["number"], 16),
-    "timestamp": int(state["block"]["timestamp"], 16),
-    "bestBlockNumber": state.get("best_block_number", 0),
-    "source": source,
-}
-with open(os.path.join(out_dir, "meta.json"), "w") as f:
-    json.dump(meta, f, indent=2)
-    f.write("\n")
-
-print(f"wrote {len(allocs)} accounts to {out_dir}/allocs.json; block {meta['blockNumber']} ts {meta['timestamp']}")
-EOF
+# The pinned state dump is ~700 MB: the extractor holds the whole document in one
+# buffer and builds the alloc map beside it, so node is given a heap to match.
+node --max-old-space-size=8192 "$ROOT/scripts/lib/extract-devchain-allocs.ts" \
+  "$STATE" "$OUT_DIR" "$SOURCE"

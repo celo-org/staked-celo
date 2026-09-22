@@ -6,7 +6,7 @@
 # "@openzeppelin/contracts-upgradeable/...". Keeping the sources at exactly that
 # path (instead of a Foundry remapping into lib/) makes the solc source-unit names
 # identical to the ones Hardhat used, which keeps the metadata hash appended to the
-# bytecode identical. scripts/bytecode-compat-check.py verifies this.
+# bytecode identical. scripts/bytecode-compat-check.ts verifies this.
 #
 # Usage: scripts/vendor-openzeppelin.sh [--root <dir>] [--no-prune]
 #
@@ -80,12 +80,12 @@ done
 pinned_version() {
   local package="$1"
   [ -f "$ROOT/package.json" ] || return 0
-  node -e '
-    const fs = require("fs");
+  node --input-type=module -e '
+    import { readFileSync } from "node:fs";
     const [file, name] = process.argv.slice(1);
     let pkg;
     try {
-      pkg = JSON.parse(fs.readFileSync(file, "utf8"));
+      pkg = JSON.parse(readFileSync(file, "utf8"));
     } catch (error) {
       process.exit(0);
     }
@@ -140,47 +140,7 @@ prune() {
     exit 1
   fi
 
-  python3 - "$ROOT" "$TMP/prune-out/build-info" <<'PY'
-import json
-import pathlib
-import sys
-
-root, build_info = (pathlib.Path(argument) for argument in sys.argv[1:3])
-
-infos = sorted(build_info.glob("*.json"))
-if not infos:
-    sys.exit("no build-info written to %s" % build_info)
-
-# The standard-json input of a compilation lists every source unit solc was handed,
-# transitive imports included, under the same "@openzeppelin/..." names the contracts
-# import. One build-info file per compiler invocation, so the sets are unioned.
-used = set()
-for info in infos:
-    build = json.loads(info.read_text())
-    # source_id_to_path is the cheap one; input.sources names the same units for
-    # build-info versions written before it existed.
-    by_id = build.get("source_id_to_path")
-    names = by_id.values() if by_id else build["input"]["sources"].keys()
-    used.update(name for name in names if name.startswith("@openzeppelin/"))
-
-if not used:
-    sys.exit("the build imports no @openzeppelin source; refusing to empty the tree")
-
-kept = removed = 0
-for source in sorted(root.glob("@openzeppelin/**/*.sol")):
-    if source.relative_to(root).as_posix() in used:
-        kept += 1
-    else:
-        source.unlink()
-        removed += 1
-
-# Deepest first, so a directory emptied by its own subdirectories goes too.
-for directory in sorted(root.glob("@openzeppelin/**/*"), reverse=True):
-    if directory.is_dir() and not any(directory.iterdir()):
-        directory.rmdir()
-
-print("pruned @openzeppelin: kept %d imported sources, removed %d unused" % (kept, removed))
-PY
+  node "$ROOT/scripts/lib/prune-vendored-openzeppelin.ts" "$ROOT" "$TMP/prune-out/build-info"
 }
 
 vendor "@openzeppelin/contracts" "$CONTRACTS_VERSION" "$ROOT/@openzeppelin/contracts"

@@ -24,16 +24,26 @@ jobs:
       - name: Checkout commit
         uses: actions/checkout@v4
 
-      # package.json carries the lint tooling only (prettier, solhint) plus the
-      # devchain fixture package, so this tracks a supported release.
+      # package.json carries the lint and typecheck tooling (prettier, solhint,
+      # typescript) plus the devchain fixture package. The version is the one its
+      # `engines` field requires: the scripts are TypeScript run by node's native type
+      # stripping, which needs node 24.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: "24.x"
           cache: yarn
 
       - name: Install dependencies
         run: yarn
+
+      # Nothing compiles the scripts - node strips their types and runs them - so tsc is
+      # what checks them, and prettier is what keeps them formatted.
+      - name: Typecheck the scripts
+        run: yarn typecheck
+
+      - name: Check TypeScript formatting
+        run: yarn lint:ts:ci
 
       # prettier and solhint cover contracts/ only. `forge fmt` is never pointed at that
       # tree: its formatting differs from prettier-plugin-solidity, and the contracts are
@@ -64,13 +74,15 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
 
-      # The devchain fixture is extracted from an npm package, so node is needed even
-      # though nothing in the test-suite itself runs on node. Nothing from
-      # package.json is installed here, so this is free to track a supported release.
+      # The devchain fixture is extracted from an npm package by a TypeScript helper,
+      # so node is needed even though nothing in the test-suite itself runs on node.
+      # Node 24 is what package.json's `engines` requires: the helper is run straight
+      # from source by node's native type stripping. Nothing from package.json is
+      # installed here.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: "24.x"
 
       - name: Cache the Celo devchain fixture
         uses: actions/cache@v4
@@ -78,8 +90,9 @@ jobs:
           path: |
             test/devchain/allocs.json
             test/devchain/meta.json
-          # The pinned version lives in package.json, so the cache key follows it.
-          key: devchain-${{ hashFiles('package.json', 'scripts/prepare-devchain.sh') }}
+          # The pinned version lives in package.json, so the cache key follows it,
+          # along with the script and the extractor that shape the fixture.
+          key: devchain-${{ hashFiles('package.json', 'scripts/prepare-devchain.sh', 'scripts/lib/extract-devchain-allocs.ts') }}
 
       - name: Prepare the devchain fixture
         run: scripts/prepare-devchain.sh
@@ -102,6 +115,14 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
 
+      # The checker is TypeScript, run from source by node's native type stripping, so
+      # the version follows package.json's `engines`. Nothing from package.json is
+      # installed here.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+
       - name: Build
         run: forge build
 
@@ -117,9 +138,9 @@ jobs:
       # commit and review its diff as carefully as the contract diff:
       #
       #   forge build
-      #   python3 scripts/bytecode-compat-check.py --update-reference scripts/bytecode-reference.json
+      #   node scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-reference.json
       - name: Check bytecode against the pinned reference
-        run: python3 scripts/bytecode-compat-check.py --reference scripts/bytecode-reference.json
+        run: node scripts/bytecode-compat-check.ts --reference scripts/bytecode-reference.json
 
   compatibility:
     runs-on: ubuntu-latest
@@ -134,24 +155,25 @@ jobs:
           path: baseline
           ref: ${{ env.COMPATIBILITY_BASELINE }}
 
+      # The checker and scripts/vendor-openzeppelin.sh below both run on node, the
+      # version package.json's `engines` requires: they are TypeScript run from source
+      # by its native type stripping. Nothing from package.json is installed here.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+
       # The comparison below is the only thing standing between an upgrade and a
       # corrupted proxy, so its own rules are covered by unit tests. They build
-      # storage layouts in memory and need nothing but python, hence running them
+      # storage layouts in memory and need nothing but node, hence running them
       # here, ahead of the two builds.
       - name: Test the compatibility checker
-        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+        run: node --test 'scripts/tests/**/*.test.ts'
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: ${{ env.FOUNDRY_VERSION }}
-
-      # scripts/vendor-openzeppelin.sh below runs `npm pack`. Nothing from
-      # package.json is installed here, so this is free to track a supported release.
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
 
       # The baseline release predates the Foundry migration, so it carries no
       # foundry.toml and no vendored OpenZeppelin. Overlaying the current toolchain
@@ -184,4 +206,4 @@ jobs:
       # Storage layout and ABI compatibility for every upgradeable contract, i.e. the
       # check the Hardhat @celo/contract-compatibility-check job used to perform.
       - name: Check upgrade compatibility against ${{ env.COMPATIBILITY_BASELINE }}
-        run: python3 scripts/abi-compat-check.py --baseline baseline/out --current out
+        run: node scripts/abi-compat-check.ts --baseline baseline/out --current out
