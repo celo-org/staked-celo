@@ -15,7 +15,7 @@ import "../lib/ManagerTaskLib.sol";
  *   YES          optional, default 0. Yes vote weight.
  *   NO           optional, default 0. No vote weight.
  *   ABSTAIN      optional, default 0. Abstain vote weight.
- *   NETWORK      optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK      optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   PROPOSAL_ID=42 YES=1000 forge script script/tasks/manager/VoteProposal.s.sol \

@@ -11,7 +11,7 @@ import "../lib/FormatLib.sol";
  *         `yarn hardhat stakedCelo:manager:getGroups`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/manager/GetGroups.s.sol --rpc-url celo

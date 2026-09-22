@@ -55,11 +55,8 @@ sort_imports = false
 
 [rpc_endpoints]
 celo = "https://forno.celo.org"
-# `sepolia` is Celo Sepolia (11142220), the current testnet. Alfajores is being retired -
-# no explorer still verifies for it - but its node keeps answering, so it stays.
+# `sepolia` is Celo Sepolia (11142220), the current testnet.
 sepolia = "https://forno.celo-sepolia.celo-testnet.org/"
-alfajores = "https://alfajores-forno.celo-testnet.org/"
-staging = "https://staging-forno.celo-networks-dev.org/"
 local = "http://localhost:8545"
 
 [etherscan]

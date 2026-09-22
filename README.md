@@ -171,10 +171,12 @@ diff rather than being reported.
 
 `script/deploy/DeployCore.s.sol` deploys the whole protocol and
 `script/deploy/UpgradeImplementation.s.sol` pushes a new implementation for one proxy.
-Both read their parameters from the environment; `.env.example` lists the variables and
-`yarn keys:decrypt` fetches the encrypted environment files from GCP. Those files are
-per network (`.env.staging`, `.env.alfajores`) and Forge only loads `.env`, so start the
-scripts through `scripts/with-env.sh <network> <command>`, which exports the file first:
+Both read their parameters from the environment; `.env.example` lists the variables.
+`yarn keys:decrypt` and `yarn keys:encrypt` (`scripts/key_placer.sh`) move the per-network
+`.env.<network>` files in and out of GCP KMS; no network is configured there at the moment,
+so the command says so and does nothing until one is added back to the script. Forge only
+loads `.env`, so a per-network file is passed to the scripts through
+`scripts/with-env.sh <network> <command>`, which exports it first:
 
 ```sh
 scripts/with-env.sh celo forge script script/deploy/DeployCore.s.sol \

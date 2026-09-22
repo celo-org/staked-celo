@@ -11,7 +11,7 @@ import "../lib/UpgradeProposalLib.sol";
  *         `yarn hardhat stakedCelo:multiSig:update:v3:v4`.
  *
  * Environment variables:
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   forge script script/tasks/multisig/UpdateV3ToV4.s.sol --rpc-url celo

@@ -32,8 +32,8 @@
 #   scripts/verify-contracts.sh celo Manager
 #   CELOSCAN_API_KEY=... scripts/verify-contracts.sh --watch celo
 #
-# Known networks: celo (42220), sepolia (Celo Sepolia, 11142220), alfajores (44787) and
-# staging (1101). Anything else needs CHAIN_ID and ETH_RPC_URL.
+# Known networks: celo (42220) and sepolia (Celo Sepolia, 11142220). Anything else needs
+# CHAIN_ID and ETH_RPC_URL.
 #
 # Options:
 #   --dry-run         print the forge commands instead of running them
@@ -113,9 +113,9 @@ done
 # --- network -----------------------------------------------------------------
 
 # Celoscan is served by the unified Etherscan V2 API: one host for every chain, the chain
-# picked with the `chainid` query parameter. The per-explorer V1 endpoints it replaced
-# (api.celoscan.io, api-alfajores.celoscan.io) were retired in August 2025 and now answer
-# every request with "You are using a deprecated V1 endpoint". Forge does not append
+# picked with the `chainid` query parameter. The per-explorer V1 endpoint it replaced
+# (api.celoscan.io) was retired in August 2025 and now answers every request with
+# "You are using a deprecated V1 endpoint". Forge does not append
 # `chainid` to a --verifier-url it is handed, so the parameter is spelled out below.
 ETHERSCAN_V2_API="https://api.etherscan.io/v2/api"
 
@@ -131,21 +131,6 @@ case "$NETWORK" in
     CHAIN="11142220"
     RPC_URL="https://forno.celo-sepolia.celo-testnet.org/"
     HAS_EXPLORER=1
-    ;;
-  alfajores)
-    # Being retired: neither Etherscan V2 nor Sourcify covers 44787 any more. The
-    # commands are still built, and start working again if the chain is ever listed.
-    CHAIN="44787"
-    RPC_URL="https://alfajores-forno.celo-testnet.org/"
-    HAS_EXPLORER=1
-    ;;
-  staging)
-    # The Hardhat config described staging by its RPC URL alone, but the Hardhat
-    # tooling told the network apart by this chain id
-    # (its lib/helpers/interfaceHelper.ts, see git history before the Foundry migration). No public explorer covers it.
-    CHAIN="1101"
-    RPC_URL="https://staging-forno.celo-networks-dev.org/"
-    HAS_EXPLORER=0
     ;;
   *)
     CHAIN=""

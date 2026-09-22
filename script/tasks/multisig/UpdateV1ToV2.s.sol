@@ -18,7 +18,7 @@ import "../lib/UpgradeProposalLib.sol";
  * Environment variables:
  *   VALIDATOR_GROUPS  optional. Comma separated groups to activate in DefaultStrategy.
  *                     When unset, no activateGroup operation is added.
- *   NETWORK           optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK           optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   VALIDATOR_GROUPS=0xA,0xB forge script script/tasks/multisig/UpdateV1ToV2.s.sol \

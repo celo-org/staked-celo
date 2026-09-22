@@ -208,15 +208,6 @@ abstract contract DeployBase {
         if (block.chainid == 11142220) {
             return "sepolia";
         }
-        // Alfajores, the testnet Celo Sepolia replaces.
-        if (block.chainid == 44787) {
-            return "alfajores";
-        }
-        // The staging network, which the Hardhat tooling reached through its `local`
-        // network and told apart by this chain id (the Hardhat era lib/helpers/interfaceHelper.ts).
-        if (block.chainid == 1101) {
-            return "staging";
-        }
         return "local";
     }
 

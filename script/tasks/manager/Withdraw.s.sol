@@ -11,7 +11,7 @@ import "../lib/ManagerTaskLib.sol";
  *
  * Environment variables:
  *   AMOUNT   required. The amount of stCELO to withdraw, in wei.
- *   NETWORK  optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK  optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   AMOUNT=1000000000000000000 forge script script/tasks/manager/Withdraw.s.sol \

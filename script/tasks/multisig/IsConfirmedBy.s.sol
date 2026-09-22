@@ -12,7 +12,7 @@ import "../lib/TaskBase.sol";
  * Environment variables:
  *   PROPOSAL_ID    required. The ID of the proposal.
  *   OWNER_ADDRESS  required. The address of the multiSig contract owner.
- *   NETWORK        optional. Deployments directory: celo | alfajores | staging.
+ *   NETWORK        optional. Deployments directory: celo | sepolia | local.
  *
  * Usage:
  *   PROPOSAL_ID=3 OWNER_ADDRESS=0x... \

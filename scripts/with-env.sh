@@ -7,12 +7,12 @@
 # `yarn keys:decrypt` (scripts/key_placer.sh) produces keep the per-network layout, so
 # deploy and task scripts are started through this wrapper:
 #
-#   scripts/with-env.sh staging forge script script/deploy/DeployCore.s.sol --rpc-url staging ...
-#   scripts/with-env.sh alfajores forge script script/tasks/multisig/ConfirmProposal.s.sol ...
+#   scripts/with-env.sh celo forge script script/deploy/DeployCore.s.sol --rpc-url celo ...
+#   scripts/with-env.sh sepolia forge script script/tasks/multisig/ConfirmProposal.s.sol ...
 #
 # `local` (or an empty network) maps to `.env`, which Forge would load on its own.
 # Variables already present in the environment win over the file, so a one-off override
-# such as `VALIDATOR_GROUPS= scripts/with-env.sh staging ...` still works.
+# such as `VALIDATOR_GROUPS= scripts/with-env.sh celo ...` still works.
 #
 set -euo pipefail
 

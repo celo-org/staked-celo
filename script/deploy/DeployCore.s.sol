@@ -41,8 +41,7 @@ import {
  *                                        still carry.
  *      Optional:
  *        NETWORK                         Deployments directory name; defaults to the chain
- *                                        id mapping (celo / sepolia / alfajores / staging /
- *                                        local).
+ *                                        id mapping (celo / sepolia / local).
  *        VALIDATOR_GROUPS                Comma separated validator groups to make
  *                                        healthy and activate; empty by default.
  *
