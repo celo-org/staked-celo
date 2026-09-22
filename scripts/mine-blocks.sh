@@ -2,7 +2,7 @@
 #
 # Mines blocks on a local development node.
 #
-# Ports legacy/scripts/mineBlocks.ts, which `yarn deploy:devchain` ran right after
+# Ports the Hardhat era scripts/mineBlocks.ts, which `yarn deploy:devchain` ran right after
 # deploying so that the epoch based logic of the Celo core contracts had a few epochs
 # of history behind it. The Hardhat script sent one `evm_mine` per block; anvil mines
 # the whole batch in a single `anvil_mine` call.

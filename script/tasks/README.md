@@ -1,7 +1,7 @@
 # StakedCelo operational task scripts
 
-Foundry ports of the Hardhat tasks that used to live in `legacy/lib/multiSig-tasks`,
-`legacy/lib/manager-tasks` and `legacy/lib/account-tasks`. Every task has a counterpart here, and the
+Foundry ports of the Hardhat tasks that used to live in `lib/multiSig-tasks`,
+`lib/manager-tasks` and `lib/account-tasks` (in git history before the migration). Every task has a counterpart here, and the
 behaviour (which contracts are called, in which order, with which lesser/greater hints) is
 preserved.
 
@@ -113,7 +113,7 @@ scripts/with-env.sh staging forge script script/tasks/multisig/GetOwners.s.sol -
 | `FUNCTION_SIGNATURE` | `--function` | full signature, e.g. `upgradeTo(address)` |
 | `ARGS` | `--args` | comma separated arguments, empty for none |
 | `VALIDATOR_GROUPS` | `VALIDATOR_GROUPS` (same name) | comma separated addresses |
-| `NEW_MULTISIG_OWNER` | the owner hardcoded in `legacy/lib/multiSig-tasks/update-v2-to-v3.ts` | address, optional |
+| `NEW_MULTISIG_OWNER` | the owner hardcoded in `lib/multiSig-tasks/update-v2-to-v3.ts` | address, optional |
 
 `--log-level` has no counterpart: use forge's `-v` levels for trace detail.
 
@@ -194,7 +194,7 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
 | `lib/TaskBase.sol` | deployment lookup, Registry lookup, network resolution |
 | `lib/TaskInterfaces.sol` | minimal interfaces for the protocol and Celo core contracts |
 | `lib/ElectionLib.sol` | `findLesserAndGreaterAfterVote` and the voted group index lookup |
-| `lib/GroupsLib.sol` | the active and specific strategy group lists (`legacy/lib/task-utils.ts`) |
+| `lib/GroupsLib.sol` | the active and specific strategy group lists (`lib/task-utils.ts`) |
 | `lib/AccountTaskLib.sol` | activateAndVote, revoke, withdraw, finishPendingWithdrawal |
 | `lib/ManagerTaskLib.sol` | deposit, withdraw, voteProposal |
 | `lib/MultiSigTaskLib.sol` | submit, confirm, revoke, schedule, execute |

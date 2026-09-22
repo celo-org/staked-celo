@@ -8,7 +8,7 @@ import "../contracts/common/Errors.sol";
 
 /**
  * @title VoteTest
- * @notice Port of legacy/test-ts/vote.test.ts (`describe("Vote")`).
+ * @notice Port of the Hardhat era test-ts/vote.test.ts (`describe("Vote")`).
  * @dev Ports the `before()` hook of the TypeScript suite: ten validator groups with one
  *      validator each are registered against the real Celo core contracts of the devchain, the
  *      "TestVote" Hardhat fixture is deployed against the devchain registry

@@ -38,7 +38,7 @@ lint_on_build = false
 # The ignore globs need the trailing "/*": a bare "contracts/**" matches the nested files
 # but not the ten sitting directly under contracts/, which forge would then reformat.
 [fmt]
-ignore = ["contracts/**/*", "@openzeppelin/**/*", "legacy/**/*"]
+ignore = ["contracts/**/*", "@openzeppelin/**/*"]
 line_length = 100
 tab_width = 4
 bracket_spacing = false

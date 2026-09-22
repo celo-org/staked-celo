@@ -1,7 +1,7 @@
 # Foundry test-suite
 
-The tests are a 1:1 port of the former Hardhat/TypeScript suite (`test-ts/`, kept under
-`legacy/` after the migration). Every `it()` of the original suite maps to one
+The tests are a 1:1 port of the former Hardhat/TypeScript suite (`test-ts/`, removed with
+the migration and available in git history). Every `it()` of the original suite maps to one
 `function test_...()`; the original `describe` path is encoded in the function name, e.g.
 `describe("#deposit()") > describe("when there are active groups") > it("distributes votes")`
 becomes `test_deposit_WhenThereAreActiveGroups_DistributesVotes`.
@@ -15,7 +15,7 @@ becomes `test_deposit_WhenThereAreActiveGroups_DistributesVotes`.
 | `test/e2e/` | End-to-end tests that deploy the production stack and drive it against the Celo core contracts |
 | `test/devchain/` | Devchain fixture (`allocs.json`, `meta.json`, generated) and its smoke test |
 | `test/helpers/` | Shared abstract base contracts (see below) |
-| `test/helpers/deploy/` | Deployment fixtures mirroring `legacy/deploy/test/*.ts` and the production deploy scripts |
+| `test/helpers/deploy/` | Deployment fixtures mirroring the Hardhat era `deploy/test/*.ts` and the production deploy scripts |
 
 ## Toolchain constraints
 
@@ -38,7 +38,7 @@ becomes `test_deposit_WhenThereAreActiveGroups_DistributesVotes`.
 CeloTestHelper            constants, named accounts, epoch/time utils, strategy helpers (utils.ts)
 └── MultiSigHelper        submitAndExecuteMultiSigProposal (utils-multisig.ts)
     └── DevchainHelper    validator registration, voting, rewards against the *real* Celo contracts
-TestAccountDeployHelper   fixtures of legacy/deploy/test/*.ts (TestPausable, TestAccount, TestVote, ...)
+TestAccountDeployHelper   fixtures of the Hardhat era deploy/test/*.ts (TestPausable, TestAccount, TestVote, ...)
 FullTestManagerDeployHelper  the FullTestManager fixture (Manager + strategies + Account + StakedCelo + Vote)
 CoreDeployHelper          the production deployment sequence (MultiSig, all proxies, setDependencies, ownership)
 ```

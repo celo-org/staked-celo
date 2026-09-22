@@ -31,13 +31,6 @@ baseline/
 # forge script broadcast logs
 broadcast/
 
-# Build output of the frozen Hardhat toolchain under legacy/, in case it is
-# ever run for reference. Nothing in CI builds it.
-legacy/artifacts/
-legacy/cache/
-legacy/typechain-types/
-legacy/deployments/
-legacy/db/
 
 # python bytecode caches (scripts/tests)
 __pycache__/

@@ -6,7 +6,7 @@ import "./helpers/deploy/FullTestManagerDeployHelper.sol";
 
 /**
  * @title ManagerStrategyChangeTest
- * @notice Port of legacy/test-ts/manager-strategy-change.test.ts
+ * @notice Port of the Hardhat era test-ts/manager-strategy-change.test.ts
  *         (`describe("Manager strategy change: delayed transfer")`).
  * @dev Two validator groups with one validator each are registered against the real Celo core
  *      contracts of the devchain, elected on MockGroupHealth and activated in DefaultStrategy,

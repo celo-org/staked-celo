@@ -14,7 +14,7 @@ interface ICeloValidatorsMaxGroupSize {
 
 /**
  * @title GroupHealthTest
- * @notice Port of legacy/test-ts/group-health.test.ts (`describe("GroupHealth")`).
+ * @notice Port of the Hardhat era test-ts/group-health.test.ts (`describe("GroupHealth")`).
  * @dev Ports the `before()` hook of the TypeScript suite: ten validator groups with three
  *      validators each are registered against the real Celo core contracts of the devchain and
  *      MockGroupHealth is deployed against the devchain registry. The original pulled

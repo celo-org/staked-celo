@@ -7,8 +7,9 @@ Users can deposit CELO to the Staked Celo smart contract and receive stCELO toke
 return, allowing them to earn staking rewards.
 
 The repository is Foundry-first: contracts, tests, deployment and the operational tasks
-all run through `forge`. The Hardhat/TypeScript toolchain the project started with is
-frozen under [`legacy/`](legacy/README.md).
+all run through `forge`. The Hardhat/TypeScript toolchain the project started with was
+removed with the migration; it stays in git history, and every part of it has a Foundry
+replacement described below.
 
 ## Contracts
 
@@ -247,14 +248,12 @@ jobs on every push and pull request:
 | `bytecode` | `scripts/bytecode-compat-check.py` against the pinned reference |
 | `compatibility` | `scripts/abi-compat-check.py` against `releases/4` |
 
-## Legacy
+## Hardhat era code
 
-[`legacy/`](legacy/README.md) holds the Hardhat toolchain the project used before the
-Foundry migration: the Mocha test-suite (`legacy/test-ts/`), the hardhat-deploy scripts
-(`legacy/deploy/`), the Hardhat tasks (`legacy/lib/`), the ganache devchain tarballs and
-the TypeScript build configuration. It is frozen, not built and not run by CI; it is kept
-because it is what the current Foundry code was ported from. Its README maps each part to
-its replacement.
+The Mocha test-suite (`test-ts/`), the hardhat-deploy scripts (`deploy/`), the Hardhat
+tasks (`lib/`) and the ganache devchain snapshots were removed with the Foundry migration.
+They are in git history before that merge; the Foundry code under `test/`, `script/deploy`
+and `script/tasks` was ported from them 1:1, and the READMEs there name the original files.
 
 ## Audits
 

@@ -15,4 +15,3 @@ script/
 out/
 
 # Frozen Hardhat-era toolchain, kept for reference only.
-legacy/

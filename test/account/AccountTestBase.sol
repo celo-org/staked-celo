@@ -25,7 +25,7 @@ interface IVmExpectEmitFrom {
 
 /**
  * @title AccountTestBase
- * @notice Shared fixture for the port of legacy/test-ts/account.test.ts.
+ * @notice Shared fixture for the port of the Hardhat era test-ts/account.test.ts.
  * @dev Ports the `before()` hook of the TypeScript suite: three validator groups with one
  *      validator each are registered against the real Celo core contracts, the "TestAccount"
  *      Hardhat fixture (Manager + Account + MockGovernance) is deployed against the devchain

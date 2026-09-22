@@ -37,7 +37,7 @@ abstract contract TaskBase {
     uint256 internal constant ALFAJORES_CHAIN_ID = 44787;
 
     /// @notice Staging chain id, as the Hardhat tooling knew it
-    ///         (legacy/lib/helpers/interfaceHelper.ts).
+    ///         (the Hardhat era lib/helpers/interfaceHelper.ts).
     /// @dev Default chain id of anvil (and Hardhat), where DeployCore writes deployments/local.
     uint256 internal constant LOCAL_CHAIN_ID = 31337;
     uint256 internal constant STAGING_CHAIN_ID = 1101;

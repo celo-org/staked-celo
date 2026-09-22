@@ -14,7 +14,7 @@ are supported:
                             with --update-reference when a contract change is intended.
 
   --hardhat-artifacts DIR   Hardhat `artifacts/contracts` directory, produced by the frozen
-                            toolchain under legacy/. Every contract is compared on both
+                            toolchain, kept in git history before the Foundry migration. Every contract is compared on both
                             creation and runtime bytecode. This is the strict check that
                             originally proved the Foundry build reproduces the Hardhat one.
 

@@ -1,14 +1,14 @@
 # Foundry deployment scripts
 
-Forge port of the hardhat-deploy scripts in `legacy/deploy/`. `DeployCore.s.sol` replaces
-`yarn deploy` (`hardhat stakedCelo:deploy --tags core`, i.e. `legacy/deploy/00_multisig.ts`
-through `legacy/deploy/13_rebased_staked_celo.ts`), and `UpgradeImplementation.s.sol` replaces
-re-running a single `legacy/deploy/NN_*.ts` file to push a new implementation.
+Forge port of the Hardhat era hardhat-deploy scripts (`deploy/00` .. `deploy/13`, in git history). `DeployCore.s.sol` replaces
+`yarn deploy` (`hardhat stakedCelo:deploy --tags core`, i.e. `deploy/00_multisig.ts`
+through `deploy/13_rebased_staked_celo.ts`), and `UpgradeImplementation.s.sol` replaces
+re-running a single `deploy/NN_*.ts` file to push a new implementation.
 
 | File | Purpose |
 | --- | --- |
 | `DeployBase.s.sol` | Network resolution, deployment records, ERC1967 proxy helper, console logging. |
-| `DeployCore.s.sol` | Full protocol deployment: the `legacy/deploy/00` .. `legacy/deploy/13` sequence and the `forge script` entry point. |
+| `DeployCore.s.sol` | Full protocol deployment: the `deploy/00` .. `deploy/13` sequence and the `forge script` entry point. |
 | `UpgradeImplementation.s.sol` | New implementation for one proxy, upgraded directly or handed to the MultiSig. |
 
 ## Environment
@@ -124,7 +124,7 @@ anvil started with `--init <genesis>` as described below does have a base fee, s
 ### Validator groups
 
 `VALIDATOR_GROUPS` gives the protocol the groups it votes for on a first deployment, the
-same way it did in `legacy/deploy/05` and `legacy/deploy/11`:
+same way it did in `deploy/05` and `deploy/11`:
 
 - right after `GroupHealth` is deployed, `updateGroupHealth(group)` is called for every
   listed group, which records whether the group is a registered validator group with an
@@ -167,7 +167,7 @@ Error: Transaction Failure: 0x3312...
 ### Library linking
 
 `AddressSortedLinkedList` is deployed and linked by Forge automatically, so the "reuse the
-recorded library address" branch of `legacy/deploy/07_default_strategy.ts` has no equivalent
+recorded library address" branch of `deploy/07_default_strategy.ts` has no equivalent
 here. Pass
 `--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
 to reuse an already deployed library instead.
@@ -218,7 +218,7 @@ Manager: owned by MultiSig, propose setDependencies through the MultiSig
 Account: already owned by MultiSig
 ```
 
-This mirrors the `if (owner !== multisig.address)` guards in `legacy/deploy/08` to `legacy/deploy/12`.
+This mirrors the `if (owner !== multisig.address)` guards in `deploy/08` to `deploy/12`.
 Re-running against a fully deployed network therefore broadcasts nothing and ends with
 `Warning: No transactions to broadcast.`
 
@@ -242,7 +242,7 @@ The script deploys the new implementation, then:
 
 - if the broadcaster owns the proxy it calls `upgradeTo(newImplementation)` and refreshes
   `<Name>.json`, `<Name>_Proxy.json` and `<Name>_Implementation.json`;
-- otherwise (the normal case, since the MultiSig owns everything after `legacy/deploy/12`) it
+- otherwise (the normal case, since the MultiSig owns everything after `deploy/12`) it
   prints the destination, value and `upgradeTo(address)` payload to submit through the
   MultiSig, and only writes `<Name>_Implementation.json`:
 
@@ -420,8 +420,8 @@ Etherscan V2 comes back as `Missing or unsupported chainid parameter`. That leav
 `deployments/alfajores/` with no verifier; the script still builds the command, which
 starts working again the day the chain is listed. New testnet deployments belong on Celo
 Sepolia instead. `staging` is never described beyond its RPC URL in
-`legacy/hardhat.config.ts`; its chain id, 1101, comes from
-`legacy/lib/helpers/interfaceHelper.ts`, which is how the Hardhat tooling told the network
+the Hardhat config; its chain id, 1101, comes from
+its `lib/helpers/interfaceHelper.ts`, which is how the Hardhat tooling told the network
 apart. No public explorer covers it, so its records can only be verified by pointing
 `CHAIN_ID` and `ETH_RPC_URL` at a service that supports it.
 

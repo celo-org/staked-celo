@@ -213,7 +213,7 @@ abstract contract DeployBase {
             return "alfajores";
         }
         // The staging network, which the Hardhat tooling reached through its `local`
-        // network and told apart by this chain id (legacy/lib/helpers/interfaceHelper.ts).
+        // network and told apart by this chain id (the Hardhat era lib/helpers/interfaceHelper.ts).
         if (block.chainid == 1101) {
             return "staging";
         }

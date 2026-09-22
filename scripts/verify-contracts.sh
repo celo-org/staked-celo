@@ -140,9 +140,9 @@ case "$NETWORK" in
     HAS_EXPLORER=1
     ;;
   staging)
-    # legacy/hardhat.config.ts describes staging by its RPC URL alone, but the Hardhat
+    # The Hardhat config described staging by its RPC URL alone, but the Hardhat
     # tooling told the network apart by this chain id
-    # (legacy/lib/helpers/interfaceHelper.ts). No public explorer covers it.
+    # (its lib/helpers/interfaceHelper.ts, see git history before the Foundry migration). No public explorer covers it.
     CHAIN="1101"
     RPC_URL="https://staging-forno.celo-networks-dev.org/"
     HAS_EXPLORER=0
