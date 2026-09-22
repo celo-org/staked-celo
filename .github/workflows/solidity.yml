@@ -165,6 +165,9 @@ jobs:
       # OpenZeppelin storage variable would then cancel out of the diff rather than
       # being reported. The baseline imports the same "@openzeppelin/..." paths, so the
       # vendored copy resolves without remappings.
+      #
+      # Vendoring prunes what it extracts down to the sources the baseline imports, and
+      # runs forge to find them, so this step has to stay after the Foundry install above.
       - name: Overlay the current toolchain onto the baseline
         run: |
           cp foundry.toml baseline/foundry.toml
