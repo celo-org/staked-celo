@@ -3,6 +3,8 @@ src = "contracts"
 out = "out"
 # OpenZeppelin is vendored at ./@openzeppelin (scripts/vendor-openzeppelin.sh) so that
 # solc source-unit names match the Hardhat build and the bytecode stays byte-identical.
+# Only the files this build imports are vendored: the script prunes the rest of the two
+# packages away, and nothing solc never opened can be hashed into any metadata trailer.
 libs = []
 auto_detect_remappings = false
 remappings = []

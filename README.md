@@ -144,6 +144,21 @@ python3 scripts/bytecode-compat-check.py --update-reference scripts/bytecode-ref
 
 `yarn bytecode:check` is an alias for the checking form.
 
+The OpenZeppelin sources the contracts inherit from are covered by the same guarantee,
+which is why they are vendored at `./@openzeppelin` instead of remapped into `lib/`: solc
+hashes the source-unit names into the metadata trailer, and `@openzeppelin/contracts/...`
+is the name the Hardhat build used. `scripts/vendor-openzeppelin.sh` extracts the two
+packages and then prunes the tree to the files the build imports, currently 23 of the 272
+they ship. solc is told about the sources of the unit it compiles and about nothing else,
+so a file no compilation ever opened is a file no bytecode ever depended on, and deleting
+it moves neither the code nor the metadata hash - the check above is what proves it.
+
+The prune reads that set from a `forge build` of the checkout being vendored into, run
+into a temporary `out/` and thrown away afterwards. Running the script therefore neither
+disturbs nor requires an existing build, and it stays correct for the baseline checkout of
+the compatibility job below, whose older contracts may import a different set. Pass
+`--no-prune` to keep the full upstream tree.
+
 ## Upgrade compatibility
 
 The upgradeable contracts must stay storage- and ABI-compatible with the release they are
