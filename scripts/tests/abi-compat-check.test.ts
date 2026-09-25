@@ -16,6 +16,7 @@ import test from "node:test";
 import { main } from "../abi-compat-check.ts";
 import type {
   AbiEntry,
+  AbiParameter,
   Artifact,
   AstNode,
   StorageEntry,
@@ -118,7 +119,7 @@ function enumAst(contract: string, enumName: string, members: string[]): AstNode
 function enumVault(
   members: string[],
   astId: number,
-  options: { nested?: boolean; withAst?: boolean } = {}
+  options: { nested?: boolean; withAst?: boolean; abi?: AbiEntry[] } = {}
 ): Artifact {
   const nested = options.nested ?? false;
   const withAst = options.withAst ?? true;
@@ -144,8 +145,67 @@ function enumVault(
     "Vault",
     storage,
     types,
-    ABI,
+    options.abi ?? ABI,
     withAst ? enumAst("Vault", "Status", members) : null
+  );
+}
+
+/**
+ * The parameter solc emits for a `Vault.Mode`, spelled the way solc 0.8.11 spells it.
+ *
+ * An enum is erased to the uint8 it is encoded as, so the parameter's `type` - and with
+ * it the canonical signature and the selector - says nothing about the declaration.
+ * Only `internalType` still names it.
+ */
+function modeParam(name: string): AbiParameter {
+  return { internalType: "enum Vault.Mode", name, type: "uint8" };
+}
+
+const MODE_FUNCTION: AbiEntry = {
+  type: "function",
+  name: "setMode",
+  inputs: [modeParam("mode")],
+  outputs: [],
+  stateMutability: "nonpayable",
+};
+
+const MODE_EVENT: AbiEntry = {
+  type: "event",
+  name: "ModeChanged",
+  inputs: [{ indexed: false, ...modeParam("mode") }],
+  anonymous: false,
+};
+
+const MODE_ERROR: AbiEntry = { type: "error", name: "BadMode", inputs: [modeParam("mode")] };
+
+const MODE_TUPLE_FUNCTION: AbiEntry = {
+  type: "function",
+  name: "submit",
+  inputs: [
+    {
+      components: [{ internalType: "uint256", name: "amount", type: "uint256" }, modeParam("mode")],
+      internalType: "struct Vault.Request",
+      name: "request",
+      type: "tuple",
+    },
+  ],
+  outputs: [],
+  stateMutability: "nonpayable",
+};
+
+/**
+ * A Vault that never stores a `Mode`, only passes one across its ABI.
+ *
+ * Its layout holds a plain uint256, so nothing the storage walk reaches names the enum
+ * and the parameters are the only way to it.
+ */
+function abiEnumVault(members: string[], abi: AbiEntry[]): Artifact {
+  return artifact(
+    "Vault",
+    [slotEntry("total", 0, "t_uint256")],
+    { t_uint256: UINT256 },
+    abi,
+    enumAst("Vault", "Mode", members)
   );
 }
 
@@ -225,6 +285,26 @@ function valueTypeVault(
     storage,
     types,
     ABI,
+    withAst ? valueTypeAst("Vault", "Amount", underlying) : null
+  );
+}
+
+/** A Vault that never stores an `Amount`, only takes one across its ABI. */
+function abiValueTypeVault(underlying: string, withAst: boolean): Artifact {
+  const abi: AbiEntry[] = [
+    {
+      type: "function",
+      name: "credit",
+      inputs: [{ internalType: "Vault.Amount", name: "amount", type: underlying }],
+      outputs: [],
+      stateMutability: "nonpayable",
+    },
+  ];
+  return artifact(
+    "Vault",
+    [slotEntry("total", 0, "t_uint256")],
+    { t_uint256: UINT256 },
+    abi,
     withAst ? valueTypeAst("Vault", "Amount", underlying) : null
   );
 }
@@ -751,5 +831,88 @@ test("value type without a definition is a review", () => {
     { Vault: valueTypeVault("uint256", 5) },
     { Vault: valueTypeVault("uint256", 11, { withAst: false }) },
     "value type Vault.Amount at total is not in the current build's ASTs"
+  );
+});
+
+// An enum that never touches storage is reachable through the ABI alone, and there it
+// is a plain uint8: the signature, the selector and the event topic all stay put while
+// a caller compiled against the old declaration keeps sending the old ordinal for what
+// is now a different member.
+test("reordered enum used only in a function parameter is an error", () => {
+  assertRejected(
+    { Vault: abiEnumVault(["Manual", "Auto"], [MODE_FUNCTION]) },
+    { Vault: abiEnumVault(["Auto", "Manual"], [MODE_FUNCTION]) },
+    "enum Vault.Mode: value 0 was Manual, is now Auto"
+  );
+});
+
+test("reordered enum used only in an event parameter is an error", () => {
+  assertRejected(
+    { Vault: abiEnumVault(["Manual", "Auto"], [MODE_EVENT]) },
+    { Vault: abiEnumVault(["Auto", "Manual"], [MODE_EVENT]) },
+    "enum Vault.Mode: value 0 was Manual, is now Auto"
+  );
+});
+
+test("removed member of an enum used only in a function parameter is an error", () => {
+  assertRejected(
+    { Vault: abiEnumVault(["Manual", "Auto"], [MODE_FUNCTION]) },
+    { Vault: abiEnumVault(["Manual"], [MODE_FUNCTION]) },
+    "enum Vault.Mode: member Auto (value 1) was removed"
+  );
+});
+
+test("appended member of an enum used only in a custom error is a review", () => {
+  assertReviewOnly(
+    { Vault: abiEnumVault(["Manual", "Auto"], [MODE_ERROR]) },
+    { Vault: abiEnumVault(["Manual", "Auto", "Paused"], [MODE_ERROR]) },
+    "enum Vault.Mode gained member(s) Paused at the end"
+  );
+});
+
+// A tuple parameter carries its members in `components`, each with an `internalType`
+// of its own, so the walk has to descend into them.
+test("reordered enum inside a tuple parameter is an error", () => {
+  assertRejected(
+    { Vault: abiEnumVault(["Manual", "Auto"], [MODE_TUPLE_FUNCTION]) },
+    { Vault: abiEnumVault(["Auto", "Manual"], [MODE_TUPLE_FUNCTION]) },
+    "enum Vault.Mode: value 0 was Manual, is now Auto"
+  );
+});
+
+test("unchanged enum in a parameter is compatible", () => {
+  const abi = [MODE_FUNCTION, MODE_EVENT, MODE_ERROR, MODE_TUPLE_FUNCTION];
+  assertCompatible(
+    { Vault: abiEnumVault(["Manual", "Auto"], abi) },
+    { Vault: abiEnumVault(["Manual", "Auto"], abi) }
+  );
+});
+
+// An enum the layout and a parameter both name is one declaration, so the pair is
+// collected once and the reorder is reported once.
+test("enum reached through both the layout and a parameter is reported once", () => {
+  const setStatus: AbiEntry = {
+    type: "function",
+    name: "setStatus",
+    inputs: [{ internalType: "enum Vault.Status", name: "status", type: "uint8" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  };
+  const message = "enum Vault.Status: value 0 was Pending, is now Active";
+  const output = assertRejected(
+    { Vault: enumVault(["Pending", "Active"], 1, { abi: [setStatus] }) },
+    { Vault: enumVault(["Active", "Pending"], 7, { abi: [setStatus] }) },
+    message
+  );
+  assert.equal(output.split(message).length - 1, 1, output);
+});
+
+// A value type parameter is erased to what it wraps, so `internalType` is the only
+// place its name survives there too.
+test("value type used only in a parameter without a definition is a review", () => {
+  assertReviewOnly(
+    { Vault: abiValueTypeVault("uint256", true) },
+    { Vault: abiValueTypeVault("uint256", false) },
+    "value type Vault.Amount at credit(uint256).amount is not in the current build's ASTs"
   );
 });

@@ -46,6 +46,15 @@
  *                   payable flag, turns a plain transfer into a revert. Additions are
  *                   fine.
  *
+ *                   Every parameter's `internalType` is read along the way, tuple
+ *                   components included. solc erases an enum parameter to a uint8 and
+ *                   a user defined value type parameter to what it wraps, so neither
+ *                   the signature nor the selector moves when an enum's members are
+ *                   reordered; `internalType` is the only place the declaration is
+ *                   still named. The enums and value types the ABI names go through
+ *                   the same definition comparison as the ones the layout reaches, so
+ *                   an enum that never touches storage is covered too.
+ *
  * Findings come in two flavours: ERROR (breaks a deployed proxy, exit status 1) and
  * REVIEW (legal in principle but a human has to confirm the intent, exit status 0).
  *
@@ -78,6 +87,18 @@ const VALUE_TYPE = /^t_userDefinedValueType\(([^)]*)\)/;
 
 // The N of a `uint256[N]` label, which is how long a reserved gap is.
 const ARRAY_LENGTH = /^.*\[(\d+)\]$/;
+
+// The `[3][]` tail of an ABI parameter's `internalType`, e.g. `enum Vault.Mode[3][]`.
+// Only the element type names a declaration.
+const INTERNAL_ARRAY = /(?:\[\d*\])+$/;
+
+// An `internalType` naming one of Solidity's own types rather than a declared one.
+const ELEMENTARY = /^(?:u?int\d*|address(?: payable)?|bool|string|bytes\d*|u?fixed\d*(?:x\d+)?)$/;
+
+// A declared name, optionally qualified by the contract declaring it. That is all an
+// `internalType` consists of for a user defined value type, and all that is left of an
+// enum's once the `enum ` in front of it is gone.
+const DECLARED_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
 
 export const ERROR = "ERROR";
 export const REVIEW = "REVIEW";
@@ -117,6 +138,7 @@ export type StorageLayout = {
 export type AbiParameter = {
   name?: string;
   type: string;
+  internalType?: string;
   indexed?: boolean;
   components?: AbiParameter[];
 };
@@ -157,8 +179,9 @@ export type Definitions = {
 };
 
 /**
- * One enum or value type the layout walk reached, keyed by the pair of names the two
- * sides know it under. `cur` is null where the walk found something else opposite.
+ * One enum or value type the layout or the ABI walk reached, keyed by the pair of names
+ * the two sides know it under. `cur` is null where the walk found something else
+ * opposite.
  */
 export type ReachedEntry = {
   base: string;
@@ -171,6 +194,12 @@ export type Reached = Map<string, ReachedEntry>;
 export type ReachedSets = {
   enum: Reached;
   value_type: Reached;
+};
+
+/** The kind and qualified name an ABI parameter's `internalType` declares. */
+export type NamedType = {
+  kind: "enum" | "value_type";
+  name: string;
 };
 
 /** Orders strings by code unit, the way Python's `sorted` orders them by code point. */
@@ -683,12 +712,12 @@ export function checkType(
 }
 
 /**
- * Compares the member lists of the enums the layout walk reached.
+ * Compares the member lists of the enums the layout and the ABI walks reached.
  *
- * An enum is one byte in the layout whatever its members are, so reordering them
- * or inserting one in front silently changes what the values already in storage
- * mean. The member lists only exist in the ASTs, which is why they are looked up
- * per build and by name.
+ * An enum is one byte in the layout whatever its members are, and a plain uint8 in the
+ * ABI, so reordering them or inserting one in front silently changes what the values
+ * already in storage - and the ordinals callers already encode - stand for. The member
+ * lists only exist in the ASTs, which is why they are looked up per build and by name.
  */
 export function checkEnums(
   name: string,
@@ -747,7 +776,7 @@ export function checkEnums(
 }
 
 /**
- * Compares the underlying types of the value types the layout walk reached.
+ * Compares the underlying types of the value types the layout and the ABI walks reached.
  *
  * `type Amount is uint256` and `type Amount is int256` occupy the same slot under the
  * same name, and even share a type identifier once the AST id is stripped, so the
@@ -898,8 +927,7 @@ export function checkStorage(
   name: string,
   baseline: Artifact,
   current: Artifact,
-  baseDefinitions: Definitions,
-  curDefinitions: Definitions,
+  reached: ReachedSets,
   findings: Finding[]
 ): void {
   const baseLayout = baseline.storageLayout ?? {};
@@ -910,7 +938,6 @@ export function checkStorage(
   const curTypes = curLayout.types ?? {};
 
   const seenStructs = new Set<string>();
-  const reached: ReachedSets = { enum: new Map(), value_type: new Map() };
   const curAt = new Map<string, StorageEntry>();
   for (const entry of curStorage) {
     curAt.set(position(entry), entry);
@@ -983,14 +1010,6 @@ export function checkStorage(
   }
 
   checkGaps(name, baseStorage, baseTypes, curStorage, curTypes, findings);
-  checkEnums(name, reached.enum, baseDefinitions.enum, curDefinitions.enum, findings);
-  checkUserDefinedValueTypes(
-    name,
-    reached.value_type,
-    baseDefinitions.value_type,
-    curDefinitions.value_type,
-    findings
-  );
 
   const baseAt = new Set(baseStorage.map(position));
   const baseEnd = layoutEnd(baseStorage, baseTypes);
@@ -1007,6 +1026,72 @@ export function checkStorage(
         `baseline layout (which ends at slot ${baseEnd}); confirm it only consumes gap space`,
     });
   }
+}
+
+/**
+ * The enum or user defined value type an ABI parameter was declared as, or null.
+ *
+ * solc erases both from the parameter's `type`: an enum comes out as `uint8` and a value
+ * type as whatever it wraps, so reordering an enum's members leaves the canonical
+ * signature - and with it the selector and the event topic - exactly as it was, while
+ * every caller compiled against the old declaration keeps sending the old ordinal.
+ * `internalType` is the only place the declaration is still named: `enum Vault.Mode` for
+ * a contract level enum, `enum Mode` for a file level one, the bare canonical name for a
+ * value type, and any of those with an array tail where the parameter is an array.
+ *
+ * Everything else solc qualifies with a keyword (`struct Vault.Entry`, `contract IVault`)
+ * or spells out in full (a function type), so what is left unqualified is either one of
+ * Solidity's own types or a value type.
+ */
+export function declaredType(internalType: string | undefined): NamedType | null {
+  if (internalType === undefined) {
+    return null;
+  }
+  const element = internalType.replace(INTERNAL_ARRAY, "");
+  if (element.startsWith("enum ")) {
+    const named = element.slice("enum ".length);
+    return DECLARED_NAME.test(named) ? { kind: "enum", name: named } : null;
+  }
+  if (!DECLARED_NAME.test(element) || ELEMENTARY.test(element)) {
+    return null;
+  }
+  return { kind: "value_type", name: element };
+}
+
+/**
+ * Records what one parameter list was declared as, tuple components included.
+ *
+ * The two sides are walked in lockstep by position: the entry they belong to was matched
+ * by its canonical signature, so both lists have the same shape down to the last
+ * component. Names already reached through the storage layout are kept as they were
+ * found there, so an enum that is both stored and passed is reported once.
+ */
+function rememberParameters(
+  baseParams: AbiParameter[] | undefined,
+  curParams: AbiParameter[] | undefined,
+  reached: ReachedSets,
+  walked: string
+): void {
+  const base = baseParams ?? [];
+  const cur = curParams ?? [];
+  for (let index = 0; index < base.length; index += 1) {
+    const baseParam = base[index] as AbiParameter;
+    const curParam = cur[index];
+    const here = `${walked}.${baseParam.name || index}`;
+    const declared = declaredType(baseParam.internalType);
+    if (declared !== null) {
+      const opposite = declaredType(curParam?.internalType);
+      const sameKind = opposite !== null && opposite.kind === declared.kind;
+      remember(reached[declared.kind], declared.name, sameKind ? opposite.name : null, here);
+    }
+    rememberParameters(baseParam.components, curParam?.components, reached, here);
+  }
+}
+
+/** The enums and value types both sides of one matched function, event or error name. */
+function rememberSignature(sig: string, base: AbiEntry, cur: AbiEntry, reached: ReachedSets): void {
+  rememberParameters(base.inputs, cur.inputs, reached, sig);
+  rememberParameters(base.outputs, cur.outputs, reached, `${sig} returns`);
 }
 
 export function canonicalType(item: AbiParameter): string {
@@ -1107,6 +1192,7 @@ export function checkAbi(
   name: string,
   baseline: Artifact,
   current: Artifact,
+  reached: ReachedSets,
   findings: Finding[]
 ): void {
   const baseAbi = baseline.abi ?? [];
@@ -1121,6 +1207,7 @@ export function checkAbi(
       findings.push({ level: ERROR, name, message: `function ${sig} was removed` });
       continue;
     }
+    rememberSignature(sig, baseEntry, curEntry, reached);
     if (outputs(baseEntry) !== outputs(curEntry)) {
       findings.push({
         level: ERROR,
@@ -1144,7 +1231,10 @@ export function checkAbi(
     const curEntry = curEvents.get(sig);
     if (curEntry === undefined) {
       findings.push({ level: ERROR, name, message: `event ${sig} was removed` });
-    } else if (!sameFlags(indexedFlags(baseEntry), indexedFlags(curEntry))) {
+      continue;
+    }
+    rememberSignature(sig, baseEntry, curEntry, reached);
+    if (!sameFlags(indexedFlags(baseEntry), indexedFlags(curEntry))) {
       findings.push({
         level: ERROR,
         name,
@@ -1158,14 +1248,41 @@ export function checkAbi(
   const baseErrors = abiIndex(baseAbi, "error");
   const curErrors = abiIndex(curAbi, "error");
   for (const sig of sortedKeys(baseErrors)) {
-    if (!curErrors.has(sig)) {
+    const baseEntry = baseErrors.get(sig) as AbiEntry;
+    const curEntry = curErrors.get(sig);
+    if (curEntry === undefined) {
       findings.push({ level: ERROR, name, message: `error ${sig} was removed` });
+      continue;
     }
+    rememberSignature(sig, baseEntry, curEntry, reached);
   }
 }
 
 function sameFlags(left: boolean[], right: boolean[]): boolean {
   return left.length === right.length && left.every((flag, index) => flag === right[index]);
+}
+
+/**
+ * Compares everything the two walks collected against the two builds' ASTs.
+ *
+ * Runs after both, so an enum the storage layout and the ABI both name is compared once,
+ * under the path the layout walk found it at.
+ */
+export function checkDefinitions(
+  name: string,
+  reached: ReachedSets,
+  baseDefinitions: Definitions,
+  curDefinitions: Definitions,
+  findings: Finding[]
+): void {
+  checkEnums(name, reached.enum, baseDefinitions.enum, curDefinitions.enum, findings);
+  checkUserDefinedValueTypes(
+    name,
+    reached.value_type,
+    baseDefinitions.value_type,
+    curDefinitions.value_type,
+    findings
+  );
 }
 
 export type ContractResult = {
@@ -1372,8 +1489,10 @@ export function main(
     if (current === undefined) {
       findings.push({ level: ERROR, name, message: "contract is gone from the current build" });
     } else {
-      checkStorage(name, baseline, current, base.definitions, cur.definitions, findings);
-      checkAbi(name, baseline, current, findings);
+      const reached: ReachedSets = { enum: new Map(), value_type: new Map() };
+      checkStorage(name, baseline, current, reached, findings);
+      checkAbi(name, baseline, current, reached, findings);
+      checkDefinitions(name, reached, base.definitions, cur.definitions, findings);
     }
     results.push({ name, findings });
     for (const finding of findings) {
