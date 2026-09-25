@@ -1,5 +1,3 @@
-pseudocode-contracts/
-
 # Solidity that is not a production contract. The solhint rules (ordering,
 # func-name-mixedcase, max-line-length) are written for contracts/; the Foundry
 # test-suite and deploy scripts use the forge-std naming conventions instead,
@@ -15,4 +13,3 @@ script/
 # Build output (forge build writes one directory per source file, named *.sol).
 out/
 
-# Frozen Hardhat-era toolchain, kept for reference only.

@@ -16,7 +16,6 @@ script = "script"
 solc_version = "0.8.11"
 evm_version = "istanbul"
 optimizer = false
-optimizer_runs = 200
 via_ir = false
 use_literal_content = true
 bytecode_hash = "ipfs"

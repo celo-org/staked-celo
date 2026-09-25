@@ -1,2 +1,3 @@
 [tools]
 foundry = "1.8.1"
+node = "24"
