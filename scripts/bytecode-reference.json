@@ -1,0 +1,118 @@
+{
+  "comment": "Digests of the creation and runtime bytecode of every contract under contracts/. Regenerate with `forge build && scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-reference.json` whenever a contract change is intended, and review the resulting diff as carefully as the contract change.",
+  "algorithm": "sha256 of the lowercase hex digits, without the 0x prefix",
+  "contracts": {
+    "contracts/Account.sol:Account": {
+      "creation": "a14e43c8b3d9d2e24a9ef4ae856d58a152d0326e2b99f1a97f2b6d0f481976b3",
+      "runtime": "2d4ed72d6ad69446da0ce4109fce04f05205fde9f3d9694742601b12bfcfc5d1"
+    },
+    "contracts/DefaultStrategy.sol:DefaultStrategy": {
+      "creation": "1ec8b9ac34940b2b47b9b42f88b9fc7619b24ba90bf1970553433d73187a084e",
+      "runtime": "21365f8fcbf5a4ba32c1a163e589819e88168ba0aecdc17580243fec79101da8"
+    },
+    "contracts/GroupHealth.sol:GroupHealth": {
+      "creation": "af0ce7d33badd2d14437be557531251c8b6f9a7f326c90544d6ea151169ce9ed",
+      "runtime": "a8b30fbb7d612b478f68a25f0bd087aea4b0358072a625ace503a05f6469830c"
+    },
+    "contracts/Manager.sol:Manager": {
+      "creation": "69fd97d29518ab1bcb5353b783d61393a659a0367ca513e5d7c99d3a3400d893",
+      "runtime": "e8ec71d2073c2df94bbb0c6b70aa0c28c2f8445c835832cf8f60b8cd8f5240da"
+    },
+    "contracts/RebasedStakedCelo.sol:RebasedStakedCelo": {
+      "creation": "30c77c89185904f07928e67c8b4d79339615ac07d09ddc0a78b28a96641a56f3",
+      "runtime": "87879c04916c198cb9622d2c43472e021fefcfbbb91aaf22d1d4e94aa1c17c39"
+    },
+    "contracts/SpecificGroupStrategy.sol:SpecificGroupStrategy": {
+      "creation": "5efc18ecf77e2b700be9eae6681ed3930064fda66d7fe349f286f423fd61adda",
+      "runtime": "a4d19fb17aaf8f44df79383c6880d489d41c4c6e0ff559e56da21d04026461b0"
+    },
+    "contracts/StakedCelo.sol:StakedCelo": {
+      "creation": "a4c66d076eba68c3284f7193f29dc2d9c1217650fd5da68028c04e3581577901",
+      "runtime": "536c25956577a63b6f8f240d69460839ed8aabb2ae61a6863ff93bc091b6cf5d"
+    },
+    "contracts/Vote.sol:Vote": {
+      "creation": "9cfbe443304e475765b847b308e49dcefadfcdafab3e55d172b780260888b6ca",
+      "runtime": "f23543f681cfccbc2a395e523e9c7af789c5ae477dbc18d70c398a2ebe4bb454"
+    },
+    "contracts/common/ERC20Upgradeable.sol:ERC20Upgradeable": {
+      "creation": "8f6b258a639993cf8b73e2c35f494c870e5d46a05ddc62bc3ecd61b44dce43b4",
+      "runtime": "2891b4c45abf473879412cd485e07d6e3720d8358e1166b3384086c4c99ce827"
+    },
+    "contracts/common/MultiSig.sol:MultiSig": {
+      "creation": "00aa14bc60f00323b7b6334341beed180b27e961f5a05601f2003e61b49d03ee",
+      "runtime": "53f08a7843b99a59a21fd1edcc8221a6d0338c638b91f952bd1857224da40f96"
+    },
+    "contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList": {
+      "creation": "57608092ea19f316c65ea34aeacc673e309709f1121718aa5b6c9b403d3b5d1f",
+      "runtime": "7cf2b09373e8eb8fae6fc89967404e028504fe8cd6ce1e3f1dadcf2d232c872e"
+    },
+    "contracts/common/linkedlists/LinkedList.sol:LinkedList": {
+      "creation": "7a1b2e7e3d05a43e8d3afda3f6a4196d2ffb839b707958a842c7052107757cc8",
+      "runtime": "b42d666a23b7d7da0d227500b1d53a00249d5e72eb5c65ee1b3ec9138751beba"
+    },
+    "contracts/common/linkedlists/SortedLinkedList.sol:SortedLinkedList": {
+      "creation": "f919e00d2f789b4dcb50e448107d82cb185d2ffbaed04c5dd762b0c30c8d8868",
+      "runtime": "32aa664b5cce51a451767ac83926144685f5281d72e048d810c5433b923be221"
+    },
+    "contracts/libraries/ExternalCall.sol:ExternalCall": {
+      "creation": "6a3cf90a42c040bf455e415e755e341908bfbd9cc53d56e5259567416e28ab14",
+      "runtime": "fb3365503c1ce5d49527615da69e0118ebde1f8a8889b9748b68d475e3f48988"
+    },
+    "contracts/mock/MockAccount.sol:MockAccount": {
+      "creation": "f201ea580205c267c245a005aa72e866a0f80c46f12724341cce82a6261c501f",
+      "runtime": "82782091c391f7684e8f1ae8417354b8bf915e98f31596f10ff73b773196618b"
+    },
+    "contracts/mock/MockAddressSortedLinkedList.sol:MockAddressSortedLinkedList": {
+      "creation": "b83eddbe707ae0988e8f4de60cf8a73400f589141fc408752e0336fb5040e449",
+      "runtime": "1458cbf98842e6b7cf6611949f7cb59d5279ac831536700d6628335ba65f59c9"
+    },
+    "contracts/mock/MockDefaultStrategy.sol:MockDefaultStrategy": {
+      "creation": "377615612045b1119f55f38dab06d460854649093c0368d0e79dacb6c098f589",
+      "runtime": "4801d68df4b75b56032ac6c5e8d8e88679f7a707b6127034d6a97f42ad6ccdef"
+    },
+    "contracts/mock/MockElection.sol:MockElection": {
+      "creation": "194abdd5ada0be050224dfb5515cd8b37ba714c1bd25f62f73ae0684ae3555b1",
+      "runtime": "dc6c90645967bf0b9b9410b2ba4e11bd9ef0b35c81d2d59c0d2726a1bd19c13e"
+    },
+    "contracts/mock/MockGovernance.sol:MockGovernance": {
+      "creation": "2edbf8f7efdb65913cd3cb626e8dce2a5d502a7db68343984a8f76210de60e0f",
+      "runtime": "6256a0080f4a18c12ae55bb5f0de844c0107ff7fdbc17f3c56facda5394cf0e8"
+    },
+    "contracts/mock/MockGroupHealth.sol:MockGroupHealth": {
+      "creation": "1261d8006c438c3780962f0fa6d519280391474c5f0fcce10894cbdb19aff513",
+      "runtime": "5963b8f22eb0195ae7e5c4466b977fd7da4fea79516c5915a4cde71a0b80593e"
+    },
+    "contracts/mock/MockLockedGold.sol:MockLockedGold": {
+      "creation": "b46bc3ee960058ec5ef16efdc3b749d5e614167a1d089e425a6f9a8d857f7a7d",
+      "runtime": "bc400fe2140210243069adcf2940f36efab9f0287329d973a4a4d0711a69fa71"
+    },
+    "contracts/mock/MockManager.sol:MockManager": {
+      "creation": "38ee6dc9e1b8bd16bacea1ebff80806bec5afb38779fd2f19a09cadfdf714202",
+      "runtime": "9d0027802838f9383cffb718afa6ddf1307403c37bd17840287bf69ae28768c0"
+    },
+    "contracts/mock/MockRegistry.sol:MockRegistry": {
+      "creation": "660cb85c1e49f3b45c1969fba515beaa356e5cd0ea6593b5974c5d7bd2e96ec0",
+      "runtime": "2ae0fada8cd90b48617ef8dae7ec0e31393ee71ef6a8aab87371b048ca01f47d"
+    },
+    "contracts/mock/MockStakedCelo.sol:MockStakedCelo": {
+      "creation": "c06894b790bd945d1019b26790358aa2ef475db713fe51ef217144b8f1f02dca",
+      "runtime": "f330bfdec9d8c7431c742a05606a780fe36824a53ab7c8029452e736e1761bb5"
+    },
+    "contracts/mock/MockValidators.sol:MockValidators": {
+      "creation": "0169e10503a5ce3f2b97e2532e0b8dc06f5a7646bc77277019d67a7c1ae6b667",
+      "runtime": "484615d40f513a96f7a3552a58c8977fe255510b8e513d216f88b293005aa7de"
+    },
+    "contracts/mock/MockVote.sol:MockVote": {
+      "creation": "6e760b11b9c04d53801998c8390d6d75dac7b1ba49cefdda332cf6664a505bab",
+      "runtime": "87db02e0071cdab3474818f979a68844aecaa20a7cf7907e07802052d703fe57"
+    },
+    "contracts/test/PausableTest.sol:PausableTest": {
+      "creation": "59cc24c087081a061af025dc2695b1cc319ecdfdc97ed387b284a49c63b6a95e",
+      "runtime": "a5e5ea7f5d9387a266baa50babd5b92e7960ef1929a17d9d4fd31a87ffbe06db"
+    },
+    "contracts/test/ProposalTester.sol:ProposalTester": {
+      "creation": "f43288f028c617ff0d9d87c143256633f7f29f1e5599a92f95dd8cee0550f8b1",
+      "runtime": "da193b3f6b9ba6e00de914887185b7eb782e22f7244bf6509f2b01b08cd84fa8"
+    }
+  }
+}

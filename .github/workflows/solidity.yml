@@ -10,121 +10,218 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  # Keep in sync with mise.toml, which pins the same version for local development.
+  FOUNDRY_VERSION: v1.8.1
+  # The release the upgradeable contracts must stay storage- and ABI-compatible with.
+  COMPATIBILITY_BASELINE: releases/4
+
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     steps:
-      ## yarn.lock file contains git:// instead of https
-      ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
-      - run: git config --global url."https://".insteadOf git://
       - name: Checkout commit
         uses: actions/checkout@v4
 
+      # package.json carries the lint and typecheck tooling (prettier, solhint,
+      # typescript) plus the devchain fixture package. The version is the one its
+      # `engines` field requires: the scripts are TypeScript run by node's native type
+      # stripping, which needs node 24.
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "14.x"
+          node-version: "24.x"
+          cache: yarn
 
       - name: Install dependencies
         run: yarn
 
-      - name: Compile contracts and generate typechain bindings
-        run: yarn compile
+      # Nothing compiles the scripts - node strips their types and runs them - so tsc is
+      # what checks them, and prettier is what keeps them formatted.
+      - name: Typecheck the scripts
+        run: yarn typecheck
 
-      - name: Lint
-        run: yarn lint:ci
+      - name: Check TypeScript formatting
+        run: yarn lint:ts:ci
 
-      # Cache or reuse node_modules from earlier completed job.
-      - name: Cache NPM
-        uses: actions/cache@v4
+      # prettier and solhint cover contracts/ only. `forge fmt` is never pointed at that
+      # tree: its formatting differs from prettier-plugin-solidity, and the contracts are
+      # the audited, bytecode-pinned sources.
+      - name: Lint Solidity
+        run: yarn lint:sol:ci
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # The test-suite and the deploy scripts are outside prettier's glob above and are
+      # listed in .solhintignore, so `forge fmt` is what keeps them consistent. It is
+      # configured under [fmt] in foundry.toml. Run `yarn fmt` to fix.
+      - name: Check test and script formatting
+        run: yarn fmt:check
 
   test:
     runs-on: ubuntu-latest
 
     steps:
-      - run: git config --global url."https://".insteadOf git://
-
       - name: Checkout commit
         uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
         with:
-          node-version: "14.x"
+          version: ${{ env.FOUNDRY_VERSION }}
 
+      # The devchain fixture is extracted from an npm package by a TypeScript helper,
+      # so node is needed even though nothing in the test-suite itself runs on node.
+      # Node 24 is what package.json's `engines` requires: the helper is run straight
+      # from source by node's native type stripping.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build needs the dependencies installed before it can
+      # resolve them.
       - name: Install dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
 
-      - name: Compile contracts and generate typechain bindings
-        run: yarn compile
-
-      - name: Test
-        run: yarn test:ci
-
-      # Cache or reuse node_modules from earlier completed job.
-      - name: Cache NPM
+      - name: Cache the Celo devchain fixture
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          path: |
+            test/devchain/allocs.json
+            test/devchain/meta.json
+          # The pinned version lives in package.json, so the cache key follows it,
+          # along with the script and the extractor that shape the fixture.
+          key: devchain-${{ hashFiles('package.json', 'scripts/prepare-devchain.sh', 'scripts/lib/extract-devchain-allocs.ts') }}
+
+      - name: Prepare the devchain fixture
+        run: scripts/prepare-devchain.sh
+
+      - name: Build
+        run: forge build
+
+      - name: Test
+        run: forge test -vvv
+
+  bytecode:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout commit
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # The checker is TypeScript, run from source by node's native type stripping, so
+      # the version follows package.json's `engines`.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build needs the dependencies installed before it can
+      # resolve them. The exact versions the lockfile pins are part of what the digests
+      # below cover: OpenZeppelin sources are hashed into the metadata trailer too.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: forge build
+
+      # The deployed contracts must keep compiling to exactly the bytecode that was
+      # audited and deployed, which is also the bytecode the old Hardhat toolchain
+      # produced. scripts/bytecode-reference.json pins a digest of the creation and
+      # runtime bytecode of every contract under contracts/, so this job fails on any
+      # contract edit and on any change to the compiler settings in foundry.toml
+      # (solc version, evm version, optimizer, metadata), because the settings are
+      # hashed into the metadata trailer of the bytecode.
+      #
+      # When a contract change is intended, regenerate the reference in the same
+      # commit and review its diff as carefully as the contract diff:
+      #
+      #   forge build
+      #   node scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-reference.json
+      - name: Check bytecode against the pinned reference
+        run: node scripts/bytecode-compat-check.ts --reference scripts/bytecode-reference.json
 
   compatibility:
     runs-on: ubuntu-latest
 
     steps:
-      ## yarn.lock file contains git:// instead of https
-      ## https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
-      - run: git config --global url."https://".insteadOf git://
       - name: Checkout commit
         uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "14.x"
-
-      - name: Install dependencies
-        run: yarn
-
-      - name: Compile contracts and generate typechain bindings
-        run: yarn compile
-
-      - name: Generate standard artifacts
-        run: yarn generate:standard:artifacts
-
-      - name: Checkout release
+      - name: Checkout the compatibility baseline
         uses: actions/checkout@v4
         with:
-          path: release
-          ref: releases/4
+          path: baseline
+          ref: ${{ env.COMPATIBILITY_BASELINE }}
 
-      - name: Install release dependencies
-        run: yarn
-        working-directory: ./release
-
-      - name: Compile release
-        run: yarn compile
-        working-directory: ./release
-
-      - name: Generate release artifacts
-        run: yarn generate:standard:artifacts --inputDir ./release --outputDir ./release/artifactsPostProcessed
-
-      - name: Compare artifacts
-        run: yarn compare:artifacts -o release/artifactsPostProcessed -n artifactsPostProcessed
-
-      # Cache or reuse node_modules from earlier completed job.
-      - name: Cache NPM
-        uses: actions/cache@v4
+      # The checker and scripts/vendor-openzeppelin.sh below both run on node, the
+      # version package.json's `engines` requires: they are TypeScript run from source
+      # by its native type stripping.
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build of the current side needs the dependencies installed
+      # before it can resolve them. The baseline gets its own copy below.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # The comparison below is the only thing standing between an upgrade and a
+      # corrupted proxy, so its own rules are covered by unit tests. They build
+      # storage layouts in memory and need nothing but node, hence running them
+      # here, ahead of the two builds.
+      - name: Test the compatibility checker
+        run: node --test 'scripts/tests/**/*.test.ts'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # The baseline release predates the Foundry migration, so it carries no
+      # foundry.toml, and it is a bare checkout with no node_modules. Overlaying the
+      # current toolchain config onto its contracts/ builds them with exactly the
+      # settings used here, which is what makes the two out/ directories comparable.
+      #
+      # The dependencies are the exception: each side resolves "@openzeppelin/..." to
+      # the versions it pins itself, the current side through the symlink into its
+      # node_modules, the baseline through a copy vendored from its own package.json.
+      # Neither side uses a remapping, so both keep those source-unit names. Pointing
+      # the baseline at the current tree instead would put a future OpenZeppelin
+      # upgrade on both sides at once, and an incompatible change to an inherited
+      # OpenZeppelin storage variable would then cancel out of the diff rather than
+      # being reported.
+      - name: Overlay the current toolchain onto the baseline
+        run: |
+          cp foundry.toml baseline/foundry.toml
+          rm -rf baseline/scripts
+          cp -R scripts baseline/scripts
+          scripts/vendor-openzeppelin.sh --root baseline
+
+      - name: Build the current contracts
+        run: forge build
+
+      - name: Build the baseline contracts
+        run: forge build --root baseline
+
+      # Storage layout and ABI compatibility for every upgradeable contract, i.e. the
+      # check the Hardhat @celo/contract-compatibility-check job used to perform.
+      - name: Check upgrade compatibility against ${{ env.COMPATIBILITY_BASELINE }}
+        run: node scripts/abi-compat-check.ts --baseline baseline/out --current out
