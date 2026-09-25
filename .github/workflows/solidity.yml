@@ -77,12 +77,18 @@ jobs:
       # The devchain fixture is extracted from an npm package by a TypeScript helper,
       # so node is needed even though nothing in the test-suite itself runs on node.
       # Node 24 is what package.json's `engines` requires: the helper is run straight
-      # from source by node's native type stripping. Nothing from package.json is
-      # installed here.
+      # from source by node's native type stripping.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build needs the dependencies installed before it can
+      # resolve them.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Cache the Celo devchain fixture
         uses: actions/cache@v4
@@ -116,12 +122,19 @@ jobs:
           version: ${{ env.FOUNDRY_VERSION }}
 
       # The checker is TypeScript, run from source by node's native type stripping, so
-      # the version follows package.json's `engines`. Nothing from package.json is
-      # installed here.
+      # the version follows package.json's `engines`.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build needs the dependencies installed before it can
+      # resolve them. The exact versions the lockfile pins are part of what the digests
+      # below cover: OpenZeppelin sources are hashed into the metadata trailer too.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Build
         run: forge build
@@ -157,11 +170,18 @@ jobs:
 
       # The checker and scripts/vendor-openzeppelin.sh below both run on node, the
       # version package.json's `engines` requires: they are TypeScript run from source
-      # by its native type stripping. Nothing from package.json is installed here.
+      # by its native type stripping.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.x"
+          cache: yarn
+
+      # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
+      # node_modules, so the build of the current side needs the dependencies installed
+      # before it can resolve them. The baseline gets its own copy below.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       # The comparison below is the only thing standing between an upgrade and a
       # corrupted proxy, so its own rules are covered by unit tests. They build
@@ -176,20 +196,18 @@ jobs:
           version: ${{ env.FOUNDRY_VERSION }}
 
       # The baseline release predates the Foundry migration, so it carries no
-      # foundry.toml and no vendored OpenZeppelin. Overlaying the current toolchain
-      # config onto its contracts/ builds them with exactly the settings used here,
-      # which is what makes the two out/ directories comparable.
+      # foundry.toml, and it is a bare checkout with no node_modules. Overlaying the
+      # current toolchain config onto its contracts/ builds them with exactly the
+      # settings used here, which is what makes the two out/ directories comparable.
       #
-      # The dependencies are the exception: each side is vendored from its own
-      # package.json, so the baseline gets the OpenZeppelin versions it pinned. Copying
-      # the current @openzeppelin tree over instead would put a future OpenZeppelin
+      # The dependencies are the exception: each side resolves "@openzeppelin/..." to
+      # the versions it pins itself, the current side through the symlink into its
+      # node_modules, the baseline through a copy vendored from its own package.json.
+      # Neither side uses a remapping, so both keep those source-unit names. Pointing
+      # the baseline at the current tree instead would put a future OpenZeppelin
       # upgrade on both sides at once, and an incompatible change to an inherited
       # OpenZeppelin storage variable would then cancel out of the diff rather than
-      # being reported. The baseline imports the same "@openzeppelin/..." paths, so the
-      # vendored copy resolves without remappings.
-      #
-      # Vendoring prunes what it extracts down to the sources the baseline imports, and
-      # runs forge to find them, so this step has to stay after the Foundry install above.
+      # being reported.
       - name: Overlay the current toolchain onto the baseline
         run: |
           cp foundry.toml baseline/foundry.toml

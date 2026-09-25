@@ -90,11 +90,13 @@ Withdrawal flow:
 - **Node 24 and yarn.** Everything under `scripts/` is TypeScript that node runs straight
   from source with its native type stripping, which is why `package.json`'s `engines`
   floor is 24; nothing compiles it, and nothing in the build, the tests or the deployment
-  runs on node either. yarn installs three things: the Solidity linters (`yarn lint:sol`),
-  `typescript` for `yarn typecheck`, and the `@celo/devchain-anvil` package that
-  `scripts/prepare-devchain.sh` extracts the test fixture from. That package's version is
-  pinned once, in `package.json`'s `devDependencies`; CI's fixture cache key follows the
-  same file.
+  runs on node either. `yarn install` is still required before `forge build`, because it
+  is what provides OpenZeppelin: `./@openzeppelin` is a symlink into `node_modules`, and
+  without the install the contracts' imports do not resolve. Beyond that it brings the
+  Solidity linters (`yarn lint:sol`), `typescript` for `yarn typecheck`, and the
+  `@celo/devchain-anvil` package that `scripts/prepare-devchain.sh` extracts the test
+  fixture from. Every one of those versions is pinned in `package.json`'s
+  `devDependencies`; CI's fixture cache key follows the same file.
 
 ```sh
 mise install && eval "$(mise env -s zsh)"
@@ -104,6 +106,7 @@ yarn install
 ## Build and test
 
 ```sh
+yarn install                  # required: this is what puts OpenZeppelin in node_modules
 scripts/prepare-devchain.sh   # once: writes the git-ignored test/devchain fixture
 forge build
 forge test
@@ -147,19 +150,22 @@ node scripts/bytecode-compat-check.ts --update-reference scripts/bytecode-refere
 `yarn bytecode:check` is an alias for the checking form.
 
 The OpenZeppelin sources the contracts inherit from are covered by the same guarantee,
-which is why they are vendored at `./@openzeppelin` instead of remapped into `lib/`: solc
-hashes the source-unit names into the metadata trailer, and `@openzeppelin/contracts/...`
-is the name the Hardhat build used. `scripts/vendor-openzeppelin.sh` extracts the two
-packages and then prunes the tree to the files the build imports, currently 23 of the 272
-they ship. solc is told about the sources of the unit it compiles and about nothing else,
-so a file no compilation ever opened is a file no bytecode ever depended on, and deleting
-it moves neither the code nor the metadata hash - the check above is what proves it.
+which is why they are ordinary dependencies pinned to an exact version -
+`@openzeppelin/contracts` at 4.4.2 and `@openzeppelin/contracts-upgradeable` at 4.5.2, no
+caret - and why they are reached without a remapping. solc hashes the source-unit names
+of a compilation into the metadata trailer alongside the sources themselves, and
+`@openzeppelin/contracts/...` is the name the Hardhat build recorded. A Foundry remapping
+into `lib/` would record a different one and move the trailer, so `./@openzeppelin` is a
+symlink into `node_modules/@openzeppelin` instead: the imports resolve under exactly the
+name they are written with, and `forge build` needs no `remappings` at all. Both the
+versions and the symlink are therefore part of the deployed bytecode, and the check above
+is what proves it - bump either package and it fails.
 
-The prune reads that set from a `forge build` of the checkout being vendored into, run
-into a temporary `out/` and thrown away afterwards. Running the script therefore neither
-disturbs nor requires an existing build, and it stays correct for the baseline checkout of
-the compatibility job below, whose older contracts may import a different set. Pass
-`--no-prune` to keep the full upstream tree.
+`scripts/vendor-openzeppelin.sh` exists for one case only: the baseline checkout of the
+compatibility job below, which is a bare checkout with no `node_modules`. It copies the
+two packages' sources into that checkout's own `@openzeppelin/`, at the versions its
+`package.json` pins. Run against this repo it refuses, because `@openzeppelin` here is the
+symlink and `yarn install` is what maintains it.
 
 ## Upgrade compatibility
 
@@ -180,12 +186,14 @@ proxy, so they carry their own unit tests: `yarn test:scripts` (`node --test
 checked out and overlaid.
 
 The overlay shares the toolchain config (`foundry.toml`, `scripts/`), so both sides compile
-with identical settings. The dependencies are not shared: the baseline gets its own
-OpenZeppelin sources, vendored from the versions its `package.json` pins by
-`scripts/vendor-openzeppelin.sh --root baseline`. Handing it the current `@openzeppelin`
-tree instead would put a later OpenZeppelin upgrade on both sides at once, and an
-incompatible change to an inherited OpenZeppelin storage variable would cancel out of the
-diff rather than being reported.
+with identical settings. The dependencies are not shared: each side resolves
+`@openzeppelin/...` to the versions it pins itself, this one through the symlink into its
+`node_modules`, the baseline through a copy that
+`scripts/vendor-openzeppelin.sh --root baseline` writes from its own `package.json`.
+Neither side uses a remapping, so the source-unit names match. Pointing the baseline at
+the current tree instead would put a later OpenZeppelin upgrade on both sides at once, and
+an incompatible change to an inherited OpenZeppelin storage variable would cancel out of
+the diff rather than being reported.
 
 ## Deployment
 

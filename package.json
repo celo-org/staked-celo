@@ -11,6 +11,8 @@
   },
   "devDependencies": {
     "@celo/devchain-anvil": "17.0.7",
+    "@openzeppelin/contracts": "4.4.2",
+    "@openzeppelin/contracts-upgradeable": "4.5.2",
     "@types/node": "^24",
     "husky": ">=6",
     "lint-staged": ">=10",

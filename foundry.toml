@@ -1,10 +1,13 @@
 [profile.default]
 src = "contracts"
 out = "out"
-# OpenZeppelin is vendored at ./@openzeppelin (scripts/vendor-openzeppelin.sh) so that
-# solc source-unit names match the Hardhat build and the bytecode stays byte-identical.
-# Only the files this build imports are vendored: the script prunes the rest of the two
-# packages away, and nothing solc never opened can be hashed into any metadata trailer.
+# OpenZeppelin comes from node_modules, reached through the ./@openzeppelin symlink that
+# `yarn install` fills in - hence no lib/ and no remappings. solc hashes the source-unit
+# names of a compilation into the metadata trailer it appends to the bytecode, so an
+# import resolved through a remapping would be recorded under a different name than the
+# "@openzeppelin/contracts/..." the Hardhat build used, and the deployed bytecode would
+# no longer reproduce. The symlink keeps the name and the versions stay exact in
+# package.json. scripts/bytecode-compat-check.ts is what proves it.
 libs = []
 auto_detect_remappings = false
 remappings = []
@@ -32,9 +35,9 @@ lint_on_build = false
 
 # `forge fmt` owns test/ and script/ only. The production contracts are formatted with
 # prettier-plugin-solidity instead (`yarn lint:sol:ci`); the two formatters disagree, so
-# contracts/ is ignored here, as are the vendored OpenZeppelin sources and the frozen
-# Hardhat-era tree. The settings below describe the style test/ and script/ were already
-# written in, so turning the formatter on was a mechanical reflow and nothing more.
+# contracts/ is ignored here, as is the OpenZeppelin dependency reached through the
+# ./@openzeppelin symlink. The settings below describe the style test/ and script/ were
+# already written in, so turning the formatter on was a mechanical reflow and nothing more.
 #
 # The ignore globs need the trailing "/*": a bare "contracts/**" matches the nested files
 # but not the ten sitting directly under contracts/, which forge would then reformat.
