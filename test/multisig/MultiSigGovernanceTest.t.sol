@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 import "../../contracts/test/ProposalTester.sol";
 
-/// @notice Port of `describe("MultiSig") > describe("#governanceProposeAndExecute()")`.
+/// @notice Tests for `MultiSig.governanceProposeAndExecute`.
 contract MultiSigGovernanceTest is MultiSigTestBase {
     // =========================================================================
     //              #governanceProposeAndExecute (8)

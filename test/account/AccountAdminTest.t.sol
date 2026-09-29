@@ -4,9 +4,8 @@ pragma solidity 0.8.11;
 import "./AccountTestBase.sol";
 
 /**
- * @notice Port of the `describe("Account")` cases that are not scoped to one Account entry
- *         point: the top-level account creation check plus `#setPauser`, `#renounceOwnership`,
- *         `#pause`, `#unpause` and the `when paused` block.
+ * @notice Account tests that are not scoped to one entry point: the account creation check
+ *         plus `setPauser`, `renounceOwnership`, `pause`, `unpause` and the paused state.
  */
 contract AccountAdminTest is AccountTestBase {
     // =========================================================================

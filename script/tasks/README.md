@@ -1,35 +1,32 @@
 # StakedCelo operational task scripts
 
-Foundry ports of the Hardhat tasks that used to live in `lib/multiSig-tasks`,
-`lib/manager-tasks` and `lib/account-tasks` (in git history before the migration). Every task has a counterpart here, and the
-behaviour (which contracts are called, in which order, with which lesser/greater hints) is
-preserved.
+Forge scripts for operating a StakedCelo deployment: inspecting and driving MultiSig
+proposals, preparing upgrade proposals, depositing and withdrawing through the Manager, and
+the Account maintenance calls (activating and revoking votes, finishing withdrawals).
 
 ## How the scripts are wired
 
 - Contract addresses come from `deployments/<network>/<Name>.json` (the `address` field of
-  the hardhat-deploy files). The directory is picked by the `NETWORK` environment variable,
+  the deployment record). The directory is picked by the `NETWORK` environment variable,
   defaulting to the network matching the chain id (42220 -> `celo`, 11142220 -> `sepolia`,
   31337 -> `local`). Set `NETWORK` explicitly when running against a fork.
 - Celo core contracts (Election, LockedGold, Governance, ...) are resolved through the
   Registry at `0x000000000000000000000000000000000000ce10`, the same way the protocol
   contracts resolve them.
-- Task parameters became environment variables. Comma separated lists keep the format the
-  Hardhat parameters used.
+- Parameters are environment variables; lists are comma separated.
 - Task logic lives in `script/tasks/lib/*`, so `test/script/TaskScriptsTest.t.sol` runs the
   same code the scripts run. Each script keeps a thin `internal execute(...)` taking
   explicit parameters, with `run()` reading the environment and broadcasting.
 
 ## Signing
 
-`--use-ledger` / `--use-node-account` / `DEPLOYER_PRIVATE_KEY` are replaced by the forge
-script signer flags:
+Scripts that send transactions sign with forge's signer flags:
 
-| Hardhat | forge |
+| Signer | forge flags |
 | --- | --- |
-| `--use-ledger` | `--ledger --sender <ledger address>` (add `--mnemonic-derivation-path` if not the default; without `--sender` the simulation runs as Forge's default account and owner-only calls revert before the device signs) |
-| `--use-node-account --account <addr>` | `--unlocked --sender <addr>` |
-| `DEPLOYER_PRIVATE_KEY` in the environment | `--private-key $DEPLOYER_PRIVATE_KEY` |
+| Ledger | `--ledger --sender <ledger address>` (add `--mnemonic-derivation-path` if not the default; without `--sender` the simulation runs as Forge's default account and owner-only calls revert before the device signs) |
+| Unlocked node account | `--unlocked --sender <addr>` |
+| Private key | `--private-key $DEPLOYER_PRIVATE_KEY` |
 
 Read-only scripts need no signer. Scripts that send transactions only simulate unless
 `--broadcast` is passed.
@@ -41,50 +38,60 @@ forge script <script> --rpc-url <celo|sepolia|local> [--broadcast] [signer flags
 ```
 
 `--rpc-url` accepts the aliases declared in `foundry.toml`. `sepolia` is Celo Sepolia
-(11142220), the current testnet.
+(11142220), the current testnet. Use forge's `-v` levels (`-vvv`) for trace detail.
 
-## MultiSig tasks
+Every script also reads `NETWORK` (see above); the tables below list only the other
+variables.
 
-| Hardhat task | forge script | Environment variables |
+## MultiSig scripts
+
+| Script | What it does | Environment variables |
 | --- | --- | --- |
-| `stakedCelo:multiSig:getOwners` | `script/tasks/multisig/GetOwners.s.sol` | `NETWORK` |
-| `stakedCelo:multiSig:submitProposal --destinations --values --payloads` | `script/tasks/multisig/SubmitProposal.s.sol` | `DESTINATIONS`, `VALUES`, `PAYLOADS`, `NETWORK` |
-| `stakedCelo:multiSig:confirmProposal --proposal-id` | `script/tasks/multisig/ConfirmProposal.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:revokeConfirmation --proposal-id` | `script/tasks/multisig/RevokeConfirmation.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:scheduleProposal --proposal-id` | `script/tasks/multisig/ScheduleProposal.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:executeProposal --proposal-id` | `script/tasks/multisig/ExecuteProposal.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:getProposal --proposal-id` | `script/tasks/multisig/GetProposal.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:getConfirmations --proposal-id` | `script/tasks/multisig/GetConfirmations.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:isFullyConfirmed --proposal-id` | `script/tasks/multisig/IsFullyConfirmed.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:isScheduled --proposal-id` | `script/tasks/multisig/IsScheduled.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:getTimestamp --proposal-id` | `script/tasks/multisig/GetTimestamp.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:isProposalTimelockReached --proposal-id` | `script/tasks/multisig/IsProposalTimelockReached.s.sol` | `PROPOSAL_ID`, `NETWORK` |
-| `stakedCelo:multiSig:isOwner --owner-address` | `script/tasks/multisig/IsOwner.s.sol` | `OWNER_ADDRESS`, `NETWORK` |
-| `stakedCelo:multiSig:isConfirmedBy --proposal-id --owner-address` | `script/tasks/multisig/IsConfirmedBy.s.sol` | `PROPOSAL_ID`, `OWNER_ADDRESS`, `NETWORK` |
-| `stakedCelo:multiSig:encode:proposal:payload --contract --function --args` | `script/tasks/multisig/EncodeProposalPayload.s.sol` | `FUNCTION_SIGNATURE`, `ARGS`, `CONTRACT`, `NETWORK` |
-| `stakedCelo:multisig:encode:managerSetDependencies` | `script/tasks/multisig/EncodeManagerSetDependencies.s.sol` | `NETWORK` |
-| `stakedCelo:multiSig:update:v1:v2` | `script/tasks/multisig/UpdateV1ToV2.s.sol` | `VALIDATOR_GROUPS`, `NETWORK` |
-| `stakedCelo:multiSig:update:v2:v3` | `script/tasks/multisig/UpdateV2ToV3.s.sol` | `NEW_MULTISIG_OWNER`, `NETWORK` |
-| `stakedCelo:multiSig:update:v3:v4` | `script/tasks/multisig/UpdateV3ToV4.s.sol` | `NETWORK` |
+| `multisig/GetOwners.s.sol` | prints the MultiSig owners | |
+| `multisig/SubmitProposal.s.sol` | submits a proposal of destination / value / payload triples | `DESTINATIONS`, `VALUES`, `PAYLOADS` |
+| `multisig/ConfirmProposal.s.sol` | confirms a proposal | `PROPOSAL_ID` |
+| `multisig/RevokeConfirmation.s.sol` | revokes the sender's confirmation of a proposal | `PROPOSAL_ID` |
+| `multisig/ScheduleProposal.s.sol` | schedules a fully confirmed proposal, starting its time-lock | `PROPOSAL_ID` |
+| `multisig/ExecuteProposal.s.sol` | executes a scheduled proposal after checking that its time-lock has elapsed | `PROPOSAL_ID` |
+| `multisig/GetProposal.s.sol` | prints a proposal's destinations, values and payloads | `PROPOSAL_ID` |
+| `multisig/GetConfirmations.s.sol` | prints the owners that confirmed a proposal | `PROPOSAL_ID` |
+| `multisig/IsFullyConfirmed.s.sol` | prints whether a proposal has the required confirmations | `PROPOSAL_ID` |
+| `multisig/IsScheduled.s.sol` | prints whether a proposal is scheduled | `PROPOSAL_ID` |
+| `multisig/GetTimestamp.s.sol` | prints the timestamp at which a proposal becomes executable | `PROPOSAL_ID` |
+| `multisig/IsProposalTimelockReached.s.sol` | prints whether a proposal's time-lock has been reached | `PROPOSAL_ID` |
+| `multisig/IsOwner.s.sol` | prints whether an address is a MultiSig owner | `OWNER_ADDRESS` |
+| `multisig/IsConfirmedBy.s.sol` | prints whether an owner confirmed a proposal | `PROPOSAL_ID`, `OWNER_ADDRESS` |
+| `multisig/EncodeProposalPayload.s.sol` | encodes a function call as a proposal payload (see below) | `FUNCTION_SIGNATURE`, `ARGS`, `CONTRACT` |
+| `multisig/EncodeManagerSetDependencies.s.sol` | encodes the `Manager.setDependencies` proposal from the deployed addresses | |
+| `multisig/UpdateV1ToV2.s.sol` | prepares the V1 to V2 upgrade proposal; with `--broadcast` also sends `updateGroupHealth` for listed groups GroupHealth does not consider valid | `VALIDATOR_GROUPS` |
+| `multisig/UpdateV2ToV3.s.sol` | prepares the V2 to V3 upgrade proposal | `NEW_MULTISIG_OWNER` |
+| `multisig/UpdateV3ToV4.s.sol` | prepares the V3 to V4 upgrade proposal (Manager, both strategies, Account) | |
 
-## Manager tasks
+The scripts read addresses, never ABIs, from the deployment files, so a record whose ABI is
+out of step with `<Name>_Implementation.json` does not affect them.
 
-| Hardhat task | forge script | Environment variables |
+## Manager scripts
+
+| Script | What it does | Environment variables |
 | --- | --- | --- |
-| `stakedCelo:manager:deposit --amount` | `script/tasks/manager/Deposit.s.sol` | `AMOUNT`, `NETWORK` |
-| `stakedCelo:manager:withdraw --amount` | `script/tasks/manager/Withdraw.s.sol` | `AMOUNT`, `NETWORK` |
-| `stakedCelo:manager:getGroups` | `script/tasks/manager/GetGroups.s.sol` | `NETWORK` |
-| `stakedCelo:manager:voteProposal --proposal-id --yes --no --abstain` | `script/tasks/manager/VoteProposal.s.sol` | `PROPOSAL_ID`, `YES`, `NO`, `ABSTAIN`, `NETWORK` |
+| `manager/Deposit.s.sol` | deposits CELO and receives stCELO | `AMOUNT` |
+| `manager/Withdraw.s.sol` | withdraws stCELO, scheduling the CELO withdrawal | `AMOUNT` |
+| `manager/GetGroups.s.sol` | prints the groups the protocol is voting for | |
+| `manager/VoteProposal.s.sol` | votes on a Celo governance proposal with the sender's stCELO | `PROPOSAL_ID`, `YES`, `NO`, `ABSTAIN` |
 
-## Account tasks
+## Account scripts
 
-| Hardhat task | forge script | Environment variables |
+| Script | What it does | Environment variables |
 | --- | --- | --- |
-| `stakedCelo:account:activateAndVote` | `script/tasks/account/ActivateAndVote.s.sol` | `NETWORK` |
-| `stakedCelo:account:revoke` | `script/tasks/account/Revoke.s.sol` | `NETWORK` |
-| `stakedCelo:account:withdraw --beneficiary` | `script/tasks/account/Withdraw.s.sol` | `BENEFICIARY`, `NETWORK` |
-| `stakedCelo:account:finishPendingWithdrawal --beneficiary` | `script/tasks/account/FinishPendingWithdrawal.s.sol` | `BENEFICIARY`, `NETWORK` |
-| `stakedCelo:account:voteOverMax` | `script/tasks/account/CheckAllowedToVoteOverMaxNumberOfGroups.s.sol` | `NETWORK` |
+| `account/ActivateAndVote.s.sol` | activates pending votes and votes the scheduled CELO for every group the protocol votes for | |
+| `account/Revoke.s.sol` | revokes the scheduled votes of every group the protocol votes for | |
+| `account/Withdraw.s.sol` | withdraws a beneficiary's scheduled CELO from the Account contract, group by group | `BENEFICIARY` |
+| `account/FinishPendingWithdrawal.s.sol` | finishes a beneficiary's pending withdrawals once LockedGold has released them | `BENEFICIARY` |
+| `account/CheckAllowedToVoteOverMaxNumberOfGroups.s.sol` | prints whether the Account contract may vote for more than the maximum number of groups | |
+
+Paths are relative to `script/tasks/`. The account scripts revert with
+`group not found in the account's voted group list` when the Account contract is not voting
+for a group they need to pass lesser/greater hints for.
 
 ## Environment variables
 
@@ -95,25 +102,46 @@ since Forge only reads `.env` by itself:
 scripts/with-env.sh celo forge script script/tasks/multisig/GetOwners.s.sol --rpc-url celo
 ```
 
+| Variable | Format |
+| --- | --- |
+| `NETWORK` | `celo`, `sepolia` or `local`; optional, derived from the chain id (42220, 11142220, 31337) |
+| `DESTINATIONS` | comma separated addresses |
+| `VALUES` | comma separated integers (wei) |
+| `PAYLOADS` | comma separated `0x` payloads |
+| `PROPOSAL_ID` | integer |
+| `OWNER_ADDRESS` | address |
+| `BENEFICIARY` | address |
+| `AMOUNT` | integer (wei) |
+| `YES` / `NO` / `ABSTAIN` | integer, default 0 |
+| `CONTRACT` | deployment name, e.g. `Manager`, optional; when set, its address is printed as the proposal destination |
+| `FUNCTION_SIGNATURE` | full signature, e.g. `upgradeTo(address)` |
+| `ARGS` | comma separated arguments, empty for none |
+| `VALIDATOR_GROUPS` | comma separated addresses, optional; groups to activate in DefaultStrategy |
+| `NEW_MULTISIG_OWNER` | address, optional; the owner the V2 to V3 proposal adds, defaults to `DEFAULT_NEW_OWNER` in `UpdateV2ToV3.s.sol` |
 
-| Variable | Replaces | Format |
-| --- | --- | --- |
-| `NETWORK` | the deployments directory hardhat-deploy picked from the network name | `celo`, `sepolia` or `local`; optional, derived from the chain id (42220, 11142220, 31337) |
-| `DESTINATIONS` | `--destinations` | comma separated addresses |
-| `VALUES` | `--values` | comma separated integers (wei) |
-| `PAYLOADS` | `--payloads` | comma separated `0x` payloads |
-| `PROPOSAL_ID` | `--proposal-id` | integer |
-| `OWNER_ADDRESS` | `--owner-address` | address |
-| `BENEFICIARY` | `--beneficiary` | address |
-| `AMOUNT` | `--amount` | integer (wei) |
-| `YES` / `NO` / `ABSTAIN` | `--yes` / `--no` / `--abstain` | integer, default 0 |
-| `CONTRACT` | `--contract` | deployment name, optional |
-| `FUNCTION_SIGNATURE` | `--function` | full signature, e.g. `upgradeTo(address)` |
-| `ARGS` | `--args` | comma separated arguments, empty for none |
-| `VALIDATOR_GROUPS` | `VALIDATOR_GROUPS` (same name) | comma separated addresses |
-| `NEW_MULTISIG_OWNER` | the owner hardcoded in `lib/multiSig-tasks/update-v2-to-v3.ts` | address, optional |
+## Encoding proposal payloads
 
-`--log-level` has no counterpart: use forge's `-v` levels for trace detail.
+`EncodeProposalPayload.s.sol` takes a full function signature, not a bare function name:
+Solidity has no runtime ABI to look the parameter types up in. It encodes one 32 byte word
+per argument, so it supports only the single word static types StakedCelo proposals use:
+
+| Parameter type | `ARGS` entry |
+| --- | --- |
+| `address` | `0x` and 40 hex digits, any casing |
+| `bool` | `true` or `false` |
+| `bytes32` | `0x` and 64 hex digits |
+| `uint8`, `uint16`, … `uint256` (steps of 8) | decimal digits, must fit the width |
+| `int8`, `int16`, … `int256` (steps of 8) | decimal digits with an optional leading `-`, must fit the width |
+
+Everything else - arrays, tuples, `string`, `bytes`, other `bytesN`, and the non canonical
+`uint` / `int` aliases - is rejected by name, because a payload encoded as one word for a
+type that needs head/tail encoding would be accepted by the MultiSig and then fail to
+execute. Values are checked against their declared type as well, so an out of range
+`uint8`, a non decimal integer, a short address or an argument count that does not match
+the signature stops the encoding instead of producing a wrong payload.
+The signature itself must be canonical, without whitespace, because the selector is the
+hash of the exact text (`setMinCountOfActiveGroups( uint256 )` would select a different
+function); such signatures are rejected too.
 
 ## Examples
 
@@ -153,37 +181,6 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
   --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
 ```
 
-## Differences from the Hardhat tasks
-
-- `encode:proposal:payload` takes a full function signature instead of a bare function name:
-  Solidity has no runtime ABI to look the parameter types up in. It encodes one 32 byte word
-  per argument, so it supports only the single word static types StakedCelo proposals use:
-
-  | Parameter type | `ARGS` entry |
-  | --- | --- |
-  | `address` | `0x` and 40 hex digits, any casing |
-  | `bool` | `true` or `false` |
-  | `bytes32` | `0x` and 64 hex digits |
-  | `uint8`, `uint16`, … `uint256` (steps of 8) | decimal digits, must fit the width |
-  | `int8`, `int16`, … `int256` (steps of 8) | decimal digits with an optional leading `-`, must fit the width |
-
-  Everything else - arrays, tuples, `string`, `bytes`, other `bytesN`, and the non canonical
-  `uint` / `int` aliases - is rejected by name, because a payload encoded as one word for a
-  type that needs head/tail encoding would be accepted by the MultiSig and then fail to
-  execute. Values are checked against their declared type as well, so an out of range
-  `uint8`, a non decimal integer, a short address or an argument count that does not match
-  the signature stops the encoding instead of producing a wrong payload.
-  The signature itself must be canonical, without whitespace, because the selector is the
-  hash of the exact text (`setMinCountOfActiveGroups( uint256 )` would select a different
-  function); such signatures are rejected too.
-- `encode:managerSetDependencies` and `update:v1:v2` no longer repair the deployment ABI file
-  when hardhat-deploy refreshed only `<Name>_Implementation.json`: the scripts read addresses,
-  never ABIs, from the deployment files.
-- The account tasks returned `-1` from `Array.indexOf` when the Account contract was not
-  voting for a group, which made ethers fail while encoding the call. The port reverts with
-  `group not found in the account's voted group list` instead.
-- Logging levels are gone; use forge's `-vvv` traces.
-
 ## Shared code
 
 | File | Purpose |
@@ -192,7 +189,7 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
 | `lib/TaskBase.sol` | deployment lookup, Registry lookup, network resolution |
 | `lib/TaskInterfaces.sol` | minimal interfaces for the protocol and Celo core contracts |
 | `lib/ElectionLib.sol` | `findLesserAndGreaterAfterVote` and the voted group index lookup |
-| `lib/GroupsLib.sol` | the active and specific strategy group lists (`lib/task-utils.ts`) |
+| `lib/GroupsLib.sol` | the active and specific strategy group lists |
 | `lib/AccountTaskLib.sol` | activateAndVote, revoke, withdraw, finishPendingWithdrawal |
 | `lib/ManagerTaskLib.sol` | deposit, withdraw, voteProposal |
 | `lib/MultiSigTaskLib.sol` | submit, confirm, revoke, schedule, execute |

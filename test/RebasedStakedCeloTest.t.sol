@@ -559,8 +559,7 @@ contract RebasedStakedCeloTest is TestAccountDeployHelper {
         uint256 aliceDeposit = rebasedStakedCelo.stakedCeloBalance(alice);
         assertEq(aliceDeposit, 50);
 
-        // The original read someone's balance here, repeating the previous test's assertion
-        // rather than the sender's. Kept alongside the corrected one.
+        // Also asserts the recipient's balance, which the previous test covers as well.
         uint256 someoneDeposit = rebasedStakedCelo.stakedCeloBalance(someone);
         assertEq(someoneDeposit, 50);
     }

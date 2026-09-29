@@ -4,9 +4,8 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 
 /**
- * @notice Port of the proposal lifecycle blocks of `describe("MultiSig")`:
- *         `#submitProposal()`, `#confirmProposal()`, `#scheduleProposal()`,
- *         `#executeProposal()` and `#revokeConfirmation()`.
+ * @notice Proposal lifecycle tests of MultiSig: `submitProposal`, `confirmProposal`,
+ *         `scheduleProposal`, `executeProposal` and `revokeConfirmation`.
  */
 contract MultiSigProposalTest is MultiSigTestBase {
     // =========================================================================
@@ -42,8 +41,8 @@ contract MultiSigProposalTest is MultiSigTestBase {
 
     function test_SubmitProposal_DoesNotAllowSubmitToNullAddress() public {
         bytes memory txData = _addOwnerPayload(nonOwner);
-        // The original submitted from the default (non-owner) signer; the revert is the same
-        // either way because the `notNull` destination check runs before `ownerExists`.
+        // The revert is the same whether an owner or a non-owner submits, because the
+        // `notNull` destination check runs before `ownerExists`.
         vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.AddressZeroNotAllowed.selector));
         vm.prank(owner1);
         msig.submitProposal(_singleAddress(ADDRESS_ZERO), _singleUint(0), _singleBytes(txData));

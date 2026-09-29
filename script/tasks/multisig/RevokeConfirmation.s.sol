@@ -6,8 +6,7 @@ import "../lib/MultiSigTaskLib.sol";
 
 /**
  * @title RevokeConfirmationScript
- * @notice Revoke a proposal confirmation. Replaces
- *         `yarn hardhat stakedCelo:multiSig:revokeConfirmation --proposal-id <id>`.
+ * @notice Revoke a proposal confirmation.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

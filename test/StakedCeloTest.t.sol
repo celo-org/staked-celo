@@ -190,7 +190,7 @@ contract StakedCeloTest is TestAccountDeployHelper {
         assertEq(stakedCelo.lockedVoteBalanceOf(anAccount), 20);
         assertEq(stakedCelo.balanceOf(anAccount), stCeloOwned - 20);
 
-        // Lock 5 (does not decrease — stays at max 20)
+        // Lock 5 (does not decrease - stays at max 20)
         vm.prank(address(mockManager));
         stakedCelo.lockVoteBalance(anAccount, 5);
         assertEq(stakedCelo.lockedVoteBalanceOf(anAccount), 20);

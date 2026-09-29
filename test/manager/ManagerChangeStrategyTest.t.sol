@@ -5,11 +5,9 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerChangeStrategyTest
- * @notice Ports `#changeStrategy()` and `#forceChangeStrategy()` of test-ts/manager.test.ts.
- * @dev The original called `manager.changeStrategy(...)` / `manager.deposit(...)` without
- *      `.connect(...)` in these blocks, i.e. from the default Hardhat signer. The Foundry
- *      equivalent is the test contract itself, which is therefore the depositor of the
- *      `#changeStrategy()` blocks.
+ * @notice Tests for `Manager.changeStrategy` and `Manager.forceChangeStrategy`.
+ * @dev The `changeStrategy` cases call `manager.changeStrategy(...)` / `manager.deposit(...)`
+ *      without a prank, so the test contract itself is the depositor.
  */
 contract ManagerChangeStrategyTest is ManagerTestBase {
     /// @dev `specificGroupStrategyDeposit` / `defaultGroupDeposit` of the nested blocks.
@@ -75,8 +73,8 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.changeStrategy(ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
-        // Ported verbatim: the original asserts this value against itself, so the "different
-        // specific strategy" branch is effectively unasserted.
+        // This assertion compares the value with itself, so the "different specific strategy"
+        // branch is not asserted.
         assertEq(
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0]),
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0])
@@ -224,8 +222,8 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         manager.forceChangeStrategy(depositor, ADDRESS_ZERO);
 
         assertEq(specificGroupStrategy.stCeloInGroup(specificGroupStrategyAddress), 0);
-        // Ported verbatim: the original asserts this value against itself, so the "different
-        // specific strategy" branch is effectively unasserted.
+        // This assertion compares the value with itself, so the "different specific strategy"
+        // branch is not asserted.
         assertEq(
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0]),
             mockDefaultStrategy.stCeloInGroup(groupAddresses[0])
@@ -328,20 +326,20 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
     //                          BLOCK FIXTURES
     // =========================================================================
 
-    /// @dev `beforeEach` of `#changeStrategy() > When depositor chose specific strategy`.
+    /// @dev Setup for `changeStrategy > When depositor chose specific strategy`.
     function setUpChoseSpecificStrategy() private {
         manager.changeStrategy(specificGroupStrategyAddress);
         manager.deposit{value: STRATEGY_DEPOSIT}();
         mockAccount.setCeloForGroup(specificGroupStrategyAddress, STRATEGY_DEPOSIT);
     }
 
-    /// @dev `beforeEach` of `#changeStrategy() > When depositor chose default strategy`.
+    /// @dev Setup for `changeStrategy > When depositor chose default strategy`.
     function setUpChoseDefaultStrategy() private {
         manager.deposit{value: STRATEGY_DEPOSIT}();
         updateGroupCelo();
     }
 
-    /// @dev `beforeEach` of `#forceChangeStrategy() > When depositor chose specific strategy`.
+    /// @dev Setup for `forceChangeStrategy > When depositor chose specific strategy`.
     function setUpForcedSpecificStrategy() private {
         vm.prank(owner);
         manager.forceChangeStrategy(depositor, specificGroupStrategyAddress);
@@ -350,20 +348,20 @@ contract ManagerChangeStrategyTest is ManagerTestBase {
         mockAccount.setCeloForGroup(specificGroupStrategyAddress, STRATEGY_DEPOSIT);
     }
 
-    /// @dev `beforeEach` of `#forceChangeStrategy() > When depositor chose default strategy`.
+    /// @dev Setup for `forceChangeStrategy > When depositor chose default strategy`.
     function setUpForcedDefaultStrategy() private {
         vm.prank(depositor);
         manager.deposit{value: STRATEGY_DEPOSIT}();
         updateGroupCelo();
     }
 
-    /// @dev `beforeEach` of the `When chosen group is unhealthy` blocks.
+    /// @dev Setup for the `When chosen group is unhealthy` blocks.
     function setUpChosenGroupUnhealthy() private {
         slashGroup(groupAddresses[2]);
         mockGroupHealth.updateGroupHealth(specificGroupStrategyAddress);
     }
 
-    /// @dev `beforeEach` of the `When rebalanced` blocks.
+    /// @dev Setup for the `When rebalanced` blocks.
     function setUpRebalanced() private {
         specificGroupStrategy.rebalanceWhenHealthChanged(specificGroupStrategyAddress);
         updateGroupCelo();

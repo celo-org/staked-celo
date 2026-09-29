@@ -15,9 +15,8 @@ interface AccountTestVm {
 }
 
 /**
- * @dev The `expectEmit` overload that pins the expected event to a single emitter, mirroring
- *      the `.to.emit(contract, "Event")` assertion of the TypeScript suite. Cast onto the same
- *      cheatcode address.
+ * @dev The `expectEmit` overload that pins the expected event to a single emitter. Cast onto
+ *      the same cheatcode address.
  */
 interface IVmExpectEmitFrom {
     function expectEmit(bool, bool, bool, bool, address) external;
@@ -25,22 +24,19 @@ interface IVmExpectEmitFrom {
 
 /**
  * @title AccountTestBase
- * @notice Shared fixture for the port of the Hardhat era test-ts/account.test.ts.
- * @dev Ports the `before()` hook of the TypeScript suite: three validator groups with one
- *      validator each are registered against the real Celo core contracts, the "TestAccount"
- *      Hardhat fixture (Manager + Account + MockGovernance) is deployed against the devchain
- *      registry and the Account gets an EOA manager and a pauser. `setUp()` runs before every
- *      test, which is what the `evm_snapshot` / `evm_revert` pair of the original did.
+ * @notice Shared fixture for the Account tests.
+ * @dev Three validator groups with one validator each are registered against the real Celo
+ *      core contracts, the "TestAccount" fixture (Manager + Account + MockGovernance) is
+ *      deployed against the devchain registry and the Account gets an EOA manager and a
+ *      pauser. `setUp()` runs before every test, so every test starts from this state.
  *
- *      Deviation: the TypeScript suite hardcoded the `lesser` / `greater` neighbours passed to
- *      Election's `vote`, `revokePending` and `revokeActive`. On the ganache devchain the three
- *      test groups were the only ones holding votes, so `greater == address(0)` (i.e. "this
- *      group is the head of the list") was correct. The anvil devchain ships three validator
- *      groups that already hold 20 000 CELO of votes each, so those hardcoded neighbours make
- *      Celo's SortedLinkedList revert with "get lesser and greater failure". The helpers below
- *      therefore derive the neighbours from the chain state (the same way the original derived
- *      its hardcoded values), by replaying the Account bookkeeping that decides how much is
- *      voted / revoked from pending / revoked from active.
+ *      The `lesser` / `greater` neighbours passed to Election's `vote`, `revokePending` and
+ *      `revokeActive` are derived from the chain state rather than hardcoded. The devchain
+ *      ships three validator groups that already hold 20 000 CELO of votes each, so assuming
+ *      the test groups are the only ones holding votes (`greater == address(0)`) makes Celo's
+ *      SortedLinkedList revert with "get lesser and greater failure". The helpers below
+ *      replay the Account bookkeeping that decides how much is voted / revoked from pending /
+ *      revoked from active, and compute the neighbours from the resulting totals.
  */
 abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     AccountTestVm internal constant avm =
@@ -66,8 +62,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     event ContractUnpaused();
 
     /// @dev Expects the next emitted event to come from `emitter`, checking every topic and
-    ///      the data. The emitter is what the TypeScript `.to.emit(contract, "Event")` pinned;
-    ///      without it any contract emitting the same event would satisfy the assertion.
+    ///      the data. Without the emitter any contract emitting the same event would satisfy
+    ///      the assertion.
     function _expectEmitFrom(address emitter) internal {
         IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
     }
@@ -76,8 +72,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     //                            TEST STATE
     // =========================================================================
 
-    /// @dev The EOA the Account contract accepts as its Manager (`manager` in the TS suite;
-    ///      `manager` itself is the Manager contract of the deploy fixture).
+    /// @dev The EOA the Account contract accepts as its Manager (`manager` itself is the
+    ///      Manager contract of the deploy fixture).
     address internal managerSigner;
     address internal nonManager;
     address internal pauser;
@@ -141,7 +137,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
         return super.currentEpochNumber();
     }
 
-    /// @notice Registers a validator group with one validator, as the `before()` hook did.
+    /// @notice Registers a validator group with one validator, as the fixture setup does.
     function registerNewValidatorGroup() internal returns (address group) {
         (group,) = randomSigner(11_000 ether);
         address validator = createWallet(11_000 ether);
@@ -292,8 +288,8 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     // =========================================================================
 
     /// @notice `account.activateAndVote(group, ...)` with neighbours derived from chain state.
-    /// @dev The original called this through `.connect(manager)`, but `activateAndVote` is
-    ///      permissionless (`onlyWhenNotPaused` only), so no prank is needed.
+    /// @dev `activateAndVote` is permissionless (`onlyWhenNotPaused` only), so no prank is
+    ///      needed.
     function _activateAndVote(address group) internal {
         (address lesser, address greater) =
             findLesserAndGreaterAfterVote(group, int256(_voteAmount(group)));
@@ -301,8 +297,7 @@ abstract contract AccountTestBase is TestAccountDeployHelper, DevchainHelper {
     }
 
     /// @notice `account.revokeVotes(group, ...)` with neighbours derived from chain state.
-    /// @dev The original called this through `.connect(manager)`, but `revokeVotes` is
-    ///      permissionless (`onlyWhenNotPaused` only), so no prank is needed.
+    /// @dev `revokeVotes` is permissionless (`onlyWhenNotPaused` only), so no prank is needed.
     function _revokeVotesForGroup(address group) internal {
         uint256 revokable = _min(account.votesForGroup(group), _celoToRevoke(group));
         RevokeNeighbours memory n = _revokeNeighbours(group, revokable);

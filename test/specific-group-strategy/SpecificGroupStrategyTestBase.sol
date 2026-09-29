@@ -20,8 +20,8 @@ interface IVmExpectEmitFrom {
 
 /**
  * @title SpecificGroupStrategyTestBase
- * @notice Shared fixture for the Foundry port of test-ts/specific_group_strategy.test.ts.
- * @dev Mirrors the `before()` block of the TypeScript suite:
+ * @notice Shared fixture for the SpecificGroupStrategy tests.
+ * @dev The fixture:
  *        - deploys the `FullTestManager` fixture (Manager, SpecificGroupStrategy,
  *          MockGroupHealth, MockDefaultStrategy) against the real Celo core registry of the
  *          devchain,
@@ -31,10 +31,8 @@ interface IVmExpectEmitFrom {
  *          voting limit) and elects them on MockGroupHealth,
  *        - hands the pauser role to the owner.
  *
- *      `setUp()` of the concrete test contracts runs this once per test, which is what the
- *      original achieved with `before()` plus `evm_snapshot` / `evm_revert` in
- *      `beforeEach` / `afterEach`. Nested `beforeEach` blocks of the original are ported as
- *      `_when...()` helpers that the tests of that block call first.
+ *      `setUp()` of the concrete test contracts runs this once per test. Scenario-specific
+ *      setup lives in `_when...()` helpers that the tests of that scenario call first.
  */
 abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, DevchainHelper {
     // =========================================================================
@@ -57,8 +55,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     //                        EVENT ASSERTION HELPER
     // =========================================================================
 
-    /// @dev `.to.emit(contract, name)` of the original: checks every topic, the event data and
-    ///      the contract that emitted it.
+    /// @dev Checks every topic, the event data and the contract that emitted it.
     function _expectEmitFrom(address emitter) internal {
         IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
     }
@@ -87,7 +84,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     //                            TEST FIXTURE
     // =========================================================================
 
-    /// @dev The mocks the original `before()` deploys on top of the FullTestManager fixture.
+    /// @dev The mocks deployed on top of the FullTestManager fixture.
     MockAccount internal mockAccount;
     MockStakedCelo internal mockStakedCelo;
     MockVote internal mockVote;
@@ -201,8 +198,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     //                         FIXTURE SHORTHANDS
     // =========================================================================
 
-    /// @dev Activates the first `count` groups in the DefaultStrategy, mirroring the
-    ///      `for (let i = 0; i < count; i++)` loops of the original `beforeEach` blocks.
+    /// @dev Activates the first `count` groups in the DefaultStrategy, in order.
     function _activateGroups(uint256 count) internal {
         for (uint256 i = 0; i < count; i++) {
             (address head,) = mockDefaultStrategy.getGroupsHead();
@@ -225,12 +221,12 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     }
 
     /// @dev The votes `group` can still receive from the Election contract.
-    ///      Replaces the hardcoded ganache capacities of the original suite.
+    ///      Read from the chain rather than hardcoded, since it depends on the devchain state.
     function _receivableVotes(address group) internal view returns (uint256) {
         return celoElection.getNumVotesReceivable(group) - celoElection.getTotalVotesForGroup(group);
     }
 
-    /// @dev Ports ElectionWrapper.revokePending: resolves index and neighbours, then revokes.
+    /// @dev Revokes pending votes: resolves the group index and neighbours, then revokes.
     function _revokePending(address voterAddress, address group, uint256 value) internal {
         address[] memory votedFor = celoElection.getGroupsVotedForByAccount(voterAddress);
         uint256 index = type(uint256).max;
@@ -281,7 +277,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
     //                          ARRAY ASSERTIONS
     // =========================================================================
 
-    /// @dev chai `to.deep.eq` on an address array: same length, same order.
+    /// @dev Address arrays are equal: same length, same order.
     function _assertEqAddresses(address[] memory actual, address[] memory expected) internal pure {
         require(actual.length == expected.length, "address array length mismatch");
         for (uint256 i = 0; i < actual.length; i++) {
@@ -289,7 +285,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
         }
     }
 
-    /// @dev chai `to.deep.eq` on a uint array: same length, same order.
+    /// @dev Uint arrays are equal: same length, same order.
     function _assertEqUints(uint256[] memory actual, uint256[] memory expected) internal pure {
         require(actual.length == expected.length, "uint array length mismatch");
         for (uint256 i = 0; i < actual.length; i++) {
@@ -297,7 +293,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
         }
     }
 
-    /// @dev chai `to.have.deep.members`: same length, same elements in any order.
+    /// @dev Same length, same elements in any order.
     ///      A matched entry of `actual` is consumed, so this compares multisets: a duplicate in
     ///      `expected` cannot be satisfied twice by the same element of `actual`.
     function _assertMembersAddresses(address[] memory actual, address[] memory expected)
@@ -342,7 +338,7 @@ abstract contract SpecificGroupStrategyTestBase is FullTestManagerDeployHelper, 
         }
     }
 
-    /// @dev chai `to.have.deep.members` for uint arrays. Multiset comparison, see
+    /// @dev Same members check for uint arrays. Multiset comparison, see
     ///      `_assertMembersAddresses`.
     function _assertMembersUints(uint256[] memory actual, uint256[] memory expected) internal pure {
         if (actual.length != expected.length) {

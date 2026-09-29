@@ -121,22 +121,22 @@ library DeployLog {
 /**
  * @title DeployBase
  * @notice Shared plumbing for the Foundry deployment scripts: network resolution,
- *         hardhat-deploy compatible deployment records and proxy deployment.
- * @dev The deployment records keep the layout written by hardhat-deploy so that the
- *      existing tooling (and the ported CLI scripts) can keep reading
- *      `deployments/<network>/<Name>.json` and pick up `.address`:
+ *         deployment records and proxy deployment.
+ * @dev Every deployed contract gets a `deployments/<network>/<Name>.json` record
+ *      (address, implementation, args), in the same layout as the records already
+ *      committed there, so the task scripts and other tooling read `.address` from it:
  *
  *        <Name>.json                -> address = proxy, implementation = logic
  *        <Name>_Proxy.json          -> address = proxy, implementation = logic
  *        <Name>_Implementation.json -> address = logic
  *
- *      Each record also carries the `args` array hardhat-deploy wrote, so that
+ *      The `args` array holds the constructor arguments, so that
  *      `scripts/verify-contracts.sh` can ABI-encode the constructor arguments of the
  *      proxy and of an implementation that takes some instead of guessing them from the
  *      creation code on chain.
  *
- *      The `abi` field written by hardhat-deploy is not reproduced; consumers read the
- *      ABI from the Foundry artifacts in `out/` instead.
+ *      Records carry no `abi` field; consumers read the ABI from the Foundry artifacts in
+ *      `out/` instead.
  */
 abstract contract DeployBase {
     /// @notice Foundry cheatcode address (same one forge-std uses).
@@ -148,8 +148,8 @@ abstract contract DeployBase {
         0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     /// @notice Registry argument that makes UsingRegistryUpgradeable fall back to the
-    ///         canonical Celo Registry at 0x0...ce10. This is what the Hardhat deploy
-    ///         scripts passed for every registry aware contract.
+    ///         canonical Celo Registry at 0x0...ce10. Every registry aware contract is
+    ///         deployed with it.
     address internal constant CANONICAL_REGISTRY = address(0);
 
     /// @notice The sender forge simulates with when the run was given none. It holds no key
@@ -192,7 +192,7 @@ abstract contract DeployBase {
 
     /// @notice Resolve the deployments directory name and enable record keeping.
     /// @dev `NETWORK` wins when set, otherwise the chain id is mapped to the same
-    ///      network names the Hardhat config used.
+    ///      deployments directory names (celo, sepolia, local).
     function _initNetwork() internal {
         network = vm.envOr("NETWORK", _networkFromChainId());
         useDeploymentRecords = true;
@@ -251,7 +251,7 @@ abstract contract DeployBase {
         _recordImplementationDeployment(name, implementation);
     }
 
-    /// @notice Write the three records hardhat-deploy produces for a proxied contract.
+    /// @notice Write the three records of a proxied contract.
     /// @param name The contract name, e.g. `Manager`.
     /// @param proxy The ERC1967 proxy address.
     /// @param implementation The logic contract address.

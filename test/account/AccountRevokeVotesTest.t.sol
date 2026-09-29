@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#revokeVotes()")`.
+/// @notice Tests for `Account.revokeVotes`.
 contract AccountRevokeVotesTest is AccountTestBase {
     uint256 private constant ORIGINAL_AMOUNT = 100;
     uint256 private constant TRANSFER_AMOUNT = 30;

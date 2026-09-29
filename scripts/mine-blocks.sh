@@ -2,10 +2,9 @@
 #
 # Mines blocks on a local development node.
 #
-# Ports the Hardhat era scripts/mineBlocks.ts, which `yarn deploy:devchain` ran right after
-# deploying so that the epoch based logic of the Celo core contracts had a few epochs
-# of history behind it. The Hardhat script sent one `evm_mine` per block; anvil mines
-# the whole batch in a single `anvil_mine` call.
+# Run it right after deploying to a local node so that the epoch based logic of the Celo
+# core contracts has a few epochs of history behind it. anvil mines the whole batch in a
+# single `anvil_mine` call.
 #
 # Usage:
 #   scripts/mine-blocks.sh                 # 35 blocks on http://localhost:8545
@@ -14,8 +13,7 @@
 #   BLOCKS=100 RPC_URL=http://localhost:8546 scripts/mine-blocks.sh
 #
 # Other node types expose the same thing under a different method:
-#   hardhat node   cast rpc --rpc-url "$RPC_URL" hardhat_mine "$(cast to-hex 35)"
-#   ganache        cast rpc --rpc-url "$RPC_URL" evm_mine       # once per block
+#   evm_mine nodes cast rpc --rpc-url "$RPC_URL" evm_mine       # once per block
 #   geth --dev     cast rpc --rpc-url "$RPC_URL" miner_start; sleep; miner_stop
 # A real network needs none of this: its validators produce the blocks.
 #

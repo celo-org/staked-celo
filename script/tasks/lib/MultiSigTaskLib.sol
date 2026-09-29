@@ -6,7 +6,7 @@ import "./TaskVm.sol";
 
 /**
  * @title MultiSigTaskLib
- * @notice Solidity port of lib/multiSig-tasks/*.ts. Holds the body of every multiSig task so
+ * @notice Holds the body of every multiSig task so
  *         that the forge scripts and the tests run the same code.
  * @dev The functions are `internal` and therefore inlined into the caller: the MultiSig
  *      calls originate from the script (inside vm.startBroadcast) or from the test contract
@@ -15,8 +15,7 @@ import "./TaskVm.sol";
 library MultiSigTaskLib {
     /**
      * @notice Submits a proposal and returns its ID.
-     * @dev The Hardhat task read the ID out of the ProposalScheduled event; submitProposal
-     *      returns it directly.
+     * @dev submitProposal returns the ID directly, so no event has to be decoded.
      * @param multiSig The MultiSig contract.
      * @param destinations The addresses at which the operations are targeted.
      * @param values The CELO values involved in the proposal if any.
@@ -64,8 +63,8 @@ library MultiSigTaskLib {
 
     /**
      * @notice Executes `proposalId` after checking that its time-lock has elapsed.
-     * @dev The pre-check mirrors the Hardhat task, which reported the earliest execution
-     *      time instead of letting the MultiSig modifier revert without context.
+     * @dev The pre-check reports the earliest execution time instead of letting the
+     *      MultiSig modifier revert without context.
      * @param multiSig The MultiSig contract.
      * @param proposalId The ID of the proposal.
      */

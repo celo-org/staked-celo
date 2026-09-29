@@ -39,13 +39,12 @@ contract MockAccountsCelo {
 
 /**
  * @title TestAccountDeployHelper
- * @notice Abstract contract providing deploy fixtures for Wave 3 simple unit tests.
- *         Replicates the 15 test deploy scripts from deploy/test/*.ts.
+ * @notice Abstract contract providing deploy fixtures for the single-contract unit tests.
  * @dev Extends CeloTestHelper. Each deployTestXxx() function deploys MockRegistry,
  *      required mock Celo contracts, and the contract under test behind ERC1967Proxy.
  *      Every fixture that deploys a registry-dependent contract also has a
  *      deployTestXxx(address registry) overload that skips the mock Celo
- *      infrastructure and wires the contracts to the given registry instead —
+ *      infrastructure and wires the contracts to the given registry instead -
  *      for example the Celo core registry of a devchain. The overloads never
  *      write to that registry, since they do not own it.
  *
@@ -108,7 +107,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @dev Deploy the mock Celo core contracts. Must be called while pranked as
-    ///      `deployer` so that they match the Hardhat fixtures' deployer.
+    ///      `deployer` so that `deployer` is their deployer.
     function _deployCoreMocks() internal {
         mockElection = new MockElection();
         mockLockedGold = new MockLockedGold();
@@ -161,7 +160,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     // compile without via_ir. All of them must run while pranked as `deployer`.
     // -------------------------------------------------------------------------
 
-    /// @dev Account — initialize(registry, managerProxy, owner).
+    /// @dev Account - initialize(registry, managerProxy, owner).
     ///      REQUIRES: "Accounts" resolvable in the registry, because
     ///      Account.initialize() calls getAccounts().createAccount().
     function _deployAccountProxy(address registryAddr) private {
@@ -173,7 +172,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         account = Account(payable(address(proxy)));
     }
 
-    /// @dev StakedCelo — initialize(managerProxy, owner).
+    /// @dev StakedCelo - initialize(managerProxy, owner).
     function _deployStakedCeloProxy() private {
         StakedCelo impl = new StakedCelo();
         bytes memory data =
@@ -182,7 +181,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         stakedCelo = StakedCelo(address(proxy));
     }
 
-    /// @dev Vote — initialize(registry, owner, managerProxy).
+    /// @dev Vote - initialize(registry, owner, managerProxy).
     function _deployVoteProxy(address registryAddr) private {
         Vote impl = new Vote();
         bytes memory data =
@@ -191,7 +190,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         vote = Vote(address(proxy));
     }
 
-    /// @dev MockGroupHealth — initialize(registry, owner).
+    /// @dev MockGroupHealth - initialize(registry, owner).
     function _deployMockGroupHealthProxy(address registryAddr) private {
         MockGroupHealth impl = new MockGroupHealth();
         bytes memory data =
@@ -200,7 +199,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         mockGroupHealth = MockGroupHealth(address(proxy));
     }
 
-    /// @dev MockDefaultStrategy — initialize(owner, managerProxy).
+    /// @dev MockDefaultStrategy - initialize(owner, managerProxy).
     ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
     function _deployMockDefaultStrategyProxy() private {
         MockDefaultStrategy impl = new MockDefaultStrategy();
@@ -210,7 +209,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         mockDefaultStrategy = MockDefaultStrategy(payable(address(proxy)));
     }
 
-    /// @dev SpecificGroupStrategy — initialize(owner, managerProxy).
+    /// @dev SpecificGroupStrategy - initialize(owner, managerProxy).
     function _deploySpecificGroupStrategyProxy() private {
         SpecificGroupStrategy impl = new SpecificGroupStrategy();
         bytes memory data = abi.encodeWithSelector(
@@ -225,7 +224,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     // =========================================================================
 
     /// @notice Deploy PausableTest contract (no proxy, direct deploy).
-    ///         Replicates deploy/test/pausable.ts [tag: TestPausable].
     function deployTestPausable() internal {
         _initNamedAccounts();
         vm.startPrank(deployer);
@@ -234,7 +232,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy MultiSig behind proxy with 2 owners, required=2, delay=7*DAY.
-    ///         Replicates deploy/test/multisig.ts [tag: TestMultiSig].
     function deployTestMultiSig() internal {
         _initNamedAccounts();
         vm.startPrank(deployer);
@@ -267,7 +264,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy Manager behind proxy on top of a fresh MockRegistry.
-    ///         Replicates deploy/test/manager.ts + mock_vote.ts [tag: TestManager].
     function deployTestManager() internal {
         _initNamedAccounts();
         mockRegistryAddr = _deployMockCeloInfrastructure();
@@ -281,7 +277,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         _initNamedAccounts();
         vm.startPrank(deployer);
 
-        // MockVote (from mock_vote.ts, tag TestManager)
+        // MockVote
         mockVote = new MockVote();
 
         // Manager behind proxy
@@ -291,8 +287,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy Manager + Account behind proxies on top of a fresh MockRegistry.
-    ///         Replicates deploy/test/account.ts + deps [tag: TestAccount].
-    ///         Includes: MockGovernance (tag TestAccount), MockVote (tag TestManager).
+    ///         Includes MockGovernance and MockVote.
     function deployTestAccount() internal {
         _initNamedAccounts();
         mockRegistryAddr = _deployMockCeloInfrastructure();
@@ -308,23 +303,19 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
 
         vm.startPrank(deployer);
 
-        // MockGovernance (from mock_governance.ts, tag TestAccount). Already deployed
-        // when the mock Celo infrastructure is in use.
+        // MockGovernance. Already deployed when the mock Celo infrastructure is in use.
         if (address(mockGovernance) == address(0)) {
             mockGovernance = new MockGovernance();
         }
 
-        // Account behind proxy — needs "Accounts" resolvable for createAccount()
+        // Account behind proxy - needs "Accounts" resolvable for createAccount()
         _deployAccountProxy(registry);
 
         vm.stopPrank();
     }
 
     /// @notice Deploy MockManager (direct) + StakedCelo behind proxy.
-    ///         Replicates deploy/test/staked_celo.ts + mock_manager.ts [tag: TestStakedCelo].
-    /// @dev The Hardhat fixture initialised StakedCelo with the Manager proxy and the test then
-    ///      called setManager(mockManager); initialising with MockManager straight away reaches
-    ///      the same end state.
+    /// @dev StakedCelo is initialised with MockManager as its manager.
     function deployTestStakedCelo() internal {
         _initNamedAccounts();
         vm.startPrank(deployer);
@@ -345,7 +336,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     /// @notice Deploy full Vote test environment on top of a fresh MockRegistry:
     ///         Manager + Account + StakedCelo + Vote + MockGroupHealth +
     ///         MockDefaultStrategy + SpecificGroupStrategy behind proxies.
-    ///         Replicates all deploy/test/*.ts with [tag: TestVote].
     function deployTestVote() internal {
         _initNamedAccounts();
         mockRegistryAddr = _deployMockCeloInfrastructure();
@@ -361,7 +351,7 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
         vm.startPrank(deployer);
 
         _deployAccountProxy(registry);
-        // StakedCelo uses the real Manager address per staked_celo.ts
+        // StakedCelo uses the real Manager address
         _deployStakedCeloProxy();
         _deployVoteProxy(registry);
         _deployMockGroupHealthProxy(registry);
@@ -372,7 +362,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy MockGroupHealth behind proxy on top of a fresh MockRegistry.
-    ///         Replicates deploy/test/group_health.ts [tag: TestGroupHealth].
     function deployTestGroupHealth() internal {
         _initNamedAccounts();
         mockRegistryAddr = _deployMockCeloInfrastructure();
@@ -392,7 +381,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
 
     /// @notice Deploy Manager + MockDefaultStrategy behind proxy on top of a fresh
     ///         MockRegistry.
-    ///         Replicates deploy/test/default_strategy.ts [tag: TestDefaultStrategy].
     ///         AddressSortedLinkedList library is auto-linked by Forge.
     function deployTestDefaultStrategy() internal {
         _initNamedAccounts();
@@ -415,7 +403,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
 
     /// @notice Deploy Manager + SpecificGroupStrategy behind proxy on top of a fresh
     ///         MockRegistry.
-    ///         Replicates deploy/test/specific_group_strategy.ts [tag: TestSpecificGroupStrategy].
     function deployTestSpecificGroupStrategy() internal {
         _initNamedAccounts();
         mockRegistryAddr = _deployMockCeloInfrastructure();
@@ -436,7 +423,6 @@ abstract contract TestAccountDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy MockStakedCelo + MockAccount (direct) + RebasedStakedCelo behind proxy.
-    ///         Replicates deploy/test/rebased_staked_celo.ts + deps [tag: TestRebasedStakedCelo].
     function deployTestRebasedStakedCelo() internal {
         _initNamedAccounts();
         vm.startPrank(deployer);

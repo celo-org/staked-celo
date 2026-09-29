@@ -5,7 +5,7 @@ import "./EndToEndTestBase.sol";
 
 /**
  * @title EndToEndVoteProposalTest
- * @notice Port of test-ts/end-to-end-vote-proposal.test.ts ("e2e governance vote").
+ * @notice End-to-end test of voting on Celo governance proposals with stCELO.
  */
 contract EndToEndVoteProposalTest is EndToEndTestBase {
     uint256 internal constant AMOUNT_OF_CELO_TO_DEPOSIT = 6 ether;
@@ -13,7 +13,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
     uint256 internal constant REWARDS_GROUP_1 = 150 ether;
     uint256 internal constant REWARDS_GROUP_2 = 200 ether;
 
-    /// @dev ContractKit's `propose([tx], url)` for a single `owner()` call.
+    /// @dev Calldata of the single `owner()` call each test proposal makes.
     bytes internal constant PROPOSAL_INPUT = hex"8da5cb5b";
 
     address internal specificGroupStrategyDifferentFromActive;
@@ -29,8 +29,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
         specificGroupStrategyDifferentFromActive = groups[5];
 
         /**
-         * @dev Deviation: the ganache devchain of the original suite charged a negligible
-         *      governance deposit, the anvil devchain charges 100 CELO per proposal. depositor1
+         * @dev The devchain charges a 100 CELO governance deposit per proposal. depositor1
          *      makes three proposals on top of its 6 CELO deposit and the 10 CELO it sends to
          *      the approver, so it is funded with those deposits here.
          */
@@ -74,8 +73,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
         Vote.ProposalVoteRecord memory voteRecord = vote.getVoteRecord(proposalId);
         assertTrue(voteRecord.proposalId == proposalId);
 
-        // The original compares the strings of both values through a two argument `expect`,
-        // which chai treats as value plus message: the computation is kept, nothing is asserted.
+        // The CELO value of depositor1's stCELO is computed but not asserted.
         manager.toCelo(stakedCelo.balanceOf(depositor1));
 
         assertEq(voteRecord.yesVotes, depositor1VotingPower);
@@ -149,7 +147,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
         distributeRewards(2, REWARDS_GROUP_2);
     }
 
-    /// @dev Creates the three governance proposals of the original tests and dequeues them.
+    /// @dev Creates the three governance proposals the tests vote on and dequeues them.
     function _proposeAndDequeue() private {
         uint256 dequeueFrequency = celoGovernance.dequeueFrequency();
 
@@ -167,7 +165,7 @@ contract EndToEndVoteProposalTest is EndToEndTestBase {
         celoGovernance.dequeueProposalsIfReady();
     }
 
-    /// @dev Ports GovernanceWrapper.propose for a proposal with a single `owner()` transaction.
+    /// @dev Submits a governance proposal with a single `owner()` transaction.
     function _propose(address destination, string memory descriptionUrl) private returns (uint256) {
         address[] memory destinations = new address[](1);
         destinations[0] = destination;

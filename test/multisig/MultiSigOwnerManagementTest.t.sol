@@ -4,9 +4,8 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 
 /**
- * @notice Port of the wallet-configuration blocks of `describe("MultiSig")`:
- *         `#addOwner()`, `#removeOwner()`, `#replaceOwner()`, `#changeRequirement()`
- *         and `#changeDelay()`.
+ * @notice Wallet-configuration tests of MultiSig: `addOwner`, `removeOwner`,
+ *         `replaceOwner`, `changeRequirement` and `changeDelay`.
  */
 contract MultiSigOwnerManagementTest is MultiSigTestBase {
     // =========================================================================

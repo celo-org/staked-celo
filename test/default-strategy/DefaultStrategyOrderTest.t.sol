@@ -5,11 +5,11 @@ import "./DefaultStrategyTestBase.sol";
 
 /**
  * @title DefaultStrategyOrderTest
- * @notice Ports the sorting describe blocks of `test-ts/default-strategy.test.ts`:
- *         `#updateActiveGroupOrder()`, `#getGroupsHead()` and `#getGroupsTail()`.
+ * @notice Sorting tests of DefaultStrategy: `updateActiveGroupOrder`, `getGroupsHead` and
+ *         `getGroupsTail`.
  */
 contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
-    /// @dev Amount withdrawn by `describe("when withdrawn with big enough sorting limit")`.
+    /// @dev Amount withdrawn by the "when withdrawn with big enough sorting limit" cases.
     uint256 internal constant WITHDRAWN = 250;
 
     address internal originalTail;
@@ -22,10 +22,10 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
     }
 
     // =========================================================================
-    //                       NESTED beforeEach HELPERS
+    //                           SCENARIO SETUP
     // =========================================================================
 
-    /// @dev `describe("#updateActiveGroupOrder()")` beforeEach.
+    /// @dev Setup shared by the `updateActiveGroupOrder` cases.
     function _setUpActiveGroups() private {
         _activateGroupsFromPrevious(3);
     }
@@ -49,14 +49,14 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         }
     }
 
-    /// @dev `describe("when deposited with big enough sorting limit")` beforeEach.
+    /// @dev Setup for the "when deposited with big enough sorting limit" cases.
     function _setUpDepositedBigSortingLimit() private {
         _setUpActiveGroups();
         _setSortingParams(3);
         _depositIncreasingAmounts();
     }
 
-    /// @dev `describe("when deposited with {0,1} sorting loop limit to TAIL only")` beforeEach.
+    /// @dev Setup for the "when deposited with {0,1} sorting loop limit to TAIL only" cases.
     function _setUpDepositedToTailOnly(uint256 loopLimit) private {
         _setUpActiveGroups();
         _setSortingParams(loopLimit);
@@ -64,14 +64,14 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         _depositIncreasingAmounts();
     }
 
-    /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
+    /// @dev ... then "When updateActiveGroupOrder called".
     function _setUpDepositedToTailOnlyUpdated(uint256 loopLimit) private {
         _setUpDepositedToTailOnly(loopLimit);
         (address head,) = defaultStrategy.getGroupsHead();
         mockDefaultStrategy.updateActiveGroupOrder(originalTail, head, ADDRESS_ZERO);
     }
 
-    /// @dev `describe("when deposited with 0 sorting loop limit to more groups")` beforeEach.
+    /// @dev Setup for the "when deposited with 0 sorting loop limit to more groups" cases.
     function _setUpDepositedToMoreGroups() private {
         _setUpActiveGroups();
         _setSortingParams(0);
@@ -82,7 +82,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         manager.deposit{value: 250 ether}();
     }
 
-    /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
+    /// @dev ... then "When updateActiveGroupOrder called".
     function _setUpDepositedToMoreGroupsUpdated() private {
         _setUpDepositedToMoreGroups();
         (address head,) = defaultStrategy.getGroupsHead();
@@ -92,7 +92,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         );
     }
 
-    /// @dev `describe("when withdrawn with big enough sorting limit")` beforeEach.
+    /// @dev Setup for the "when withdrawn with big enough sorting limit" cases.
     function _setUpWithdrawnBigSortingLimit() private {
         _setUpActiveGroups();
         totalDeposited = 0;
@@ -106,7 +106,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         manager.withdraw(WITHDRAWN);
     }
 
-    /// @dev `describe("when withdrawing with {0,1} sorting loop limit")` beforeEach.
+    /// @dev Setup for the "when withdrawing with {0,1} sorting loop limit" cases.
     function _setUpWithdrawingBase(uint256 loopLimit) private {
         _setUpActiveGroups();
         _depositIncreasingAmounts();
@@ -115,21 +115,21 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         assertTrue(defaultStrategy.sorted());
     }
 
-    /// @dev ... `> describe("when withdrawing from 1 group")` beforeEach.
+    /// @dev ... then "when withdrawing from 1 group".
     function _setUpWithdrawFromOneGroup(uint256 loopLimit) private {
         _setUpWithdrawingBase(loopLimit);
         _updateGroupCelo();
         manager.withdraw(250);
     }
 
-    /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
+    /// @dev ... then "When updateActiveGroupOrder called".
     function _setUpWithdrawFromOneGroupUpdated(uint256 loopLimit) private {
         _setUpWithdrawFromOneGroup(loopLimit);
         (address tail,) = defaultStrategy.getGroupsTail();
         mockDefaultStrategy.updateActiveGroupOrder(originalHead, ADDRESS_ZERO, tail);
     }
 
-    /// @dev ... `> describe("when withdrawing from more groups")` beforeEach.
+    /// @dev ... then "when withdrawing from more groups".
     function _setUpWithdrawFromMoreGroups(uint256 loopLimit) private {
         _setUpWithdrawingBase(loopLimit);
         _storeOrderedGroups();
@@ -137,7 +137,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         manager.withdraw(450);
     }
 
-    /// @dev ... `> describe("When updateActiveGroupOrder called")` beforeEach.
+    /// @dev ... then "When updateActiveGroupOrder called".
     function _setUpWithdrawFromMoreGroupsUpdated(uint256 loopLimit) private {
         _setUpWithdrawFromMoreGroups(loopLimit);
         (address tail,) = defaultStrategy.getGroupsTail();
@@ -150,14 +150,14 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         );
     }
 
-    /// @dev The two tail-most groups of `originalOrderedGroups` (`slice(0, 2)`).
+    /// @dev The two tail-most groups of `originalOrderedGroups`.
     function _firstTwoOriginalGroups() private view returns (address[] memory groups) {
         groups = new address[](2);
         groups[0] = originalOrderedGroups[0].group;
         groups[1] = originalOrderedGroups[1].group;
     }
 
-    /// @dev The two head-most groups of `originalOrderedGroups` (`slice(length - 2)`).
+    /// @dev The two head-most groups of `originalOrderedGroups`.
     function _lastTwoOriginalGroups() private view returns (address[] memory groups) {
         uint256 count = originalOrderedGroups.length;
         groups = new address[](2);
@@ -597,7 +597,7 @@ contract DefaultStrategyOrderTest is DefaultStrategyTestBase {
         assertEq(previous, ADDRESS_ZERO);
     }
 
-    /// @dev `describe("When active groups")` beforeEach of `#getGroupsHead()`/`#getGroupsTail()`.
+    /// @dev Setup for the "When active groups" cases of `getGroupsHead` / `getGroupsTail`.
     function _setUpHeadTailActiveGroups() private {
         _activateGroupsFromPrevious(3);
         manager.deposit{value: 100}();

@@ -7,7 +7,7 @@ import "./CeloTestHelper.sol";
 /**
  * @title MultiSigHelper
  * @notice Provides utility functions for testing MultiSig proposals
- * @dev Ports submitAndExecuteMultiSigProposal from test-ts/utils-multisig.ts
+ * @dev Submits, confirms and executes a MultiSig proposal in one call.
  */
 abstract contract MultiSigHelper is CeloTestHelper {
     /**

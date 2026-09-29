@@ -5,10 +5,8 @@ import "./SpecificGroupStrategyTestBase.sol";
 
 /**
  * @title SpecificGroupStrategyAdminTest
- * @notice Port of the ownership / pausing describe blocks of
- *         test-ts/specific_group_strategy.test.ts:
- *         #setDependencies (6), #renounceOwnership (2), #setPauser (4), #pause (3),
- *         #unpause (3) and "when paused" (2).
+ * @notice Ownership / pausing tests of SpecificGroupStrategy: `setDependencies`,
+ *         `renounceOwnership`, `setPauser`, `pause`, `unpause` and the paused state.
  */
 contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
     function setUp() public {
@@ -106,7 +104,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
         assertEq(specificGroupStrategy.pauser(), nonManager);
     }
 
-    /// @dev beforeEach of describe("when the owner is changed").
+    /// @dev Setup for "when the owner is changed".
     function _whenTheOwnerIsChanged() private {
         vm.prank(owner);
         specificGroupStrategy.transferOwnership(nonManager);
@@ -188,7 +186,7 @@ contract SpecificGroupStrategyAdminTest is SpecificGroupStrategyTestBase {
         specificGroupStrategy.rebalanceOverflowedGroup(ADDRESS_ZERO);
     }
 
-    /// @dev beforeEach of describe("#unpause") and describe("when paused").
+    /// @dev Setup for the `unpause` and "when paused" cases.
     function _pause() private {
         vm.prank(pauser);
         specificGroupStrategy.pause();

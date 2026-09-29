@@ -5,13 +5,13 @@ import "./TaskInterfaces.sol";
 
 /**
  * @title GroupsLib
- * @notice Solidity port of lib/task-utils.ts: reading the active and the specific strategy
- *         group lists and merging them the way the account task helpers did.
+ * @notice Reads the active and the specific strategy group lists and merges them for the
+ *         account tasks.
  */
 library GroupsLib {
     /**
      * @notice The active groups of DefaultStrategy, ordered from most to least votes.
-     * @dev Ports getDefaultGroupsHHTask: start at the list head and walk the `previous`
+     * @dev Starts at the list head and walks the `previous`
      *      links for as many elements as the list holds.
      * @param defaultStrategy The DefaultStrategy contract.
      * @return groups The active groups.
@@ -32,7 +32,6 @@ library GroupsLib {
 
     /**
      * @notice The groups SpecificGroupStrategy is voting for.
-     * @dev Ports getSpecificGroupsHHTask.
      * @param specificGroupStrategy The SpecificGroupStrategy contract.
      * @return groups The voted groups.
      */
@@ -50,8 +49,7 @@ library GroupsLib {
 
     /**
      * @notice Active groups followed by the specific strategy groups, without duplicates.
-     * @dev Ports `new Set(activeGroups.concat(specificStrategies))`, which keeps the order
-     *      of first appearance.
+     * @dev Keeps the order of first appearance.
      * @param defaultStrategy The DefaultStrategy contract.
      * @param specificGroupStrategy The SpecificGroupStrategy contract.
      * @return The merged group list.

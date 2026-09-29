@@ -6,8 +6,7 @@ import "../lib/MultiSigTaskLib.sol";
 
 /**
  * @title ScheduleProposalScript
- * @notice Schedule a proposal. Replaces
- *         `yarn hardhat stakedCelo:multiSig:scheduleProposal --proposal-id <id>`.
+ * @notice Schedule a proposal.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

@@ -22,7 +22,7 @@ library Log {
 
 /**
  * @title DevchainSmokeTest
- * @notice Sanity checks for the devchain fixture: the flows the ported Hardhat tests rely on
+ * @notice Sanity checks for the devchain fixture: the flows the other tests rely on
  *         (locking, voting, epochs, rewards, validator registration, withdrawals) must work
  *         against the real Celo core contracts.
  */

@@ -5,8 +5,8 @@ out = "out"
 # `yarn install` fills in - hence no lib/ and no remappings. solc hashes the source-unit
 # names of a compilation into the metadata trailer it appends to the bytecode, so an
 # import resolved through a remapping would be recorded under a different name than the
-# "@openzeppelin/contracts/..." the Hardhat build used, and the deployed bytecode would
-# no longer reproduce. The symlink keeps the name and the versions stay exact in
+# "@openzeppelin/contracts/..." the deployed contracts were compiled under, and their
+# bytecode would no longer reproduce. The symlink keeps the name and the versions stay exact in
 # package.json. scripts/bytecode-compat-check.ts is what proves it.
 libs = []
 auto_detect_remappings = false

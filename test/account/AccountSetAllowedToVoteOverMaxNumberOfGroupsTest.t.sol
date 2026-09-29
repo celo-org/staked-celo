@@ -3,13 +3,10 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of
-///         `describe("Account") > describe("#setAllowedToVoteOverMaxNumberOfGroups()")`.
+/// @notice Tests for `Account.setAllowedToVoteOverMaxNumberOfGroups`.
 contract AccountSetAllowedToVoteOverMaxNumberOfGroupsTest is AccountTestBase {
-    /// @dev Strengthened port: the original assertion never ran. It was missing the `await` on
-    ///      `expect(...).revertedWith(...)`, and it called through the owner signer, so the
-    ///      call it asserted on would not have reverted anyway. Here the call really is made
-    ///      by a non-owner and the revert really is asserted.
+    /// @dev The call is made by the test contract, which is not the owner, and the ownership
+    ///      revert is asserted.
     function test_setAllowedToVoteOverMaxNumberOfGroups_RevertsWhenNotCalledByOwner() public {
         vm.expectRevert(bytes("Ownable: caller is not the owner"));
         account.setAllowedToVoteOverMaxNumberOfGroups(true);

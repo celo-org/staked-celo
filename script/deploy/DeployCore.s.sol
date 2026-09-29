@@ -21,13 +21,14 @@ import {
 
 /**
  * @title DeployCore
- * @notice The deploy/00 .. deploy/13 sequence, replacing `yarn deploy`
- *         (`hardhat stakedCelo:deploy --tags core`).
+ * @notice Deploys and wires the core protocol: MultiSig, Manager, Account, StakedCelo,
+ *         Vote, GroupHealth, the two strategies and RebasedStakedCelo, then hands
+ *         ownership to the MultiSig.
  * @dev Every contract sits behind an ERC1967 proxy and the implementations are deployed
  *      with a plain `new`, so the code on chain is exactly the artifact compiled with the
  *      production profile (solc 0.8.11, evm istanbul, no optimizer, no via-ir).
  *
- *      The script is idempotent the way hardhat-deploy was: a contract that already has a
+ *      The script is idempotent: a contract that already has a
  *      record in `deployments/<network>/` is reused, and the wiring steps are skipped once
  *      ownership has moved to the MultiSig (they then have to be proposed through it).
  *
@@ -36,22 +37,22 @@ import {
  *        TIME_LOCK_DELAY                 MultiSig proposal delay, in seconds.
  *        MULTISIG_REQUIRED_CONFIRMATIONS Confirmations needed to execute a proposal.
  *        MULTISIG_OWNERS                 Comma separated list of MultiSig owners, or the
- *                                        Hardhat era MULTISIG_SIGNER_0, MULTISIG_SIGNER_1,
- *                                        ... which the encrypted per-network env files
- *                                        still carry.
+ *                                        older spelling MULTISIG_SIGNER_0,
+ *                                        MULTISIG_SIGNER_1, ..., still accepted because the
+ *                                        encrypted per-network env files carry it.
  *      Optional:
  *        NETWORK                         Deployments directory name; defaults to the chain
  *                                        id mapping (celo / sepolia / local).
  *        VALIDATOR_GROUPS                Comma separated validator groups to make
  *                                        healthy and activate; empty by default.
  *
- *      DEPLOYER, the Hardhat named account, is not read: the deployer is the signer forge
+ *      A DEPLOYER variable is not read: the deployer is the signer forge
  *      is given (--ledger, --private-key, --account). --ledger needs --sender next to it,
  *      because the address is only known to the device; without it the run stops before the
  *      first transaction instead of handing the protocol to forge's default sender.
  */
 contract DeployCore is DeployBase {
-    /// @notice Parameters that used to come from `.env` and hardhat-deploy named accounts.
+    /// @notice Deployment parameters, read from the environment by `run()`.
     struct CoreConfig {
         uint256 timeLockMinDelay;
         uint256 timeLockDelay;
@@ -120,7 +121,7 @@ contract DeployCore is DeployBase {
     //                              SEQUENCE
     // =========================================================================
 
-    /// @dev The deploy/00 .. deploy/13 sequence, in order.
+    /// @dev The full deployment sequence, in order.
     function _deployAll() internal {
         _deployMultiSig();
         _deployManager();
@@ -185,8 +186,8 @@ contract DeployCore is DeployBase {
     }
 
     /// @dev The MultiSig owner set, from either spelling of it.
-    ///      `MULTISIG_OWNERS` is the canonical one. When it is empty the Hardhat era
-    ///      `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... are read instead, which is what
+    ///      `MULTISIG_OWNERS` is the canonical one. When it is empty the older spelling
+    ///      `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... is read instead, which is what
     ///      the encrypted per-network env files (`yarn keys:decrypt`) still carry.
     function _multiSigOwnersFromEnv() private view returns (address[] memory owners) {
         string memory list = vm.envOr("MULTISIG_OWNERS", string(""));
@@ -252,7 +253,7 @@ contract DeployCore is DeployBase {
     //                      CONTRACT DEPLOYMENT STEPS
     // =========================================================================
 
-    /// @dev deploy/00: MultiSig. `minDelay` is a constructor argument, the owner set and
+    /// @dev MultiSig. `minDelay` is a constructor argument, the owner set and
     ///      the proposal delay are initializer arguments.
     function _deployMultiSig() private {
         multiSig = _reused(multiSig, "MultiSig");
@@ -277,7 +278,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("MultiSig: deployed", multiSig);
     }
 
-    /// @dev deploy/01: Manager, initially owned by the deployer so it can be wired up.
+    /// @dev Manager, initially owned by the deployer so it can be wired up.
     function _deployManager() private {
         manager = _reused(manager, "Manager");
         if (manager != address(0)) {
@@ -291,7 +292,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("Manager: deployed", manager);
     }
 
-    /// @dev deploy/02: Account. Its initializer registers the proxy as a Celo account.
+    /// @dev Account. Its initializer registers the proxy as a Celo account.
     function _deployAccount() private {
         account = _reused(account, "Account");
         if (account != address(0)) {
@@ -306,7 +307,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("Account: deployed", account);
     }
 
-    /// @dev deploy/03: StakedCelo.
+    /// @dev StakedCelo.
     function _deployStakedCelo() private {
         stakedCelo = _reused(stakedCelo, "StakedCelo");
         if (stakedCelo != address(0)) {
@@ -320,7 +321,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("StakedCelo: deployed", stakedCelo);
     }
 
-    /// @dev deploy/04: Vote.
+    /// @dev Vote.
     function _deployVote() private {
         vote = _reused(vote, "Vote");
         if (vote != address(0)) {
@@ -334,7 +335,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("Vote: deployed", vote);
     }
 
-    /// @dev deploy/05: GroupHealth, owned by the MultiSig from the start because it needs
+    /// @dev GroupHealth, owned by the MultiSig from the start because it needs
     ///      no wiring afterwards.
     function _deployGroupHealth() private {
         groupHealth = _reused(groupHealth, "GroupHealth");
@@ -350,8 +351,8 @@ contract DeployCore is DeployBase {
         _updateValidatorGroupHealth();
     }
 
-    /// @dev deploy/05, second part: record the health of every `VALIDATOR_GROUPS` entry.
-    ///      `updateGroupHealth` is permissionless, but like the Hardhat script this only
+    /// @dev Record the health of every `VALIDATOR_GROUPS` entry.
+    ///      `updateGroupHealth` is permissionless, but this only
     ///      runs right after a fresh GroupHealth deployment, so re-running the script
     ///      against an existing deployment still sends no transactions.
     function _updateValidatorGroupHealth() private {
@@ -362,7 +363,7 @@ contract DeployCore is DeployBase {
         }
     }
 
-    /// @dev deploy/06: SpecificGroupStrategy.
+    /// @dev SpecificGroupStrategy.
     function _deploySpecificGroupStrategy() private {
         specificGroupStrategy = _reused(specificGroupStrategy, "SpecificGroupStrategy");
         if (specificGroupStrategy != address(0)) {
@@ -378,7 +379,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("SpecificGroupStrategy: deployed", specificGroupStrategy);
     }
 
-    /// @dev deploy/07: DefaultStrategy. Forge deploys and links AddressSortedLinkedList.
+    /// @dev DefaultStrategy. Forge deploys and links AddressSortedLinkedList.
     function _deployDefaultStrategy() private {
         defaultStrategy = _reused(defaultStrategy, "DefaultStrategy");
         if (defaultStrategy != address(0)) {
@@ -398,7 +399,7 @@ contract DeployCore is DeployBase {
         DeployLog.a("AddressSortedLinkedList: linked", address(AddressSortedLinkedList));
     }
 
-    /// @dev deploy/13: RebasedStakedCelo, owned by the MultiSig from the start.
+    /// @dev RebasedStakedCelo, owned by the MultiSig from the start.
     function _deployRebasedStakedCelo() private {
         rebasedStakedCelo = _reused(rebasedStakedCelo, "RebasedStakedCelo");
         if (rebasedStakedCelo != address(0)) {
@@ -419,7 +420,7 @@ contract DeployCore is DeployBase {
     //                          WIRING STEPS
     // =========================================================================
 
-    /// @dev deploy/08: Manager.setDependencies.
+    /// @dev Manager.setDependencies.
     function _setManagerDependencies() private {
         if (_ownedByMultiSig(manager, "Manager")) {
             return;
@@ -431,7 +432,7 @@ contract DeployCore is DeployBase {
         DeployLog.s("Manager: dependencies set");
     }
 
-    /// @dev deploy/09: Vote.setDependencies.
+    /// @dev Vote.setDependencies.
     function _setVoteDependencies() private {
         if (_ownedByMultiSig(vote, "Vote")) {
             return;
@@ -440,7 +441,7 @@ contract DeployCore is DeployBase {
         DeployLog.s("Vote: dependencies set");
     }
 
-    /// @dev deploy/10: SpecificGroupStrategy.setDependencies.
+    /// @dev SpecificGroupStrategy.setDependencies.
     function _setSpecificGroupStrategyDependencies() private {
         if (_ownedByMultiSig(specificGroupStrategy, "SpecificGroupStrategy")) {
             return;
@@ -450,7 +451,7 @@ contract DeployCore is DeployBase {
         DeployLog.s("SpecificGroupStrategy: dependencies set");
     }
 
-    /// @dev deploy/11: DefaultStrategy.setDependencies.
+    /// @dev DefaultStrategy.setDependencies.
     function _setDefaultStrategyDependencies() private {
         if (_ownedByMultiSig(defaultStrategy, "DefaultStrategy")) {
             return;
@@ -461,15 +462,15 @@ contract DeployCore is DeployBase {
         _activateValidatorGroups();
     }
 
-    /// @dev deploy/11, second part: activate every healthy `VALIDATOR_GROUPS` entry in the
+    /// @dev Activate every healthy `VALIDATOR_GROUPS` entry in the
     ///      DefaultStrategy, the group holding the most CELO first. `addActivatableGroup`
     ///      is `onlyOwner`, so this only works while the deployer still owns the strategy.
     function _activateValidatorGroups() private {
         if (config.validatorGroups.length == 0) {
             return;
         }
-        // The Hardhat script used the Manager to detect an upgrade of an already deployed
-        // protocol, where activating a group is part of the upgrade proposal instead.
+        // A MultiSig owned Manager means this run is against an already deployed protocol,
+        // where activating a group is part of an upgrade proposal instead.
         if (IOwnable(manager).owner() == multiSig) {
             DeployLog.s(
                 "DefaultStrategy: Manager owned by MultiSig, activate the groups through it"
@@ -543,7 +544,7 @@ contract DeployCore is DeployBase {
         }
     }
 
-    /// @dev deploy/12: hand the six deployer owned contracts over to the MultiSig.
+    /// @dev Hand the six deployer owned contracts over to the MultiSig.
     function _transferOwnershipToMultiSig() private {
         _transferOwnership(account, "Account");
         _transferOwnership(stakedCelo, "StakedCelo");

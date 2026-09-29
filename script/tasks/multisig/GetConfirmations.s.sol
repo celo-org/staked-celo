@@ -6,7 +6,6 @@ import "../lib/TaskBase.sol";
 /**
  * @title GetConfirmationsScript
  * @notice Get list of addresses that have confirmed a proposal.
- *         Replaces `yarn hardhat stakedCelo:multiSig:getConfirmations --proposal-id <id>`.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

@@ -98,11 +98,10 @@ interface IExternalCallErrors {
 
 /**
  * @title MultiSigTestBase
- * @notice Shared fixture for the port of the Hardhat era test-ts/multisig.test.ts.
- * @dev Ports the `beforeEach` of the top-level `describe("MultiSig")`: a MultiSig with two
- *      owners and a 7 day delay, a PausableTest whose pauser is that MultiSig, and a
- *      MockGovernance registered on the canonical registry so the governance-gated entry
- *      points resolve. Each `describe` block of the original lives in its own `.t.sol`.
+ * @notice Shared fixture for the MultiSig tests.
+ * @dev A MultiSig with two owners and a 7 day delay, a PausableTest whose pauser is that
+ *      MultiSig, and a MockGovernance registered on the canonical registry so the
+ *      governance-gated entry points resolve.
  */
 abstract contract MultiSigTestBase is TestAccountDeployHelper, MultiSigHelper {
     // =========================================================================

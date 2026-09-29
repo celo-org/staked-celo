@@ -15,9 +15,8 @@ interface ManagerTestVm {
 }
 
 /**
- * @dev The `expectEmit` overload that pins the expected event to a single emitter, mirroring
- *      the `.to.emit(contract, "Event")` assertion of the TypeScript suite. Cast onto the same
- *      cheatcode address.
+ * @dev The `expectEmit` overload that pins the expected event to a single emitter. Cast onto
+ *      the same cheatcode address.
  */
 interface IVmExpectEmitFrom {
     function expectEmit(bool, bool, bool, bool, address) external;
@@ -25,12 +24,10 @@ interface IVmExpectEmitFrom {
 
 /**
  * @title ManagerTestBase
- * @notice Shared fixture of the ported `describe("Manager")` suite.
- * @dev Ports the `before()` block of test-ts/manager.test.ts. The Hardhat suite used
- *      `evm_snapshot` / `evm_revert` around every `it()`, which is what Foundry's per-test
- *      `setUp()` gives us for free.
+ * @notice Shared fixture for the Manager tests.
+ * @dev `setUp()` runs before every test, so every test starts from this state.
  *
- *      Like the original, the FullTestManager fixture is deployed first and the Account,
+ *      The FullTestManager fixture is deployed first and the Account,
  *      StakedCelo and Vote contracts are then replaced with MockAccount, MockStakedCelo and
  *      MockVote through `setDependencies`. The Celo core contracts are the real ones of the
  *      devchain, resolved through the registry at 0x...ce10.
@@ -52,8 +49,8 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     event ContractUnpaused();
 
     /// @dev Expects the next emitted event to come from `emitter`, checking every topic and
-    ///      the data. The emitter is what the TypeScript `.to.emit(contract, "Event")` pinned;
-    ///      without it any contract emitting the same event would satisfy the assertion.
+    ///      the data. Without the emitter any contract emitting the same event would satisfy
+    ///      the assertion.
     function _expectEmitFrom(address emitter) internal {
         IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
     }
@@ -62,7 +59,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     //                         FIXTURE CONTRACTS
     // =========================================================================
 
-    /// @dev The `account` / `stakedCelo` / `voteContract` of the TypeScript suite.
+    /// @dev Mocks that replace Account, StakedCelo and Vote in the fixture.
     MockAccount internal mockAccount;
     MockStakedCelo internal mockStakedCelo;
     MockVote internal mockVote;
@@ -89,10 +86,9 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
     //                         OVERFLOW CAPACITIES
     // =========================================================================
     //
-    // The TypeScript suite hardcoded the receivable votes left after prepareOverflow for the
-    // ganache devchain (40.166666666666666666 / 99.25 / 200.166666666666666666 CELO). The
-    // anvil devchain solves the vote amounts from the chain state instead, so the capacities
-    // are read back from the Manager after prepareOverflow rather than hardcoded.
+    // prepareOverflow solves the vote amounts from the chain state, so the receivable votes
+    // left for each group are read back from the Manager after prepareOverflow rather than
+    // hardcoded.
 
     uint256 internal firstGroupCapacity;
     uint256 internal secondGroupCapacity;
@@ -256,7 +252,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         return celoElection.getNumVotesReceivable(group) - celoElection.getTotalVotesForGroup(group);
     }
 
-    /// @notice Ports `updateGroupCeloBasedOnProtocolStCelo(...)` with the fixture contracts.
+    /// @notice `updateGroupCeloBasedOnProtocolStCelo(...)` with the fixture contracts.
     function updateGroupCelo() internal {
         updateGroupCeloBasedOnProtocolStCelo(
             mockDefaultStrategy, specificGroupStrategy, mockAccount, manager
@@ -366,7 +362,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         out[3] = d;
     }
 
-    /// @notice The first `count` group addresses (ports `groupAddresses.slice(0, count)`).
+    /// @notice The first `count` group addresses.
     function groupSlice(uint256 count) internal view returns (address[] memory out) {
         out = new address[](count);
         for (uint256 i = 0; i < count; i++) {
@@ -400,7 +396,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         return string(abi.encodePacked(prefix, " [", vm.toString(index), "]: ", a, " != ", b));
     }
 
-    /// @notice `expect(a).to.deep.equal(b)` for address arrays (order matters).
+    /// @notice Asserts two address arrays are equal (order matters).
     function assertEq(address[] memory a, address[] memory b) internal pure {
         if (a.length != b.length) {
             revert(_lengthMessage("Assertion failed: address array", a.length, b.length));
@@ -419,7 +415,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         }
     }
 
-    /// @notice `expect(a).to.deep.equal(b)` for uint arrays (order matters).
+    /// @notice Asserts two uint arrays are equal (order matters).
     function assertEq(uint256[] memory a, uint256[] memory b) internal pure {
         if (a.length != b.length) {
             revert(_lengthMessage("Assertion failed: uint array", a.length, b.length));
@@ -438,7 +434,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         }
     }
 
-    /// @notice `expect(a).to.have.deep.members(b)` for address arrays (order agnostic).
+    /// @notice Asserts two address arrays have the same members (order agnostic).
     function assertMembers(address[] memory a, address[] memory b) internal pure {
         if (a.length != b.length) {
             revert(_lengthMessage("Assertion failed: address members", a.length, b.length));
@@ -469,7 +465,7 @@ abstract contract ManagerTestBase is DevchainHelper, FullTestManagerDeployHelper
         }
     }
 
-    /// @notice `expect(a).to.have.deep.members(b)` for uint arrays (order agnostic).
+    /// @notice Asserts two uint arrays have the same members (order agnostic).
     function assertMembers(uint256[] memory a, uint256[] memory b) internal pure {
         if (a.length != b.length) {
             revert(_lengthMessage("Assertion failed: uint members", a.length, b.length));

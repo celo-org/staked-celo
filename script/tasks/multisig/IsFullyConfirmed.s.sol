@@ -6,7 +6,6 @@ import "../lib/TaskBase.sol";
 /**
  * @title IsFullyConfirmedScript
  * @notice Check if a proposal has been fully confirmed.
- *         Replaces `yarn hardhat stakedCelo:multiSig:isFullyConfirmed --proposal-id <id>`.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

@@ -8,9 +8,8 @@ import "../lib/UpgradeProposalLib.sol";
 
 /**
  * @title UpdateV1ToV2Script
- * @notice Prepares the proposal for the update from V1 to V2. Replaces
- *         `yarn hardhat stakedCelo:multiSig:update:v1:v2`.
- * @dev Like the Hardhat task this script is not purely read only: groups listed in
+ * @notice Prepares the proposal for the update from V1 to V2.
+ * @dev This script is not purely read only: groups listed in
  *      VALIDATOR_GROUPS that GroupHealth does not consider valid get an `updateGroupHealth`
  *      transaction, and groups that stay unhealthy afterwards are left out of the proposal.
  *      Run with --broadcast to actually send those transactions.
@@ -144,7 +143,7 @@ contract UpdateV1ToV2Script is TaskBase {
         }
     }
 
-    /// @dev The Manager.setDependencies operation the Hardhat task appended last.
+    /// @dev The Manager.setDependencies operation, appended last to the proposal.
     function _addManagerSetDependencies(ProposalBuilder.Proposal memory proposal) private view {
         proposal.add(
             deploymentAddress("Manager"),

@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#withdraw()")`.
+/// @notice Tests for `Account.withdraw`.
 contract AccountWithdrawTest is AccountTestBase {
     // =========================================================================
     //                   when there are scheduled votes

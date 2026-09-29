@@ -7,8 +7,7 @@ import "../lib/UpgradeProposalLib.sol";
 
 /**
  * @title UpdateV3ToV4Script
- * @notice Prepares the proposal for the update from V3 to V4. Replaces
- *         `yarn hardhat stakedCelo:multiSig:update:v3:v4`.
+ * @notice Prepares the proposal for the update from V3 to V4.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

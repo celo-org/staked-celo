@@ -6,8 +6,7 @@ import "../lib/ManagerTaskLib.sol";
 
 /**
  * @title WithdrawScript
- * @notice Withdraws stCELO from the staked CELO protocol. Replaces
- *         `yarn hardhat stakedCelo:manager:withdraw --amount <wei>`.
+ * @notice Withdraws stCELO from the staked CELO protocol.
  *
  * Environment variables:
  *   AMOUNT   required. The amount of stCELO to withdraw, in wei.

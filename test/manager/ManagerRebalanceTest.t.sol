@@ -5,9 +5,9 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerRebalanceTest
- * @notice Ports `#getExpectedAndActualCeloForGroup()`, `#rebalance()`,
- *         `#scheduleTransferWithinStrategy()`, `#getReceivableVotesForGroup()` and
- *         `#rebalanceOverflow()` of test-ts/manager.test.ts.
+ * @notice Tests for `Manager.getExpectedAndActualCeloForGroup`, `rebalance`,
+ *         `scheduleTransferWithinStrategy`, `getReceivableVotesForGroup` and
+ *         `rebalanceOverflow`.
  */
 contract ManagerRebalanceTest is ManagerTestBase {
     uint256 private constant FROM_GROUP_DEPOSITED_VALUE = 100;
@@ -576,7 +576,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
     /// @dev `depositOverCapacity` of the overflowing specific strategy block.
     uint256 private constant DEPOSIT_OVER_CAPACITY = 10 ether;
 
-    /// @dev `beforeEach` of `When specific strategy is overflowing and unhealthy`.
+    /// @dev Setup for `When specific strategy is overflowing and unhealthy`.
     function setUpOverflowingSpecificStrategy() private returns (address originalTail) {
         prepareOverflowAndReadCapacities(false);
 
@@ -596,7 +596,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         updateGroupCelo();
     }
 
-    /// @dev `beforeEach` of `When group becomes unhealthy`.
+    /// @dev Setup for `When group becomes unhealthy`.
     function setUpGroupBecomesUnhealthy() private returns (address newTail) {
         revokeElection(groupAddresses[0]);
         (newTail,) = mockDefaultStrategy.getGroupsTail();
@@ -604,19 +604,19 @@ contract ManagerRebalanceTest is ManagerTestBase {
         updateGroupCelo();
     }
 
-    /// @dev `beforeEach` of `When group is only in specific group strategy`.
+    /// @dev Setup for `When group is only in specific group strategy`.
     function setUpOnlyInSpecificGroupStrategy() private {
         manager.changeStrategy(groupAddresses[0]);
         manager.deposit{value: 100}();
     }
 
-    /// @dev `beforeEach` of `When there are active groups > When group is only in active`.
+    /// @dev Setup for `When there are active groups > When group is only in active`.
     function setUpGroupOnlyInActive() private {
         manager.deposit{value: 100}();
         rebalanceDefaultGroups(defaultStrategy());
     }
 
-    /// @dev `beforeEach` of `When there are active groups > When group is in both active and
+    /// @dev Setup for `When there are active groups > When group is in both active and
     ///      specific`.
     function setUpGroupInBothActiveAndSpecific() private {
         vm.prank(depositor);
@@ -628,7 +628,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         rebalanceDefaultGroups(defaultStrategy());
     }
 
-    /// @dev `beforeEach` of `#rebalance() > When fromGroup has valid properties`.
+    /// @dev Setup for `rebalance > When fromGroup has valid properties`.
     function setUpFromGroupValid() private {
         manager.changeStrategy(groupAddresses[0]);
         manager.deposit{value: FROM_GROUP_DEPOSITED_VALUE}();
@@ -637,7 +637,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[0], 0);
     }
 
-    /// @dev `beforeEach` of `#rebalance() > ... > When toGroup has valid properties`.
+    /// @dev Setup for `rebalance > ... > When toGroup has valid properties`.
     function setUpToGroupValid() private {
         vm.prank(depositor2);
         manager.changeStrategy(groupAddresses[1]);
@@ -648,7 +648,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         mockAccount.setVotesForGroup(groupAddresses[1], 0);
     }
 
-    /// @dev `beforeEach` of `When having same active groups and specific strategy get blocked`.
+    /// @dev Setup for `When having same active groups and specific strategy get blocked`.
     function setUpSameActiveGroupsBlocked() private {
         activateGroups(2);
         mockAccount.setCeloForGroup(groupAddresses[1], TO_GROUP_DEPOSITED_VALUE);
@@ -663,7 +663,7 @@ contract ManagerRebalanceTest is ManagerTestBase {
         specificGroupStrategy.rebalanceWhenHealthChanged(groupAddresses[1]);
     }
 
-    /// @dev `beforeEach` of `When having different active groups`.
+    /// @dev Setup for `When having different active groups`.
     function setUpDifferentActiveGroups() private {
         for (uint256 i = 2; i < 4; i++) {
             (address head,) = mockDefaultStrategy.getGroupsHead();

@@ -8,17 +8,15 @@ import "../contracts/common/Errors.sol";
 
 /**
  * @title VoteTest
- * @notice Port of the Hardhat era test-ts/vote.test.ts (`describe("Vote")`).
- * @dev Ports the `before()` hook of the TypeScript suite: ten validator groups with one
- *      validator each are registered against the real Celo core contracts of the devchain, the
- *      "TestVote" Hardhat fixture is deployed against the devchain registry
- *      (`deployTestVote(REGISTRY_ADDRESS)`), the first three groups are elected on
- *      MockGroupHealth and activated in MockDefaultStrategy. `setUp()` runs before every test,
- *      which is what the `evm_snapshot` / `evm_revert` pair of the original did.
+ * @notice Tests for Vote: stCELO governance voting against the real Celo Governance.
+ * @dev Ten validator groups with one validator each are registered against the real Celo
+ *      core contracts of the devchain, the "TestVote" fixture is deployed against the devchain
+ *      registry (`deployTestVote(REGISTRY_ADDRESS)`), the first three groups are elected on
+ *      MockGroupHealth and activated in MockDefaultStrategy. `setUp()` runs before every test.
  *
- *      Governance is the real Celo Governance contract resolved from the devchain registry, the
- *      same contract the original drove through ContractKit's `GovernanceWrapper`: proposals are
- *      really proposed, dequeued and voted on, and the vote totals are read back from it.
+ *      Governance is the real Celo Governance contract resolved from the devchain registry:
+ *      proposals are really proposed, dequeued and voted on, and the vote totals are read back
+ *      from it.
  */
 contract VoteTest is TestAccountDeployHelper, DevchainHelper {
     // =========================================================================
@@ -49,7 +47,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
     /// @dev Kept in storage so that the longer test bodies stay clear of "stack too deep".
     uint256 internal referendumDuration;
 
-    /// @dev The calldata of ContractKit's `propose([{to: manager, input: manager.owner()}], url)`.
+    /// @dev Calldata of the single `manager.owner()` call each test proposal makes.
     bytes internal constant PROPOSAL_INPUT = hex"8da5cb5b";
 
     string internal constant DESCRIPTION_URL = "http://www.descriptionUrl.com";
@@ -151,10 +149,10 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
     //                              HELPERS
     // =========================================================================
 
-    /// @notice Ports `proposeNewProposal(dequeue)` of the original suite.
-    /// @dev Deviation: the ganache devchain of the original charged a negligible governance
-    ///      deposit, the anvil devchain charges 100 CELO per proposal. The proposer is topped up
-    ///      with the deposit here; no assertion of the suite looks at its CELO balance.
+    /// @notice Submits a governance proposal from depositor1 and optionally dequeues it.
+    /// @dev The devchain charges a 100 CELO governance deposit per proposal. The proposer is
+    ///      topped up with the deposit here; no assertion of the suite looks at its CELO
+    ///      balance.
     function _proposeNewProposal(bool dequeue) internal returns (uint256 proposalId) {
         uint256 minDeposit = celoGovernance.minDeposit();
 
@@ -177,7 +175,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         }
     }
 
-    /// @notice `proposeNewProposal()` with the TypeScript default `dequeue = true`.
+    /// @notice `_proposeNewProposal(true)`: propose and dequeue.
     function _proposeNewProposal() internal returns (uint256) {
         return _proposeNewProposal(true);
     }
@@ -187,7 +185,8 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         manager.deposit{value: amount}();
     }
 
-    /// @notice Ports `depositAndActivate(depositor, value)` of the original suite.
+    /// @notice Deposits `amount` for `depositor`, votes it, moves to the next epoch and
+    ///         activates the votes.
     function _depositAndActivate(address depositor, uint256 amount) internal {
         _deposit(depositor, amount);
 
@@ -220,7 +219,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         manager.voteProposal(proposalId, index, yesVotes, noVotes, abstainVotes);
     }
 
-    /// @notice Ports `checkGovernanceTotalVotes(...)`, reading the real Governance contract.
+    /// @notice Asserts the vote totals of `proposalId` on the real Governance contract.
     function _checkGovernanceTotalVotes(
         uint256 proposalId,
         uint256 expectedYes,
@@ -233,8 +232,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         assertEq(abstain, expectedAbstain);
     }
 
-    /// @dev `updateHistoryAndReturnLockedStCeloInVoting` as the impersonated Manager contract,
-    ///      which is what `getImpersonatedSigner(managerContract.address, ...)` did.
+    /// @dev `updateHistoryAndReturnLockedStCeloInVoting` called as the Manager contract.
     function _updateHistory(address beneficiary) internal {
         vm.prank(address(manager));
         vote.updateHistoryAndReturnLockedStCeloInVoting(beneficiary);
@@ -542,7 +540,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         assertTrue(vote.proposalTimestamps(PROPOSAL_3_ID) > 0);
     }
 
-    /// @dev The `beforeEach` of `describe("When voted on 3 proposals")`: proposal 1 is dequeued
+    /// @dev Setup for the "When voted on 3 proposals" cases: proposal 1 is dequeued
     ///      first, proposals 2 and 3 one dequeue frequency later, then they are voted on in the
     ///      order 2, 1, 3.
     function _setUpThreeVotedProposals() private {
@@ -641,12 +639,9 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         _setUpVotedProposal();
 
         /**
-         * @dev Deviation: the original travelled `referendumDuration - dequeueFrequency + 1`,
-         *      which expired the proposal only because the ganache devchain dequeued every few
-         *      seconds: the proposal timestamp is the dequeue timestamp, and the fixture only
-         *      spends about the 100 seconds of `mineToNextEpoch()` between the dequeue and this
-         *      assertion. The anvil devchain dequeues every four hours, so the port waits out
-         *      the whole referendum stage instead, which is what the original expressed.
+         * @dev The proposal timestamp is the dequeue timestamp, and the devchain dequeues every
+         *      four hours, so the test waits out the whole referendum stage to expire the
+         *      proposal.
          */
         timeTravel(vote.getReferendumDuration() + 1);
 
@@ -654,7 +649,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         assertEq(vote.proposalTimestamps(PROPOSAL_1_ID), 0);
     }
 
-    /// @dev The `beforeEach` of `describe("#deleteExpiredProposalTimestamp()")`.
+    /// @dev Setup shared by the `deleteExpiredProposalTimestamp` cases.
     function _setUpVotedProposal() private {
         _proposeNewProposal();
         _depositAndActivate(depositor0, 10 ether);
@@ -704,7 +699,7 @@ contract VoteTest is TestAccountDeployHelper, DevchainHelper {
         assertEq(proposalIds[0], PROPOSAL_2_ID);
     }
 
-    /// @dev The `beforeEach` of `describe("#deleteExpiredVoterProposalId()")`.
+    /// @dev Setup shared by the `deleteExpiredVoterProposalId` cases.
     function _setUpTwoVotedProposals() private {
         _depositAndActivate(depositor0, 10 ether);
         _proposeNewProposal();

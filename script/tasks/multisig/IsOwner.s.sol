@@ -5,8 +5,7 @@ import "../lib/TaskBase.sol";
 
 /**
  * @title IsOwnerScript
- * @notice Check if an address is a multiSig owner. Replaces
- *         `yarn hardhat stakedCelo:multiSig:isOwner --owner-address <address>`.
+ * @notice Check if an address is a multiSig owner.
  *
  * Environment variables:
  *   OWNER_ADDRESS  required. The address of the multiSig contract owner.

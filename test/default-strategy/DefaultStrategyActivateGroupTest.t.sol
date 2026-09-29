@@ -13,12 +13,11 @@ interface ICeloValidatorsGroupSize {
 
 /**
  * @title DefaultStrategyActivateGroupTest
- * @notice Ports the group lifecycle describe blocks of `test-ts/default-strategy.test.ts`:
- *         `#addActivatableGroup`, `#activateGroup()`, `#deactivateGroup()` and
- *         `#deactivateUnhealthyGroup()`.
+ * @notice Group lifecycle tests of DefaultStrategy: `addActivatableGroup`, `activateGroup`,
+ *         `deactivateGroup` and `deactivateUnhealthyGroup`.
  */
 contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
-    /// @dev `deactivatedGroup` of the original suite: groups[1].
+    /// @dev The group the deactivation cases deactivate: groups[1].
     address internal deactivatedGroup;
 
     function setUp() public {
@@ -94,7 +93,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.activateGroup(nonVote, ADDRESS_ZERO, ADDRESS_ZERO);
     }
 
-    /// @dev `describe("When group is activatable")` beforeEach.
+    /// @dev Setup for the "When group is activatable" cases.
     function _setUpGroupIsActivatable() private {
         vm.prank(owner);
         mockDefaultStrategy.addActivatableGroup(groupAddresses[0]);
@@ -171,7 +170,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.activateGroup(groupAddresses[3], ADDRESS_ZERO, head);
     }
 
-    /// @dev `describe("When activating groups with preexisting celo in protocol")` beforeEach.
+    /// @dev Setup for the "When activating groups with preexisting celo in protocol" cases.
     function _setUpPreexistingCelo() private {
         mockAccount.setCeloForGroup(groupAddresses[0], 100);
         vm.prank(owner);
@@ -207,7 +206,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         assertEq(defaultStrategy.stCeloInGroup(groupAddresses[1]), 0);
     }
 
-    /// @dev `describe("when maxNumGroupsVotedFor have been voted for")` beforeEach.
+    /// @dev Setup for the "when maxNumGroupsVotedFor have been voted for" cases.
     function _setUpMaxNumGroupsVotedFor() private {
         electGroup(groupAddresses[10], someone);
         _activateGroupsFromHead(10);
@@ -230,7 +229,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.activateGroup(groupAddresses[10], ADDRESS_ZERO, head);
     }
 
-    /// @dev `describe("when some of the groups are currently deactivated")` beforeEach.
+    /// @dev Setup for the "when some of the groups are currently deactivated" cases.
     function _setUpSomeGroupsDeactivated() private {
         _setUpMaxNumGroupsVotedFor();
 
@@ -283,7 +282,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     //                         #deactivateGroup()
     // =========================================================================
 
-    /// @dev `describe("When 3 active groups") > describe("when the group is voted for")` beforeEach.
+    /// @dev Setup for the "When 3 active groups > when the group is voted for" cases.
     function _setUpThreeActiveGroupsVotedFor() private {
         _activateGroupsFromHead(3);
         for (uint256 i = 0; i < 3; i++) {
@@ -452,7 +451,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
     //                     #deactivateUnhealthyGroup()
     // =========================================================================
 
-    /// @dev `describe("#deactivateUnhealthyGroup()")` beforeEach.
+    /// @dev Setup shared by the `deactivateUnhealthyGroup` cases.
     function _setUpUnhealthyGroup() private {
         _activateGroupsFromHead(3);
     }
@@ -466,7 +465,7 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.deactivateUnhealthyGroup(groupAddresses[1]);
     }
 
-    /// @dev `describe("when the group is not elected")` beforeEach.
+    /// @dev Setup for the "when the group is not elected" cases.
     function _setUpGroupNotElected() private {
         _setUpUnhealthyGroup();
         mineToNextEpoch();
@@ -534,11 +533,10 @@ contract DefaultStrategyActivateGroupTest is DefaultStrategyTestBase {
         mockDefaultStrategy.deactivateUnhealthyGroup(groupWithThreeValidators);
     }
 
-    /// @dev `describe("when group has 3 validators, but only 1 is elected.")` beforeEach.
-    /// @dev Deviation: the anvil devchain caps a validator group at two members, while the
-    ///      ganache devchain the Hardhat suite ran against allowed more. The cap is raised on
-    ///      the real Validators contract so the group really has the three members the original
-    ///      test registers.
+    /// @dev Setup for the "when group has 3 validators, but only 1 is elected." cases.
+    /// @dev The devchain caps a validator group at two members, so the test raises
+    ///      `Validators.maxGroupSize` on the real Validators contract to register three
+    ///      validators in the group.
     function _registerGroupWithThreeValidatorsOneElected() private returns (address group) {
         (group,) = randomSigner(40_000 ether);
         uint256 memberCount = 3;

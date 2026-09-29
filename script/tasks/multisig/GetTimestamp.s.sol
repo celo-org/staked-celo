@@ -6,7 +6,6 @@ import "../lib/TaskBase.sol";
 /**
  * @title GetTimestampScript
  * @notice Get a proposal timestamp.
- *         Replaces `yarn hardhat stakedCelo:multiSig:getTimestamp --proposal-id <id>`.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

@@ -7,7 +7,6 @@ import "../lib/FormatLib.sol";
 /**
  * @title GetProposalScript
  * @notice Get a multiSig proposal by its ID.
- *         Replaces `yarn hardhat stakedCelo:multiSig:getProposal --proposal-id <id>`.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

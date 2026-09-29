@@ -8,9 +8,8 @@ import "./TaskInterfaces.sol";
  * @title TaskBase
  * @notice Shared plumbing for the StakedCelo operational task scripts: cheatcode access,
  *         deployment address lookup and Celo core contract resolution.
- * @dev Ports the parts of lib/helpers/interfaceHelper.ts that survive the move to Foundry.
- *      Signer selection (useLedger / useNodeAccount / DEPLOYER_PRIVATE_KEY) is handled by
- *      `forge script --ledger | --private-key | --unlocked --sender` instead.
+ * @dev Signer selection is left to `forge script --ledger | --private-key | --unlocked
+ *      --sender`.
  *
  *      Environment variables read here:
  *        NETWORK  optional, one of celo | sepolia | local. Defaults to the network
@@ -24,7 +23,7 @@ abstract contract TaskBase {
     /// @notice The canonical Celo Registry address.
     address internal constant REGISTRY_ADDRESS = 0x000000000000000000000000000000000000ce10;
 
-    /// @notice Zero address constant (mirrors ADDRESS_ZERO in the Hardhat tasks).
+    /// @notice Zero address constant.
     address internal constant ADDRESS_ZERO = address(0);
 
     /// @notice Celo mainnet chain id.
@@ -33,7 +32,7 @@ abstract contract TaskBase {
     /// @notice Celo Sepolia testnet chain id. The current testnet.
     uint256 internal constant SEPOLIA_CHAIN_ID = 11142220;
 
-    /// @notice Default chain id of anvil (and Hardhat), where DeployCore writes
+    /// @notice Default chain id of anvil, where DeployCore writes
     ///         deployments/local.
     uint256 internal constant LOCAL_CHAIN_ID = 31337;
 
@@ -60,7 +59,7 @@ abstract contract TaskBase {
 
     /**
      * @notice Reads a deployed contract address from deployments/<network>/<name>.json.
-     * @param name The hardhat-deploy deployment name, for example "Manager" or
+     * @param name The deployment record name, for example "Manager" or
      *        "Manager_Implementation".
      * @dev Forge writes deployment records during the simulation phase too, so a deploy or
      *      upgrade run without `--broadcast` leaves records for contracts that were never

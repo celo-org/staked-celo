@@ -8,13 +8,12 @@ import "../lib/UpgradeProposalLib.sol";
 
 /**
  * @title UpdateV2ToV3Script
- * @notice Prepares the proposal for the update from V2 to V3. Replaces
- *         `yarn hardhat stakedCelo:multiSig:update:v2:v3`.
+ * @notice Prepares the proposal for the update from V2 to V3.
  *
  * Environment variables:
  *   NETWORK             optional. Deployments directory: celo | sepolia | local.
- *   NEW_MULTISIG_OWNER  optional. Owner added by the proposal; defaults to the address the
- *                       Hardhat task hardcoded.
+ *   NEW_MULTISIG_OWNER  optional. Owner added by the proposal; defaults to
+ *                       DEFAULT_NEW_OWNER.
  *
  * Usage:
  *   forge script script/tasks/multisig/UpdateV2ToV3.s.sol --rpc-url celo
@@ -22,7 +21,7 @@ import "../lib/UpgradeProposalLib.sol";
 contract UpdateV2ToV3Script is TaskBase {
     using ProposalBuilder for ProposalBuilder.Proposal;
 
-    /// @dev The owner the Hardhat task added.
+    /// @dev The owner the proposal adds when NEW_MULTISIG_OWNER is unset.
     address internal constant DEFAULT_NEW_OWNER = 0x01AAe13F65fB90B490E6614adE0bffFA57AC5bbc;
 
     /// @dev Minimum number of active groups the proposal sets on DefaultStrategy.
@@ -86,7 +85,7 @@ contract UpdateV2ToV3Script is TaskBase {
         proposal.add(deploymentAddress("MultiSig"), UpgradeProposalLib.addOwnerPayload(newOwner));
     }
 
-    /// @dev The contracts of the deployment, MultiSig first, in the Hardhat task's order.
+    /// @dev The contracts of the deployment, MultiSig first, in proposal order.
     function _allContracts() private pure returns (string[] memory names) {
         names = new string[](9);
         names[0] = "MultiSig";

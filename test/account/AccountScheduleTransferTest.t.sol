@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#scheduleTransfer()")`.
+/// @notice Tests for `Account.scheduleTransfer`.
 contract AccountScheduleTransferTest is AccountTestBase {
     uint256 private constant ORIGINAL_GROUP_AMOUNT = 100;
     uint256 private constant AMOUNT_TRANSFERRED = 30;
@@ -200,7 +200,7 @@ contract AccountScheduleTransferTest is AccountTestBase {
 
     // ---- When transferring from multiple groups to multiple group ----
 
-    /// @dev The new group is registered inside the `beforeEach` of the original.
+    /// @dev The new group is registered as part of the setup.
     function _setupTransferredFromMultipleToMultiple() private returns (address newValidatorGroup) {
         _setupTwoGroupsWithActivatedVotes();
         newValidatorGroup = registerNewValidatorGroup();

@@ -5,11 +5,11 @@ import "./DefaultStrategyTestBase.sol";
 
 /**
  * @title DefaultStrategyRebalanceTest
- * @notice Ports the accounting describe blocks of `test-ts/default-strategy.test.ts`:
- *         `#getExpectedAndActualStCeloForGroup()`, `#rebalance()` and `#updateGroupStCelo`.
+ * @notice Accounting tests of DefaultStrategy: `getExpectedAndActualStCeloForGroup`,
+ *         `rebalance` and `updateGroupStCelo`.
  */
 contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
-    /// @dev `originalTail` / `currentHead` of the nested describe blocks.
+    /// @dev Tail and head of the active group list captured by the nested scenarios.
     address internal originalTail;
     address internal currentHead;
 
@@ -30,7 +30,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
         assertEq(actual, 0);
     }
 
-    /// @dev `describe("When deposited")` beforeEach of `#getExpectedAndActualStCeloForGroup()`.
+    /// @dev Setup for the "When deposited" cases of `getExpectedAndActualStCeloForGroup`.
     function _setUpExpectedAndActualDeposited() private {
         _activateGroupsFromPrevious(3);
         (originalTail,) = defaultStrategy.getGroupsTail();
@@ -96,7 +96,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
         mockDefaultStrategy.rebalance(groupAddresses[0], groupAddresses[1]);
     }
 
-    /// @dev `describe("When deposited")` beforeEach of `#rebalance()`.
+    /// @dev Setup for the "When deposited" cases of `rebalance`.
     function _setUpRebalanceDeposited() private {
         _activateGroupsFromPrevious(3);
         manager.deposit{value: 49}();
@@ -165,7 +165,7 @@ contract DefaultStrategyRebalanceTest is DefaultStrategyTestBase {
         mockDefaultStrategy.rebalance(groupAddresses[1], groupAddresses[0]);
     }
 
-    /// @dev `describe("When sorting loop limit 0 and rebalancing")` beforeEach.
+    /// @dev Setup for the "When sorting loop limit 0 and rebalancing" cases.
     function _setUpSortingLoopLimitZeroRebalance() private {
         _setUpRebalanceDeposited();
 

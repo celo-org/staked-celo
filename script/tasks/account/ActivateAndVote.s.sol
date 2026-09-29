@@ -6,8 +6,7 @@ import "../lib/AccountTaskLib.sol";
 
 /**
  * @title ActivateAndVoteScript
- * @notice Activate CELO and vote for validator groups. Replaces
- *         `yarn hardhat stakedCelo:account:activateAndVote`.
+ * @notice Activate CELO and vote for validator groups.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

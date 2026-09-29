@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-/// @notice Port of `describe("MultiSig") > describe("#constructor")` and `describe("#initialize")`.
+/// @notice Tests for the MultiSig constructor and `initialize`.
 contract MultiSigInitializeTest is MultiSigTestBase {
     /// @dev Implementation address behind the already-deployed proxy (EIP-1967 slot).
     ///      Read separately from `_multiSigInitialize` so that an armed `vm.expectRevert`
@@ -61,7 +61,7 @@ contract MultiSigInitializeTest is MultiSigTestBase {
     function test_Initialize_ShouldFailIfOwnersCountIsZero() public {
         address msImpl = _multiSigImpl();
         address[] memory emptyOwners = new address[](0);
-        // Bare expectRevert, as in the original: InvalidRequirement bubbles up through the
+        // Bare expectRevert: InvalidRequirement bubbles up through the
         // proxy delegatecall, so the selector cannot be matched on the CREATE.
         vm.expectRevert();
         _multiSigInitialize(msImpl, emptyOwners, 10);
@@ -69,7 +69,7 @@ contract MultiSigInitializeTest is MultiSigTestBase {
 
     function test_Initialize_ShouldFailIfOwnersLessThanRequired() public {
         address msImpl = _multiSigImpl();
-        // Bare expectRevert, as in the original: InvalidRequirement bubbles up through the
+        // Bare expectRevert: InvalidRequirement bubbles up through the
         // proxy delegatecall, so the selector cannot be matched on the CREATE.
         vm.expectRevert();
         _multiSigInitialize(msImpl, owners, 10);
@@ -77,7 +77,7 @@ contract MultiSigInitializeTest is MultiSigTestBase {
 
     function test_Initialize_ShouldFailIfRequiredIsZero() public {
         address msImpl = _multiSigImpl();
-        // Bare expectRevert, as in the original: InvalidRequirement bubbles up through the
+        // Bare expectRevert: InvalidRequirement bubbles up through the
         // proxy delegatecall, so the selector cannot be matched on the CREATE.
         vm.expectRevert();
         _multiSigInitialize(msImpl, owners, 0);

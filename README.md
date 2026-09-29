@@ -6,10 +6,8 @@ blockchain.
 Users can deposit CELO to the Staked Celo smart contract and receive stCELO tokens in
 return, allowing them to earn staking rewards.
 
-The repository is Foundry-first: contracts, tests, deployment and the operational tasks
-all run through `forge`. The Hardhat/TypeScript toolchain the project started with was
-removed with the migration; it stays in git history, and every part of it has a Foundry
-replacement described below.
+Contracts, tests, deployment and the operational tasks all run through
+[Foundry](https://book.getfoundry.sh/) (`forge`).
 
 ## Contracts
 
@@ -117,21 +115,22 @@ Run a subset while working on one area:
 ```sh
 forge test --match-path 'test/manager/*'
 forge test --match-path test/e2e/EndToEndTest.t.sol
-forge test --match-test test_deposit_WhenThereAreActiveGroups -vvv
+forge test --match-test test_deposit_WhenGroupsAreCloseToTheirVotingLimit -vvv
 ```
 
 `yarn build` and `yarn test` are thin aliases for `forge build` and `forge test`.
 
 See [test/README.md](test/README.md) for the layout of the suite, the helper hierarchy, the
-devchain fixture, and the conventions the ported tests follow.
+devchain fixture, and the conventions the tests follow.
 
 ## Bytecode guarantee
 
-The deployed contracts must keep compiling to exactly the bytecode that was audited and
-deployed, which is the bytecode the Hardhat toolchain produced. `foundry.toml` therefore
-has a single production compiler profile with those settings (solc 0.8.11, evm `istanbul`,
-optimizer off, literal metadata content), and `scripts/bytecode-reference.json` pins a
-digest of the creation and runtime bytecode of every contract under `contracts/`:
+The contracts must keep compiling to exactly the bytecode that was audited and deployed.
+`foundry.toml` has a single production compiler profile with the settings the deployed
+contracts were compiled with (solc 0.8.11, evm `istanbul`, optimizer off, literal metadata
+content), so `forge build` reproduces the deployed bytecode, metadata hash included.
+`scripts/bytecode-reference.json` pins a digest of the creation and runtime bytecode of
+every contract under `contracts/`:
 
 ```sh
 forge build
@@ -154,8 +153,8 @@ which is why they are ordinary dependencies pinned to an exact version -
 `@openzeppelin/contracts` at 4.4.2 and `@openzeppelin/contracts-upgradeable` at 4.5.2, no
 caret - and why they are reached without a remapping. solc hashes the source-unit names
 of a compilation into the metadata trailer alongside the sources themselves, and
-`@openzeppelin/contracts/...` is the name the Hardhat build recorded. A Foundry remapping
-into `lib/` would record a different one and move the trailer, so `./@openzeppelin` is a
+`@openzeppelin/contracts/...` is the name the deployed contracts were compiled under. A
+remapping into `lib/` would record a different one and move the trailer, so `./@openzeppelin` is a
 symlink into `node_modules/@openzeppelin` instead: the imports resolve under exactly the
 name they are written with, and `forge build` needs no `remappings` at all. Both the
 versions and the symlink are therefore part of the deployed bytecode, and the check above
@@ -177,8 +176,8 @@ compares the two `out/` directories:
 node scripts/abi-compat-check.ts --baseline baseline/out --current out
 ```
 
-This replaces the Hardhat-based `@celo/contract-compatibility-check` and keeps its contract
-exclusion list. Its rules are the only thing standing between an upgrade and a corrupted
+The check compares storage layouts and ABIs contract by contract, skipping the contracts on
+its exclusion list. Its rules are the only thing standing between an upgrade and a corrupted
 proxy, so they carry their own unit tests: `yarn test:scripts` (`node --test
 'scripts/tests/**/*.test.ts'`), which CI runs ahead of the two builds. See the
 `compatibility` job in
@@ -224,26 +223,26 @@ records written under `deployments/<network>/`, and how a failed run must be cle
 - Addresses: `deployments/<network>/<Name>.json` (`address` is the proxy,
   `<Name>_Implementation.json` the current implementation).
 - ABIs: `forge build` writes them to `out/<Name>.sol/<Name>.json` (`abi` field), or print one
-  with `forge inspect <Name> abi`. The Hardhat `artifacts/` directory no longer exists.
+  with `forge inspect <Name> abi`.
 
 `yarn verify <network>` (`scripts/verify-contracts.sh`) publishes the sources of everything
 under `deployments/<network>/` to Sourcify and, with `CELOSCAN_API_KEY` set, to Celoscan.
-It replaces `yarn verify:deploy`; because the production build is byte-identical to the
-Hardhat one, contracts deployed before the port still verify from these sources.
+Because the production build reproduces the deployed bytecode exactly, every contract
+recorded there verifies from these sources, including the older deployments.
 
 ## Operational tasks
 
-Every `yarn hardhat stakedCelo:*` task has a forge script counterpart under
-`script/tasks/`. Parameters became environment variables and the signer flags became
-forge's (`--ledger`, `--unlocked --sender`, `--private-key`):
+The MultiSig, Manager and Account operations are forge scripts under `script/tasks/`. They
+take their parameters from environment variables and sign with forge's signer flags
+(`--ledger`, `--unlocked --sender`, `--private-key`):
 
 ```sh
 PROPOSAL_ID=7 forge script script/tasks/multisig/ConfirmProposal.s.sol \
   --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 ```
 
-[script/tasks/README.md](script/tasks/README.md) has the full mapping table - MultiSig,
-Manager and Account tasks, one row per old task - plus the environment variables and
+[script/tasks/README.md](script/tasks/README.md) lists every script - MultiSig, Manager
+and Account - with what it does and the environment variables it reads, plus
 worked examples for submitting, confirming, scheduling and executing a MultiSig proposal.
 
 ## Linting
@@ -284,13 +283,6 @@ jobs on every push and pull request:
 | `test` | prepares the devchain fixture, `forge build`, `forge test -vvv` |
 | `bytecode` | `scripts/bytecode-compat-check.ts` against the pinned reference |
 | `compatibility` | `yarn test:scripts`, then `scripts/abi-compat-check.ts` against `releases/4` |
-
-## Hardhat era code
-
-The Mocha test-suite (`test-ts/`), the hardhat-deploy scripts (`deploy/`), the Hardhat
-tasks (`lib/`) and the ganache devchain snapshots were removed with the Foundry migration.
-They are in git history before that merge; the Foundry code under `test/`, `script/deploy`
-and `script/tasks` was ported from them 1:1, and the READMEs there name the original files.
 
 ## Audits
 

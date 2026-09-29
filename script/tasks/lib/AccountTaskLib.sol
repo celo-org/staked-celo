@@ -7,7 +7,7 @@ import "./GroupsLib.sol";
 
 /**
  * @title AccountTaskLib
- * @notice Solidity port of lib/account-tasks/helpers/*.ts. Holds the logic of the
+ * @notice Holds the logic of the
  *         activateAndVote, revoke, withdraw and finishPendingWithdrawal tasks so that both
  *         the forge scripts and the tests run exactly the same code.
  * @dev The functions are `internal`, so they are inlined into the caller: the external
@@ -177,7 +177,7 @@ library AccountTaskLib {
 
     /**
      * @notice Computes the lesser/greater hints for revoking `scheduledAmount` from `group`.
-     * @dev Ports the shared body of revokeHelper.ts and withdrawalHelper.ts. The CELO that
+     * @dev Shared by the revoke and withdraw tasks. The CELO that
      *      is still scheduled to vote is withdrawn immediately and never revoked, so only
      *      the remainder moves the group in Election's sorted list. Pending votes are
      *      revoked before active ones within the same transaction, so the active hints are

@@ -5,8 +5,7 @@ import "../lib/TaskBase.sol";
 
 /**
  * @title IsProposalTimelockReachedScript
- * @notice Check if a proposal time-lock has been reached. Replaces
- *         `yarn hardhat stakedCelo:multiSig:isProposalTimelockReached --proposal-id <id>`.
+ * @notice Check if a proposal time-lock has been reached.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

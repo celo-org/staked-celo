@@ -6,8 +6,7 @@ import "../lib/AccountTaskLib.sol";
 
 /**
  * @title FinishPendingWithdrawalScript
- * @notice Finishes the pending withdrawals created by a `withdraw` call. Replaces
- *         `yarn hardhat stakedCelo:account:finishPendingWithdrawal --beneficiary <address>`.
+ * @notice Finishes the pending withdrawals created by a `withdraw` call.
  *
  * Environment variables:
  *   BENEFICIARY  required. The address of the beneficiary to withdraw for.

@@ -4,9 +4,8 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 
 /**
- * @notice Port of the view-function blocks of `describe("MultiSig")`: `#getOwners()`,
- *         `#getConfirmations()`, `#isFullyConfirmed()`, `#isConfirmedBy()` and
- *         `#isProposalTimelockReached()`.
+ * @notice View-function tests of MultiSig: `getOwners`, `getConfirmations`,
+ *         `isFullyConfirmed`, `isConfirmedBy` and `isProposalTimelockReached`.
  */
 contract MultiSigGettersTest is MultiSigTestBase {
     // =========================================================================

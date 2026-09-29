@@ -5,8 +5,7 @@ import "./EndToEndTestBase.sol";
 
 /**
  * @title EndToEndSpecificGroupStrategyTest
- * @notice Port of test-ts/end-to-end-specific-group-strategy.test.ts
- *         ("e2e specific group strategy voting").
+ * @notice End-to-end test of specific group strategy voting.
  */
 contract EndToEndSpecificGroupStrategyTest is EndToEndTestBase {
     uint256 internal constant REWARDS_GROUP_0 = 10 ether;
@@ -117,7 +116,7 @@ contract EndToEndSpecificGroupStrategyTest is EndToEndTestBase {
         _healthyUnhealthyHealthy(amountOfCeloToDeposit);
     }
 
-    /// @dev The five stCELO transfers of the original test.
+    /// @dev Five stCELO transfers between depositors of different strategies.
     function _transferStCelo(uint256 half) private {
         // default strategy -> default strategy
         vm.prank(depositor0);

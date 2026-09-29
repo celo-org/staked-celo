@@ -11,13 +11,13 @@ import "../../../contracts/Vote.sol";
 import "../../../contracts/GroupHealth.sol";
 import "../../../contracts/RebasedStakedCelo.sol";
 
-// ERC1967Proxy (SAFE — no Initializable in import chain)
+// ERC1967Proxy (SAFE - no Initializable in import chain)
 import "../../../contracts/common/ERC1967Proxy.sol";
 
 /**
  * @title CoreDeployHelper
  * @notice Abstract helper that replicates the FULL production deployment sequence
- *         from deploy scripts 00-13. Deploys ALL 9 protocol contracts behind
+ *         (steps 00-13 below). Deploys ALL 9 protocol contracts behind
  *         ERC1967Proxy, calls setDependencies on 4 contracts, and transfers
  *         ownership to MultiSig.
  * @dev Extend this contract in concrete test files and call deployCoreWithMockRegistry()
@@ -30,7 +30,7 @@ import "../../../contracts/common/ERC1967Proxy.sol";
  *      Initializable name collision between OZ contracts (non-upgradeable)
  *      and OZ contracts-upgradeable. They are deployed via vm.getCode().
  *
- *      Deployment order mirrors production scripts:
+ *      Deployment order mirrors the production deployment:
  *        00: MultiSig (constructor + proxy + initialize)
  *        01: Manager
  *        02: Account (requires "Accounts" in registry for createAccount())
@@ -73,7 +73,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     RebasedStakedCelo public rebasedStakedCelo;
 
     // =========================================================================
-    //                    MULTISIG (via interface — no direct import)
+    //                    MULTISIG (via interface - no direct import)
     // =========================================================================
 
     IMultiSig public multiSig;
@@ -84,7 +84,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     // =========================================================================
 
     /// @notice Deploy all protocol contracts with a MockRegistry, replicating
-    ///         the full production deploy sequence from scripts 00-13.
+    ///         the full production deploy sequence (steps 00-13).
     function deployCoreWithMockRegistry() internal {
         deployCoreWithMockRegistry(3 * DAY, 3 * DAY, 1);
     }
@@ -117,7 +117,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     }
 
     /// @notice Deploy all protocol contracts against an existing registry, replicating
-    ///         the full production deploy sequence from scripts 00-13.
+    ///         the full production deploy sequence (steps 00-13).
     /// @param registry Registry the protocol contracts resolve Celo core contracts from.
     ///        Nothing is registered in it, so it may be a registry owned by someone else
     ///        (for example the Celo core registry of a devchain).
@@ -131,11 +131,10 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         uint256 delay,
         uint256 requiredConfirmations
     ) internal {
-        // Idempotent — harmless when called again from deployCoreWithMockRegistry().
+        // Idempotent - harmless when called again from deployCoreWithMockRegistry().
         _initNamedAccounts();
 
-        // The owner set mirrors deploy/00_multisig.ts, which collects every named account
-        // whose name contains "multisigOwner".
+        // The owner set is every named account whose name contains "multisigOwner".
         address[] memory owners = new address[](5);
         owners[0] = multisigOwner0;
         owners[1] = multisigOwner1;
@@ -160,7 +159,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         uint256 delay,
         uint256 requiredConfirmations
     ) internal {
-        // Idempotent — harmless when called again from deployCoreWithMockRegistry().
+        // Idempotent - harmless when called again from deployCoreWithMockRegistry().
         _initNamedAccounts();
 
         // ================================================================
@@ -171,25 +170,25 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         // Script 00: MultiSig
         _deployMultiSigProxy(owners, minDelay, delay, requiredConfirmations);
 
-        // Script 01: Manager — initialize(registry, deployer)
+        // Script 01: Manager - initialize(registry, deployer)
         _deployManagerProxy(registry);
 
-        // Script 02: Account — initialize(registry, managerProxy, deployer)
+        // Script 02: Account - initialize(registry, managerProxy, deployer)
         _deployAccountProxy(registry);
 
-        // Script 03: StakedCelo — initialize(managerProxy, deployer)
+        // Script 03: StakedCelo - initialize(managerProxy, deployer)
         _deployStakedCeloProxy();
 
-        // Script 04: Vote — initialize(registry, deployer, managerProxy)
+        // Script 04: Vote - initialize(registry, deployer, managerProxy)
         _deployVoteProxy(registry);
 
-        // Script 05: GroupHealth — initialize(registry, multiSigProxy)
+        // Script 05: GroupHealth - initialize(registry, multiSigProxy)
         _deployGroupHealthProxy(registry);
 
-        // Script 06: SpecificGroupStrategy — initialize(deployer, managerProxy)
+        // Script 06: SpecificGroupStrategy - initialize(deployer, managerProxy)
         _deploySpecificGroupStrategyProxy();
 
-        // Script 07: DefaultStrategy — initialize(deployer, managerProxy)
+        // Script 07: DefaultStrategy - initialize(deployer, managerProxy)
         _deployDefaultStrategyProxy();
 
         // ================================================================
@@ -244,9 +243,9 @@ abstract contract CoreDeployHelper is CeloTestHelper {
     // =========================================================================
 
     /// @dev Deploy MockRegistry + mock Celo core contracts and register them.
-    ///      Called without prank — test contract owns MockRegistry.
+    ///      Called without prank - test contract owns MockRegistry.
     function _deployMockCeloInfrastructure() private {
-        // Deploy MockRegistry via getCode (UNSAFE to import — Initializable collision)
+        // Deploy MockRegistry via getCode (UNSAFE to import - Initializable collision)
         bytes memory registryCode =
             IVmExtended(address(vm)).getCode("MockRegistry.sol:MockRegistry");
         address _mockRegistryAddr;
@@ -256,7 +255,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         require(_mockRegistryAddr != address(0), "MockRegistry deploy failed");
         mockRegistryAddr = _mockRegistryAddr;
 
-        // Deploy mock Celo core contracts (SAFE to import — no Initializable)
+        // Deploy mock Celo core contracts (SAFE to import - no Initializable)
         mockElection = new MockElection();
         mockLockedGold = new MockLockedGold();
         mockValidators = new MockValidators();
@@ -310,7 +309,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         multiSig = IMultiSig(multiSigProxy);
     }
 
-    /// @dev Script 01: Manager — initialize(registry, owner)
+    /// @dev Script 01: Manager - initialize(registry, owner)
     function _deployManagerProxy(address registry) private {
         Manager impl = new Manager();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -319,7 +318,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         manager = Manager(address(proxy));
     }
 
-    /// @dev Script 02: Account — initialize(registry, managerProxy, owner)
+    /// @dev Script 02: Account - initialize(registry, managerProxy, owner)
     ///      REQUIRES: "Accounts" resolvable in the registry (for createAccount())
     function _deployAccountProxy(address registry) private {
         Account impl = new Account();
@@ -332,7 +331,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         account = Account(payable(address(proxy)));
     }
 
-    /// @dev Script 03: StakedCelo — initialize(managerProxy, owner)
+    /// @dev Script 03: StakedCelo - initialize(managerProxy, owner)
     function _deployStakedCeloProxy() private {
         StakedCelo impl = new StakedCelo();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -342,7 +341,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         stakedCelo = StakedCelo(address(proxy));
     }
 
-    /// @dev Script 04: Vote — initialize(registry, owner, managerProxy)
+    /// @dev Script 04: Vote - initialize(registry, owner, managerProxy)
     function _deployVoteProxy(address registry) private {
         Vote impl = new Vote();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -352,7 +351,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         vote = Vote(address(proxy));
     }
 
-    /// @dev Script 05: GroupHealth — initialize(registry, owner = multiSig)
+    /// @dev Script 05: GroupHealth - initialize(registry, owner = multiSig)
     ///      GroupHealth is owned by MultiSig from the start (matching production).
     function _deployGroupHealthProxy(address registry) private {
         GroupHealth impl = new GroupHealth();
@@ -363,7 +362,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         groupHealth = GroupHealth(address(proxy));
     }
 
-    /// @dev Script 06: SpecificGroupStrategy — initialize(owner, managerProxy)
+    /// @dev Script 06: SpecificGroupStrategy - initialize(owner, managerProxy)
     function _deploySpecificGroupStrategyProxy() private {
         SpecificGroupStrategy impl = new SpecificGroupStrategy();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -375,7 +374,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         specificGroupStrategy = SpecificGroupStrategy(address(proxy));
     }
 
-    /// @dev Script 07: DefaultStrategy — initialize(owner, managerProxy)
+    /// @dev Script 07: DefaultStrategy - initialize(owner, managerProxy)
     ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
     function _deployDefaultStrategyProxy() private {
         DefaultStrategy impl = new DefaultStrategy();
@@ -386,7 +385,7 @@ abstract contract CoreDeployHelper is CeloTestHelper {
         defaultStrategy = DefaultStrategy(address(proxy));
     }
 
-    /// @dev Script 13: RebasedStakedCelo — initialize(stakedCeloProxy, accountProxy, owner = multiSig)
+    /// @dev Script 13: RebasedStakedCelo - initialize(stakedCeloProxy, accountProxy, owner = multiSig)
     function _deployRebasedStakedCeloProxy() private {
         RebasedStakedCelo impl = new RebasedStakedCelo();
         ERC1967Proxy proxy = new ERC1967Proxy(

@@ -5,10 +5,9 @@ import "./DefaultStrategyTestBase.sol";
 
 /**
  * @title DefaultStrategyAdminTest
- * @notice Ports the owner / pauser related describe blocks of
- *         `test-ts/default-strategy.test.ts`: `#setDependencies()`, `#setSortingParams`,
- *         `#setMinCountOfActiveGroups`, `#renounceOwnership`, `#setPauser`, `#pause`,
- *         `#unpause` and `when paused`.
+ * @notice Owner / pauser tests of DefaultStrategy: `setDependencies`, `setSortingParams`,
+ *         `setMinCountOfActiveGroups`, `renounceOwnership`, `setPauser`, `pause`, `unpause`
+ *         and the paused state.
  */
 contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     function setUp() public {
@@ -130,7 +129,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
         mockDefaultStrategy.setPauser();
     }
 
-    /// @dev `describe("when the owner is changed")` beforeEach.
+    /// @dev Setup for the "when the owner is changed" cases.
     function _setUpOwnerChanged() private {
         vm.prank(owner);
         mockDefaultStrategy.transferOwnership(nonManager);
@@ -173,7 +172,7 @@ contract DefaultStrategyAdminTest is DefaultStrategyTestBase {
     //                              #unpause
     // =========================================================================
 
-    /// @dev `describe("#unpause")` beforeEach.
+    /// @dev Setup shared by the `unpause` cases.
     function _setUpPaused() private {
         vm.prank(pauser);
         mockDefaultStrategy.pause();

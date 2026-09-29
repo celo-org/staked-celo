@@ -6,11 +6,9 @@ import "./TaskVm.sol";
 /**
  * @title PayloadLib
  * @notice Builds MultiSig proposal calldata from a function signature and comma separated
- *         arguments, replacing the ethers `contract.interface.encodeFunctionData` call of
- *         the `stakedCelo:multiSig:encode:proposal:payload` task.
- * @dev The Hardhat task looked the ABI up from the deployment artifact and took a bare
- *      function name. Solidity has no runtime ABI, so the full signature is passed in
- *      instead, for example "upgradeTo(address)".
+ *         arguments.
+ * @dev Solidity has no runtime ABI to look a bare function name up in, so the full
+ *      signature is passed in, for example "upgradeTo(address)".
  *
  *      Only the single word static types StakedCelo proposals use are supported:
  *      `address`, `bool`, `bytes32`, `uint8`..`uint256` and `int8`..`int256` in steps of

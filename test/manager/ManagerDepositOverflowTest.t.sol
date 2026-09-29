@@ -5,9 +5,9 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerDepositOverflowTest
- * @notice Ports the `#deposit() > when groups are close to their voting limit` and
- *         `#deposit() > When depositing originally healthy overflowing specific group that
- *         became unhealthy` blocks of test-ts/manager.test.ts.
+ * @notice `Manager.deposit` tests where groups are close to their voting limit, including
+ *         depositing to an originally healthy overflowing specific group that became
+ *         unhealthy.
  */
 contract ManagerDepositOverflowTest is ManagerTestBase {
     /// @dev `depositAmount` of `When voting for specific strategy with overflow`.
@@ -307,26 +307,26 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
     //                          BLOCK FIXTURES
     // =========================================================================
 
-    /// @dev `beforeEach` of `when there are scheduled votes for the groups`.
+    /// @dev Setup for `when there are scheduled votes for the groups`.
     function setUpScheduledVotes() private {
         mockAccount.setCeloForGroup(groupAddresses[0], FIRST_GROUP_SCHEDULED);
         mockAccount.setCeloForGroup(groupAddresses[1], SECOND_GROUP_SCHEDULED);
         mockAccount.setCeloForGroup(groupAddresses[2], THIRD_GROUP_SCHEDULED);
     }
 
-    /// @dev `beforeEach` of `When voting for specific strategy with overflow`.
+    /// @dev Setup for `When voting for specific strategy with overflow`.
     function setUpSpecificStrategyWithOverflow() private {
         vm.prank(depositor);
         manager.changeStrategy(groupAddresses[0]);
     }
 
-    /// @dev `beforeEach` of the nested `When 1:1` block.
+    /// @dev Setup for the nested `When 1:1` block.
     function depositSpecificOverflow() private {
         vm.prank(depositor);
         manager.deposit{value: SPECIFIC_OVERFLOW_DEPOSIT}();
     }
 
-    /// @dev `beforeEach` of the nested ratio blocks; returns `firstGroupCapacityInStCelo`.
+    /// @dev Setup for the nested ratio blocks; returns `firstGroupCapacityInStCelo`.
     function setUpRatioAndDeposit(uint256 totalCelo) private returns (uint256 capacityInStCelo) {
         mockAccount.setTotalCelo(totalCelo);
         mockStakedCelo.mint(someone, 100 ether);
@@ -334,7 +334,7 @@ contract ManagerDepositOverflowTest is ManagerTestBase {
         depositSpecificOverflow();
     }
 
-    /// @dev `beforeEach` of `When depositing originally healthy overflowing specific group
+    /// @dev Setup for `When depositing originally healthy overflowing specific group
     ///      that became unhealthy`.
     function setUpUnhealthyOverflow() private returns (uint256 deposit) {
         prepareOverflowAndReadCapacities(true);

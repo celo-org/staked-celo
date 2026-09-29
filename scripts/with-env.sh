@@ -2,7 +2,6 @@
 #
 # Runs a command with the variables of `.env.<network>` exported.
 #
-# The Hardhat config loaded `.env.<network>` (dotenv) for every network but `local`;
 # Forge only reads `.env` from the project root. The encrypted environment files that
 # `yarn keys:decrypt` (scripts/key_placer.sh) produces keep the per-network layout, so
 # deploy and task scripts are started through this wrapper:

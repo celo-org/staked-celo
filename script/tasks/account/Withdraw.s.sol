@@ -6,8 +6,7 @@ import "../lib/AccountTaskLib.sol";
 
 /**
  * @title WithdrawScript
- * @notice Withdraws CELO from the Account contract. Replaces
- *         `yarn hardhat stakedCelo:account:withdraw --beneficiary <address>`.
+ * @notice Withdraws CELO from the Account contract.
  *
  * Environment variables:
  *   BENEFICIARY  required. The address of the beneficiary to withdraw for.

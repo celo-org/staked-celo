@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#getTotalCelo()")`.
+/// @notice Tests for `Account.getTotalCelo`.
 contract AccountGetTotalCeloTest is AccountTestBase {
     function test_getTotalCelo_Returns0WhenThereWereNoVotes() public view {
         assertEq(account.getTotalCelo(), 0);

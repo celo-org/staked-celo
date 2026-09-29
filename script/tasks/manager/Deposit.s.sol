@@ -6,8 +6,7 @@ import "../lib/ManagerTaskLib.sol";
 
 /**
  * @title DepositScript
- * @notice Deposits CELO in the staked CELO protocol. Replaces
- *         `yarn hardhat stakedCelo:manager:deposit --amount <wei>`.
+ * @notice Deposits CELO in the staked CELO protocol.
  *
  * Environment variables:
  *   AMOUNT   required. The amount of CELO to deposit, in wei.

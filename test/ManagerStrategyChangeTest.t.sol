@@ -6,19 +6,15 @@ import "./helpers/deploy/FullTestManagerDeployHelper.sol";
 
 /**
  * @title ManagerStrategyChangeTest
- * @notice Port of the Hardhat era test-ts/manager-strategy-change.test.ts
- *         (`describe("Manager strategy change: delayed transfer")`).
+ * @notice Manager strategy change with delayed transfer: changing strategy does not move
+ *         votes until a rebalance.
  * @dev Two validator groups with one validator each are registered against the real Celo core
- *      contracts of the devchain, elected on MockGroupHealth and activated in DefaultStrategy,
- *      exactly like the `before()` / `beforeEach()` pair of the original. `setUp()` runs before
- *      every test, which is what the Hardhat fixture re-deployment did.
+ *      contracts of the devchain, elected on MockGroupHealth and activated in DefaultStrategy.
+ *      `setUp()` runs before every test.
  *
- * @dev Deviation: the original deployed the production "core" fixture, upgraded its GroupHealth
- *      proxy to MockGroupHealth through the MultiSig and activated the groups through MultiSig
- *      proposals. The port uses the `FullTestManager` fixture against the devchain registry,
- *      which deploys MockGroupHealth directly and leaves the strategies owned by `owner`, so the
- *      groups are activated with a plain owner call. The contracts under test (Manager, Account,
- *      DefaultStrategy) and their wiring are the same either way.
+ * @dev The `FullTestManager` fixture is deployed against the devchain registry. It deploys
+ *      MockGroupHealth directly and leaves the strategies owned by `owner`, so the groups are
+ *      activated with a plain owner call rather than through MultiSig proposals.
  */
 contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelper {
     address internal depositor;
@@ -64,7 +60,8 @@ contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelpe
         registerValidatorAndAddToGroupMembers(group, createWallet(11_000 ether));
     }
 
-    /// @dev Ports `activateValidators(...)` from utils-validators.ts.
+    /// @dev Adds and activates `groups` in DefaultStrategy, passing the previously activated
+    ///      group as `greater`.
     function _activateGroups(address[] memory groups) private {
         (address nextGroup,) = mockDefaultStrategy.getGroupsTail();
 
@@ -81,7 +78,6 @@ contract ManagerStrategyChangeTest is DevchainHelper, FullTestManagerDeployHelpe
     }
 
     /// @notice changeStrategy should NOT schedule transfers immediately; rebalance should.
-    /// @dev Ports it("should NOT schedule transfers immediately on strategy change").
     function test_StrategyChange_ShouldNotScheduleTransfersImmediately() public {
         // Deposit to default strategy
         uint256 depositAmount = 100 ether;

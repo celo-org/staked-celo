@@ -6,11 +6,9 @@ import "../lib/UpgradeProposalLib.sol";
 
 /**
  * @title EncodeManagerSetDependenciesScript
- * @notice Encodes the Manager.setDependencies proposal payload. Replaces
- *         `yarn hardhat stakedCelo:multisig:encode:managerSetDependencies`.
- * @dev The Hardhat task also repaired the deployment ABI file when hardhat-deploy had only
- *      refreshed `Manager_Implementation.json`. Foundry reads addresses, never ABIs, from
- *      the deployment files, so that step has no counterpart here.
+ * @notice Encodes the Manager.setDependencies proposal payload.
+ * @dev Only addresses are read from the deployment files, never ABIs, so the files need
+ *      no ABI kept in step with `Manager_Implementation.json`.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

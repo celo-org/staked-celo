@@ -22,7 +22,7 @@ interface IMockRegistry {
     function getAddressFor(bytes32 identifierHash) external view returns (address);
 }
 
-/// @dev Extended VM interface — CeloTestVm omits getCode; cast vm to this to use it.
+/// @dev Extended VM interface - CeloTestVm omits getCode; cast vm to this to use it.
 interface IVmExtended {
     function getCode(string calldata) external returns (bytes memory);
 }
@@ -49,9 +49,9 @@ contract MockCeloAccount {
 /**
  * @title FullTestManagerDeployHelper
  * @notice Abstract helper that deploys the full Manager test fixture for Foundry.
- * @dev Replicates the FullTestManager hardhat-deploy fixture:
- *      - Manager, MockGroupHealth, MockDefaultStrategy, SpecificGroupStrategy (from FullTestManager tag)
- *      - Account, StakedCelo, Vote (from TestVote tag / test before() blocks)
+ * @dev Deploys:
+ *      - Manager, MockGroupHealth, MockDefaultStrategy, SpecificGroupStrategy
+ *      - Account, StakedCelo, Vote
  *      - All setDependencies wiring
  *
  *      Also deploys MockRegistry + mock Celo core contracts (Election, LockedGold,
@@ -97,7 +97,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     /**
      * @notice Deploy the full Manager test fixture against mock Celo core contracts.
      * @dev Deployment sequence:
-     *      1. MockRegistry (via getCode — cannot import directly)
+     *      1. MockRegistry (via getCode - cannot import directly)
      *      2. Mock Celo core contracts + registry registration
      *      3-13. Everything deployFullTestManager(registry) does.
      */
@@ -113,20 +113,20 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
      *        Nothing is registered in it, so it may be a registry owned by someone else
      *        (for example the Celo core registry of a devchain).
      * @dev Deployment sequence:
-     *      1. Manager (proxy) — initialize(registry, owner)
-     *      2. MockGroupHealth (proxy) — initialize(registry, owner)
-     *      3. MockDefaultStrategy (proxy) — initialize(owner, managerProxy)
-     *      4. SpecificGroupStrategy (proxy) — initialize(owner, managerProxy)
-     *      5. Account (proxy) — initialize(registry, managerProxy, owner)
-     *      6. StakedCelo (proxy) — initialize(managerProxy, owner)
-     *      7. Vote (proxy) — initialize(registry, owner, managerProxy)
+     *      1. Manager (proxy) - initialize(registry, owner)
+     *      2. MockGroupHealth (proxy) - initialize(registry, owner)
+     *      3. MockDefaultStrategy (proxy) - initialize(owner, managerProxy)
+     *      4. SpecificGroupStrategy (proxy) - initialize(owner, managerProxy)
+     *      5. Account (proxy) - initialize(registry, managerProxy, owner)
+     *      6. StakedCelo (proxy) - initialize(managerProxy, owner)
+     *      7. Vote (proxy) - initialize(registry, owner, managerProxy)
      *      8. Manager.setDependencies(...)
      *      9. Vote.setDependencies(...)
      *      10. SpecificGroupStrategy.setDependencies(...)
      *      11. MockDefaultStrategy.setDependencies(...)
      */
     function deployFullTestManager(address registry) internal {
-        // Idempotent — harmless when called again from the no-argument fixture.
+        // Idempotent - harmless when called again from the no-argument fixture.
         _initNamedAccounts();
 
         // ================================================================
@@ -195,7 +195,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
     // One function per proxy so that each stack frame stays small enough to
     // compile without via_ir.
 
-    /// @dev Manager — initialize(registry, owner)
+    /// @dev Manager - initialize(registry, owner)
     function _deployManagerProxy(address registry) private {
         Manager impl = new Manager();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -204,7 +204,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         manager = Manager(address(proxy));
     }
 
-    /// @dev MockGroupHealth — initialize(registry, owner)
+    /// @dev MockGroupHealth - initialize(registry, owner)
     function _deployMockGroupHealthProxy(address registry) private {
         MockGroupHealth impl = new MockGroupHealth();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -213,7 +213,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         mockGroupHealth = MockGroupHealth(address(proxy));
     }
 
-    /// @dev MockDefaultStrategy — initialize(owner, managerProxy)
+    /// @dev MockDefaultStrategy - initialize(owner, managerProxy)
     ///      NOTE: AddressSortedLinkedList library is linked automatically by Forge.
     function _deployMockDefaultStrategyProxy() private {
         MockDefaultStrategy impl = new MockDefaultStrategy();
@@ -224,7 +224,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         mockDefaultStrategy = MockDefaultStrategy(payable(address(proxy)));
     }
 
-    /// @dev SpecificGroupStrategy — initialize(owner, managerProxy)
+    /// @dev SpecificGroupStrategy - initialize(owner, managerProxy)
     function _deploySpecificGroupStrategyProxy() private {
         SpecificGroupStrategy impl = new SpecificGroupStrategy();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -236,7 +236,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         specificGroupStrategy = SpecificGroupStrategy(address(proxy));
     }
 
-    /// @dev Account — initialize(registry, managerProxy, owner)
+    /// @dev Account - initialize(registry, managerProxy, owner)
     ///      REQUIRES: "Accounts" resolvable in the registry, because
     ///      Account.initialize() calls getAccounts().createAccount().
     function _deployAccountProxy(address registry) private {
@@ -248,7 +248,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         account = Account(payable(address(proxy)));
     }
 
-    /// @dev StakedCelo — initialize(managerProxy, owner)
+    /// @dev StakedCelo - initialize(managerProxy, owner)
     function _deployStakedCeloProxy() private {
         StakedCelo impl = new StakedCelo();
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -258,7 +258,7 @@ abstract contract FullTestManagerDeployHelper is CeloTestHelper {
         stakedCelo = StakedCelo(address(proxy));
     }
 
-    /// @dev Vote — initialize(registry, owner, managerProxy)
+    /// @dev Vote - initialize(registry, owner, managerProxy)
     function _deployVoteProxy(address registry) private {
         Vote impl = new Vote();
         ERC1967Proxy proxy = new ERC1967Proxy(

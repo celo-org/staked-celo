@@ -6,9 +6,7 @@ import "../lib/ManagerTaskLib.sol";
 
 /**
  * @title VoteProposalScript
- * @notice Votes with stCELO on a governance proposal. Replaces
- *         `yarn hardhat stakedCelo:manager:voteProposal --proposal-id <id> --yes <n>
- *          --no <n> --abstain <n>`.
+ * @notice Votes with stCELO on a governance proposal.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the governance proposal.

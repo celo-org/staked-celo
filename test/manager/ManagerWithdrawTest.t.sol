@@ -5,20 +5,18 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerWithdrawTest
- * @notice Ports `#withdraw()` of test-ts/manager.test.ts.
+ * @notice Tests for `Manager.withdraw`.
  */
 contract ManagerWithdrawTest is ManagerTestBase {
     /// @dev `specificGroupStrategyWithdrawal` of the specific-group blocks.
     uint256 private constant SPECIFIC_WITHDRAWAL = 100;
 
     /// @dev `depositAmount` of the `when groups are close to their voting limit` block.
-    /// @dev Deviation: the original deposited a flat 50 CELO, which on the ganache devchain
-    ///      left an overflow of 9.833333333333333334 stCELO. That amount happened to be
-    ///      divisible by the three default groups without a remainder, and so did its halves
-    ///      and doubles, which the withdrawal distribution of DefaultStrategy relies on (it
-    ///      reverts with NotAbleToDistributeVotes when rounding leaves a wei behind). The
-    ///      anvil devchain leaves exactly 40 CELO of capacity, so the deposit is expressed as
-    ///      "9 CELO over the first group's capacity" to keep the same property.
+    /// @dev The first group has exactly 40 CELO of capacity, so the deposit is expressed as
+    ///      "9 CELO over the first group's capacity". The overflow, its halves and its doubles
+    ///      are then divisible by the three default groups without a remainder, which the
+    ///      withdrawal distribution of DefaultStrategy relies on (it reverts with
+    ///      NotAbleToDistributeVotes when rounding leaves a wei behind).
     uint256 private overflowDeposit;
 
     /// @dev `depositOverCapacity` / `deposit2` of the unhealthy overflow block.
@@ -279,8 +277,8 @@ contract ManagerWithdrawTest is ManagerTestBase {
         assertEq(scheduledWithdrawalTotal(), 5);
     }
 
-    /// @dev Deviation: the original names this case `burns the stCELO` as well, which would
-    ///      collide with the previous function; the suffix disambiguates it.
+    /// @dev This case also burns the stCELO; the suffix keeps its name distinct from the
+    ///      previous function.
     function test_withdraw_StCeloBurning_WhenThereIsLessCeloThanStCeloInTheSystem_BurnsTheStCelo2()
         public
     {
@@ -771,7 +769,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
     //                          BLOCK FIXTURES
     // =========================================================================
 
-    /// @dev `beforeEach` of `#withdraw() > when groups are activated`.
+    /// @dev Setup for `withdraw > when groups are activated`.
     function setUpGroupsActivated() private {
         address nextGroup = ADDRESS_ZERO;
         for (uint256 i = 0; i < 3; i++) {
@@ -788,7 +786,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         (originalHead,) = mockDefaultStrategy.getGroupsHead();
     }
 
-    /// @dev `beforeEach` of `#withdraw() > stCELO burning`.
+    /// @dev Setup for `withdraw > stCELO burning`.
     function setUpBurning() private {
         for (uint256 i = 0; i < 3; i++) {
             (address head,) = mockDefaultStrategy.getGroupsHead();
@@ -802,7 +800,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         manager.deposit{value: 100}();
     }
 
-    /// @dev `beforeEach` of `When voted for specific validator group - no active groups`.
+    /// @dev Setup for `When voted for specific validator group - no active groups`.
     function setUpSpecificNoActiveGroups() private {
         vm.prank(depositor);
         manager.changeStrategy(groupAddresses[0]);
@@ -811,7 +809,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         mockAccount.setCeloForGroup(groupAddresses[0], 100);
     }
 
-    /// @dev `beforeEach` of `When there are other active groups besides specific validator
+    /// @dev Setup for `When there are other active groups besides specific validator
     ///      group - voted is different from active`.
     function setUpVotedDifferentFromActive() private {
         uint256[] memory withdrawals = arr(uint256(40), uint256(50));
@@ -834,14 +832,14 @@ contract ManagerWithdrawTest is ManagerTestBase {
         manager.deposit{value: SPECIFIC_WITHDRAWAL}();
     }
 
-    /// @dev `beforeEach` of the nested `When strategy blocked` block.
+    /// @dev Setup for the nested `When strategy blocked` block.
     function setUpStrategyBlocked() private {
         vm.prank(owner);
         specificGroupStrategy.blockGroup(groupAddresses[2]);
         specificGroupStrategy.rebalanceWhenHealthChanged(groupAddresses[2]);
     }
 
-    /// @dev `beforeEach` of `... - voted is one of the active groups`.
+    /// @dev Setup for `... - voted is one of the active groups`.
     function setUpVotedIsActiveGroup() private {
         uint256[] memory withdrawals = arr(uint256(40), uint256(50));
         for (uint256 i = 0; i < 2; i++) {
@@ -859,7 +857,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         manager.deposit{value: SPECIFIC_WITHDRAWAL}();
     }
 
-    /// @dev `beforeEach` of `#withdraw() > when groups are close to their voting limit`.
+    /// @dev Setup for `withdraw > when groups are close to their voting limit`.
     function setUpCloseToVotingLimit() private {
         prepareOverflowAndReadCapacities(true);
         overflowDeposit = firstGroupCapacity + 9 ether;
@@ -875,7 +873,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         originalOverflow = specificGroupStrategy.totalStCeloOverflow();
     }
 
-    /// @dev `beforeEach` of `When withdrawing from originally healthy overflowing group that
+    /// @dev Setup for `When withdrawing from originally healthy overflowing group that
     ///      became unhealthy`.
     function setUpUnhealthyOverflow() private returns (uint256 deposit) {
         prepareOverflowAndReadCapacities(true);
@@ -889,7 +887,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         revokeElection(groupAddresses[0]);
     }
 
-    /// @dev `beforeEach` of the nested `When depositing to unhealthy specific group` block.
+    /// @dev Setup for the nested `When depositing to unhealthy specific group` block.
     function depositToUnhealthyGroup() private returns (address nextToTail) {
         vm.prank(depositor);
         manager.deposit{value: DEPOSIT2}();
@@ -910,7 +908,7 @@ contract ManagerWithdrawTest is ManagerTestBase {
         (previousHead,) = mockDefaultStrategy.getGroupPreviousAndNext(head);
     }
 
-    /// @dev Ports `sum(withdrawals)` of the stCELO burning block.
+    /// @dev Sum of the last scheduled withdrawals, used by the stCELO burning cases.
     function scheduledWithdrawalTotal() private view returns (uint256 total) {
         (, uint256[] memory withdrawals) = lastScheduledWithdrawals();
         for (uint256 i = 0; i < withdrawals.length; i++) {

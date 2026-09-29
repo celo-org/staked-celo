@@ -3,10 +3,10 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#voteProposal")`.
+/// @notice Tests for voting on governance proposals through `Account.votePartially`.
 contract AccountVoteProposalTest is AccountTestBase {
-    /// @dev The original attached the MockRegistry ABI to the real Registry and wrote the
-    ///      MockGovernance address into it as the Registry owner.
+    /// @dev Points the real Registry's "Governance" entry at MockGovernance, writing it as the
+    ///      Registry owner.
     function _registerMockGovernance() private {
         address registryOwner = celoRegistry.owner();
         vm.prank(registryOwner);

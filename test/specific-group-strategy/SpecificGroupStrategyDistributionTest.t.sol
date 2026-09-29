@@ -5,18 +5,16 @@ import "./SpecificGroupStrategyTestBase.sol";
 
 /**
  * @title SpecificGroupStrategyDistributionTest
- * @notice Port of the vote distribution and accounting describe blocks of
- *         test-ts/specific_group_strategy.test.ts:
- *         #generateWithdrawalVoteDistribution (2), #generateDepositVoteDistribution (2)
- *         and #updateGroupStCelo (3).
+ * @notice Vote distribution and accounting tests of SpecificGroupStrategy:
+ *         `generateWithdrawalVoteDistribution`, `generateDepositVoteDistribution` and
+ *         `updateGroupStCelo`.
  */
 contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase {
     function setUp() public {
         _setUpSpecificGroupStrategy();
     }
 
-    /// @dev `.to.emit(specificGroupStrategy, name)` without `withArgs`: only the event
-    ///      signature and the emitter are checked.
+    /// @dev Only the event signature and the emitter are checked, not the event arguments.
     function _expectEventFromStrategy() private {
         IVmExpectEmitFrom(address(vm))
             .expectEmit(false, false, false, false, address(specificGroupStrategy));
@@ -44,7 +42,7 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
         manager.withdraw(0.5 ether);
     }
 
-    /// @dev beforeEach of describe("when called through manager withdraw with specific strategy").
+    /// @dev Setup for "when called through manager withdraw with specific strategy".
     function _whenCalledThroughManagerWithdrawWithSpecificStrategy() private {
         _activateGroups(2);
 
@@ -78,7 +76,7 @@ contract SpecificGroupStrategyDistributionTest is SpecificGroupStrategyTestBase 
         manager.deposit{value: 1 ether}();
     }
 
-    /// @dev beforeEach of describe("when called through manager deposit with specific strategy").
+    /// @dev Setup for "when called through manager deposit with specific strategy".
     function _whenCalledThroughManagerDepositWithSpecificStrategy() private {
         _activateGroups(2);
 

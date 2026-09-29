@@ -5,36 +5,34 @@ import "./SpecificGroupStrategyTestBase.sol";
 
 /**
  * @title SpecificGroupStrategyRebalanceWhenHealthChangedTest
- * @notice Port of describe("#rebalanceWhenHealthChanged()") (33 cases) of
- *         test-ts/specific_group_strategy.test.ts.
- * @dev Deviation: the original hardcoded `firstGroupCapacity = 40.166666666666666666 CELO`,
- *      the receivable votes the ganache devchain left for groups[0] after `prepareOverflow`.
- *      The anvil devchain solves the vote amounts from the chain state, so the capacity is
- *      read from the Election contract right after `prepareOverflow` instead of hardcoded.
+ * @notice Tests for `SpecificGroupStrategy.rebalanceWhenHealthChanged`.
+ * @dev `prepareOverflow` solves the vote amounts from the chain state, so the capacity of
+ *      groups[0] is read from the Election contract right after `prepareOverflow` instead of
+ *      hardcoded.
  */
 contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStrategyTestBase {
-    /// @dev `specificGroupAddress` of the original test.
+    /// @dev The specific group the tests vote for.
     address internal specificGroupAddress;
-    /// @dev `deposit` of the nested describe blocks.
+    /// @dev Deposit of the nested scenarios.
     uint256 internal deposit;
-    /// @dev `tail` of describe("When active groups and rebalanceWhenHealthChanged called").
+    /// @dev Tail of the "When active groups and rebalanceWhenHealthChanged called" cases.
     address internal tail;
-    /// @dev `head` of the describe("When group becomes ... again") blocks.
+    /// @dev Head of the "When group becomes ... again" cases.
     address internal head;
 
-    /// @dev `firstGroupCapacity` of describe("When overflowing group is blocked").
+    /// @dev First group capacity of the "When overflowing group is blocked" cases.
     uint256 internal firstGroupCapacity;
-    /// @dev `depositOverCapacity` of describe("When overflowing group is blocked").
+    /// @dev Deposit over capacity of the "When overflowing group is blocked" cases.
     uint256 internal constant DEPOSIT_OVER_CAPACITY = 10 ether;
-    /// @dev `nextToTail` of describe("When ratio 1:1").
+    /// @dev Group next to the tail in the "When ratio 1:1" cases.
     address internal nextToTail;
-    /// @dev `specificOverflowingGroup` of describe("When overflowing group is blocked").
+    /// @dev Overflowing specific group of the "When overflowing group is blocked" cases.
     address internal specificOverflowingGroup;
 
     function setUp() public {
         _setUpSpecificGroupStrategy();
 
-        // beforeEach of describe("#rebalanceWhenHealthChanged()")
+        // Setup shared by every `rebalanceWhenHealthChanged` case
         specificGroupAddress = groupAddresses[4];
     }
 
@@ -42,9 +40,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     //                     #rebalanceWhenHealthChanged()
     // =========================================================================
 
-    /// @dev The original `expect(...).revertedWith(...)` was missing its `await`, so the
-    ///      assertion resolved after the test had finished and never ran. The revert is
-    ///      asserted for real here.
+    /// @dev Asserts that the call reverts with `GroupBalanced`.
     function test_rebalanceWhenHealthChanged_ShouldRevertWhenHealthyAndNoUnhealthyStCelo() public {
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -64,9 +60,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         assertFalse(mockGroupHealth.isGroupValid(specificGroupAddress));
     }
 
-    /// @dev The original `expect(...).revertedWith(...)` was missing its `await`, so the
-    ///      assertion resolved after the test had finished and never ran. The revert is
-    ///      asserted for real here.
+    /// @dev Asserts that the call reverts with `GroupBalanced` when the group holds no stCELO.
     function test_rebalanceWhenHealthChanged_WhenGroupIsUnhealthy_ShouldRevertWhenNoStCeloInGroup()
         public
     {
@@ -444,17 +438,17 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
     }
 
     // =========================================================================
-    //                       NESTED beforeEach BLOCKS
+    //                           SCENARIO SETUP
     // =========================================================================
 
-    /// @dev beforeEach of describe("When group is unhealthy").
+    /// @dev Setup for "When group is unhealthy".
     function _whenGroupIsUnhealthy() private {
         revokeElectionOnMockValidatorGroupsAndUpdate(
             mockGroupHealth, _addresses(specificGroupAddress), true
         );
     }
 
-    /// @dev beforeEach of describe("When Celo deposited in group").
+    /// @dev Setup for "When Celo deposited in group".
     function _whenCeloDepositedInGroup() private {
         _whenGroupIsUnhealthy();
 
@@ -469,7 +463,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         );
     }
 
-    /// @dev beforeEach of describe("When active groups and rebalanceWhenHealthChanged called").
+    /// @dev Setup for "When active groups and rebalanceWhenHealthChanged called".
     function _whenActiveGroupsAndRebalanceWhenHealthChangedCalled() private {
         _whenCeloDepositedInGroup();
 
@@ -477,7 +471,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         (tail,) = mockDefaultStrategy.getGroupsTail();
     }
 
-    /// @dev beforeEach of describe("When group becomes healthy again").
+    /// @dev Setup for "When group becomes healthy again".
     function _whenGroupBecomesHealthyAgain() private {
         _whenActiveGroupsAndRebalanceWhenHealthChangedCalled();
 
@@ -505,7 +499,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         manager.deposit{value: deposit}();
     }
 
-    /// @dev beforeEach of describe("When ratio 1:1").
+    /// @dev Setup for "When ratio 1:1".
     function _whenRatio1To1() private {
         _depositOverFirstGroupCapacity();
 
@@ -516,7 +510,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         specificGroupStrategy.rebalanceWhenHealthChanged(specificOverflowingGroup);
     }
 
-    /// @dev beforeEach of describe("When group becomes unblocked again") under "When ratio 1:1".
+    /// @dev Setup for "When group becomes unblocked again" under "When ratio 1:1".
     function _whenRatio1To1UnblockedAgain() private {
         _whenRatio1To1();
 
@@ -527,7 +521,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         specificGroupStrategy.rebalanceWhenHealthChanged(specificOverflowingGroup);
     }
 
-    /// @dev beforeEach of describe("When there is more CELO than stCELO").
+    /// @dev Setup for "When there is more CELO than stCELO".
     function _whenThereIsMoreCeloThanStCelo() private {
         _depositOverFirstGroupCapacity();
 
@@ -540,7 +534,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         specificGroupStrategy.rebalanceWhenHealthChanged(specificOverflowingGroup);
     }
 
-    /// @dev beforeEach of describe("When group becomes unblocked again") under
+    /// @dev Setup for "When group becomes unblocked again" under
     ///      "When there is more CELO than stCELO".
     function _whenThereIsMoreCeloThanStCeloUnblockedAgain() private {
         _whenThereIsMoreCeloThanStCelo();
@@ -553,7 +547,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         specificGroupStrategy.rebalanceWhenHealthChanged(specificOverflowingGroup);
     }
 
-    /// @dev beforeEach of describe("When there is less CELO than stCELO").
+    /// @dev Setup for "When there is less CELO than stCELO".
     function _whenThereIsLessCeloThanStCelo() private {
         _depositOverFirstGroupCapacity();
 
@@ -565,7 +559,7 @@ contract SpecificGroupStrategyRebalanceWhenHealthChangedTest is SpecificGroupStr
         specificGroupStrategy.rebalanceWhenHealthChanged(specificOverflowingGroup);
     }
 
-    /// @dev beforeEach of describe("When group becomes unblocked again") under
+    /// @dev Setup for "When group becomes unblocked again" under
     ///      "When there is less CELO than stCELO".
     function _whenThereIsLessCeloThanStCeloUnblockedAgain() private {
         _whenThereIsLessCeloThanStCelo();

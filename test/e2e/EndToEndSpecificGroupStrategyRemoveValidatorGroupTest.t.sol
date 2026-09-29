@@ -5,8 +5,8 @@ import "./EndToEndTestBase.sol";
 
 /**
  * @title EndToEndSpecificGroupStrategyRemoveValidatorGroupTest
- * @notice Port of test-ts/end-to-end-specific-group-strategy-remove-validator-group.test.ts
- *         ("e2e specific group strategy voting removed validator group").
+ * @notice End-to-end test of specific group strategy voting when the chosen validator group
+ *         is removed.
  */
 contract EndToEndSpecificGroupStrategyRemoveValidatorGroupTest is EndToEndTestBase {
     uint256 internal constant REWARDS_GROUP_0 = 10 ether;

@@ -5,8 +5,8 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerDepositTest
- * @notice Ports `#deposit()` of test-ts/manager.test.ts, except the blocks that drive groups
- *         to their voting limit (see ManagerDepositOverflowTest).
+ * @notice Tests for `Manager.deposit`, except the cases that drive groups to their voting
+ *         limit (see ManagerDepositOverflowTest).
  */
 contract ManagerDepositTest is ManagerTestBase {
     address private originalTail;
@@ -458,27 +458,27 @@ contract ManagerDepositTest is ManagerTestBase {
     //                          BLOCK FIXTURES
     // =========================================================================
 
-    /// @dev `beforeEach` of `#deposit() > when having active groups`.
+    /// @dev Setup for `deposit > when having active groups`.
     function setUpHavingActiveGroups() private {
         activateGroups(3);
         (originalTail,) = mockDefaultStrategy.getGroupsTail();
         depositAs(depositor, 99);
     }
 
-    /// @dev `beforeEach` of the CELO / stCELO ratio blocks of `stCELO minting`.
+    /// @dev Setup for the CELO / stCELO ratio blocks of `stCELO minting`.
     function setUpRatio(uint256 totalCelo, uint256 stCeloSupply) private {
         mockAccount.setTotalCelo(totalCelo);
         mockStakedCelo.mint(someone, stCeloSupply);
     }
 
-    /// @dev `beforeEach` of `#deposit() > When voted for specific strategy`.
+    /// @dev Setup for `deposit > When voted for specific strategy`.
     function setUpVotedForSpecificStrategy() private {
         vm.prank(depositor);
         manager.changeStrategy(groupAddresses[0]);
         depositAs(depositor, 100);
     }
 
-    /// @dev `beforeEach` of `When voted for originally valid validator group that is no longer
+    /// @dev Setup for `When voted for originally valid validator group that is no longer
     ///      valid`.
     function setUpNoLongerValidGroup() private {
         activateGroupsWithCelo(3, 100);
@@ -494,8 +494,8 @@ contract ManagerDepositTest is ManagerTestBase {
         depositAs(depositor, 100);
     }
 
-    /// @dev `beforeEach` of the two `When voted for deactivated group` blocks. The original
-    ///      deposited from the default signer, which is the test contract here.
+    /// @dev Setup for the two `When voted for deactivated group` blocks. The test contract is
+    ///      the depositor.
     function setUpBlockedStrategy(uint256 activeCount, address strategyGroup) private {
         activateGroupsWithCelo(activeCount, 100);
 
@@ -506,7 +506,7 @@ contract ManagerDepositTest is ManagerTestBase {
         specificGroupStrategy.blockGroup(strategyGroup);
     }
 
-    /// @dev `beforeEach` of the two `When we have 2 active validator groups` sub-blocks.
+    /// @dev Setup for the two `When we have 2 active validator groups` sub-blocks.
     function setUpSpecificDeposit(address strategyGroup) private {
         vm.prank(depositor);
         manager.changeStrategy(strategyGroup);

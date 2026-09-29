@@ -5,16 +5,16 @@ import "./EndToEndTestBase.sol";
 
 /**
  * @title EndToEndOverflowTest
- * @notice Port of test-ts/end-to-end-overflow.test.ts ("e2e overflow test").
+ * @notice End-to-end test of deposits, withdrawals and rebalancing when validator groups
+ *         overflow their voting limit.
  */
 contract EndToEndOverflowTest is EndToEndTestBase {
     uint256 internal constant ZERO = 0;
 
     /**
-     * @dev Deviation: the Hardhat test hardcoded the capacities the ganache devchain ended up
-     *      with (40.166666666666666666 / 99.25 / 200.166666666666666666 CELO). `prepareOverflow`
-     *      solves the vote amounts from the chain state so that exactly 40 / 100 / 200 CELO of
-     *      receivable votes are left, which is what these constants assert.
+     * @dev `prepareOverflow` solves the vote amounts from the chain state so that exactly
+     *      40 / 100 / 200 CELO of receivable votes are left, which is what these constants
+     *      assert.
      */
     uint256 internal constant FIRST_G_CAPACITY = 40 ether;
     uint256 internal constant SECOND_GROUP_CAPACITY = 100 ether;

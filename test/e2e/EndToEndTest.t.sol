@@ -5,7 +5,7 @@ import "./EndToEndTestBase.sol";
 
 /**
  * @title EndToEndTest
- * @notice Port of test-ts/end-to-end.test.ts ("e2e").
+ * @notice End-to-end test of the deposit, vote, withdraw and rebalance flows.
  */
 contract EndToEndTest is EndToEndTestBase {
     uint256 internal constant REWARDS_GROUP_0 = 100 ether;

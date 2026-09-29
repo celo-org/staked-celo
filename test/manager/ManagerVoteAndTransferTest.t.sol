@@ -5,9 +5,9 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerVoteAndTransferTest
- * @notice Ports `#voteProposal()`, `#revokeVotes()`, `#unlockBalance()`,
- *         `#updateHistoryAndReturnLockedStCeloInVoting()`, `#transfer()` and
- *         `#getAddressStrategy()` of test-ts/manager.test.ts.
+ * @notice Tests for `Manager.voteProposal`, `revokeVotes`, `unlockBalance`,
+ *         `updateHistoryAndReturnLockedStCeloInVoting`, `transfer` and
+ *         `getAddressStrategy`.
  */
 contract ManagerVoteAndTransferTest is ManagerTestBase {
     uint256 private constant PROPOSAL_ID = 1;
@@ -311,18 +311,17 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
     //                          BLOCK FIXTURES
     // =========================================================================
 
-    /// @dev `beforeEach` of `#transfer()`.
-    /// @dev Deviation: Foundry pranks the StakedCelo caller instead of impersonating it, so
-    ///      this transfer is not needed to pay for gas. It is kept so that the balances of
-    ///      `nonVote` and of the StakedCelo mock match the original; no assertion depends on
-    ///      it.
+    /// @dev Setup for `transfer`.
+    /// @dev The StakedCelo caller is pranked, so this transfer is not needed to pay for gas.
+    ///      It only sets the balances of `nonVote` and of the StakedCelo mock; no assertion
+    ///      depends on it.
     function setUpTransfer() private {
         vm.prank(nonVote);
         (bool sent,) = address(mockStakedCelo).call{value: 1 ether}("");
         assertTrue(sent);
     }
 
-    /// @dev `beforeEach` of `#transfer() > When depositor voted for default strategy`.
+    /// @dev Setup for `transfer > When depositor voted for default strategy`.
     function setUpDepositorVotedForDefaultStrategy() private {
         activateGroupsWithCeloList(arr(uint256(40), uint256(50)));
         vm.prank(depositor);
@@ -330,7 +329,7 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         updateGroupCelo();
     }
 
-    /// @dev `beforeEach` of `#transfer() > When depositor voted for specific strategy`.
+    /// @dev Setup for `transfer > When depositor voted for specific strategy`.
     function setUpDepositorVotedForSpecificStrategy() private {
         activateGroupsWithCeloList(arr(uint256(40), uint256(50)));
         mockAccount.setCeloForGroup(groupAddresses[2], SPECIFIC_GROUP_DEPOSIT);
@@ -340,7 +339,7 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         manager.deposit{value: SPECIFIC_GROUP_DEPOSIT}();
     }
 
-    /// @dev `beforeEach` of `#transfer() > When depositor voted for specific strategy that is
+    /// @dev Setup for `transfer > When depositor voted for specific strategy that is
     ///      overflowing and unhealthy -> different specific strategy`.
     function setUpOverflowingUnhealthySpecificStrategy() private returns (uint256 deposit) {
         uint256 depositOverCapacity = 10 ether;
@@ -374,7 +373,7 @@ contract ManagerVoteAndTransferTest is ManagerTestBase {
         manager.changeStrategy(groupAddresses[4]);
     }
 
-    /// @dev `beforeEach` of `#getAddressStrategy() > When strategy changed`.
+    /// @dev Setup for `getAddressStrategy > When strategy changed`.
     function setUpStrategyChanged() private {
         activateGroupsWithCeloList(arr(uint256(40), uint256(50)));
         vm.prank(depositor);

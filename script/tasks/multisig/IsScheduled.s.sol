@@ -6,7 +6,6 @@ import "../lib/TaskBase.sol";
 /**
  * @title IsScheduledScript
  * @notice Check if a proposal is scheduled.
- *         Replaces `yarn hardhat stakedCelo:multiSig:isScheduled --proposal-id <id>`.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

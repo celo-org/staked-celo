@@ -6,8 +6,7 @@ import "../lib/MultiSigTaskLib.sol";
 
 /**
  * @title ConfirmProposalScript
- * @notice Confirm a multiSig proposal. Replaces
- *         `yarn hardhat stakedCelo:multiSig:confirmProposal --proposal-id <id>`.
+ * @notice Confirm a multiSig proposal.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.

@@ -25,10 +25,9 @@ interface IUUPS {
  * @title UpgradeImplementation
  * @notice Deploys a fresh implementation for one already deployed proxy and either
  *         upgrades it directly or prints the payload to propose through the MultiSig.
- * @dev Replaces the `catchNotOwnerForProxy` / `catchUpgradeErrorInMultisig` behaviour of
- *      the Hardhat scripts, which relied on the upgrade transaction reverting on chain to
- *      discover that the deployer no longer owns the proxy. Here ownership is read up
- *      front, so nothing is sent that is known to revert.
+ * @dev Proxy ownership is read up front instead of letting the upgrade transaction
+ *      revert on chain to discover that the deployer no longer owns the proxy, so nothing
+ *      is sent that is known to revert.
  *
  *      Required environment variables:
  *        CONTRACT  Name of the contract to upgrade, e.g. `Manager`.

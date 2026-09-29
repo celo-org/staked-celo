@@ -6,7 +6,7 @@ import "../lib/TaskBase.sol";
 /**
  * @title CheckAllowedToVoteOverMaxNumberOfGroupsScript
  * @notice Checks if the Account contract may vote for more than the maximum number of
- *         groups. Replaces `yarn hardhat stakedCelo:account:voteOverMax`.
+ *         groups.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

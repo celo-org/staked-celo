@@ -2,10 +2,10 @@
 #
 # Verifies the deployed staked-CELO contracts from the sources in this repository.
 #
-# The production profile reproduces the build the Hardhat toolchain produced byte for
-# byte, metadata trailer included (see foundry.toml and scripts/bytecode-compat-check.ts),
-# so a contract deployed before the move to Foundry still verifies as a full match as
-# long as its source has not changed since. Run
+# The production profile reproduces the deployed bytecode byte for byte, metadata
+# trailer included (see foundry.toml and scripts/bytecode-compat-check.ts), so every
+# deployed contract verifies as a full match as long as its source has not changed
+# since. Run
 # `node scripts/bytecode-compat-check.ts --deployments <network>` first to see which
 # implementations the current sources still reproduce.
 #
@@ -49,7 +49,7 @@
 #   CELOSCAN_API_KEY  when set, every contract is also submitted to Celoscan. Celoscan is
 #                     part of the Etherscan V2 API, so this is an etherscan.io key and it
 #                     works for every chain in that API. ETHERSCAN_API_KEY (the name in
-#                     .env.example) and CELO_SCAN_API_KEY (the Hardhat era one) are
+#                     .env.example) and CELO_SCAN_API_KEY (an older name) are
 #                     accepted as well. Sourcify needs no key.
 #   LIBRARY_ADDRESS   AddressSortedLinkedList address, for deployment records that do not
 #                     carry it.
@@ -223,8 +223,8 @@ read_record_args() {
   done < <(record_args "$1")
 }
 
-# AddressSortedLinkedList, from the environment, from the `libraries` map hardhat-deploy
-# wrote into the DefaultStrategy record, or from the record DeployCore writes for it.
+# AddressSortedLinkedList, from the environment, from the `libraries` map of the older
+# DefaultStrategy records, or from the record DeployCore writes for it.
 library_address() {
   if [[ -n ${LIBRARY_ADDRESS:-} ]]; then
     echo "$LIBRARY_ADDRESS"
@@ -393,8 +393,8 @@ for name in "${NAMES[@]}"; do
   verify_proxy "$name"
 done
 
-# The library is a contract of its own on chain. hardhat-deploy left it out of the
-# records and only noted its address on DefaultStrategy, so it needs its own target.
+# The library is a contract of its own on chain. The older deployment records leave it
+# out and only note its address on DefaultStrategy, so it needs its own target.
 if [[ $VERIFY_ALL -eq 1 && ! -f "deployments/$NETWORK/${LIBRARY_NAME}_Implementation.json" ]]; then
   LIBRARY="$(library_address)"
   if [[ -n $LIBRARY ]]; then

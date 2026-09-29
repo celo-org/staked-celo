@@ -6,7 +6,7 @@ import "./TaskVm.sol";
 
 /**
  * @title ManagerTaskLib
- * @notice Solidity port of lib/manager-tasks/*.ts. Holds the body of the deposit, withdraw
+ * @notice Holds the body of the deposit, withdraw
  *         and voteProposal tasks so that the forge scripts and the tests run the same code.
  */
 library ManagerTaskLib {
@@ -29,7 +29,7 @@ library ManagerTaskLib {
     /**
      * @notice Votes on a governance proposal with the caller's stCELO.
      * @dev The index of the proposal within the governance dequeue is resolved first,
-     *      exactly as the Hardhat task did through the ContractKit Governance wrapper.
+     *      because Manager.voteProposal needs it alongside the proposal ID.
      * @param manager The Manager contract.
      * @param governance The Celo Governance contract.
      * @param proposalId The ID of the governance proposal.

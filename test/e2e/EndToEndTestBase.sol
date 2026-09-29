@@ -6,9 +6,8 @@ import "../helpers/deploy/CoreDeployHelper.sol";
 
 /**
  * @title EndToEndTestBase
- * @notice Shared fixture of the five end-to-end suites of the Hardhat test suite
- *         (test-ts/end-to-end*.test.ts).
- * @dev `setUp()` merges the `before()` and `beforeEach()` blocks of the originals:
+ * @notice Shared fixture of the end-to-end suites.
+ * @dev `setUp()`:
  *        - fund the depositors and the voter, create the voter's Celo account,
  *        - register the validator groups with their validators,
  *        - deploy the production "core" fixture against the devchain registry with
@@ -17,14 +16,11 @@ import "../helpers/deploy/CoreDeployHelper.sol";
  *        - elect the validators of the tested groups on MockGroupHealth,
  *        - activate the first three groups in DefaultStrategy through the MultiSig.
  *
- *      The Hardhat tests drove the protocol through the `account:*` Hardhat tasks. Those
- *      tasks are inlined here as `activateAndVote()`, `revoke()`, `withdraw(beneficiary)`
- *      and `finishPendingWithdrawals(beneficiary)` with the logic of
- *      lib/account-tasks/helpers/*.ts.
+ *      The off-chain account operations are implemented here as `activateAndVote()`,
+ *      `revoke()`, `withdraw(beneficiary)` and `finishPendingWithdrawals(beneficiary)`.
  */
 abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
-    /// @dev Lesser/greater neighbours and group index of an Account revocation, as computed
-    ///      by lib/account-tasks/helpers/revokeHelper.ts and withdrawalHelper.ts.
+    /// @dev Lesser/greater neighbours and group index of an Account revocation or withdrawal.
     struct RevokeNeighbours {
         address lesserAfterPendingRevoke;
         address greaterAfterPendingRevoke;
@@ -33,10 +29,10 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         uint256 index;
     }
 
-    /// @dev The "deployer" named account runs the account tasks (`useNodeAccount: true`).
+    /// @dev The "deployer" named account runs the account operations.
     address internal taskSigner;
 
-    // Depositors of the original suites; every suite funds them with 300 CELO.
+    // Depositors; every suite funds them with 300 CELO.
     address internal depositor0;
     address internal depositor1;
     address internal depositor2;
@@ -91,7 +87,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     //                          FIXTURE HOOKS
     // =========================================================================
 
-    /// @notice Number of validator groups registered in `before()`.
+    /// @notice Number of validator groups registered in `setUp()`.
     function _numberOfGroups() internal view virtual returns (uint256) {
         return 10;
     }
@@ -180,7 +176,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     // =========================================================================
-    //                  activateValidators (utils-validators.ts)
+    //                         ACTIVATE VALIDATORS
     // =========================================================================
 
     /// @notice Adds and activates `groupAddresses` in DefaultStrategy through the MultiSig.
@@ -212,10 +208,10 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     // =========================================================================
-    //                     ACCOUNT TASKS (lib/account-tasks)
+    //                           ACCOUNT TASKS
     // =========================================================================
 
-    /// @notice Ports the ACCOUNT_ACTIVATE_AND_VOTE task (activateAndVoteHelper.ts).
+    /// @notice Activates and votes the scheduled votes of every group that has any.
     function activateAndVote() internal {
         address[] memory groupList =
             getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
@@ -235,7 +231,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         }
     }
 
-    /// @notice Ports the ACCOUNT_REVOKE task (revokeHelper.ts).
+    /// @notice Revokes the scheduled revocations of every group that has any.
     function revoke() internal {
         address[] memory groupList =
             getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
@@ -258,7 +254,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         }
     }
 
-    /// @notice Ports the ACCOUNT_WITHDRAW task (withdrawalHelper.ts).
+    /// @notice Withdraws the scheduled withdrawals of `beneficiary` from every group.
     function withdraw(address beneficiary) internal {
         address[] memory groupList =
             getGroupsOfAllStrategies(defaultStrategy, specificGroupStrategy);
@@ -284,8 +280,8 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     /// @notice Finishes every pending withdrawal of `beneficiary`.
-    /// @dev Ports the local helper of the original end-to-end tests, which always passes
-    ///      index (0, 0) because a finished withdrawal is swapped out of both lists.
+    /// @dev Always passes index (0, 0) because a finished withdrawal is swapped out of both
+    ///      lists.
     function finishPendingWithdrawals(address beneficiary) internal {
         (, uint256[] memory timestamps) = account.getPendingWithdrawals(beneficiary);
         for (uint256 i = 0; i < timestamps.length; i++) {
@@ -334,7 +330,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     //                          TEST UTILITIES
     // =========================================================================
 
-    /// @notice rebalanceAllAndActivate() of the original suites.
+    /// @notice Rebalances every group, then revokes and activates the resulting votes.
     function rebalanceAllAndActivate() internal {
         rebalanceDefaultGroups(defaultStrategy);
         rebalanceGroups(manager, specificGroupStrategy, defaultStrategy);
@@ -348,9 +344,8 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
     }
 
     /// @notice Waits out the LockedGold unlocking period.
-    /// @dev Deviation: the Hardhat suite waited `LOCKED_GOLD_UNLOCKING_PERIOD` (3 days), the
-    ///      constant of the ganache devchain. The anvil devchain unlocks after 6 hours, so the
-    ///      period is read from LockedGold; the semantics (wait out the whole period) are kept.
+    /// @dev The unlocking period is read from LockedGold (6 hours on the devchain) rather than
+    ///      taken from the `LOCKED_GOLD_UNLOCKING_PERIOD` constant.
     function timeTravelUnlockingPeriod() internal {
         timeTravel(celoLockedGold.unlockingPeriod() + 1);
     }
@@ -361,7 +356,7 @@ abstract contract EndToEndTestBase is CoreDeployHelper, DevchainHelper {
         manager.deposit{value: amount}();
     }
 
-    /// @dev Asserts `real` is within `range` of `expected` (expectBigNumberInRange).
+    /// @dev Asserts `real` is within `range` of `expected`.
     function assertInRange(uint256 real, uint256 expected, uint256 range) internal pure {
         if (real + range < expected) {
             revert(_outOfRangeMessage("below", real, expected, range));

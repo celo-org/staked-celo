@@ -5,8 +5,7 @@ pragma solidity 0.8.11;
  * @title ProposalBuilder
  * @notice Accumulates the destination / value / payload triples of a MultiSig proposal.
  * @dev Memory arrays cannot grow, so the builder is created with a capacity and trimmed
- *      to the number of operations that were actually added. It replaces the three
- *      JavaScript arrays the `update:*` tasks pushed onto.
+ *      to the number of operations that were actually added.
  */
 library ProposalBuilder {
     struct Proposal {

@@ -72,7 +72,8 @@ interface IRebalanceable {
 /**
  * @title CeloTestHelper
  * @notice Shared abstract base contract for ALL Foundry tests.
- *         Ports every utility function from test-ts/utils.ts (651 LOC) to Solidity.
+ *         Provides named accounts, epoch and time helpers, and rebalancing / sorting
+ *         utilities for the protocol contracts.
  * @dev Extend this contract in concrete test files and call _initNamedAccounts()
  *      inside setUp().
  *
@@ -96,7 +97,7 @@ abstract contract CeloTestHelper {
     /// @notice The canonical Celo Registry address.
     address internal constant REGISTRY_ADDRESS = 0x000000000000000000000000000000000000ce10;
 
-    /// @notice Blocks per epoch (hardcoded into ganache / test environment).
+    /// @notice Blocks per epoch of the test environment.
     uint256 internal constant BLOCKS_PER_EPOCH = 100;
 
     /// @notice Seconds in one hour.
@@ -126,14 +127,10 @@ abstract contract CeloTestHelper {
     //                          NAMED ACCOUNTS
     // =========================================================================
     //
-    // Matches hardhat.config.ts namedAccounts (lines 36-59):
-    //   deployer       = index 0
-    //   multisigOwner0 = index 3
-    //   multisigOwner1 = index 4
-    //   multisigOwner2 = index 5
-    //   multisigOwner3 = index 6
-    //   multisigOwner4 = index 7
-    //   owner          = index 6  (same as multisigOwner3)
+    // Deterministic addresses labelled by role (see _initNamedAccounts):
+    //   deployer                     deploys the protocol contracts
+    //   multisigOwner0 .. 4          the five MultiSig owners
+    //   owner                        protocol owner, the same address as multisigOwner3
 
     address internal deployer;
     address internal multisigOwner0;
@@ -146,8 +143,6 @@ abstract contract CeloTestHelper {
     // =========================================================================
     //                            STRUCTS
     // =========================================================================
-    //
-    // Ported from test-ts/utils-interfaces.ts
 
     /// @dev Expected-vs-real comparison for a group (used by rebalance helpers).
     struct ExpectVsReal {
@@ -223,7 +218,7 @@ abstract contract CeloTestHelper {
         return makeAddr(vm.toString(_randomAddrNonce));
     }
 
-    /// @notice Create a random signer address with an optional initial balance.
+    /// @notice Create a random address with an optional initial balance.
     /// @return addr  The generated address.
     /// @return privateKey  The corresponding private key (usable with vm.sign).
     function randomSigner(uint256 initialBalance)
@@ -237,7 +232,7 @@ abstract contract CeloTestHelper {
         }
     }
 
-    /// @notice Create a random signer with zero balance.
+    /// @notice Create a random address with zero balance.
     function randomSigner() internal returns (address addr, uint256 privateKey) {
         return randomSigner(0);
     }
@@ -256,8 +251,8 @@ abstract contract CeloTestHelper {
         vm.deal(target, amount);
     }
 
-    // NOTE: impersonateAccount() from utils.ts maps to vm.prank() / vm.startPrank()
-    //       in Foundry. These are called inline at the test-site, so no wrapper is needed.
+    // Impersonation is done with vm.prank() / vm.startPrank() at the call site, so no
+    // wrapper is needed.
 
     // =========================================================================
     //                          EPOCH UTILS
@@ -341,8 +336,7 @@ abstract contract CeloTestHelper {
 
     /// @notice Convert a bytes32 (padded linked-list entry) to an address.
     /// @dev Solidity addresses are 20 bytes. This trims a zero-padded bytes32 value
-    ///      (e.g. from a SortedLinkedList) to a proper address, matching the TS
-    ///      `toAddress(hex.substring(0, 42))` helper.
+    ///      (e.g. from a SortedLinkedList) to a proper address.
     function toAddress(bytes32 value) internal pure returns (address) {
         return address(uint160(uint256(value)));
     }
@@ -533,7 +527,6 @@ abstract contract CeloTestHelper {
 
     /// @notice Rebalance all unbalanced groups using a two-pointer approach.
     /// @dev Works with any contract exposing rebalance(address,address) via IRebalanceable.
-    ///      Ported from rebalanceInternal() in utils.ts.
     function _rebalanceInternal(
         IRebalanceable rebalanceContract,
         ExpectVsReal[] memory expectedVsReal
@@ -556,7 +549,7 @@ abstract contract CeloTestHelper {
             }
         }
 
-        // Sort descending by diff (insertion sort — matching TS sort comparator)
+        // Sort descending by diff (insertion sort)
         for (uint256 i = 1; i < unbalanced.length; i++) {
             ExpectVsReal memory key = unbalanced[i];
             uint256 j = i;
@@ -632,13 +625,12 @@ abstract contract CeloTestHelper {
     }
 
     /// @notice Sort all unsorted groups in the DefaultStrategy linked list.
-    /// @dev Faithfully ports sortActiveGroups() from utils.ts (lines 567-600).
-    ///      Processes unsorted groups from last to first (matching TS pop() order)
-    ///      and walks the ordered list to find the correct insertion point.
+    /// @dev Processes unsorted groups from last to first and walks the ordered list to find
+    ///      the correct insertion point.
     function sortActiveGroups(DefaultStrategy defaultStrategy) internal {
         address[] memory unsorted = getUnsortedGroups(defaultStrategy);
 
-        // Process from end of array (TS uses pop() which takes the last element)
+        // Process from the end of the array
         for (uint256 u = unsorted.length; u > 0; u--) {
             address uGroup = unsorted[u - 1];
             uint256 uGroupStCelo = defaultStrategy.stCeloInGroup(uGroup);
@@ -650,8 +642,7 @@ abstract contract CeloTestHelper {
             address next = ADDRESS_ZERO;
             uint256 i = 0;
 
-            // Mirrors TS: while (i++ < defaultGroupsWithStCelo.length)
-            // Body executes with i starting at 1 due to post-increment.
+            // `i` is incremented before the body runs, so the body sees i starting at 1.
             while (i < sorted.length) {
                 i++;
 
@@ -663,7 +654,7 @@ abstract contract CeloTestHelper {
                     break;
                 }
 
-                // Skip self — adjust next to the element before it
+                // Skip self - adjust next to the element before it
                 if (sorted[i].group == uGroup) {
                     next = (i > 0) ? sorted[i - 1].group : ADDRESS_ZERO;
                     continue;
@@ -680,7 +671,7 @@ abstract contract CeloTestHelper {
 
     /// @notice Get ordered active groups with stCELO amounts.
     /// @dev Traverses the linked list from head via the "previous" link and
-    ///      builds the result array in reverse order (matching TS unshift).
+    ///      builds the result array in reverse order.
     function getOrderedActiveGroups(DefaultStrategy defaultStrategy)
         internal
         view
@@ -711,7 +702,7 @@ abstract contract CeloTestHelper {
                 realCelo = Account(payable(accountAddr)).getCeloForGroup(head);
             }
 
-            // Store in reverse order (matching TS unshift / prepend)
+            // Store in reverse order
             groups[numGroups - 1 - i] =
                 OrderedGroup({group: head, stCelo: stCelo, realCelo: realCelo});
 
@@ -726,8 +717,7 @@ abstract contract CeloTestHelper {
     // =========================================================================
 
     /// @notice Revoke election on mock validator groups and optionally update health.
-    /// @dev Ports revokeElectionOnMockValidatorGroupsAndUpdate from utils.ts (lines 394-426).
-    ///      Clears elected validators that belong to the specified groups.
+    /// @dev Clears elected validators that belong to the specified groups.
     function revokeElectionOnMockValidatorGroupsAndUpdate(
         IValidators validators,
         IAccounts accounts,
@@ -775,8 +765,7 @@ abstract contract CeloTestHelper {
     // =========================================================================
 
     /// @notice Updates MockAccount's CELO for each group based on protocol stCELO allocations.
-    /// @dev Ports updateGroupCeloBasedOnProtocolStCelo from utils.ts (lines 602-651).
-    ///      Combines stCELO from both DefaultStrategy and SpecificGroupStrategy,
+    /// @dev Combines stCELO from both DefaultStrategy and SpecificGroupStrategy,
     ///      converts to CELO via Manager.toCelo(), and sets MockAccount state.
     function updateGroupCeloBasedOnProtocolStCelo(
         MockDefaultStrategy defaultStrategy,
@@ -838,8 +827,7 @@ abstract contract CeloTestHelper {
     // =========================================================================
 
     /// @notice Set up an overflow test scenario.
-    /// @dev Ports prepareOverflow from utils.ts (lines 480-521).
-    ///      Requires at least 3 groups. The vote amounts are derived from a system
+    /// @dev Requires at least 3 groups. The vote amounts are derived from a system
     ///      of linear equations such that, given 12 validators registered and elected,
     ///      the remaining receivable votes are [40, 100, 200] CELO respectively.
     ///      Caller must ensure DefaultStrategy.addActivatableGroup / activateGroup are
@@ -854,11 +842,11 @@ abstract contract CeloTestHelper {
     ) internal {
         require(groupAddresses.length >= 3, "Need at least 3 groups");
 
-        // Derived vote amounts matching the TS test fixtures
+        // Vote amounts solved from the system of equations above
         uint256[3] memory votes =
             [uint256(95_824 ether), uint256(143_697 ether), uint256(95_664 ether)];
 
-        // Lock CELO and optionally activate groups (reverse order matches TS)
+        // Lock CELO and optionally activate groups, in reverse order
         for (uint256 i = 3; i > 0; i--) {
             uint256 idx = i - 1;
             (address head,) = defaultStrategy.getGroupsHead();
@@ -950,25 +938,4 @@ abstract contract CeloTestHelper {
         if (a != b) return;
         revert(string(abi.encodePacked("Assertion failed: values are equal: ", vm.toString(a))));
     }
-
-    // =========================================================================
-    //               HARDHAT-TASK STUBS & GOVERNANCE
-    // =========================================================================
-    //
-    // The following TS utility functions are wrappers around Hardhat tasks or
-    // ContractKit APIs with no direct Foundry equivalent. They are documented
-    // here for completeness. In Foundry tests, interact with the contracts
-    // directly:
-    //
-    //   submitAndExecuteProposal  → use MultiSigHelper.submitAndExecuteMultiSigProposal()
-    //   activateAndVoteTest       → call Account.activateAndVote() directly
-    //   revokeTest                → call Account-level revoke functions directly
-    //   resetNetwork              → use vm.createFork() / vm.selectFork()
-    //   upgradeToMockGroupHealthE2E → deploy MockGroupHealth and upgradeTo() in setUp()
-    //   updateMaxNumberOfGroups   → call election.setAllowedToVoteOverMaxNumberOfGroups()
-    //                               directly after vm.prank(account)
-    //   setGovernanceConcurrentProposals → setConcurrentProposals() is on the
-    //                               real Celo Governance contract, not in our mock.
-    //                               Impersonate the governance owner and call directly
-    //                               when needed.
 }

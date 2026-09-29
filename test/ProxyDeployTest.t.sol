@@ -8,8 +8,7 @@ import "./helpers/MultiSigHelper.sol";
  * @title ProxyDeployTest
  * @notice Tests that all protocol contracts are properly deployed behind proxies
  *         with correct ownership and upgrade capabilities.
- * @dev Migrated from test-ts/proxy-deploy.test.ts
- *      Tests 8 contracts (StakedCelo, Account, Manager, RebasedStakedCelo,
+ * @dev Tests 8 contracts (StakedCelo, Account, Manager, RebasedStakedCelo,
  *      Vote, DefaultStrategy, SpecificGroupStrategy, GroupHealth) with 6 test
  *      scenarios each (56 total test functions).
  */
@@ -21,8 +20,7 @@ contract ProxyDeployTest is MultiSigHelper, CoreDeployHelper {
     address internal nonOwner;
 
     function setUp() public {
-        // The original fixture set TIME_LOCK_MIN_DELAY, TIME_LOCK_DELAY and
-        // MULTISIG_REQUIRED_CONFIRMATIONS to 1 before deploying.
+        // TIME_LOCK_MIN_DELAY, TIME_LOCK_DELAY and MULTISIG_REQUIRED_CONFIRMATIONS are all 1.
         deployCoreWithMockRegistry(1, 1, 1);
         nonOwner = randomAddress();
     }

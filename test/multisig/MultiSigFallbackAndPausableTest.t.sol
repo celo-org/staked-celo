@@ -4,9 +4,8 @@ pragma solidity 0.8.11;
 import "./MultiSigTestBase.sol";
 
 /**
- * @notice Port of the CELO-receiving and pause-related blocks of `describe("MultiSig")`:
- *         `#fallback function`, `#setPauser()`, `#pauseContracts()`, `#unpauseContracts()`
- *         and `when paused`.
+ * @notice CELO-receiving and pause-related tests of MultiSig: the fallback function,
+ *         `setPauser`, `pauseContracts`, `unpauseContracts` and the paused state.
  */
 contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
     /// @dev topics[0] of `CeloDeposited(address indexed sender, uint256 value)`.
@@ -132,8 +131,8 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
         vm.expectRevert(abi.encodeWithSelector(IMultiSigErrors.OnlyPauser.selector));
         vm.prank(owner1);
         msig.pauseContracts(_singleAddress(address(multiSig)));
-        // Kept verbatim from the original: the reverted call targeted the MultiSig, so
-        // PausableTest was never in scope and this assertion is a tautology.
+        // The reverted call targeted the MultiSig, so PausableTest was never in scope and
+        // this assertion is a tautology.
         assertFalse(pausableTest.isPaused());
     }
 
@@ -143,8 +142,8 @@ contract MultiSigFallbackAndPausableTest is MultiSigTestBase {
         );
         vm.prank(nonOwner);
         msig.pauseContracts(_singleAddress(address(pausableTest)));
-        // Kept verbatim from the original: the call above reverted, so PausableTest was
-        // never paused and this assertion is a tautology.
+        // The call above reverted, so PausableTest was never paused and this assertion is a
+        // tautology.
         assertFalse(pausableTest.isPaused());
     }
 

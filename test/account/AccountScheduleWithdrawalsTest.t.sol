@@ -4,13 +4,11 @@ pragma solidity 0.8.11;
 import "./AccountTestBase.sol";
 
 /**
- * @notice Port of `describe("Account") > describe("#scheduleWithdrawals()")`.
- * @dev Deviation: the original shares one `scheduleWithdrawalTests()` factory between the three
- *      blocks "when votes are scheduled", "when votes are locked and pending" and "when votes
- *      are active", so the eight `it()` cases it declares run three times each. To keep one
- *      `test_` function per declared `it()`, every case here runs its body against all three
- *      vote states in turn, using `snapshotState` / `revertToState` to reset in between. No
- *      assertion of the original is lost.
+ * @notice Tests for `Account.scheduleWithdrawals`.
+ * @dev The eight cases apply to three vote states: "votes are scheduled", "votes are locked
+ *      and pending" and "votes are active". To keep one `test_` function per case, every case
+ *      runs its body against all three vote states in turn, using `snapshotState` /
+ *      `revertToState` to reset in between.
  *
  *      Because the assertion helpers take no failure message, every iteration emits
  *      `VoteStateUnderTest` first so that `forge test -vvvv` shows which of the three states
@@ -44,8 +42,8 @@ contract AccountScheduleWithdrawalsTest is AccountTestBase {
     //                        SHARED FIXTURES
     // =========================================================================
 
-    /// @dev The `beforeEach` of "when votes are scheduled" / "... locked and pending" /
-    ///      "... active", which all start from 100 / 200 / 300 CELO scheduled.
+    /// @dev Common setup of the "votes are scheduled" / "... locked and pending" /
+    ///      "... active" states, which all start from 100 / 200 / 300 CELO scheduled.
     function _setupVoteState(uint256 voteState) private {
         _scheduleVotes(_allGroups(), _amounts(100, 200, 300), 600);
         if (voteState == VOTE_STATE_SCHEDULED) {

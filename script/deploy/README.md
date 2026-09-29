@@ -1,19 +1,18 @@
 # Foundry deployment scripts
 
-Forge port of the Hardhat era hardhat-deploy scripts (`deploy/00` .. `deploy/13`, in git history). `DeployCore.s.sol` replaces
-`yarn deploy` (`hardhat stakedCelo:deploy --tags core`, i.e. `deploy/00_multisig.ts`
-through `deploy/13_rebased_staked_celo.ts`), and `UpgradeImplementation.s.sol` replaces
-re-running a single `deploy/NN_*.ts` file to push a new implementation.
+`DeployCore.s.sol` deploys the whole protocol, from the `MultiSig` through
+`RebasedStakedCelo`, wires the contracts together and hands ownership to the MultiSig.
+`UpgradeImplementation.s.sol` deploys a new implementation for one proxy.
 
 | File | Purpose |
 | --- | --- |
 | `DeployBase.s.sol` | Network resolution, deployment records, ERC1967 proxy helper, console logging. |
-| `DeployCore.s.sol` | Full protocol deployment: the `deploy/00` .. `deploy/13` sequence and the `forge script` entry point. |
+| `DeployCore.s.sol` | Full protocol deployment: the deployment sequence and the `forge script` entry point. |
 | `UpgradeImplementation.s.sol` | New implementation for one proxy, upgraded directly or handed to the MultiSig. |
 
 ## Environment
 
-`DeployCore` reads the same variables the Hardhat scripts read from `.env`:
+`DeployCore` reads its parameters from the environment:
 
 | Variable | Required | Meaning |
 | --- | --- | --- |
@@ -21,18 +20,18 @@ re-running a single `deploy/NN_*.ts` file to push a new implementation.
 | `TIME_LOCK_DELAY` | yes | MultiSig proposal delay, in seconds. Must be `>= TIME_LOCK_MIN_DELAY`. |
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
-| `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The Hardhat era named accounts, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
+| `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The older spelling of the owner set, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
 | `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, anything else -> `local`. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 
-Either spelling of the owner set works, so a per-network env file written for the Hardhat
-tooling can be used as it is. Forge itself only reads `.env`, so start the scripts through
+Either spelling of the owner set works, so an existing per-network env file can be used
+as it is. Forge itself only reads `.env`, so start the scripts through
 `scripts/with-env.sh <network> ...` (or `yarn with-env <network> ...`), which exports
 `.env.<network>` first, e.g.
 `scripts/with-env.sh celo forge script script/deploy/DeployCore.s.sol --rpc-url celo ...`;
 variables already exported win over the file. `.env.example`
-shows the canonical form and keeps the legacy one commented out next to it. When neither
+shows the canonical form and keeps the older one commented out next to it. When neither
 yields a single owner the script stops with
 `set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ...` instead of failing
 somewhere inside the MultiSig initializer.
@@ -41,7 +40,7 @@ somewhere inside the MultiSig initializer.
 `TIME_LOCK_MIN_DELAY` - it is an immutable constructor argument of the implementation.
 
 The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--account`), not a
-`DEPLOYER` variable - `DEPLOYER` is still in `.env.example` for the Hardhat era tooling and
+`DEPLOYER` variable - `DEPLOYER` is still in `.env.example` as an older variable name and
 is ignored here. `DEPLOYER_PRIVATE_KEY` from `.env` is not read either; pass it explicitly
 as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
 
@@ -60,7 +59,7 @@ DeployCore: pass --sender/--private-key/--ledger with --sender
 `UpgradeImplementation` does the same, and uses the broadcaster for its `owner()` check.
 
 The registry address passed to `Manager`, `Account`, `Vote` and `GroupHealth` is
-`address(0)`, exactly as in the Hardhat scripts: `UsingRegistryUpgradeable` treats the
+`address(0)`: `UsingRegistryUpgradeable` treats the
 zero address as "use the canonical Registry at `0x0...ce10`".
 
 ## Deploying
@@ -92,8 +91,8 @@ actually broadcast, and the script stops if it does not. Use
 The device has to be unlocked with the Ethereum app open and blind signing enabled -
 every transaction here is a contract creation or a contract call.
 
-The Ledger path was not exercised during the Foundry migration (the scripts were run with
-a private key against a local devchain and read-only against mainnet). Before the first
+The Ledger path has not been exercised yet (the scripts were run with a private key
+against a local devchain and read-only against mainnet). Before the first
 real use, run the script once without `--broadcast` with the device attached, and confirm
 the printed sender matches the expected Ledger account.
 
@@ -123,8 +122,7 @@ anvil started with `--init <genesis>` as described below does have a base fee, s
 
 ### Validator groups
 
-`VALIDATOR_GROUPS` gives the protocol the groups it votes for on a first deployment, the
-same way it did in `deploy/05` and `deploy/11`:
+`VALIDATOR_GROUPS` gives the protocol the groups it votes for on a first deployment:
 
 - right after `GroupHealth` is deployed, `updateGroupHealth(group)` is called for every
   listed group, which records whether the group is a registered validator group with an
@@ -136,8 +134,7 @@ Groups are activated in descending order of the CELO the `Account` holds for the
 (`Account.getCeloForGroup`), which on a first deployment is zero everywhere, so they end
 up in the sorted list in the order they were listed in - the first entry becomes the head.
 
-The two steps are skipped, with a log line, in the situations the Hardhat scripts skipped
-them in:
+The two steps are skipped, with a log line, when they cannot or need not run:
 
 ```
 GroupHealth: reused 0x1b6b...                                   # health is not refreshed
@@ -166,21 +163,19 @@ Error: Transaction Failure: 0x3312...
 
 ### Library linking
 
-`AddressSortedLinkedList` is deployed and linked by Forge automatically, so the "reuse the
-recorded library address" branch of `deploy/07_default_strategy.ts` has no equivalent
-here. Pass
+`AddressSortedLinkedList` is deployed and linked by Forge automatically. Pass
 `--libraries contracts/common/linkedlists/AddressSortedLinkedList.sol:AddressSortedLinkedList:<address>`
 to reuse an already deployed library instead.
 
 The library ends up at an address of its own and has to be verified like any other
 contract, so `DeployCore` writes it to `AddressSortedLinkedList_Implementation.json`
-next to the rest. hardhat-deploy instead noted it under `libraries` in
-`DefaultStrategy_Implementation.json`; `scripts/verify-contracts.sh` reads both.
+next to the rest. Older records note it under `libraries` in
+`DefaultStrategy_Implementation.json` instead; `scripts/verify-contracts.sh` reads both.
 
 ## Deployment records
 
-Records are written to `deployments/<network>/` in the hardhat-deploy layout the CLI
-scripts read:
+Records are written to `deployments/<network>/`, three files per proxied contract and one
+per library, in the layout the task scripts and the verification script read:
 
 ```
 Manager.json                                 { address: <proxy>, implementation: <logic>, args, contract, chainId, deployer }
@@ -189,9 +184,9 @@ Manager_Implementation.json                  { address: <logic>, args, contract,
 AddressSortedLinkedList_Implementation.json  { address: <library>, args, contract, chainId, deployer }
 ```
 
-`args` holds the constructor arguments in the shape hardhat-deploy wrote them: the
-implementation address and the initializer calldata for a proxy record, `minDelay` for the
-`MultiSig` implementation, and an empty array for the implementations that take none.
+`args` holds the constructor arguments: the implementation address and the initializer
+calldata for a proxy record, `minDelay` for the `MultiSig` implementation, and an empty
+array for the implementations that take none.
 `scripts/verify-contracts.sh` ABI-encodes them; an explorer cannot reproduce the creation
 code without them. Numbers are written as decimal strings rather than as JSON numbers -
 Forge's serializer is typed, and both `cast abi-encode` and the verification script read
@@ -201,14 +196,13 @@ A proxy record refreshed by `UpgradeImplementation` is the one exception: the pr
 constructed by an earlier run and its arguments are not known there, so `args` comes out
 empty and verification falls back to `--guess-constructor-args`.
 
-The `abi` and `receipt` fields hardhat-deploy wrote are not reproduced; the ABI comes from
-the Forge artifacts in `out/` and the transaction details from
-`broadcast/DeployCore.s.sol/<chainId>/run-latest.json`.
+The older records under `deployments/celo/` carry more fields (`abi`, `receipt`, `bytecode`,
+`metadata`, ...); new records do not. The ABI comes from the Forge artifacts in `out/` and
+the transaction details from `broadcast/DeployCore.s.sol/<chainId>/run-latest.json`.
 
 ### Idempotency
 
-Like hardhat-deploy, a contract that already has a record is reused and its deployment is
-skipped (unless the recorded address has no code on the chain, which is what a dry run or
+A contract that already has a record is reused and its deployment is skipped (unless the recorded address has no code on the chain, which is what a dry run or
 a failed broadcast leaves behind), and the wiring steps are skipped once ownership has
 moved to the MultiSig:
 
@@ -218,7 +212,6 @@ Manager: owned by MultiSig, propose setDependencies through the MultiSig
 Account: already owned by MultiSig
 ```
 
-This mirrors the `if (owner !== multisig.address)` guards in `deploy/08` to `deploy/12`.
 Re-running against a fully deployed network therefore broadcasts nothing and ends with
 `Warning: No transactions to broadcast.`
 
@@ -242,9 +235,9 @@ The script deploys the new implementation, then:
 
 - if the broadcaster owns the proxy it calls `upgradeTo(newImplementation)` and refreshes
   `<Name>.json`, `<Name>_Proxy.json` and `<Name>_Implementation.json`;
-- otherwise (the normal case, since the MultiSig owns everything after `deploy/12`) it
-  prints the destination, value and `upgradeTo(address)` payload to submit through the
-  MultiSig, and only writes `<Name>_Implementation.json`:
+- otherwise (the normal case, since the MultiSig owns everything once `DeployCore` has
+  finished) it prints the destination, value and `upgradeTo(address)` payload to submit
+  through the MultiSig, and only writes `<Name>_Implementation.json`:
 
 ```
 Manager: proxy 0x3fdc08D815cc4ED3B7F69Ee246716f2C8bCD6b07
@@ -261,8 +254,8 @@ collect the confirmations, wait out the delay and execute. `<Name>.json` keeps p
 the old implementation until the proposal has gone through, which is intentional: it
 records what the proxy actually delegates to.
 
-This replaces `catchNotOwnerForProxy` / `catchUpgradeErrorInMultisig`, which discovered
-the same thing by letting the transaction revert on chain.
+The script reads the proxy's owner itself rather than sending an `upgradeTo` that would
+revert on chain when the MultiSig owns the proxy.
 
 `MultiSig` has no `owner()` - it authorizes its own upgrades through a proposal - so
 `CONTRACT=MultiSig` always prints the payload.
@@ -301,8 +294,7 @@ and skips the record instead of submitting it.
 
 ## Verifying deployed contracts
 
-`scripts/verify-contracts.sh` (also `yarn verify`) replaces `yarn verify:deploy`
-(`hardhat sourcify`). It walks `deployments/<network>/` and submits every recorded address
+`scripts/verify-contracts.sh` (also `yarn verify`) walks `deployments/<network>/` and submits every recorded address
 to Sourcify and, when an API key is around, to Celoscan:
 
 ```sh
@@ -329,18 +321,17 @@ it from `<Name>_Proxy.json` as
 
 | Variable | Meaning |
 | --- | --- |
-| `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `ETHERSCAN_API_KEY` (the name in `.env.example`) and `CELO_SCAN_API_KEY` (the Hardhat era one) are accepted too. Without one only Sourcify is used - it needs no key. |
+| `CELOSCAN_API_KEY` | API key for the explorer. Celoscan is part of the Etherscan V2 API now, so this is an **etherscan.io** key (one key, every chain in that API); a V1-era Celoscan key is not one. `ETHERSCAN_API_KEY` (the name in `.env.example`) and `CELO_SCAN_API_KEY` (an older name) are accepted too. Without one only Sourcify is used - it needs no key. |
 | `LIBRARY_ADDRESS` | `AddressSortedLinkedList` address, for records that carry neither the `libraries` map nor an `AddressSortedLinkedList_Implementation.json`. |
 | `CHAIN_ID` | Chain id, for a network the script has no entry for. It knows `celo` (42220) and `sepolia` (11142220); for anything else it asks the node. |
 | `ETH_RPC_URL` | Node to read the chain id and proxy creation code from, overriding the built-in endpoint. |
 
-### Why this works with contracts deployed before the port
+### Why the deployed contracts verify from these sources
 
-The production profile reproduces the Hardhat build byte for byte, metadata trailer
+The production profile reproduces the deployed bytecode byte for byte, metadata trailer
 included - that is what `foundry.toml` pins (`solc 0.8.11`, `evm istanbul`, optimizer off,
 `use_literal_content`, `bytecode_hash = "ipfs"`) and what `scripts/bytecode-compat-check.ts`
-checks on every CI run. A contract deployed by the Hardhat tooling therefore still verifies
-as a full match from these sources, as long as the source itself has not changed since it
+checks on every CI run. A deployed contract therefore verifies as a full match from these sources, as long as the source itself has not changed since it
 was deployed. Check which implementations still qualify before submitting anything:
 
 ```sh
@@ -362,7 +353,7 @@ those addresses.
 The script takes the values from the `args` field of the deployment record and ABI-encodes
 them against the constructor of the matching artifact in `out/`, so a contract whose
 constructor changes needs no change here. Records written by `DeployCore` carry `args`
-just as the hardhat-deploy ones do; a record that has none - one from a `DeployCore` run
+just as the older records do; a record that has none - one from a `DeployCore` run
 that predates the field, or a proxy record refreshed by `UpgradeImplementation` - falls
 back to `--guess-constructor-args`, which recovers the arguments from the creation code on
 chain. Right after a deploy they can also be read out of
@@ -420,7 +411,7 @@ covers it.
 The devchain fixture in `test/devchain/` is a state dump of the Celo L2 devchain
 (`@celo/devchain-anvil`): `allocs.json` holds every account and `meta.json` the block
 number and timestamp it was taken at. Turn it into a genesis file and start anvil from
-that. `anvil --load-state` on the original `l2-devchain.json` is not an option; anvil
+that. `anvil --load-state` on the package's `l2-devchain.json` is not an option; anvil
 1.8.1 rejects the 716 MB snapshot.
 
 ```sh
@@ -467,12 +458,11 @@ A full run is 29 transactions: nine implementations, the `AddressSortedLinkedLis
 library, nine proxies, four `setDependencies` calls and six `transferOwnership` calls.
 `deployments/local/` and `broadcast/` are git-ignored.
 
-### Deploying and mining, the `deploy:devchain` recipe
+### Deploying and mining
 
-`yarn deploy:devchain` was `hardhat deploy --network devchain && ts-node scripts/mineBlocks.ts`:
-deploy, then mine 35 blocks so that the epoch based logic of the core contracts has some
-history behind it. The Forge equivalent is the command above followed by
-`scripts/mine-blocks.sh`, which sends one `anvil_mine` for the whole batch:
+A usable local deployment needs a few blocks after the deploy, so that the epoch based
+logic of the core contracts has some history behind it: run the command above followed by
+`scripts/mine-blocks.sh`, which mines 35 blocks with one `anvil_mine` call:
 
 ```sh
 NETWORK=local \
@@ -494,8 +484,8 @@ the `DefaultStrategy`. (They double as MultiSig owners above only because both l
 made of the anvil development accounts.)
 
 `scripts/mine-blocks.sh [blocks] [rpc-url]` defaults to 35 blocks on
-`http://localhost:8545` and documents the equivalent call for hardhat node, ganache and
-`geth --dev`. A real network needs none of it: its validators produce the blocks.
+`http://localhost:8545` and documents the equivalent call for other development nodes
+(`evm_mine`, `geth --dev`). A real network needs none of it: its validators produce the blocks.
 
 ## Tests
 

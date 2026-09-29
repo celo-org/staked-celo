@@ -3,11 +3,10 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#finishPendingWithdrawal()")`.
+/// @notice Tests for `Account.finishPendingWithdrawal`.
 contract AccountFinishPendingWithdrawalTest is AccountTestBase {
-    /// @dev The original waited `LOCKED_GOLD_UNLOCKING_PERIOD` (3 days on the ganache
-    ///      devchain); the unlocking period is read from LockedGold here because the anvil
-    ///      devchain uses 6 hours.
+    /// @dev The unlocking period is read from LockedGold (6 hours on the devchain) rather than
+    ///      taken from the `LOCKED_GOLD_UNLOCKING_PERIOD` constant.
     function _setupPendingWithdrawalReady() private {
         _scheduleVotes(groupAddresses[0], 100);
         _activateAndVote(groupAddresses[0]);

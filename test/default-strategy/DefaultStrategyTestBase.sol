@@ -20,24 +20,19 @@ interface IVmExpectEmitFrom {
 
 /**
  * @title DefaultStrategyTestBase
- * @notice Shared fixture for the ported `test-ts/default-strategy.test.ts` suite.
- * @dev Ports the `before()` block of the TypeScript suite. The Hardhat suite forked a ganache
- *      Celo devchain and used ContractKit against the real Election / LockedGold / Validators /
- *      Accounts contracts, so the fixture is built on top of `DevchainHelper`. The
- *      `FullTestManager` hardhat-deploy fixture is reproduced by
- *      `deployFullTestManager(REGISTRY_ADDRESS)`; the Account, StakedCelo and Vote contracts it
- *      deploys are then replaced by `MockAccount`, `MockStakedCelo` and `MockVote` exactly like
- *      the TypeScript `before()` does.
+ * @notice Shared fixture for the DefaultStrategy tests.
+ * @dev The tests run against the real Election / LockedGold / Validators / Accounts contracts
+ *      of the devchain, so the fixture is built on top of `DevchainHelper`. The protocol is
+ *      deployed by `deployFullTestManager(REGISTRY_ADDRESS)`; the Account, StakedCelo and Vote
+ *      contracts it deploys are then replaced by `MockAccount`, `MockStakedCelo` and
+ *      `MockVote`.
  *
- *      `beforeEach` + `evm_snapshot` / `evm_revert` of the original maps to Foundry's `setUp()`,
- *      which runs before every test. Nested `beforeEach` blocks become `_setUp...()` helpers that
- *      the tests of that block call first.
+ *      `setUp()` runs before every test. Scenario-specific setup lives in `_setUp...()`
+ *      helpers that the tests of that scenario call first.
  *
- *      Deviation: the Hardhat `FullTestManager` fixture never called
- *      `SpecificGroupStrategy.setDependencies`, so its `account`, `groupHealth` and
- *      `defaultStrategy` stayed address(0) throughout the original default-strategy suite.
- *      `deployFullTestManager` wires them. Nothing in this suite reaches a SpecificGroupStrategy
- *      path that reads those dependencies, so the extra wiring is inert here.
+ *      `deployFullTestManager` also wires `SpecificGroupStrategy.setDependencies`. Nothing in
+ *      this suite reaches a SpecificGroupStrategy path that reads those dependencies, so the
+ *      wiring is inert here.
  */
 abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDeployHelper {
     // =========================================================================
@@ -112,8 +107,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     //                        EVENT ASSERTION HELPER
     // =========================================================================
 
-    /// @dev `.to.emit(contract, name)` of the original: checks every topic, the event data and
-    ///      the contract that emitted it.
+    /// @dev Checks every topic, the event data and the contract that emitted it.
     function _expectEmitFrom(address emitter) internal {
         IVmExpectEmitFrom(address(vm)).expectEmit(true, true, true, true, emitter);
     }
@@ -122,7 +116,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     //                              FIXTURE
     // =========================================================================
 
-    /// @notice Ports the `before()` block of `test-ts/default-strategy.test.ts`.
+    /// @notice Deploys the fixture shared by every DefaultStrategy test.
     function _deployDefaultStrategyFixture() internal {
         loadDevchain();
         deployFullTestManager(REGISTRY_ADDRESS);
@@ -141,8 +135,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
         vm.prank(owner);
         mockDefaultStrategy.setPauser();
 
-        // The Hardhat suite deposited from the (well funded) deployer signer; here the test
-        // contract itself is the depositor.
+        // The test contract itself is the depositor.
         vm.deal(address(this), 1_000_000 ether);
     }
 
@@ -183,7 +176,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     }
 
     /// @dev Registers 11 validator groups. Group 1 gets a second validator so that it has a
-    ///      higher voting limit, matching the original fixture.
+    ///      higher voting limit.
     function _registerValidatorGroups() private {
         for (uint256 i = 0; i < 11; i++) {
             (address group,) = randomSigner(21_000 ether);
@@ -215,7 +208,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     }
 
     /// @dev Activates the first `count` groups, passing the previously activated group as
-    ///      `greater` (the `nextGroup` pattern of the original suite).
+    ///      `greater`.
     function _activateGroupsFromPrevious(uint256 count) internal {
         address nextGroup = ADDRESS_ZERO;
         for (uint256 i = 0; i < count; i++) {
@@ -243,7 +236,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
     //                        ASSERTION HELPERS
     // =========================================================================
 
-    /// @dev `expect(a).to.deep.eq(b)` — same elements in the same order.
+    /// @dev Same elements in the same order.
     function _assertArrayEq(address[] memory a, address[] memory b) internal pure {
         require(a.length == b.length, "array length mismatch");
         for (uint256 i = 0; i < a.length; i++) {
@@ -251,7 +244,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
         }
     }
 
-    /// @dev `expect(a).to.have.deep.members(b)` — same elements, order insensitive.
+    /// @dev Same elements, order insensitive.
     ///      A matched entry of `b` is consumed, so this compares multisets: a duplicate in `a`
     ///      cannot be satisfied twice by the same element of `b`.
     function _assertSameMembers(address[] memory a, address[] memory b) internal pure {
@@ -293,7 +286,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
         }
     }
 
-    /// @dev `expect(arr).contain(value)`.
+    /// @dev `arr` contains `value`.
     function _assertContains(address[] memory arr, address value) internal pure {
         for (uint256 i = 0; i < arr.length; i++) {
             if (arr[i] == value) {
@@ -313,7 +306,7 @@ abstract contract DefaultStrategyTestBase is DevchainHelper, FullTestManagerDepl
         }
     }
 
-    /// @dev Ascending insertion sort by stCELO, mirroring the TypeScript comparator.
+    /// @dev Ascending insertion sort by stCELO.
     function _sortByStCelo(OrderedGroup[] memory groups)
         internal
         pure

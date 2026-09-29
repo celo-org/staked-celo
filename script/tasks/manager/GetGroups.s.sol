@@ -7,8 +7,7 @@ import "../lib/FormatLib.sol";
 
 /**
  * @title GetGroupsScript
- * @notice Returns all groups the protocol is voting for. Replaces
- *         `yarn hardhat stakedCelo:manager:getGroups`.
+ * @notice Returns all groups the protocol is voting for.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

@@ -5,9 +5,9 @@ import "./TaskInterfaces.sol";
 
 /**
  * @title ElectionLib
- * @notice Solidity port of the ContractKit Election wrapper helpers the Hardhat tasks used.
- * @dev `findLesserAndGreaterAfterVote` mirrors ElectionWrapper.findLesserAndGreaterAfterVote:
- *      the eligible validator groups are returned ordered from most to least votes, so the
+ * @notice Election lookups the account tasks need to compute sorted list hints.
+ * @dev `findLesserAndGreaterAfterVote`: Election returns the eligible validator groups
+ *      ordered from most to least votes, so the
  *      neighbours of `group` after applying `delta` to its votes are the first group with
  *      votes at or below the new total (lesser) and the last group above it (greater).
  */
@@ -45,9 +45,8 @@ library ElectionLib {
 
     /**
      * @notice Index of `group` in the list of groups `account` votes for.
-     * @dev Ports findAddressIndex from the account task helpers. Reverts when the account
-     *      does not vote for the group, which is where the TypeScript version failed to
-     *      encode the -1 that Array.indexOf returned.
+     * @dev Reverts when the account does not vote for the group, rather than returning a
+     *      sentinel index that would be passed on to Account as a real one.
      * @param electionContract The Celo Election contract.
      * @param account The voting account, in practice the StakedCelo Account contract.
      * @param group The validator group to look up.
@@ -68,7 +67,7 @@ library ElectionLib {
     }
 
     /// @dev Current votes of `group` shifted by `delta`.
-    ///      Signed on purpose, the way ContractKit's BigNumber math was: the account tasks
+    ///      Signed on purpose: the account tasks
     ///      ask for the neighbours after revoking or withdrawing more than the group holds
     ///      right now, and a group that has dropped out of the eligible list holds nothing
     ///      at all here. Unsigned arithmetic would panic on both instead of placing the

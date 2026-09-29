@@ -5,9 +5,8 @@ import "./DefaultStrategyTestBase.sol";
 
 /**
  * @title DefaultStrategyDistributionTest
- * @notice Ports the vote distribution describe blocks of `test-ts/default-strategy.test.ts`:
- *         `#generateDepositVoteDistribution`, `#generateWithdrawalVoteDistribution` and
- *         `V1 -> V2 migration test`.
+ * @notice Vote distribution tests of DefaultStrategy: `generateDepositVoteDistribution`,
+ *         `generateWithdrawalVoteDistribution` and the V1 -> V2 migration.
  */
 contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
     /// @dev The V1 accounting the migration test starts from.
@@ -17,8 +16,7 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
         _deployDefaultStrategyFixture();
     }
 
-    /// @dev `.to.emit(defaultStrategyContract, name)` without `withArgs`: only the event
-    ///      signature and the emitter are checked.
+    /// @dev Only the event signature and the emitter are checked, not the event arguments.
     function _expectEventFromStrategy() private {
         IVmExpectEmitFrom(address(vm))
             .expectEmit(false, false, false, false, address(mockDefaultStrategy));
@@ -75,7 +73,7 @@ contract DefaultStrategyDistributionTest is DefaultStrategyTestBase {
     //                       V1 -> V2 migration test
     // =========================================================================
 
-    /// @dev `describe("V1 -> V2 migration test")` beforeEach.
+    /// @dev Setup for the V1 -> V2 migration cases.
     function _setUpMigration() private {
         for (uint256 i = 0; i < 3; i++) {
             mockDefaultStrategy.addToStrategyTotalStCeloVotesPublic(

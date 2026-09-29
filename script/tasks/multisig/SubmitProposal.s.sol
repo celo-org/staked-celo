@@ -6,9 +6,7 @@ import "../lib/MultiSigTaskLib.sol";
 
 /**
  * @title SubmitProposalScript
- * @notice Submit a proposal to the multiSig contract. Replaces
- *         `yarn hardhat stakedCelo:multiSig:submitProposal --destinations <a,b>
- *          --values <0,0> --payloads <0x..,0x..>`.
+ * @notice Submit a proposal to the multiSig contract.
  *
  * Environment variables:
  *   DESTINATIONS  required. Comma separated addresses the operations are targeted at.

@@ -5,9 +5,7 @@ import "../lib/TaskBase.sol";
 
 /**
  * @title IsConfirmedByScript
- * @notice Check if a proposal has been confirmed by a multiSig owner. Replaces
- *         `yarn hardhat stakedCelo:multiSig:isConfirmedBy --proposal-id <id>
- *          --owner-address <address>`.
+ * @notice Check if a proposal has been confirmed by a multiSig owner.
  *
  * Environment variables:
  *   PROPOSAL_ID    required. The ID of the proposal.

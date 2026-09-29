@@ -14,16 +14,13 @@ interface ICeloValidatorsMaxGroupSize {
 
 /**
  * @title GroupHealthTest
- * @notice Port of the Hardhat era test-ts/group-health.test.ts (`describe("GroupHealth")`).
- * @dev Ports the `before()` hook of the TypeScript suite: ten validator groups with three
- *      validators each are registered against the real Celo core contracts of the devchain and
- *      MockGroupHealth is deployed against the devchain registry. The original pulled
- *      MockGroupHealth out of the "FullTestManager" Hardhat fixture; `deploy/test/group_health.ts`
- *      is tagged for both fixtures, so `deployTestGroupHealth(REGISTRY_ADDRESS)` deploys the very
- *      same contract and nothing else of that fixture is touched by this suite.
+ * @notice Tests for GroupHealth, run against MockGroupHealth.
+ * @dev Ten validator groups with three validators each are registered against the real Celo
+ *      core contracts of the devchain and MockGroupHealth is deployed against the devchain
+ *      registry with `deployTestGroupHealth(REGISTRY_ADDRESS)`.
  *
- *      `setUp()` runs before every test, which is what the `evm_snapshot` / `evm_revert` pair of
- *      the original did. Nested `beforeEach` blocks become `_setUp...()` helpers.
+ *      `setUp()` runs before every test. Scenario-specific setup lives in `_setUp...()`
+ *      helpers.
  */
 contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     // =========================================================================
@@ -47,7 +44,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     address[] internal allGroupAddresses;
     address[] internal allValidatorAddresses;
 
-    /// @dev Members per validator group, as in the original `validatorMembers = 3`.
+    /// @dev Members per validator group.
     uint256 internal constant VALIDATOR_MEMBERS = 3;
 
     // =========================================================================
@@ -66,7 +63,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
         _raiseMaxGroupSize(VALIDATOR_MEMBERS);
         _registerGroups();
 
-        // The original repeated this inside the group loop; the resulting state is the same.
+        // Called once, after the groups are registered.
         vm.prank(owner);
         mockGroupHealth.setPauser();
     }
@@ -87,7 +84,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     }
 
     /// @dev Ten validator groups with three validators each; the first three are the
-    ///      `activatedGroups` of the original.
+    ///      activated groups.
     function _registerGroups() private {
         for (uint256 i = 0; i < 10; i++) {
             (address group,) = randomSigner(11_000 ether * VALIDATOR_MEMBERS);
@@ -107,10 +104,9 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     }
 
     /**
-     * @dev Deviation: the anvil devchain caps a validator group at two members, while the ganache
-     *      devchain the Hardhat suite ran against allowed more. The cap is raised on the real
-     *      Validators contract so the groups really have the three members the original
-     *      registers.
+     * @dev The devchain caps a validator group at two members, so the test raises
+     *      `Validators.maxGroupSize` on the real Validators contract to register three
+     *      validators per group.
      */
     function _raiseMaxGroupSize(uint256 size) private {
         ICeloValidatorsMaxGroupSize groupSize = ICeloValidatorsMaxGroupSize(address(celoValidators));
@@ -133,7 +129,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
         return arr;
     }
 
-    /// @dev `electMockValidatorGroupsAndUpdate(validatorsWrapper, gh, activatedGroupAddresses)`.
+    /// @dev Elects the activated groups on MockGroupHealth and updates their health.
     function _electAndUpdateActivatedGroups() internal {
         electMockValidatorGroupsAndUpdate(mockGroupHealth, activatedGroupAddresses);
     }
@@ -152,7 +148,7 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
         );
     }
 
-    /// @dev The `beforeEach` of `describe("When validity updated (invalid)")`.
+    /// @dev Setup for the "When validity updated (invalid)" cases.
     function _setUpValidityUpdatedInvalid() internal {
         for (uint256 i = 0; i < 150; i++) {
             mockGroupHealth.setElectedValidator(i, nonManager);
@@ -184,8 +180,8 @@ contract GroupHealthTest is TestAccountDeployHelper, DevchainHelper {
     function test_isGroupValid_WhenUpdatedInvalid_ShouldReturnInvalid() public {
         _setUpValidityUpdatedInvalid();
 
-        // The original asserted the untouched nonManager address; kept, and the group whose
-        // health was actually updated with unelected members is asserted as well.
+        // Asserts both the untouched nonManager address and the group whose health was
+        // actually updated with unelected members.
         bool valid = mockGroupHealth.isGroupValid(nonManager);
         assertFalse(valid);
         assertFalse(mockGroupHealth.isGroupValid(activatedGroupAddresses[0]));

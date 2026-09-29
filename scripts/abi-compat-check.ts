@@ -3,9 +3,9 @@
  * Checks that the current build stays upgrade-compatible with a baseline build.
  *
  * Both sides are Foundry `out/` directories (the baseline is produced by building an
- * older release with the same toolchain, see .github/workflows/solidity.yml). This
- * replaces the Hardhat-based `@celo/contract-compatibility-check` run and keeps its
- * contract exclusion regex, so the same set of production contracts is covered.
+ * older release with the same toolchain, see .github/workflows/solidity.yml). Contracts
+ * matching the exclusion regex (DEFAULT_EXCLUDE) are skipped; everything else is a
+ * production contract that may sit behind a proxy.
  *
  * Two things are compared for every non-excluded contract under contracts/:
  *
@@ -66,7 +66,7 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-// Same exclusion regex the Hardhat compatibility job used: mocks, test helpers,
+// Contracts outside the check: mocks, test helpers,
 // interfaces, proxies and the contracts inherited from the Celo monorepo are not
 // deployed behind a proxy, so their layout and ABI may change freely.
 export const DEFAULT_EXCLUDE =

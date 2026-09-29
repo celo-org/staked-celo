@@ -5,7 +5,7 @@ import "../lib/TaskBase.sol";
 
 /**
  * @title GetOwnersScript
- * @notice Get multiSig owners. Replaces `yarn hardhat stakedCelo:multiSig:getOwners`.
+ * @notice Get multiSig owners.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

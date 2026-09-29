@@ -6,8 +6,7 @@ import "../lib/AccountTaskLib.sol";
 
 /**
  * @title RevokeScript
- * @notice Revokes votes from validator groups. Replaces
- *         `yarn hardhat stakedCelo:account:revoke`.
+ * @notice Revokes votes from validator groups.
  *
  * Environment variables:
  *   NETWORK  optional. Deployments directory: celo | sepolia | local.

@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#scheduleVotes()")`.
+/// @notice Tests for `Account.scheduleVotes`.
 contract AccountScheduleVotesTest is AccountTestBase {
     function test_scheduleVotes_AssignsVotesToAGivenGroup() public {
         _scheduleVotes(_addrs(groupAddresses[0]), _amounts(100), 100);

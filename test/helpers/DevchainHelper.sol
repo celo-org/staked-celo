@@ -203,11 +203,10 @@ interface ICeloGovernance is IGovernance {
  * @title DevchainHelper
  * @notice Base contract for tests that run against the real Celo core contracts.
  * @dev Loads the state of `@celo/devchain-anvil` (see scripts/prepare-devchain.sh) into
- *      the test EVM with `vm.loadAllocs` and ports the ContractKit based utilities of
- *      test-ts/utils.ts and test-ts/utils-validators.ts to Solidity.
+ *      the test EVM with `vm.loadAllocs` and provides helpers for validator registration,
+ *      locking, voting, epochs and rewards against the real core contracts.
  *
- *      The Hardhat suite forked a ganache based Celo L1 devchain. The anvil devchain is a
- *      Celo L2 devchain, which differs in two places that matter for tests:
+ *      The devchain is a Celo L2 devchain, which matters for tests in two places:
  *        - epochs are tracked by the EpochManager contract instead of block numbers, so
  *          `mineToNextEpoch()` bumps a mocked epoch number on EpochManager;
  *        - `Election.distributeEpochRewards` is callable by EpochManager instead of the
@@ -308,9 +307,8 @@ abstract contract DevchainHelper is MultiSigHelper {
         );
     }
 
-    /// @notice Advance to the next epoch (ports mineToNextEpoch from utils.ts).
-    /// @dev Also mines BLOCKS_PER_EPOCH blocks with one second per block, which is what the
-    ///      ganache devchain did when the Hardhat tests mined to the next epoch.
+    /// @notice Advance to the next epoch.
+    /// @dev Also mines BLOCKS_PER_EPOCH blocks with one second per block.
     function mineToNextEpoch() internal virtual override {
         devchainEpochNumber += 1;
         syncEpochMock();
@@ -327,12 +325,11 @@ abstract contract DevchainHelper is MultiSigHelper {
     //                           EPOCH REWARDS
     // =========================================================================
 
-    /// @notice Distribute epoch rewards to `group` (ports distributeEpochRewards from utils.ts).
-    /// @dev Deviation: the ganache original only impersonated address(0) and called Election. On
-    ///      the L2 devchain the caller must be EpochManager, and the CELO backing the rewards
-    ///      would be released to LockedGold by the epoch process, so the same amount is credited
-    ///      to the LockedGold balance here. Only the native balance moves; totalLockedGold is
-    ///      unaffected, so voting limits stay where the test set them.
+    /// @notice Distribute epoch rewards to `group`.
+    /// @dev On the L2 devchain the caller must be EpochManager, and the CELO backing the
+    ///      rewards would be released to LockedGold by the epoch process, so the same amount is
+    ///      credited to the LockedGold balance here. Only the native balance moves;
+    ///      totalLockedGold is unaffected, so voting limits stay where the test set them.
     function distributeEpochRewards(address group, uint256 amount) internal {
         (address lesser, address greater) = findLesserAndGreaterAfterVote(group, int256(amount));
         vm.deal(address(celoLockedGold), address(celoLockedGold).balance + amount);
@@ -341,7 +338,10 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice Find the neighbours of `group` in the eligible groups list after changing its
-    ///         votes by `delta` (ports ElectionWrapper.findLesserAndGreaterAfterVote).
+    ///         votes by `delta`.
+    /// @dev Computes the group's new total, then walks the list (ordered from most to least
+    ///      votes) skipping `group` itself: the last group seen with more votes than the new
+    ///      total is `greater`, the first with at most as many is `lesser`.
     function findLesserAndGreaterAfterVote(address group, int256 delta)
         internal
         view
@@ -351,7 +351,7 @@ abstract contract DevchainHelper is MultiSigHelper {
             celoElection.getTotalVotesForEligibleValidatorGroups();
 
         // Signed on purpose: the account tasks ask for neighbours after revoking more
-        // than the group currently holds, which ContractKit handled with BigNumber math.
+        // than the group currently holds, which would underflow an unsigned total.
         int256 total = delta;
         for (uint256 i = 0; i < groups.length; i++) {
             if (groups[i] == group) {
@@ -406,9 +406,8 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice Lock `amount` CELO for `account` (creating the Celo account if needed).
-    /// @dev Tops the native balance of `account` up to `amount` when it is short, standing in
-    ///      for the original fixtures, which funded actors with effectively unlimited CELO
-    ///      (10^10 CELO for voters). A caller that wants to assert on native balances must
+    /// @dev Tops the native balance of `account` up to `amount` when it is short, so callers
+    ///      need not fund actors first. A caller that wants to assert on native balances must
     ///      therefore fund `account` itself instead of relying on this top-up.
     function lockCelo(address account, uint256 amount) internal {
         createCeloAccount(account);
@@ -420,7 +419,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     // =========================================================================
-    //                    VALIDATOR REGISTRATION (utils-validators.ts)
+    //                        VALIDATOR REGISTRATION
     // =========================================================================
 
     /// @notice Locks the required CELO and registers `group` as a validator group.
@@ -456,8 +455,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         addValidatorToGroupMembers(group, validator);
     }
 
-    /// @notice Adds an affiliated validator to the members of `group`
-    ///         (ports ValidatorsWrapper.addMember).
+    /// @notice Adds an affiliated validator to the members of `group`.
     function addValidatorToGroupMembers(address group, address validator) internal {
         uint256 numMembers = celoValidators.getGroupNumMembers(group);
         if (numMembers == 0) {
@@ -500,8 +498,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         celoValidators.deregisterValidatorGroup(index);
     }
 
-    /// @notice Authorizes a fresh validator signer for `validator`
-    ///         (ports makeValidatorUseSigner from utils-validators.ts).
+    /// @notice Authorizes a fresh validator signer for `validator`.
     function makeValidatorUseSigner(address validator) internal returns (address signer) {
         signer = createWallet();
         bytes32 message = keccak256(abi.encodePacked(validator));
@@ -515,7 +512,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     //                               VOTING
     // =========================================================================
 
-    /// @notice Lock 1 CELO and vote for `group` (ports voteForGroup).
+    /// @notice Lock 1 CELO and vote for `group`.
     function voteForGroup(address group, address voter) internal {
         voteForGroup(group, voter, 1 ether);
     }
@@ -528,7 +525,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         celoElection.vote(group, amount, lesser, greater);
     }
 
-    /// @notice Activate all activatable pending votes of `voter` (ports activateVotesForGroup).
+    /// @notice Activate all activatable pending votes of `voter`.
     function activateVotesForGroup(address voter) internal {
         address[] memory groups = celoElection.getGroupsVotedForByAccount(voter);
         for (uint256 i = 0; i < groups.length; i++) {
@@ -539,7 +536,7 @@ abstract contract DevchainHelper is MultiSigHelper {
         }
     }
 
-    /// @notice Vote for `group`, move to the next epoch and activate (ports electGroup).
+    /// @notice Vote for `group`, move to the next epoch and activate.
     function electGroup(address group, address voter) internal {
         voteForGroup(group, voter);
         mineToNextEpoch();
@@ -550,8 +547,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     //                              SLASHING
     // =========================================================================
 
-    /// @notice Halves the slashing multiplier of `group` through a mock slasher
-    ///         (ports updateGroupSlashingMultiplier).
+    /// @notice Halves the slashing multiplier of `group` through a mock slasher.
     function updateGroupSlashingMultiplier(address group, address mockSlasher) internal {
         vm.prank(celoRegistry.owner());
         celoRegistry.setAddressFor("MockSlasher", mockSlasher);
@@ -569,8 +565,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     //                        MOCK GROUP HEALTH ELECTION
     // =========================================================================
 
-    /// @notice Marks the members of `validatorGroups` as elected on MockGroupHealth
-    ///         (ports electMockValidatorGroupsAndUpdate).
+    /// @notice Marks the members of `validatorGroups` as elected on MockGroupHealth.
     function electMockValidatorGroupsAndUpdate(
         MockGroupHealth groupHealth,
         address[] memory validatorGroups,
@@ -608,7 +603,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     }
 
     /// @notice electMockValidatorGroupsAndUpdate with revoke=false, update=true,
-    ///         makeOneValidatorGroupUseSigner=true (the TS defaults).
+    ///         makeOneValidatorGroupUseSigner=true.
     function electMockValidatorGroupsAndUpdate(
         MockGroupHealth groupHealth,
         address[] memory validatorGroups
@@ -632,11 +627,10 @@ abstract contract DevchainHelper is MultiSigHelper {
     // =========================================================================
 
     /// @notice Lock and vote with `voter` so that the first three groups have exactly
-    ///         40, 100 and 200 CELO of receivable votes left (ports prepareOverflow).
-    /// @dev The Hardhat version hardcoded vote amounts derived for the ganache devchain. The
-    ///      receivable votes of a group are `totalLockedGold * (members + 1) / N` where N is
-    ///      the number of electable validators, so the amounts are solved for the current
-    ///      chain state instead.
+    ///         40, 100 and 200 CELO of receivable votes left.
+    /// @dev The receivable votes of a group are `totalLockedGold * (members + 1) / N` where N
+    ///      is the number of electable validators, so the amounts are solved for the current
+    ///      chain state.
     function prepareOverflow(
         DefaultStrategy defaultStrategy,
         address voter,
@@ -721,8 +715,7 @@ abstract contract DevchainHelper is MultiSigHelper {
     //                            MISCELLANEOUS
     // =========================================================================
 
-    /// @notice Allow `accountAddress` to vote for more than maxNumGroupsVotedFor groups
-    ///         (ports updateMaxNumberOfGroups).
+    /// @notice Allow `accountAddress` to vote for more than maxNumGroupsVotedFor groups.
     function updateMaxNumberOfGroups(address accountAddress, bool updateValue) internal {
         vm.deal(accountAddress, accountAddress.balance + 1 ether);
         createCeloAccount(accountAddress);
@@ -730,15 +723,13 @@ abstract contract DevchainHelper is MultiSigHelper {
         celoElection.setAllowedToVoteOverMaxNumberOfGroups(updateValue);
     }
 
-    /// @notice Set the number of concurrent governance proposals
-    ///         (ports setGovernanceConcurrentProposals).
+    /// @notice Set the number of concurrent governance proposals.
     function setGovernanceConcurrentProposals(uint256 count) internal {
         vm.prank(celoGovernance.owner());
         celoGovernance.setConcurrentProposals(count);
     }
 
-    /// @notice Upgrade the GroupHealth proxy owned by the MultiSig to MockGroupHealth
-    ///         (ports upgradeToMockGroupHealthE2E).
+    /// @notice Upgrade the GroupHealth proxy owned by the MultiSig to MockGroupHealth.
     function upgradeToMockGroupHealthE2E(
         IMultiSig multiSig,
         address multisigOwner,

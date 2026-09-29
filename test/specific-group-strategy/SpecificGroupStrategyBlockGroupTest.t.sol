@@ -5,13 +5,12 @@ import "./SpecificGroupStrategyTestBase.sol";
 
 /**
  * @title SpecificGroupStrategyBlockGroupTest
- * @notice Port of the describe blocks #blockGroup() (9) and #unblockGroup (4) of
- *         test-ts/specific_group_strategy.test.ts.
+ * @notice Tests for `SpecificGroupStrategy.blockGroup` and `unblockGroup`.
  */
 contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
-    /// @dev `specificGroupStrategy` of the original test: the group the depositor votes for.
+    /// @dev The group the depositor votes for.
     address internal specificGroup;
-    /// @dev `specificGroupStrategyDeposit` of the original test.
+    /// @dev Amount the depositor deposits into the specific group strategy.
     uint256 internal specificGroupDeposit;
 
     function setUp() public {
@@ -148,13 +147,13 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         _assertMembersUints(values.toVotes, _uints(specificGroupDeposit));
     }
 
-    /// @dev beforeEach of describe("When 2 active groups").
+    /// @dev Setup for "When 2 active groups".
     function _when2ActiveGroups() private {
         specificGroup = groupAddresses[2];
         _activateGroups(2);
     }
 
-    /// @dev beforeEach of describe("when the group is allowed").
+    /// @dev Setup for "when the group is allowed".
     function _whenTheGroupIsAllowed() private {
         _when2ActiveGroups();
 
@@ -212,7 +211,7 @@ contract SpecificGroupStrategyBlockGroupTest is SpecificGroupStrategyTestBase {
         );
     }
 
-    /// @dev beforeEach of describe("when the group is blocked").
+    /// @dev Setup for "when the group is blocked".
     function _whenTheGroupIsBlocked() private {
         specificGroup = groupAddresses[2];
         _activateGroups(2);

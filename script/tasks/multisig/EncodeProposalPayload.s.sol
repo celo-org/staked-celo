@@ -6,15 +6,12 @@ import "../lib/PayloadLib.sol";
 
 /**
  * @title EncodeProposalPayloadScript
- * @notice Encodes a function payload on a contract for a proposal. Replaces
- *         `yarn hardhat stakedCelo:multiSig:encode:proposal:payload --contract <name>
- *          --function <name> --args <a,b>`.
+ * @notice Encodes a function payload on a contract for a proposal.
  *
  * Environment variables:
- *   FUNCTION_SIGNATURE  required. Full signature, e.g. "upgradeTo(address)". The Hardhat
- *                       task took a bare function name and resolved the types through the
- *                       deployment ABI; Solidity has no runtime ABI, so the types are part
- *                       of the input here.
+ *   FUNCTION_SIGNATURE  required. Full signature, e.g. "upgradeTo(address)".
+ *                       Solidity has no runtime ABI to resolve a bare function name
+ *                       against, so the types are part of the input.
  *   ARGS                optional. Comma separated arguments; empty for a no-argument call.
  *   CONTRACT            optional. Deployment name, e.g. "Manager". When set, the address of
  *                       that deployment is printed as the proposal destination.

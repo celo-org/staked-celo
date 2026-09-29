@@ -5,25 +5,22 @@ import "./SpecificGroupStrategyTestBase.sol";
 
 /**
  * @title SpecificGroupStrategyRebalanceOverflowedGroupTest
- * @notice Port of describe("#rebalanceOverflowedGroup()") (13 cases) of
- *         test-ts/specific_group_strategy.test.ts.
- * @dev Deviation: the original hardcoded `thirdGroupCapacity = 200.166666666666666666 CELO`,
- *      the receivable votes the ganache devchain left for groups[2] after `prepareOverflow`.
- *      The anvil devchain solves the vote amounts from the chain state, so the capacity is
- *      read from the Election contract instead of hardcoded.
+ * @notice Tests for `SpecificGroupStrategy.rebalanceOverflowedGroup`.
+ * @dev `prepareOverflow` solves the vote amounts from the chain state, so the capacity of
+ *      groups[2] is read from the Election contract instead of hardcoded.
  */
 contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrategyTestBase {
-    /// @dev `thirdGroupCapacity` of the original test.
+    /// @dev Receivable votes left for groups[2] after `prepareOverflow`.
     uint256 internal thirdGroupCapacity;
-    /// @dev `deposit` of describe("When third group overflowing").
+    /// @dev Deposit of the "When third group overflowing" cases.
     uint256 internal deposit;
-    /// @dev `originalOverflow` of describe("When some capacity was freed and rebalanced").
+    /// @dev Overflow before the "When some capacity was freed and rebalanced" cases.
     uint256 internal originalOverflow;
 
     function setUp() public {
         _setUpSpecificGroupStrategy();
 
-        // beforeEach of describe("#rebalanceOverflowedGroup()")
+        // Setup shared by every `rebalanceOverflowedGroup` case
         _prepareOverflow();
         thirdGroupCapacity = _receivableVotes(groupAddresses[2]);
     }
@@ -169,10 +166,10 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
     }
 
     // =========================================================================
-    //                       NESTED beforeEach BLOCKS
+    //                           SCENARIO SETUP
     // =========================================================================
 
-    /// @dev beforeEach of describe("When third group overflowing").
+    /// @dev Setup for "When third group overflowing".
     function _whenThirdGroupOverflowing() private {
         deposit = 250 ether;
         vm.prank(depositor);
@@ -187,7 +184,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
         }
     }
 
-    /// @dev beforeEach of describe("When some capacity was freed and rebalanced").
+    /// @dev Setup for "When some capacity was freed and rebalanced".
     function _whenSomeCapacityWasFreedAndRebalanced() private {
         _whenThirdGroupOverflowing();
 
@@ -195,14 +192,14 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
         (, originalOverflow,) = specificGroupStrategy.getStCeloInGroup(groupAddresses[2]);
     }
 
-    /// @dev beforeEach of describe("When 1:1").
+    /// @dev Setup for "When 1:1".
     function _when1To1() private {
         _whenSomeCapacityWasFreedAndRebalanced();
 
         specificGroupStrategy.rebalanceOverflowedGroup(groupAddresses[2]);
     }
 
-    /// @dev beforeEach of describe("When there is more CELO than stCELO").
+    /// @dev Setup for "When there is more CELO than stCELO".
     function _whenThereIsMoreCeloThanStCelo() private {
         _whenSomeCapacityWasFreedAndRebalanced();
 
@@ -212,7 +209,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
         specificGroupStrategy.rebalanceOverflowedGroup(groupAddresses[2]);
     }
 
-    /// @dev beforeEach of describe("When there is less CELO than stCELO").
+    /// @dev Setup for "When there is less CELO than stCELO".
     function _whenThereIsLessCeloThanStCelo() private {
         _whenSomeCapacityWasFreedAndRebalanced();
 
@@ -225,7 +222,7 @@ contract SpecificGroupStrategyRebalanceOverflowedGroupTest is SpecificGroupStrat
     //                            SHARED ASSERTION
     // =========================================================================
 
-    /// @dev it("should schedule transfers from active groups") of all three ratio blocks.
+    /// @dev "should schedule transfers from active groups", shared by all three ratio blocks.
     function _assertTransfersFromActiveGroups(uint256 expectedMoved) private view {
         TransferValues memory values = _lastTransferValues();
 

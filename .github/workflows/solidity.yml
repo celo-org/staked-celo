@@ -140,8 +140,7 @@ jobs:
         run: forge build
 
       # The deployed contracts must keep compiling to exactly the bytecode that was
-      # audited and deployed, which is also the bytecode the old Hardhat toolchain
-      # produced. scripts/bytecode-reference.json pins a digest of the creation and
+      # audited and deployed. scripts/bytecode-reference.json pins a digest of the creation and
       # runtime bytecode of every contract under contracts/, so this job fails on any
       # contract edit and on any change to the compiler settings in foundry.toml
       # (solc version, evm version, optimizer, metadata), because the settings are
@@ -195,8 +194,7 @@ jobs:
         with:
           version: ${{ env.FOUNDRY_VERSION }}
 
-      # The baseline release predates the Foundry migration, so it carries no
-      # foundry.toml, and it is a bare checkout with no node_modules. Overlaying the
+      # The baseline release carries no foundry.toml, and it is a bare checkout with no node_modules. Overlaying the
       # current toolchain config onto its contracts/ builds them with exactly the
       # settings used here, which is what makes the two out/ directories comparable.
       #
@@ -221,7 +219,7 @@ jobs:
       - name: Build the baseline contracts
         run: forge build --root baseline
 
-      # Storage layout and ABI compatibility for every upgradeable contract, i.e. the
-      # check the Hardhat @celo/contract-compatibility-check job used to perform.
+      # Storage layout and ABI compatibility for every upgradeable contract, so that an
+      # upgrade cannot corrupt the state behind a deployed proxy.
       - name: Check upgrade compatibility against ${{ env.COMPATIBILITY_BASELINE }}
         run: node scripts/abi-compat-check.ts --baseline baseline/out --current out

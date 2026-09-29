@@ -3,13 +3,13 @@ pragma solidity 0.8.11;
 
 import "./AccountTestBase.sol";
 
-/// @notice Port of `describe("Account") > describe("#activateAndVote()")`.
+/// @notice Tests for `Account.activateAndVote`.
 contract AccountActivateAndVoteTest is AccountTestBase {
     // =========================================================================
     //                 when there are scheduled votes
     // =========================================================================
 
-    /// @dev The `beforeEach` shared by every block of `#activateAndVote()`.
+    /// @dev Setup shared by every `activateAndVote` case.
     function _scheduleTwoRounds() internal {
         _scheduleVotes(_allGroups(), _amounts(100, 30, 70), 200);
         _scheduleVotes(_allGroups(), _amounts(40, 50, 20), 110);

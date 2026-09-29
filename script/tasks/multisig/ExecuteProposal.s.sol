@@ -6,8 +6,7 @@ import "../lib/MultiSigTaskLib.sol";
 
 /**
  * @title ExecuteProposalScript
- * @notice Execute a multiSig proposal. Replaces
- *         `yarn hardhat stakedCelo:multiSig:executeProposal --proposal-id <id>`.
+ * @notice Execute a multiSig proposal.
  *
  * Environment variables:
  *   PROPOSAL_ID  required. The ID of the proposal.
@@ -30,8 +29,8 @@ contract ExecuteProposalScript is TaskBase {
 
     /**
      * @notice Executes `proposalId` after checking that its time-lock has elapsed.
-     * @dev The pre-check mirrors the Hardhat task, which reported the earliest execution
-     *      time instead of letting the MultiSig modifier revert without context.
+     * @dev The pre-check reports the earliest execution time instead of letting the
+     *      MultiSig modifier revert without context.
      * @param multiSigContract The MultiSig contract to execute on.
      * @param proposalId The ID of the proposal.
      */

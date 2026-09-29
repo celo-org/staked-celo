@@ -303,7 +303,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         if (allowFailingTx) {
             // Bogus hints make most calls revert, but a useful share must still go through,
             // otherwise the test would be asserting invariants on an untouched list.
-            // Original bound: successes / numActions >= (2 / numKeys) * 0.75, in integer math.
+            // Bound: successes / numActions >= (2 / numKeys) * 0.75, in integer math.
             require(
                 successes * numKeys * 100 >= numActions * 2 * 75, "Success rate below expectation"
             );
@@ -472,7 +472,7 @@ contract AddressSortedLinkedListTest is CeloTestHelper {
         return _random() % 2 == 0;
     }
 
-    /// @dev Same magnitude as the original: a random value below 1e20.
+    /// @dev A random value below 1e20.
     function _randomNumerator() internal returns (uint256) {
         return _random() % 1e20;
     }

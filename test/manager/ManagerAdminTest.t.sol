@@ -5,8 +5,8 @@ import "./ManagerTestBase.sol";
 
 /**
  * @title ManagerAdminTest
- * @notice Ports `#setDependencies()`, `#setPauser`, `#pause`, `#unpause`, `when paused` and
- *         `#renounceOwnership` of test-ts/manager.test.ts.
+ * @notice Owner / pauser tests of Manager: `setDependencies`, `setPauser`, `pause`,
+ *         `unpause`, the paused state and `renounceOwnership`.
  */
 contract ManagerAdminTest is ManagerTestBase {
     // =========================================================================
@@ -231,7 +231,7 @@ contract ManagerAdminTest is ManagerTestBase {
     //                              HELPERS
     // =========================================================================
 
-    /// @dev `beforeEach` of the `#unpause` / `when paused` blocks.
+    /// @dev Setup for the `unpause` / `when paused` blocks.
     function pauseManager() private {
         vm.prank(pauser);
         manager.pause();

@@ -49,7 +49,7 @@ interface IStrategyDependencies {
 /**
  * @title DeployCoreScriptTest
  * @notice Runs script/deploy/DeployCore.s.sol in-process against the Celo devchain and
- *         checks the result matches what deploy/00 .. deploy/13 used to produce.
+ *         checks the deployed contracts, their wiring and their ownership.
  * @dev The script sequence is invoked through `runInProcess`, which pranks the deployer
  *      instead of broadcasting and skips the deployment records, so the test never
  *      touches `deployments/`.
@@ -224,7 +224,7 @@ contract DeployCoreScriptTest is DevchainHelper {
 
     function test_registryAwareContractsUseTheCanonicalRegistry() public {
         // Passing address(0) to the initializer makes UsingRegistryUpgradeable fall back
-        // to 0x0...ce10, which is what the Hardhat deploy scripts relied on.
+        // to 0x0...ce10.
         assertEq(_registryOf(deployScript.manager()), REGISTRY_ADDRESS);
         assertEq(_registryOf(deployScript.account()), REGISTRY_ADDRESS);
         assertEq(_registryOf(deployScript.vote()), REGISTRY_ADDRESS);
@@ -240,9 +240,8 @@ contract DeployCoreScriptTest is DevchainHelper {
 
 /**
  * @title DeployCoreValidatorGroupsTest
- * @notice Covers the `VALIDATOR_GROUPS` part of the sequence: deploy/05 records the health
- *         of every listed group and deploy/11 activates the healthy ones in the
- *         DefaultStrategy.
+ * @notice Covers the `VALIDATOR_GROUPS` part of the sequence: the health of every listed
+ *         group is recorded and the healthy ones are activated in the DefaultStrategy.
  * @dev GroupHealth considers a group healthy when one of its members' signers is in the
  *      elected set, which on the L2 devchain comes from EpochManager. The devchain's own
  *      validators are elected, but their groups are anvil development accounts that the
@@ -408,7 +407,7 @@ contract DeployCoreEnvHarness is DeployCore {
 /**
  * @title DeployCoreEnvConfigTest
  * @notice Covers how DeployCore reads its configuration: the canonical `MULTISIG_OWNERS`
- *         and the Hardhat era `MULTISIG_SIGNER_0` .. `MULTISIG_SIGNER_4`, which the
+ *         and the legacy `MULTISIG_SIGNER_0` .. `MULTISIG_SIGNER_4`, which the
  *         encrypted per-network env files (`yarn keys:decrypt`) still carry, and the
  *         optional `VALIDATOR_GROUPS`.
  * @dev Everything lives in one test on purpose. Environment variables belong to the
@@ -439,7 +438,7 @@ contract DeployCoreEnvConfigTest is CeloTestHelper {
         vm.expectRevert(bytes("set MULTISIG_OWNERS, or MULTISIG_SIGNER_0, MULTISIG_SIGNER_1, ..."));
         harness.configFromEnv();
 
-        // The Hardhat era variables, read consecutively from zero.
+        // The legacy variables, read consecutively from zero.
         svm.setEnv(_signerName(0), vm.toString(SIGNER_0));
         svm.setEnv(_signerName(1), vm.toString(SIGNER_1));
         svm.setEnv(_signerName(2), vm.toString(SIGNER_2));
