@@ -998,8 +998,9 @@ test("stored file level enum is compared by its AST id, not by a same-named one"
 });
 
 // A parameter's `internalType` only names the enum. With two differing declarations of
-// that name there is nothing to pick one by, so it goes to review instead of passing.
-test("parameter enum named by two differing file level declarations is a review", () => {
+// that name there is nothing to pick one by, and a reorder of the one actually passed
+// must not get through, so the ambiguity itself fails the check.
+test("parameter enum named by two differing file level declarations is an error", () => {
   const setStatus: AbiEntry = {
     type: "function",
     name: "setStatus",
@@ -1008,7 +1009,7 @@ test("parameter enum named by two differing file level declarations is a review"
     stateMutability: "nonpayable",
   };
   const abi = [setStatus];
-  assertReviewOnly(
+  assertRejected(
     {
       Vault: fileStatusVault(["Pending", "Active"], 10, { stored: false, abi }),
       Zeta: unrelatedStatus(20),
@@ -1018,7 +1019,8 @@ test("parameter enum named by two differing file level declarations is a review"
       Zeta: unrelatedStatus(21),
     },
     "enum Status at setStatus(uint8).status names more than one differing declaration in " +
-      "the baseline and the current build's ASTs"
+      "the baseline and the current build's ASTs",
+    "give the declarations distinct names"
   );
 });
 

@@ -61,9 +61,10 @@
  *                   the same definition comparison as the ones the layout reaches, so
  *                   an enum that never touches storage is covered too. A parameter names
  *                   its declaration by name only, and file level declarations in
- *                   different files can share one; where they differ, the parameter is
- *                   flagged for review. The layout names the declaration by its AST id,
- *                   so a stored enum is always compared with the one it stores.
+ *                   different files can share one. Where they differ, nothing tells
+ *                   which one the parameter uses, and that is an error until the
+ *                   declarations get distinct names. The layout names the declaration by
+ *                   its AST id, so a stored enum is always compared with the one it stores.
  *
  * Contracts are paired by name, and by source file as well where either build declares
  * a name in more than one file. Enum and value type declarations come from the build-info
@@ -438,6 +439,32 @@ function unresolvedClauses<T>(base: Resolution<T>, cur: Resolution<T>): string {
     );
   }
   return clauses.join(" and ");
+}
+
+/**
+ * The finding for a reached type whose definition could not be resolved on one side.
+ *
+ * A missing definition is a review item: the ASTs at hand do not cover the declaration.
+ * An ambiguous one is an error: two differing declarations answer to the name the ABI
+ * uses, so either could be the one the entry passes, and a reorder of the one actually
+ * used would otherwise pass. Giving the declarations distinct names resolves it.
+ */
+function unresolvedFinding<T>(
+  name: string,
+  described: string,
+  base: Resolution<T>,
+  cur: Resolution<T>,
+  consequence: string
+): Finding {
+  const ambiguous = [base, cur].some(
+    (resolution) => "unresolved" in resolution && resolution.unresolved === "ambiguous"
+  );
+  const remedy = ambiguous ? " - give the declarations distinct names" : "";
+  return {
+    level: ambiguous ? ERROR : REVIEW,
+    name,
+    message: `${described} ${unresolvedClauses(base, cur)}; ${consequence}${remedy}`,
+  };
 }
 
 function sameMembers(left: string[], right: string[]): boolean {
@@ -991,13 +1018,15 @@ export function checkEnums(
     const baseResolution = lookupDefinition(baseEnums, base, sameMembers, baseId);
     const curResolution = lookupDefinition(curEnums, cur || base, sameMembers, curId);
     if (!("found" in baseResolution) || !("found" in curResolution)) {
-      findings.push({
-        level: REVIEW,
-        name,
-        message:
-          `enum ${base} at ${walked} ${unresolvedClauses(baseResolution, curResolution)}; ` +
-          "the order of its members could not be compared",
-      });
+      findings.push(
+        unresolvedFinding(
+          name,
+          `enum ${base} at ${walked}`,
+          baseResolution,
+          curResolution,
+          "the order of its members could not be compared"
+        )
+      );
       continue;
     }
     const baseMembers = baseResolution.found;
@@ -1053,13 +1082,15 @@ export function checkUserDefinedValueTypes(
     const baseResolution = lookupDefinition(baseValueTypes, base, sameUnderlying, baseId);
     const curResolution = lookupDefinition(curValueTypes, cur || base, sameUnderlying, curId);
     if (!("found" in baseResolution) || !("found" in curResolution)) {
-      findings.push({
-        level: REVIEW,
-        name,
-        message:
-          `value type ${base} at ${walked} ${unresolvedClauses(baseResolution, curResolution)}; ` +
-          "its underlying type could not be compared",
-      });
+      findings.push(
+        unresolvedFinding(
+          name,
+          `value type ${base} at ${walked}`,
+          baseResolution,
+          curResolution,
+          "its underlying type could not be compared"
+        )
+      );
       continue;
     }
     const baseUnderlying = baseResolution.found;
