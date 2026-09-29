@@ -234,7 +234,7 @@ recorded there verifies from these sources, including the older deployments.
 
 The MultiSig, Manager and Account operations are forge scripts under `script/tasks/`. They
 take their parameters from environment variables and sign with forge's signer flags
-(`--ledger`, `--unlocked --sender`, `--private-key`):
+(`--ledger --sender`, `--unlocked --sender`, `--private-key`):
 
 ```sh
 PROPOSAL_ID=7 forge script script/tasks/multisig/ConfirmProposal.s.sol \

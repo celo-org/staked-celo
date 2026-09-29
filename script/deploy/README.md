@@ -39,7 +39,7 @@ somewhere inside the MultiSig initializer.
 `UpgradeImplementation` needs `CONTRACT` and, for `CONTRACT=MultiSig` only,
 `TIME_LOCK_MIN_DELAY` - it is an immutable constructor argument of the implementation.
 
-The deployer is the signer Forge is given (`--ledger`, `--private-key`, `--account`), not a
+The deployer is the signer Forge is given (`--ledger --sender`, `--private-key`, `--account`), not a
 `DEPLOYER` variable - `DEPLOYER` is still in `.env.example` as an older variable name and
 is ignored here. `DEPLOYER_PRIVATE_KEY` from `.env` is not read either; pass it explicitly
 as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
