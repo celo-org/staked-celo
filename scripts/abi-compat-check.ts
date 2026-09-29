@@ -53,7 +53,11 @@
  *                   reordered; `internalType` is the only place the declaration is
  *                   still named. The enums and value types the ABI names go through
  *                   the same definition comparison as the ones the layout reaches, so
- *                   an enum that never touches storage is covered too.
+ *                   an enum that never touches storage is covered too. A parameter names
+ *                   its declaration by name only, and file level declarations in
+ *                   different files can share one; where they differ, the parameter is
+ *                   flagged for review. The layout names the declaration by its AST id,
+ *                   so a stored enum is always compared with the one it stores.
  *
  * Findings come in two flavours: ERROR (breaks a deployed proxy, exit status 1) and
  * REVIEW (legal in principle but a human has to confirm the intent, exit status 0).
@@ -84,6 +88,10 @@ const ENUM_TYPE = /^t_enum\(([^)]*)\)/;
 
 // The same for a user defined value type, `Amount` in t_userDefinedValueType(Amount)42.
 const VALUE_TYPE = /^t_userDefinedValueType\(([^)]*)\)/;
+
+// The AST id of the declaration an enum or value type identifier refers to, `42` in
+// t_enum(Status)42. Within one build it names exactly one declaration.
+const DECLARATION_ID = /^t_(?:enum|userDefinedValueType)\([^)]*\)(\d+)$/;
 
 // The N of a `uint256[N]` label, which is how long a reserved gap is.
 const ARRAY_LENGTH = /^.*\[(\d+)\]$/;
@@ -153,6 +161,8 @@ export type AbiEntry = {
 };
 
 export type AstNode = {
+  id?: number;
+  absolutePath?: string;
   nodeType?: string;
   name?: string;
   canonicalName?: string;
@@ -172,11 +182,29 @@ export type Artifact = {
   ast?: AstNode;
 };
 
+/**
+ * Every enum, or every user defined value type, one build declares.
+ *
+ * A contract level declaration's canonical name is qualified (`Vault.Status`), a file
+ * level one's is its bare name, so two source files can each declare a `Status`.
+ * `byName` therefore keeps every declaration of a name apart, keyed by its AST id (or by
+ * its source file, for an AST without ids), and `byId` resolves the AST id a storage
+ * type identifier carries to exactly one declaration. An id two declarations claim, which
+ * only separate compiler runs can produce, maps to null and falls back to the name.
+ */
+export type DefinitionIndex<T> = {
+  byId: Map<number, { name: string; madeOf: T } | null>;
+  byName: Map<string, Map<string, T>>;
+};
+
 /** The enum and user defined value type declarations of one whole build, keyed by kind. */
 export type Definitions = {
-  enum: Map<string, string[]>;
-  value_type: Map<string, string>;
+  enum: DefinitionIndex<string[]>;
+  value_type: DefinitionIndex<string>;
 };
+
+/** What a lookup made of a name: its one definition, or why there is none to compare. */
+export type Resolution<T> = { found: T } | { unresolved: "missing" | "ambiguous" };
 
 /**
  * One enum or value type the layout or the ABI walk reached, keyed by the pair of names
@@ -187,6 +215,9 @@ export type ReachedEntry = {
   base: string;
   cur: string | null;
   path: string;
+  /** AST ids of the declarations, where the walk had them (the layout does, the ABI not). */
+  baseId?: number;
+  curId?: number;
 };
 
 export type Reached = Map<string, ReachedEntry>;
@@ -241,16 +272,18 @@ export function declarations(ast: AstNode | undefined): AstNode[] {
   return found;
 }
 
-/** Yields [qualified name, member names] for every enum of one source unit AST. */
-export function enumDefinitions(ast: AstNode | undefined): Array<[string, string[]]> {
-  const found: Array<[string, string[]]> = [];
+/** Yields [qualified name, member names, AST id] for every enum of one source unit AST. */
+export function enumDefinitions(
+  ast: AstNode | undefined
+): Array<[string, string[], number | undefined]> {
+  const found: Array<[string, string[], number | undefined]> = [];
   for (const node of declarations(ast)) {
     if (node.nodeType !== "EnumDefinition") {
       continue;
     }
     const name = node.canonicalName || node.name;
     if (name) {
-      found.push([name, (node.members ?? []).map((member) => member.name ?? "")]);
+      found.push([name, (node.members ?? []).map((member) => member.name ?? ""), node.id]);
     }
   }
   return found;
@@ -263,8 +296,10 @@ export function enumDefinitions(ast: AstNode | undefined): Array<[string, string
  * 32 byte slot whether it wraps a uint256 or an int256, and even the type identifier
  * spells out no more than the name, so it has to come from the AST.
  */
-export function valueTypeDefinitions(ast: AstNode | undefined): Array<[string, string]> {
-  const found: Array<[string, string]> = [];
+export function valueTypeDefinitions(
+  ast: AstNode | undefined
+): Array<[string, string, number | undefined]> {
+  const found: Array<[string, string, number | undefined]> = [];
   for (const node of declarations(ast)) {
     if (node.nodeType !== "UserDefinedValueTypeDefinition") {
       continue;
@@ -273,40 +308,123 @@ export function valueTypeDefinitions(ast: AstNode | undefined): Array<[string, s
     const descriptions = node.underlyingType?.typeDescriptions ?? {};
     const underlying = descriptions.typeString || descriptions.typeIdentifier;
     if (name && underlying) {
-      found.push([name, underlying]);
+      found.push([name, underlying, node.id]);
     }
   }
   return found;
 }
 
+export function emptyIndex<T>(): DefinitionIndex<T> {
+  return { byId: new Map(), byName: new Map() };
+}
+
 /**
- * What the ASTs say a named type is made of, or null when they do not pin it down.
+ * Adds one declaration to an index. Every contract of a source file carries that file's
+ * AST, so the same declaration arrives once per contract and is stored once.
+ */
+export function addDefinition<T>(
+  index: DefinitionIndex<T>,
+  name: string,
+  madeOf: T,
+  id: number | undefined,
+  source: string
+): void {
+  if (id !== undefined) {
+    const known = index.byId.get(id);
+    if (known === undefined) {
+      index.byId.set(id, { name, madeOf });
+    } else if (known !== null && known.name !== name) {
+      index.byId.set(id, null);
+    }
+  }
+  const declaration = id !== undefined ? `#${id}` : `${source}:${name}`;
+  let declared = index.byName.get(name);
+  if (declared === undefined) {
+    declared = new Map();
+    index.byName.set(name, declared);
+  }
+  declared.set(declaration, madeOf);
+}
+
+/** The AST id a storage type identifier names its declaration by, if it carries one. */
+export function declarationId(typeId: string): number | undefined {
+  const match = DECLARATION_ID.exec(typeId);
+  return match === null ? undefined : Number.parseInt(match[1] as string, 10);
+}
+
+/**
+ * What the ASTs say a named type is made of.
  *
- * The layout's label is qualified, the type identifier is not, so the lookup falls
- * back to the declared name. Several contracts may declare the same name; that is
- * only good enough while they all declare it the same way.
+ * An AST id, which the storage layout's type identifiers carry, names exactly one
+ * declaration. Without one - an ABI parameter only has its `internalType` - the name
+ * has to do: first the qualified name, then the bare declared name. Several declarations
+ * may answer to the same name, two file level enums in different files for instance,
+ * and that is only good enough while they all declare it the same way. Otherwise the
+ * lookup reports the name as ambiguous rather than picking one of them.
  */
 export function lookupDefinition<T>(
-  definitions: Map<string, T>,
+  index: DefinitionIndex<T>,
   label: string,
-  equal: (left: T, right: T) => boolean
-): T | null {
-  const direct = definitions.get(label);
+  equal: (left: T, right: T) => boolean,
+  id?: number
+): Resolution<T> {
+  if (id !== undefined) {
+    const exact = index.byId.get(id);
+    if (exact) {
+      return { found: exact.madeOf };
+    }
+  }
+  const direct = index.byName.get(label);
   if (direct !== undefined) {
-    return direct;
+    return agreeing([...direct.values()], equal);
   }
   const declared = label.slice(label.lastIndexOf(".") + 1);
   const matches: T[] = [];
-  for (const [name, madeOf] of definitions) {
+  for (const [name, declarationsOfName] of index.byName) {
     if (name.slice(name.lastIndexOf(".") + 1) === declared) {
-      matches.push(madeOf);
+      matches.push(...declarationsOfName.values());
     }
   }
-  const first = matches[0];
-  if (first !== undefined && matches.every((madeOf) => equal(madeOf, first))) {
-    return first;
+  return agreeing(matches, equal);
+}
+
+function agreeing<T>(candidates: T[], equal: (left: T, right: T) => boolean): Resolution<T> {
+  const first = candidates[0];
+  if (first === undefined) {
+    return { unresolved: "missing" };
   }
-  return null;
+  return candidates.every((madeOf) => equal(madeOf, first))
+    ? { found: first }
+    : { unresolved: "ambiguous" };
+}
+
+/**
+ * Why a reached type could not be compared, one clause per side that failed, e.g.
+ * "is not in the current build's ASTs".
+ */
+function unresolvedClauses<T>(base: Resolution<T>, cur: Resolution<T>): string {
+  const sides: Array<[string, Resolution<T>]> = [
+    ["baseline", base],
+    ["current", cur],
+  ];
+  const missing = sides.filter(
+    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "missing"
+  );
+  const ambiguous = sides.filter(
+    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "ambiguous"
+  );
+  const clauses: string[] = [];
+  if (missing.length > 0) {
+    clauses.push(`is not in the ${missing.map(([side]) => side).join(" or the ")} build's ASTs`);
+  }
+  if (ambiguous.length > 0) {
+    clauses.push(
+      `names more than one differing declaration in the ${ambiguous
+        .map(([side]) => side)
+        .join(" and the ")} build's ASTs`
+    );
+  }
+  return clauses.join(" and ");
 }
 
 function sameMembers(left: string[], right: string[]): boolean {
@@ -364,7 +482,7 @@ export function loadArtifacts(
   sourcePrefix: string
 ): { artifacts: Map<string, Artifact>; definitions: Definitions } {
   const artifacts = new Map<string, Artifact>();
-  const definitions: Definitions = { enum: new Map(), value_type: new Map() };
+  const definitions: Definitions = { enum: emptyIndex(), value_type: emptyIndex() };
   for (const { directory, files } of walk(outDir)) {
     const present = new Set(files);
     for (const filename of files) {
@@ -384,14 +502,17 @@ export function loadArtifacts(
       const artifact = JSON.parse(
         fs.readFileSync(path.join(directory, filename), "utf8")
       ) as Artifact;
-      for (const [name, members] of enumDefinitions(artifact.ast)) {
-        definitions.enum.set(name, members);
-      }
-      for (const [name, underlying] of valueTypeDefinitions(artifact.ast)) {
-        definitions.value_type.set(name, underlying);
-      }
       const compiled = Object.entries(artifact.metadata?.settings?.compilationTarget ?? {});
       const target = compiled[0];
+      // The source file the AST belongs to, which tells file level declarations of the
+      // same name apart where the AST carries no ids.
+      const astSource = artifact.ast?.absolutePath ?? target?.[0] ?? path.join(directory, filename);
+      for (const [name, members, id] of enumDefinitions(artifact.ast)) {
+        addDefinition(definitions.enum, name, members, id, astSource);
+      }
+      for (const [name, underlying, id] of valueTypeDefinitions(artifact.ast)) {
+        addDefinition(definitions.value_type, name, underlying, id, astSource);
+      }
       if (target === undefined) {
         continue;
       }
@@ -482,10 +603,31 @@ function typeSize(definition: TypeInfo): number {
   return toInt(definition.numberOfBytes, 32);
 }
 
-function remember(reached: Reached, base: string, cur: string | null, walked: string): void {
-  const key = JSON.stringify([base, cur]);
+/**
+ * Records a reached enum or value type. The layout walk passes the AST ids its type
+ * identifiers carry, so two declarations sharing a name are kept apart. The ABI walk has
+ * none and runs second: a name it reaches that the layout already reached is kept as the
+ * layout found it, which is what reports an enum that is both stored and passed once.
+ */
+function remember(
+  reached: Reached,
+  base: string,
+  cur: string | null,
+  walked: string,
+  ids?: { base?: number; cur?: number }
+): void {
+  if (ids === undefined) {
+    for (const entry of reached.values()) {
+      if (entry.base === base && entry.cur === cur) {
+        return;
+      }
+    }
+    reached.set(JSON.stringify([base, cur]), { base, cur, path: walked });
+    return;
+  }
+  const key = JSON.stringify([base, cur, ids.base ?? null, ids.cur ?? null]);
   if (!reached.has(key)) {
-    reached.set(key, { base, cur, path: walked });
+    reached.set(key, { base, cur, path: walked, baseId: ids.base, curId: ids.cur });
   }
 }
 
@@ -544,12 +686,18 @@ export function checkType(
 
   const baseEnum = enumLabel(baseId, baseType);
   if (baseEnum) {
-    remember(reached.enum, baseEnum, enumLabel(curId, curType), walked);
+    remember(reached.enum, baseEnum, enumLabel(curId, curType), walked, {
+      base: declarationId(baseId),
+      cur: declarationId(curId),
+    });
   }
 
   const baseValueType = valueTypeLabel(baseId, baseType);
   if (baseValueType) {
-    remember(reached.value_type, baseValueType, valueTypeLabel(curId, curType), walked);
+    remember(reached.value_type, baseValueType, valueTypeLabel(curId, curType), walked, {
+      base: declarationId(baseId),
+      cur: declarationId(curId),
+    });
   }
 
   // Only array types carry a `base`, both the static t_array(...)N_storage and
@@ -722,30 +870,25 @@ export function checkType(
 export function checkEnums(
   name: string,
   reached: Reached,
-  baseEnums: Map<string, string[]>,
-  curEnums: Map<string, string[]>,
+  baseEnums: DefinitionIndex<string[]>,
+  curEnums: DefinitionIndex<string[]>,
   findings: Finding[]
 ): void {
-  for (const { base, cur, path: walked } of byBaselineName(reached)) {
-    const baseMembers = lookupDefinition(baseEnums, base, sameMembers);
-    const curMembers = lookupDefinition(curEnums, cur || base, sameMembers);
-    if (baseMembers === null || curMembers === null) {
-      const missing: string[] = [];
-      if (baseMembers === null) {
-        missing.push("baseline");
-      }
-      if (curMembers === null) {
-        missing.push("current");
-      }
+  for (const { base, cur, path: walked, baseId, curId } of byBaselineName(reached)) {
+    const baseResolution = lookupDefinition(baseEnums, base, sameMembers, baseId);
+    const curResolution = lookupDefinition(curEnums, cur || base, sameMembers, curId);
+    if (!("found" in baseResolution) || !("found" in curResolution)) {
       findings.push({
         level: REVIEW,
         name,
         message:
-          `enum ${base} at ${walked} is not in the ${missing.join(" or the ")} build's ASTs; ` +
+          `enum ${base} at ${walked} ${unresolvedClauses(baseResolution, curResolution)}; ` +
           "the order of its members could not be compared",
       });
       continue;
     }
+    const baseMembers = baseResolution.found;
+    const curMembers = curResolution.found;
     for (let index = 0; index < baseMembers.length; index += 1) {
       const member = baseMembers[index] as string;
       if (index >= curMembers.length) {
@@ -787,31 +930,28 @@ export function checkEnums(
 export function checkUserDefinedValueTypes(
   name: string,
   reached: Reached,
-  baseValueTypes: Map<string, string>,
-  curValueTypes: Map<string, string>,
+  baseValueTypes: DefinitionIndex<string>,
+  curValueTypes: DefinitionIndex<string>,
   findings: Finding[]
 ): void {
   // Sorted by the baseline name alone: the current one is null where the walk found
   // something other than a value type opposite.
-  for (const { base, cur, path: walked } of byBaselineName(reached)) {
-    const baseUnderlying = lookupDefinition(baseValueTypes, base, sameUnderlying);
-    const curUnderlying = lookupDefinition(curValueTypes, cur || base, sameUnderlying);
-    if (baseUnderlying === null || curUnderlying === null) {
-      const missing: string[] = [];
-      if (baseUnderlying === null) {
-        missing.push("baseline");
-      }
-      if (curUnderlying === null) {
-        missing.push("current");
-      }
+  for (const { base, cur, path: walked, baseId, curId } of byBaselineName(reached)) {
+    const baseResolution = lookupDefinition(baseValueTypes, base, sameUnderlying, baseId);
+    const curResolution = lookupDefinition(curValueTypes, cur || base, sameUnderlying, curId);
+    if (!("found" in baseResolution) || !("found" in curResolution)) {
       findings.push({
         level: REVIEW,
         name,
         message:
-          `value type ${base} at ${walked} is not in the ${missing.join(" or the ")} build's ` +
-          "ASTs; its underlying type could not be compared",
+          `value type ${base} at ${walked} ${unresolvedClauses(baseResolution, curResolution)}; ` +
+          "its underlying type could not be compared",
       });
-    } else if (baseUnderlying !== curUnderlying) {
+      continue;
+    }
+    const baseUnderlying = baseResolution.found;
+    const curUnderlying = curResolution.found;
+    if (baseUnderlying !== curUnderlying) {
       findings.push({
         level: ERROR,
         name,

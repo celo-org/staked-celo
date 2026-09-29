@@ -916,3 +916,93 @@ test("value type used only in a parameter without a definition is a review", () 
     "value type Vault.Amount at credit(uint256).amount is not in the current build's ASTs"
   );
 });
+
+/**
+ * A source unit declaring a file level `Status` next to a contract, with the AST id solc
+ * gives the declaration. A file level declaration's canonical name is its bare name.
+ */
+function fileLevelStatusAst(contract: string, enumId: number, members: string[]): AstNode {
+  return {
+    nodeType: "SourceUnit",
+    absolutePath: `contracts/${contract}.sol`,
+    nodes: [
+      {
+        id: enumId,
+        nodeType: "EnumDefinition",
+        name: "Status",
+        canonicalName: "Status",
+        members: members.map((member) => ({ nodeType: "EnumValue", name: member })),
+      },
+      { nodeType: "ContractDefinition", name: contract, nodes: [] },
+    ],
+  };
+}
+
+/** A Vault using the file level `Status` of its own source file, stored or only passed. */
+function fileStatusVault(
+  members: string[],
+  enumId: number,
+  options: { stored: boolean; abi?: AbiEntry[] }
+): Artifact {
+  const typeId = `t_enum(Status)${enumId}`;
+  const storage = options.stored
+    ? [slotEntry("status", 0, typeId)]
+    : [slotEntry("total", 0, "t_uint256")];
+  const types: TypesMap = options.stored
+    ? { [typeId]: { encoding: "inplace", label: "enum Status", numberOfBytes: "1" } }
+    : { t_uint256: UINT256 };
+  return artifact(
+    "Vault",
+    storage,
+    types,
+    options.abi ?? ABI,
+    fileLevelStatusAst("Vault", enumId, members)
+  );
+}
+
+/** Another source file declaring an unrelated file level `Status`. Sorts after Vault.sol. */
+function unrelatedStatus(enumId: number): Artifact {
+  return artifact("Zeta", [], {}, [], fileLevelStatusAst("Zeta", enumId, ["X", "Y"]));
+}
+
+// Two files can each declare a file level `Status`. The layout's type identifier carries
+// the AST id of the one the contract stores, and the comparison has to follow it rather
+// than whichever same-named declaration the build happened to list last.
+test("stored file level enum is compared by its AST id, not by a same-named one", () => {
+  assertRejected(
+    {
+      Vault: fileStatusVault(["Pending", "Active"], 10, { stored: true }),
+      Zeta: unrelatedStatus(20),
+    },
+    {
+      Vault: fileStatusVault(["Active", "Pending"], 11, { stored: true }),
+      Zeta: unrelatedStatus(21),
+    },
+    "enum Status: value 0 was Pending, is now Active"
+  );
+});
+
+// A parameter's `internalType` only names the enum. With two differing declarations of
+// that name there is nothing to pick one by, so it goes to review instead of passing.
+test("parameter enum named by two differing file level declarations is a review", () => {
+  const setStatus: AbiEntry = {
+    type: "function",
+    name: "setStatus",
+    inputs: [{ internalType: "enum Status", name: "status", type: "uint8" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  };
+  const abi = [setStatus];
+  assertReviewOnly(
+    {
+      Vault: fileStatusVault(["Pending", "Active"], 10, { stored: false, abi }),
+      Zeta: unrelatedStatus(20),
+    },
+    {
+      Vault: fileStatusVault(["Active", "Pending"], 11, { stored: false, abi }),
+      Zeta: unrelatedStatus(21),
+    },
+    "enum Status at setStatus(uint8).status names more than one differing declaration in " +
+      "the baseline and the current build's ASTs"
+  );
+});
