@@ -639,11 +639,21 @@ contract DeployBaseNetworkTest is CeloTestHelper {
         harness.checkNetworkChain("celo");
     }
 
+    /// @dev `deployments/local` is git-ignored and has no `.chainId`, so the name alone
+    ///      has to keep a first local deployment off a public node.
+    function test_localAgainstAPublicNodeIsRefused() public {
+        svm.chainId(42220);
+        vm.expectRevert(bytes("NETWORK local is chain 31337 but the node is chain 42220"));
+        harness.checkNetworkChain("local");
+    }
+
     function test_networkOfTheConnectedChainPasses() public {
         svm.chainId(42220);
         harness.checkNetworkChain("celo");
         svm.chainId(11142220);
         harness.checkNetworkChain("sepolia");
+        svm.chainId(31337);
+        harness.checkNetworkChain("local");
         // A directory nothing ties to a chain, such as a fork's or a test's, passes.
         harness.checkNetworkChain("some-fork");
     }

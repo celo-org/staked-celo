@@ -39,9 +39,15 @@ library NetworkCheck {
     /// @notice Celo Sepolia chain id.
     uint256 internal constant SEPOLIA_CHAIN_ID = 11142220;
 
+    /// @notice anvil's default chain id, which the `local` directory belongs to.
+    uint256 internal constant LOCAL_CHAIN_ID = 31337;
+
     /**
      * @notice The chain id the records of `network` belong to, or zero when nothing says.
-     * @dev The two public networks are known by name. Any other directory is known by the
+     * @dev The two public networks and `local` are known by name, the same table the
+     *      scripts resolve a chain id with. `local` has to be among them: it is git-ignored
+     *      and nothing writes a `.chainId` into it, so a first local deployment pointed at a
+     *      public node would otherwise go through. Any other directory is known by the
      *      `.chainId` file hardhat-deploy kept in it, where there is one.
      */
     function expectedChainId(string memory network) internal view returns (uint256) {
@@ -51,6 +57,9 @@ library NetworkCheck {
         }
         if (name == keccak256("sepolia")) {
             return SEPOLIA_CHAIN_ID;
+        }
+        if (name == keccak256("local")) {
+            return LOCAL_CHAIN_ID;
         }
         string memory file = string(abi.encodePacked("deployments/", network, "/.chainId"));
         if (!VM.exists(file)) {

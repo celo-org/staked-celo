@@ -11,7 +11,7 @@ the Account maintenance calls (activating and revoking votes, finishing withdraw
   defaulting to the network matching the chain id (42220 -> `celo`, 11142220 -> `sepolia`,
   31337 -> `local`). An anvil fork keeps the chain id of the chain it forks, so it
   resolves to that chain's records. A `NETWORK` set explicitly has to belong to the
-  connected chain (`celo` and `sepolia` by their chain id, any other directory by its
+  connected chain (`celo`, `sepolia` and `local` by their chain id, any other directory by its
   `.chainId` file), and a record carrying the chain id of another chain is refused, so
   `NETWORK=celo` against a Sepolia node stops instead of sending anything.
 - Celo core contracts (Election, LockedGold, Governance, ...) are resolved through the
