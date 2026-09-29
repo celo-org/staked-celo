@@ -30,7 +30,7 @@ Scripts that send transactions sign with forge's signer flags:
 | --- | --- |
 | Ledger | `--ledger --sender <ledger address>` (add `--mnemonic-derivation-path` if not the default; without `--sender` the simulation runs as Forge's default account and owner-only calls revert before the device signs) |
 | Unlocked node account | `--unlocked --sender <addr>` |
-| Private key | `--private-key $DEPLOYER_PRIVATE_KEY` |
+| Private key | `--private-key "$DEPLOYER_PRIVATE_KEY"`, expanded after the env file is loaded (see the example below) |
 
 Read-only scripts need no signer. Scripts that send transactions only simulate unless
 `--broadcast` is passed.
@@ -172,17 +172,19 @@ PROPOSAL_ID=7 forge script script/tasks/multisig/ExecuteProposal.s.sol \
   --rpc-url sepolia --broadcast --ledger --sender <ledger address>
 ```
 
-Run the daily account maintenance with a private key:
+Run the daily account maintenance with the private key from `.env.celo`. The calling
+shell would expand `$DEPLOYER_PRIVATE_KEY` before the wrapper has loaded the file, and
+hand Forge an empty key, so a shell the wrapper starts expands it, inside single quotes:
 
 ```bash
-forge script script/tasks/account/ActivateAndVote.s.sol \
-  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
-forge script script/tasks/account/Revoke.s.sol \
-  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
-BENEFICIARY=0x… forge script script/tasks/account/Withdraw.s.sol \
-  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
-BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.sol \
-  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
+scripts/with-env.sh celo sh -c 'forge script script/tasks/account/ActivateAndVote.s.sol \
+  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"'
+scripts/with-env.sh celo sh -c 'forge script script/tasks/account/Revoke.s.sol \
+  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"'
+BENEFICIARY=0x… scripts/with-env.sh celo sh -c 'forge script script/tasks/account/Withdraw.s.sol \
+  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"'
+BENEFICIARY=0x… scripts/with-env.sh celo sh -c 'forge script script/tasks/account/FinishPendingWithdrawal.s.sol \
+  --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"'
 ```
 
 ## Shared code

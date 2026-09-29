@@ -43,7 +43,14 @@ somewhere inside the MultiSig initializer.
 The deployer is the signer Forge is given (`--ledger --sender`, `--private-key`, `--account`), not a
 `DEPLOYER` variable - `DEPLOYER` is still in `.env.example` as an older variable name and
 is ignored here. `DEPLOYER_PRIVATE_KEY` from `.env` is not read either; pass it explicitly
-as `--private-key "$DEPLOYER_PRIVATE_KEY"`.
+as `--private-key "$DEPLOYER_PRIVATE_KEY"`. The calling shell expands that before
+`with-env.sh` has loaded the env file, so a key that only lives in `.env.<network>` has
+to be expanded by a shell the wrapper starts, inside single quotes:
+
+```sh
+scripts/with-env.sh celo sh -c 'forge script script/deploy/DeployCore.s.sol \
+  --disable-code-size-limit --rpc-url celo --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"'
+```
 
 Which account that is, is read out of the broadcast itself (`vm.readCallers()` inside
 `vm.startBroadcast()`) rather than from `msg.sender`. The two are not the same account when
@@ -72,7 +79,7 @@ forge script script/deploy/DeployCore.s.sol \
   --disable-code-size-limit \
   --rpc-url celo \
   --broadcast \
-  --ledger --sender <ledger address>   # or --private-key "$DEPLOYER_PRIVATE_KEY"
+  --ledger --sender <ledger address>   # or a private key, see Environment
 ```
 
 Drop `--broadcast` for a dry run; everything is simulated and the addresses are printed.
