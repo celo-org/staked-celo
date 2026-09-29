@@ -9,6 +9,7 @@
   "engines": {
     "node": ">=24"
   },
+  "packageManager": "yarn@1.22.22",
   "devDependencies": {
     "@celo/devchain-anvil": "17.0.7",
     "@openzeppelin/contracts": "4.4.2",
