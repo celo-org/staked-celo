@@ -9,7 +9,11 @@ the Account maintenance calls (activating and revoking votes, finishing withdraw
 - Contract addresses come from `deployments/<network>/<Name>.json` (the `address` field of
   the deployment record). The directory is picked by the `NETWORK` environment variable,
   defaulting to the network matching the chain id (42220 -> `celo`, 11142220 -> `sepolia`,
-  31337 -> `local`). Set `NETWORK` explicitly when running against a fork.
+  31337 -> `local`). An anvil fork keeps the chain id of the chain it forks, so it
+  resolves to that chain's records. A `NETWORK` set explicitly has to belong to the
+  connected chain (`celo` and `sepolia` by their chain id, any other directory by its
+  `.chainId` file), and a record carrying the chain id of another chain is refused, so
+  `NETWORK=celo` against a Sepolia node stops instead of sending anything.
 - Celo core contracts (Election, LockedGold, Governance, ...) are resolved through the
   Registry at `0x000000000000000000000000000000000000ce10`, the same way the protocol
   contracts resolve them.
@@ -104,7 +108,7 @@ scripts/with-env.sh celo forge script script/tasks/multisig/GetOwners.s.sol --rp
 
 | Variable | Format |
 | --- | --- |
-| `NETWORK` | `celo`, `sepolia` or `local`; optional, derived from the chain id (42220, 11142220, 31337) |
+| `NETWORK` | `celo`, `sepolia` or `local`; optional, derived from the chain id (42220, 11142220, 31337); set explicitly, it has to belong to the connected chain |
 | `DESTINATIONS` | comma separated addresses |
 | `VALUES` | comma separated integers (wei) |
 | `PAYLOADS` | comma separated `0x` payloads |
@@ -189,6 +193,7 @@ BENEFICIARY=0x… forge script script/tasks/account/FinishPendingWithdrawal.s.so
 | `lib/TaskBase.sol` | deployment lookup, Registry lookup, network resolution |
 | `lib/TaskInterfaces.sol` | minimal interfaces for the protocol and Celo core contracts |
 | `lib/ElectionLib.sol` | `findLesserAndGreaterAfterVote` and the voted group index lookup |
+| `../common/NetworkCheck.sol` | checks that a deployments directory and its records belong to the connected chain; shared with the deploy scripts |
 | `lib/GroupsLib.sol` | the active and specific strategy group lists |
 | `lib/AccountTaskLib.sol` | activateAndVote, revoke, withdraw, finishPendingWithdrawal |
 | `lib/ManagerTaskLib.sol` | deposit, withdraw, voteProposal |

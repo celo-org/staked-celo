@@ -913,4 +913,27 @@ contract UpgradeProposalStaleRecordTest is CeloTestHelper {
 
         svm.removeDir(directory, true);
     }
+
+    /// @dev A record the Foundry scripts wrote on another chain names an address that may
+    ///      hold anything, or nothing, on this one.
+    function test_recordOfAnotherChainIsRefused() public {
+        string memory network = "other-chain-record-test";
+        UpgradeProposalRecordHarness harness = new UpgradeProposalRecordHarness(network);
+        string memory directory = string(abi.encodePacked("deployments/", network));
+        svm.createDir(directory, true);
+        svm.writeJson(
+            string(abi.encodePacked('{"address":"', vm.toString(address(this)), '","chainId":1}')),
+            string(abi.encodePacked(directory, "/Manager_Implementation.json"))
+        );
+
+        vm.expectRevert(
+            bytes(
+                "record deployments/other-chain-record-test/Manager_Implementation.json was "
+                "written on chain 1 but the node is chain 31337"
+            )
+        );
+        harness.upgradeToPayloadFromRecord("Manager");
+
+        svm.removeDir(directory, true);
+    }
 }

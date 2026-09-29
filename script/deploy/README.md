@@ -9,6 +9,7 @@
 | `DeployBase.s.sol` | Network resolution, deployment records, ERC1967 proxy helper, console logging. |
 | `DeployCore.s.sol` | Full protocol deployment: the deployment sequence and the `forge script` entry point. |
 | `UpgradeImplementation.s.sol` | New implementation for one proxy, upgraded directly or handed to the MultiSig. |
+| `../common/NetworkCheck.sol` | Checks that a deployments directory and its records belong to the connected chain; shared with the task scripts. |
 
 ## Environment
 
@@ -21,7 +22,7 @@
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
 | `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The older spelling of the owner set, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
-| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 31337 -> `local`. Any other chain id stops the script until `NETWORK` is set, so a network without an entry never writes into `deployments/local`. |
+| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 31337 -> `local`. Any other chain id stops the script until `NETWORK` is set, so a network without an entry never writes into `deployments/local`. A `NETWORK` that belongs to another chain (`celo` and `sepolia` by their chain id, any other directory by its `.chainId` file) stops it too, as does a record written on another chain, so `NETWORK=celo` against a Sepolia node cannot overwrite the mainnet records. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 

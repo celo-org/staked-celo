@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "./TaskVm.sol";
 import "./TaskInterfaces.sol";
+import {NetworkCheck} from "../../common/NetworkCheck.sol";
 
 /**
  * @title TaskBase
@@ -14,7 +15,8 @@ import "./TaskInterfaces.sol";
  *      Environment variables read here:
  *        NETWORK  optional, one of celo | sepolia | local. Defaults to the network
  *                 matching the chain id (42220 -> celo, 11142220 -> sepolia,
- *                 31337 -> local).
+ *                 31337 -> local). Set explicitly, it has to name the directory of
+ *                 the connected chain (see NetworkCheck).
  */
 abstract contract TaskBase {
     /// @dev Foundry cheatcode address (same one forge-std uses).
@@ -43,6 +45,7 @@ abstract contract TaskBase {
     function networkName() internal view virtual returns (string memory) {
         string memory fromEnv = vm.envOr("NETWORK", string(""));
         if (bytes(fromEnv).length > 0) {
+            NetworkCheck.requireChain(fromEnv);
             return fromEnv;
         }
         if (block.chainid == CELO_CHAIN_ID) {
@@ -71,7 +74,9 @@ abstract contract TaskBase {
     function deploymentAddress(string memory name) internal view returns (address) {
         string memory path =
             string(abi.encodePacked("deployments/", networkName(), "/", name, ".json"));
-        address recorded = vm.parseJsonAddress(vm.readFile(path), ".address");
+        string memory json = vm.readFile(path);
+        NetworkCheck.requireRecordChain(json, path);
+        address recorded = vm.parseJsonAddress(json, ".address");
         require(
             recorded.code.length > 0,
             string(

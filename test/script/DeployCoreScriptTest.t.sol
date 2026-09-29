@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "../helpers/DevchainHelper.sol";
 import {DeployCore} from "../../script/deploy/DeployCore.s.sol";
 import {IOwnable} from "../../script/deploy/DeployBase.s.sol";
+import {NetworkCheck} from "../../script/common/NetworkCheck.sol";
 
 /// @dev Cheatcodes used only by this test, cast onto the usual cheatcode address.
 interface ScriptTestVm {
@@ -18,6 +19,8 @@ interface ScriptTestVm {
     function removeDir(string calldata path, bool recursive) external;
 
     function chainId(uint256 newChainId) external;
+
+    function writeFile(string calldata path, string calldata data) external;
 }
 
 /// @dev Vote keeps its dependencies in internal storage; getVoteWeight is the cheapest
@@ -462,6 +465,16 @@ contract DeployCoreEnvHarness is DeployCore {
     function resolveNetwork(string memory fromEnv) external view returns (string memory) {
         return _resolveNetwork(fromEnv);
     }
+
+    function checkNetworkChain(string memory name) external view {
+        NetworkCheck.requireChain(name);
+    }
+
+    function readRecord(string memory networkName, string memory name) external returns (address) {
+        network = networkName;
+        useDeploymentRecords = true;
+        return readDeploymentAddress(name);
+    }
 }
 
 /**
@@ -613,6 +626,72 @@ contract DeployBaseNetworkTest is CeloTestHelper {
         _assertNetwork(harness.resolveNetwork("staging"), "staging");
         svm.chainId(42220);
         _assertNetwork(harness.resolveNetwork("celo-fork"), "celo-fork");
+    }
+
+    // =========================================================================
+    //                    NETWORK AGAINST CONNECTED CHAIN
+    // =========================================================================
+
+    /// @dev `NETWORK=celo` with `--rpc-url sepolia`: the celo records must not be touched.
+    function test_networkOfAnotherChainIsRefused() public {
+        svm.chainId(11142220);
+        vm.expectRevert(bytes("NETWORK celo is chain 42220 but the node is chain 11142220"));
+        harness.checkNetworkChain("celo");
+    }
+
+    function test_networkOfTheConnectedChainPasses() public {
+        svm.chainId(42220);
+        harness.checkNetworkChain("celo");
+        svm.chainId(11142220);
+        harness.checkNetworkChain("sepolia");
+        // A directory nothing ties to a chain, such as a fork's or a test's, passes.
+        harness.checkNetworkChain("some-fork");
+    }
+
+    /// @dev hardhat-deploy kept the chain id of a directory in `.chainId`.
+    function test_chainIdFileTiesADirectoryToItsChain() public {
+        string memory directory = "deployments/chain-id-file-test";
+        svm.createDir(directory, true);
+        svm.writeFile(string(abi.encodePacked(directory, "/.chainId")), "1234\n");
+
+        svm.chainId(1234);
+        harness.checkNetworkChain("chain-id-file-test");
+        svm.chainId(1);
+        vm.expectRevert(bytes("NETWORK chain-id-file-test is chain 1234 but the node is chain 1"));
+        harness.checkNetworkChain("chain-id-file-test");
+
+        svm.removeDir(directory, true);
+    }
+
+    /// @dev The records the Foundry scripts write carry the chain id they were written on.
+    function test_recordOfAnotherChainIsRefused() public {
+        string memory directory = "deployments/record-chain-test";
+        svm.createDir(directory, true);
+        svm.writeJson(
+            '{"address":"0x000000000000000000000000000000000000bEEF","chainId":1}',
+            string(abi.encodePacked(directory, "/Manager.json"))
+        );
+        svm.writeJson(
+            string(
+                abi.encodePacked(
+                    '{"address":"0x000000000000000000000000000000000000bEEF","chainId":',
+                    vm.toString(block.chainid),
+                    "}"
+                )
+            ),
+            string(abi.encodePacked(directory, "/Vote.json"))
+        );
+
+        assertEq(harness.readRecord("record-chain-test", "Vote"), address(0xbEEF));
+        vm.expectRevert(
+            bytes(
+                "record deployments/record-chain-test/Manager.json was written on chain 1 "
+                "but the node is chain 31337"
+            )
+        );
+        harness.readRecord("record-chain-test", "Manager");
+
+        svm.removeDir(directory, true);
     }
 
     function _assertNetwork(string memory actual, string memory expected) private pure {

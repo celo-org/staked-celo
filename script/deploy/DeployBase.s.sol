@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {NetworkCheck} from "../common/NetworkCheck.sol";
 
 /**
  * @dev Foundry cheatcodes used by the deployment scripts.
@@ -193,6 +194,7 @@ abstract contract DeployBase {
     /// @notice Resolve the deployments directory name and enable record keeping.
     function _initNetwork() internal {
         network = _resolveNetwork(vm.envOr("NETWORK", string("")));
+        NetworkCheck.requireChain(network);
         useDeploymentRecords = true;
         DeployLog.s(string(abi.encodePacked("network: ", network)));
     }
@@ -240,7 +242,9 @@ abstract contract DeployBase {
         if (!vm.exists(path)) {
             return address(0);
         }
-        return vm.parseJsonAddress(vm.readFile(path), ".address");
+        string memory json = vm.readFile(path);
+        NetworkCheck.requireRecordChain(json, path);
+        return vm.parseJsonAddress(json, ".address");
     }
 
     /// @notice Refresh the three records of a proxy that is already on chain, e.g. after
