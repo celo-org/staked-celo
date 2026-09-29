@@ -348,19 +348,6 @@ contract DeployCore is DeployBase {
         groupHealth = _deployProxy(implementation, initializeCalldata);
         _recordProxyDeployment("GroupHealth", groupHealth, implementation, initializeCalldata);
         DeployLog.a("GroupHealth: deployed", groupHealth);
-        _updateValidatorGroupHealth();
-    }
-
-    /// @dev Record the health of every `VALIDATOR_GROUPS` entry.
-    ///      `updateGroupHealth` is permissionless, but this only
-    ///      runs right after a fresh GroupHealth deployment, so re-running the script
-    ///      against an existing deployment still sends no transactions.
-    function _updateValidatorGroupHealth() private {
-        for (uint256 i = 0; i < config.validatorGroups.length; i++) {
-            address group = config.validatorGroups[i];
-            GroupHealth(groupHealth).updateGroupHealth(group);
-            DeployLog.a("GroupHealth: health recorded for", group);
-        }
     }
 
     /// @dev SpecificGroupStrategy.
@@ -464,17 +451,19 @@ contract DeployCore is DeployBase {
 
     /// @dev Activate every healthy `VALIDATOR_GROUPS` entry in the
     ///      DefaultStrategy, the group holding the most CELO first. `addActivatableGroup`
-    ///      is `onlyOwner`, so this only works while the deployer still owns the strategy.
+    ///      and `activateGroup` are `onlyOwner`, so this only works while the deployer
+    ///      still owns the strategy.
     function _activateValidatorGroups() private {
         if (config.validatorGroups.length == 0) {
             return;
         }
-        // A MultiSig owned Manager means this run is against an already deployed protocol,
-        // where activating a group is part of an upgrade proposal instead.
-        if (IOwnable(manager).owner() == multiSig) {
-            DeployLog.s(
-                "DefaultStrategy: Manager owned by MultiSig, activate the groups through it"
-            );
+        // The owner of the DefaultStrategy decides, because that is the contract the calls
+        // below need to own: a run interrupted between the Manager and the DefaultStrategy
+        // ownership transfers still holds the strategy and finishes the activation on the
+        // next run. Once the MultiSig owns it, activating a group is part of a MultiSig
+        // proposal instead.
+        if (IOwnable(defaultStrategy).owner() == multiSig) {
+            DeployLog.s("DefaultStrategy: owned by MultiSig, activate the groups through it");
             return;
         }
         address[] memory groups = _groupsByCeloDescending();
@@ -483,15 +472,22 @@ contract DeployCore is DeployBase {
         }
     }
 
-    /// @dev Make one group activatable and activate it at the tail of the sorted list.
-    ///      Groups the strategy already knows are left alone, so listing a group twice or
-    ///      resuming an interrupted run does not revert.
+    /// @dev Record the health of one group, then make it activatable and activate it at
+    ///      the tail of the sorted list if it is healthy. Groups the strategy already knows
+    ///      are left alone, so listing a group twice or resuming an interrupted run does
+    ///      not revert.
     function _activateValidatorGroup(address group) private {
         DefaultStrategy strategy = DefaultStrategy(defaultStrategy);
         if (strategy.isActive(group)) {
             DeployLog.a("DefaultStrategy: group already active", group);
             return;
         }
+        // `updateGroupHealth` is permissionless. It is sent here, right before the group is
+        // judged, rather than right after GroupHealth is deployed: a run interrupted
+        // between that deployment and the health updates reuses GroupHealth on the next
+        // run, and would otherwise find every group unhealthy.
+        GroupHealth(groupHealth).updateGroupHealth(group);
+        DeployLog.a("GroupHealth: health recorded for", group);
         if (!GroupHealth(groupHealth).isGroupValid(group)) {
             DeployLog.a("DefaultStrategy: group is not healthy, not activated", group);
             return;

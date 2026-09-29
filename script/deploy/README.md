@@ -124,11 +124,11 @@ anvil started with `--init <genesis>` as described below does have a base fee, s
 
 `VALIDATOR_GROUPS` gives the protocol the groups it votes for on a first deployment:
 
-- right after `GroupHealth` is deployed, `updateGroupHealth(group)` is called for every
-  listed group, which records whether the group is a registered validator group with an
-  elected member and an untouched slashing multiplier;
-- right after `DefaultStrategy.setDependencies`, every listed group that came out healthy
-  is passed to `addActivatableGroup(group)` and then `activateGroup(group, 0, tail)`.
+- right after `DefaultStrategy.setDependencies`, `updateGroupHealth(group)` is called for
+  every listed group that is not active yet, which records whether the group is a
+  registered validator group with an elected member and an untouched slashing multiplier;
+- every group that came out healthy is then passed to `addActivatableGroup(group)` and
+  `activateGroup(group, 0, tail)`.
 
 Groups are activated in descending order of the CELO the `Account` holds for them
 (`Account.getCeloForGroup`), which on a first deployment is zero everywhere, so they end
@@ -137,15 +137,14 @@ up in the sorted list in the order they were listed in - the first entry becomes
 The two steps are skipped, with a log line, when they cannot or need not run:
 
 ```
-GroupHealth: reused 0x1b6b...                                   # health is not refreshed
 DefaultStrategy: owned by MultiSig, propose setDependencies through the MultiSig
-DefaultStrategy: Manager owned by MultiSig, activate the groups through it
 DefaultStrategy: group is not healthy, not activated 0x5409...
 DefaultStrategy: group already active 0x70997...
 ```
 
 `addActivatableGroup` is `onlyOwner`, so the groups can only be activated while the
-deployer still owns the `DefaultStrategy` - that is, during the run that deploys it. Once
+deployer still owns the `DefaultStrategy` - during the run that deploys it, or the rerun
+of an interrupted one that had not transferred it to the MultiSig yet. Once
 the MultiSig owns it, `addActivatableGroup` and `activateGroup` have to go through a
 proposal, the same as `setDependencies`. A group that is already activatable or already
 active is left alone, so an interrupted run can simply be repeated.

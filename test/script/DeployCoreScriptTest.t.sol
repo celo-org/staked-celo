@@ -356,7 +356,7 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
     // =========================================================================
 
     function test_healthyGroupsAreActiveInTheListedOrder() public {
-        _assertActiveInListedOrder();
+        _assertActiveInListedOrder(_defaultStrategy());
     }
 
     function test_unhealthyGroupIsNotActivated() public {
@@ -376,14 +376,68 @@ contract DeployCoreValidatorGroupsTest is DevchainHelper {
 
         assertEq(deployScript.defaultStrategy(), strategyBefore);
         assertEq(deployScript.groupHealth(), address(_groupHealth()));
-        _assertActiveInListedOrder();
+        _assertActiveInListedOrder(_defaultStrategy());
         assertEq(_defaultStrategy().activatableGroupsCount(), 0);
+    }
+
+    // =========================================================================
+    //                         INTERRUPTED RUN
+    // =========================================================================
+
+    /// @dev A run that stopped after the Manager went to the MultiSig but before the
+    ///      DefaultStrategy did, on a GroupHealth that never got its health updates. The
+    ///      rerun still owns the strategy, so it records the health and activates the
+    ///      groups before handing the strategy over.
+    function test_rerunAfterManagerTransferActivatesTheGroups() public {
+        DeployCore resumed = _interruptedDeployment(false);
+
+        resumed.runInProcess(_config());
+
+        _assertResumedDeployment(resumed);
+    }
+
+    /// @dev The same with the Manager still owned by the deployer: the health the first
+    ///      run never recorded is what the rerun must not skip.
+    function test_rerunRecordsTheHealthTheInterruptedRunMissed() public {
+        DeployCore resumed = _interruptedDeployment(true);
+
+        resumed.runInProcess(_config());
+
+        _assertResumedDeployment(resumed);
+    }
+
+    /// @dev A second protocol deployed without `VALIDATOR_GROUPS`, so its GroupHealth holds
+    ///      no health records, with the ownership transfers the interrupted run would not
+    ///      have sent yet handed back to the deployer.
+    function _interruptedDeployment(bool managerToo) private returns (DeployCore resumed) {
+        resumed = new DeployCore();
+        DeployCore.CoreConfig memory config = _config();
+        config.validatorGroups = new address[](0);
+        resumed.runInProcess(config);
+
+        vm.startPrank(resumed.multiSig());
+        IOwnable(resumed.defaultStrategy()).transferOwnership(deployer);
+        if (managerToo) {
+            IOwnable(resumed.manager()).transferOwnership(deployer);
+        }
+        vm.stopPrank();
+
+        assertFalse(GroupHealth(resumed.groupHealth()).isGroupValid(healthyGroups[0]));
+        assertEq(DefaultStrategy(resumed.defaultStrategy()).getNumberOfGroups(), 0);
+    }
+
+    function _assertResumedDeployment(DeployCore resumed) private {
+        DefaultStrategy strategy = DefaultStrategy(resumed.defaultStrategy());
+        _assertActiveInListedOrder(strategy);
+        assertFalse(strategy.isActive(unelectedGroup));
+        assertTrue(GroupHealth(resumed.groupHealth()).isGroupValid(healthyGroups[1]));
+        assertEq(IOwnable(resumed.defaultStrategy()).owner(), resumed.multiSig());
+        assertEq(IOwnable(resumed.manager()).owner(), resumed.multiSig());
     }
 
     /// @dev The three healthy groups, most CELO first. They all hold none, so the order is
     ///      the one they were listed in.
-    function _assertActiveInListedOrder() private {
-        DefaultStrategy strategy = _defaultStrategy();
+    function _assertActiveInListedOrder(DefaultStrategy strategy) private {
         assertEq(strategy.getNumberOfGroups(), 3);
 
         (address head,) = strategy.getGroupsHead();
