@@ -2,6 +2,7 @@
 // Verifies that the Foundry build produces the same bytecode as a reference build.
 // DESCRIPTION below is the full explanation and is what --help prints.
 
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -45,6 +46,11 @@ const DESCRIPTION = [
   "                            on chain may predate the current sources. The runtime bytecode",
   "                            is compared twice: in full and with the CBOR metadata trailer",
   "                            stripped (the trailer only carries the metadata hash).",
+  "                            Records written by hardhat-deploy carry the bytecode. The ones",
+  "                            the Foundry scripts write carry only the address, so their code",
+  "                            is read from the chain with `cast code` (see --rpc-url). Linked",
+  "                            library addresses and immutables are only filled in at",
+  "                            deployment, so those bytes are masked on both sides.",
   "",
   "Exit status is non-zero when a strict comparison finds a difference.",
 ].join("\n");
@@ -52,7 +58,8 @@ const DESCRIPTION = [
 const USAGE = [
   `usage: ${PROG} [-h] [--reference REFERENCE]`,
   "                                [--update-reference UPDATE_REFERENCE]",
-  "                                [--deployments DEPLOYMENTS] [--out OUT]",
+  "                                [--deployments DEPLOYMENTS] [--rpc-url RPC_URL]",
+  "                                [--out OUT]",
 ].join("\n");
 
 const OPTIONS_HELP = [
@@ -64,14 +71,14 @@ const OPTIONS_HELP = [
   "                        regenerate the digest file from the current build",
   "  --deployments DEPLOYMENTS",
   "                        network name under deployments/ (informational)",
+  "  --rpc-url RPC_URL     node to read the code of records without bytecode from; an",
+  "                        URL or a foundry.toml rpc_endpoints alias (default: the",
+  "                        --deployments network name)",
   "  --out OUT             Foundry out directory",
 ].join("\n");
 
 /** One report line: source, contract, and the two comparison verdicts. */
 export type Row = readonly [source: string, contract: string, full: string, stripped: string];
-
-/** The creation and runtime bytecode of a Foundry artifact, hex without the 0x prefix. */
-export type ForgeBytecode = readonly [creation: string, runtime: string];
 
 export interface Digests {
   creation: string;
@@ -84,9 +91,19 @@ export interface Reference {
   contracts: Record<string, Digests>;
 }
 
+/** A byte range of runtime code, the way solc reports link and immutable references. */
+export interface ByteRange {
+  start: number;
+  length: number;
+}
+
 export interface ForgeArtifactJson {
   bytecode?: { object?: string };
-  deployedBytecode?: { object?: string };
+  deployedBytecode?: {
+    object?: string;
+    linkReferences?: Record<string, Record<string, ByteRange[]>>;
+    immutableReferences?: Record<string, ByteRange[]>;
+  };
   metadata?: { settings?: { compilationTarget?: Record<string, string> } };
 }
 
@@ -169,17 +186,65 @@ export function stripMetadata(hexstr: string): string {
   return code.slice(0, -(length + 2) * 2);
 }
 
-export function forgeArtifact(
+/**
+ * The runtime code of a Foundry artifact together with the byte ranges that only get their
+ * value at deployment: linked library addresses (placeholders in the artifact) and
+ * immutables (zeros in the artifact, e.g. the `__self` of every UUPS implementation).
+ */
+export interface ForgeRuntime {
+  code: string;
+  deployTimeRanges: ByteRange[];
+}
+
+export function forgeRuntime(
   outDir: string,
   sourceName: string,
   contractName: string
-): ForgeBytecode | null {
+): ForgeRuntime | null {
   const path = join(outDir, basename(sourceName), `${contractName}.json`);
   if (!existsSync(path)) {
     return null;
   }
-  const artifact = readJson(path) as ForgeArtifactJson;
-  return [norm(artifact.bytecode?.object ?? ""), norm(artifact.deployedBytecode?.object ?? "")];
+  const deployed = (readJson(path) as ForgeArtifactJson).deployedBytecode ?? {};
+  const linked = Object.values(deployed.linkReferences ?? {}).flatMap((libraries) =>
+    Object.values(libraries).flat()
+  );
+  const immutables = Object.values(deployed.immutableReferences ?? {}).flat();
+  return { code: norm(deployed.object ?? ""), deployTimeRanges: [...linked, ...immutables] };
+}
+
+/** Zeroes the given byte ranges, so linked or deployed code compares with an artifact. */
+export function maskRanges(hexstr: string, ranges: readonly ByteRange[]): string {
+  const digits = norm(hexstr).split("");
+  for (const { start, length } of ranges) {
+    const end = Math.min((start + length) * 2, digits.length);
+    for (let index = start * 2; index < end; index += 1) {
+      digits[index] = "0";
+    }
+  }
+  return digits.join("");
+}
+
+/** Returns the runtime code at an address as hex; empty (or `0x`) when it holds none. */
+export type CodeReader = (address: string) => string;
+
+/**
+ * Reads code with `cast code`, run from the repository root so that an rpc_endpoints alias
+ * of foundry.toml (`celo`, `sepolia`, `local`) resolves as well as a plain URL.
+ */
+export function castCodeReader(rpcUrl: string): CodeReader {
+  return (address) =>
+    execFileSync("cast", ["code", address, "--rpc-url", rpcUrl], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+}
+
+function errorMessage(error: unknown): string {
+  const stderr = (error as { stderr?: unknown }).stderr;
+  const text = typeof stderr === "string" && stderr.trim() !== "" ? stderr : String(error);
+  return text.trim().split("\n")[0] ?? "";
 }
 
 function implementationFiles(dir: string): string[] {
@@ -195,26 +260,56 @@ function implementationFiles(dir: string): string[] {
     .sort(byCodePoint);
 }
 
+/**
+ * Compares the implementation records of a network with the current build. A record
+ * without bytecode is read from the chain through `readCode`; without a reader, or when
+ * reading fails, it is reported as UNREAD instead of being compared with nothing.
+ */
 export function checkDeployments(
   network: string,
   outDir: string,
-  deploymentsDir: string = join(ROOT, "deployments")
+  deploymentsDir: string = join(ROOT, "deployments"),
+  readCode?: CodeReader
 ): number {
   const rows: Row[] = [];
+  const notes: string[] = [];
   for (const path of implementationFiles(join(deploymentsDir, network))) {
     const name = basename(path).replace("_Implementation.json", "");
-    const deployment = readJson(path) as { deployedBytecode?: string };
-    const forge = forgeArtifact(outDir, `${name}.sol`, name);
+    const deployment = readJson(path) as { address?: string; deployedBytecode?: string };
+    const forge = forgeRuntime(outDir, `${name}.sol`, name);
     if (forge === null) {
       rows.push([network, name, "MISSING", "MISSING"]);
       continue;
     }
-    const runtime = norm(deployment.deployedBytecode ?? "");
-    const full = runtime === forge[1];
-    const stripped = stripMetadata(runtime) === stripMetadata(forge[1]);
+    let runtime = norm(deployment.deployedBytecode ?? "");
+    if (runtime === "") {
+      if (readCode === undefined || !deployment.address) {
+        rows.push([network, name, "UNREAD", "UNREAD"]);
+        notes.push(`${name}: the record has no bytecode and no code reader was given`);
+        continue;
+      }
+      try {
+        runtime = norm(readCode(deployment.address));
+      } catch (error) {
+        rows.push([network, name, "UNREAD", "UNREAD"]);
+        notes.push(`${name}: reading ${deployment.address} failed: ${errorMessage(error)}`);
+        continue;
+      }
+      if (runtime === "") {
+        rows.push([network, name, "NO CODE", "NO CODE"]);
+        continue;
+      }
+    }
+    const expected = maskRanges(forge.code, forge.deployTimeRanges);
+    const actual = maskRanges(runtime, forge.deployTimeRanges);
+    const full = actual === expected;
+    const stripped = stripMetadata(actual) === stripMetadata(expected);
     rows.push([network, name, full ? "ok" : "DIFF", stripped ? "ok" : "DIFF"]);
   }
   printTable(`deployments/${network} implementations vs Foundry (informational)`, rows);
+  for (const note of notes) {
+    console.log(`  ${note}`);
+  }
   return 0;
 }
 
@@ -360,6 +455,7 @@ interface Args {
   reference?: string;
   updateReference?: string;
   deployments?: string;
+  rpcUrl?: string;
   out: string;
   help: boolean;
 }
@@ -375,7 +471,9 @@ export function parseArgs(argv: readonly string[]): Args {
     const equals = token.indexOf("=");
     const flag = equals === -1 ? token : token.slice(0, equals);
     let value = equals === -1 ? undefined : token.slice(equals + 1);
-    if (!["--reference", "--update-reference", "--deployments", "--out"].includes(flag)) {
+    if (
+      !["--reference", "--update-reference", "--deployments", "--rpc-url", "--out"].includes(flag)
+    ) {
       throw usageError(`unrecognized arguments: ${token}`);
     }
     if (value === undefined) {
@@ -391,6 +489,8 @@ export function parseArgs(argv: readonly string[]): Args {
       args.updateReference = value;
     } else if (flag === "--deployments") {
       args.deployments = value;
+    } else if (flag === "--rpc-url") {
+      args.rpcUrl = value;
     } else {
       args.out = value;
     }
@@ -421,7 +521,8 @@ function run(argv: readonly string[]): number {
     failures += checkReference(args.reference, args.out);
   }
   if (args.deployments) {
-    failures += checkDeployments(args.deployments, args.out);
+    const reader = castCodeReader(args.rpcUrl ?? args.deployments);
+    failures += checkDeployments(args.deployments, args.out, undefined, reader);
   }
 
   if (failures) {

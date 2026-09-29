@@ -16,7 +16,9 @@ import {
   checkDeployments,
   checkReference,
   digest,
+  maskRanges,
   norm,
+  parseArgs,
   serializeReference,
   stripMetadata,
   updateReference,
@@ -62,6 +64,8 @@ interface ArtifactSpec {
   filename?: string;
   /** Drops metadata.settings.compilationTarget, the way a non-contract artifact has none. */
   withoutCompilationTarget?: boolean;
+  linkReferences?: Record<string, Record<string, { start: number; length: number }[]>>;
+  immutableReferences?: Record<string, { start: number; length: number }[]>;
 }
 
 function writeForgeArtifact(outDir: string, spec: ArtifactSpec): void {
@@ -69,7 +73,11 @@ function writeForgeArtifact(outDir: string, spec: ArtifactSpec): void {
   mkdirSync(directory, { recursive: true });
   const artifact = {
     bytecode: { object: spec.creation ?? CREATION_A },
-    deployedBytecode: { object: spec.runtime ?? RUNTIME_A },
+    deployedBytecode: {
+      object: spec.runtime ?? RUNTIME_A,
+      ...(spec.linkReferences ? { linkReferences: spec.linkReferences } : {}),
+      ...(spec.immutableReferences ? { immutableReferences: spec.immutableReferences } : {}),
+    },
     ...(spec.withoutCompilationTarget
       ? {}
       : { metadata: { settings: { compilationTarget: { [spec.source]: spec.contract } } } }),
@@ -328,6 +336,145 @@ describe("--deployments", () => {
     assert.match(row("Vote"), /DIFF\s+DIFF/);
     assert.match(row("Gone"), /MISSING\s+MISSING/);
   });
+
+  // The artifact of a contract that links a library and has an immutable: the 20 byte
+  // placeholder solc leaves for the library address starts at byte 2, the 32 byte
+  // immutable (zeros in the artifact) at byte 22.
+  const PLACEHOLDER = `__$${"ab".repeat(17)}$__`;
+  const LINKED_ARTIFACT = withMetadata(`6080${PLACEHOLDER}${"00".repeat(32)}fd`, METADATA_A);
+  const LINKED_REFERENCES = {
+    linkReferences: { "contracts/Lib.sol": { Lib: [{ start: 2, length: 20 }] } },
+    immutableReferences: { "42": [{ start: 22, length: 32 }] },
+  };
+  /** The same contract as deployed: library address and immutable filled in. */
+  const LINKED_ON_CHAIN = withMetadata(`6080${"11".repeat(20)}${"22".repeat(32)}fd`, METADATA_A);
+
+  /** A deployments/<network> directory holding the given records verbatim. */
+  function records(entries: Record<string, object>): string {
+    const root = temporaryDirectory();
+    mkdirSync(join(root, "testnet"), { recursive: true });
+    for (const [name, record] of Object.entries(entries)) {
+      writeFileSync(join(root, "testnet", `${name}_Implementation.json`), JSON.stringify(record));
+    }
+    return root;
+  }
+
+  function runDeployments(
+    outDir: string,
+    root: string,
+    readCode?: (address: string) => string
+  ): (name: string) => string {
+    let status = -1;
+    const output = capture(() => {
+      status = checkDeployments("testnet", outDir, root, readCode);
+    });
+    assert.equal(status, 0, "the deployments comparison is informational");
+    return (name) => output.split("\n").find((line) => line.includes(` ${name}`)) ?? "";
+  }
+
+  it("reads the code of a record without bytecode from the chain", () => {
+    const outDir = temporaryDirectory();
+    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
+    writeForgeArtifact(outDir, { source: "contracts/Vote.sol", contract: "Vote" });
+    const root = records({
+      Account: { address: "0x00000000000000000000000000000000000000a1" },
+      Vote: { address: "0x00000000000000000000000000000000000000b2" },
+    });
+    const read: string[] = [];
+    const chain: Record<string, string> = {
+      "0x00000000000000000000000000000000000000a1": RUNTIME_A,
+      "0x00000000000000000000000000000000000000b2": withMetadata("6080604052600080fd", METADATA_A),
+    };
+
+    const row = runDeployments(outDir, root, (address) => {
+      read.push(address);
+      return chain[address] ?? "0x";
+    });
+
+    assert.deepEqual(read.sort(), Object.keys(chain).sort());
+    assert.match(row("Account"), /ok\s+ok/);
+    assert.match(row("Vote"), /DIFF\s+DIFF/);
+  });
+
+  it("masks linked library addresses and immutables on both sides", () => {
+    const outDir = temporaryDirectory();
+    writeForgeArtifact(outDir, {
+      source: "contracts/Strategy.sol",
+      contract: "Strategy",
+      runtime: LINKED_ARTIFACT,
+      ...LINKED_REFERENCES,
+    });
+    writeForgeArtifact(outDir, {
+      source: "contracts/Linked.sol",
+      contract: "Linked",
+      runtime: LINKED_ARTIFACT,
+      ...LINKED_REFERENCES,
+    });
+    writeForgeArtifact(outDir, {
+      source: "contracts/Changed.sol",
+      contract: "Changed",
+      runtime: LINKED_ARTIFACT,
+      ...LINKED_REFERENCES,
+    });
+    const root = records({
+      // Read from the chain: the library address and the immutable are filled in.
+      Strategy: { address: "0x00000000000000000000000000000000000000c3" },
+      // A hardhat-deploy record stores the linked code.
+      Linked: {
+        address: "0x00000000000000000000000000000000000000d4",
+        deployedBytecode: LINKED_ON_CHAIN,
+      },
+      // A byte outside the masked ranges differs.
+      Changed: {
+        address: "0x00000000000000000000000000000000000000e5",
+        deployedBytecode: withMetadata(`6080${"11".repeat(20)}${"22".repeat(32)}fe`, METADATA_A),
+      },
+    });
+
+    const row = runDeployments(outDir, root, () => LINKED_ON_CHAIN);
+
+    assert.match(row("Strategy"), /ok\s+ok/);
+    assert.match(row("Linked"), /ok\s+ok/);
+    assert.match(row("Changed"), /DIFF\s+DIFF/);
+  });
+
+  it("reports a recorded address without code and a read that fails", () => {
+    const outDir = temporaryDirectory();
+    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
+    writeForgeArtifact(outDir, { source: "contracts/Vote.sol", contract: "Vote" });
+    const root = records({
+      Account: { address: "0x00000000000000000000000000000000000000a1" },
+      Vote: { address: "0x00000000000000000000000000000000000000b2" },
+    });
+
+    const row = runDeployments(outDir, root, (address) => {
+      if (address.endsWith("b2")) {
+        throw Object.assign(new Error("cast failed"), { stderr: "Error: connection refused\n" });
+      }
+      return "0x";
+    });
+
+    assert.match(row("Account"), /NO CODE\s+NO CODE/);
+    assert.match(row("Vote"), /UNREAD\s+UNREAD/);
+    assert.match(row("Vote:"), /reading 0x0+b2 failed: Error: connection refused/);
+  });
+
+  it("reports a record without bytecode as unread when no reader is given", () => {
+    const outDir = temporaryDirectory();
+    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
+    const root = records({ Account: { address: "0x00000000000000000000000000000000000000a1" } });
+
+    const row = runDeployments(outDir, root);
+
+    assert.match(row("Account"), /UNREAD\s+UNREAD/);
+  });
+});
+
+describe("maskRanges", () => {
+  it("zeroes whole bytes and ignores ranges past the end", () => {
+    assert.equal(maskRanges("0xaabbccdd", [{ start: 1, length: 2 }]), "aa0000dd");
+    assert.equal(maskRanges("aabb", [{ start: 1, length: 4 }]), "aa00");
+  });
 });
 
 describe("--update-reference", () => {
@@ -377,6 +524,13 @@ describe("--update-reference", () => {
 });
 
 describe("command line", () => {
+  it("accepts --rpc-url next to --deployments", () => {
+    const args = parseArgs(["--deployments", "celo", "--rpc-url=https://forno.celo.org"]);
+
+    assert.equal(args.deployments, "celo");
+    assert.equal(args.rpcUrl, "https://forno.celo.org");
+  });
+
   it("exits 2 when no mode is selected", () => {
     let status = -1;
     const output = capture(() => {

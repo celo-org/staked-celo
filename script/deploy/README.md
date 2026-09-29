@@ -337,6 +337,13 @@ was deployed. Check which implementations still qualify before submitting anythi
 node scripts/bytecode-compat-check.ts --deployments celo
 ```
 
+The hardhat-deploy records carry the bytecode they were deployed with. The records the
+Foundry scripts write carry only the address, so for those the script reads the code from
+the chain with `cast code`, through `--rpc-url` (a URL, or by default the network name
+resolved through `rpc_endpoints` in `foundry.toml`). Linked library addresses and
+immutables, which only get their value at deployment, are masked on both sides of the
+comparison.
+
 Contracts reported as `DIFF` there have been edited since they were deployed and will come
 back from Sourcify as `bytecode_length_mismatch` or a partial match. That is a correct
 result, not a tooling problem: verify those addresses from the commit they were deployed
