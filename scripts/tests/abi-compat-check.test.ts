@@ -427,21 +427,36 @@ function vault(shape: Shape, members: string[], astId: number, abi: AbiEntry[] =
 
 type Build = Record<string, Artifact>;
 
+/**
+ * Files to write next to one side's artifacts, by path relative to the directory holding
+ * its `out/`, e.g. `out/build-info/<id>.json` or `cache/solidity-files-cache.json`.
+ */
+type Extras = Record<string, unknown>;
+
 /** Writes both sides as Foundry artifacts and runs the checker over them. */
-function runCheck(baseline: Build, current: Build): { status: number; output: string } {
+function runCheck(
+  baseline: Build,
+  current: Build,
+  extras: { baseline?: Extras; current?: Extras } = {}
+): { status: number; output: string } {
   const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "abi-compat-"));
   try {
     const directories: string[] = [];
-    const sides: Array<[string, Build]> = [
-      ["baseline", baseline],
-      ["current", current],
+    const sides: Array<[string, Build, Extras]> = [
+      ["baseline", baseline, extras.baseline ?? {}],
+      ["current", current, extras.current ?? {}],
     ];
-    for (const [side, artifacts] of sides) {
+    for (const [side, artifacts, files] of sides) {
       const out = path.join(tmp, side, "out");
       for (const [name, content] of Object.entries(artifacts)) {
         const contractDir = path.join(out, `${name}.sol`);
         fs.mkdirSync(contractDir, { recursive: true });
         fs.writeFileSync(path.join(contractDir, `${name}.json`), JSON.stringify(content));
+      }
+      for (const [relative, content] of Object.entries(files)) {
+        const file = path.join(tmp, side, relative);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify(content));
       }
       directories.push(out);
     }
@@ -1088,4 +1103,123 @@ test("renamed parameter is compatible", () => {
     { Vault: abiVault([setRangeFunction("_min", "_max")]) },
     { Vault: abiVault([setRangeFunction("min", "max")]) }
   );
+});
+
+/** The same artifact, compiled from another source file. */
+function fromSource(content: Artifact, source: string, contract: string): Artifact {
+  return { ...content, metadata: { settings: { compilationTarget: { [source]: contract } } } };
+}
+
+// Solidity allows the same contract name in two source files. Keyed by the name alone,
+// the file walked last stood in for the other, and a change to the real upgrade target
+// went unchecked.
+test("same contract name in two source files is checked per file", () => {
+  const legacy = fromSource(
+    artifact("Vault", [slotEntry("owner", 0, "t_address")], { t_address: ADDRESS }),
+    "contracts/legacy/Vault.sol",
+    "Vault"
+  );
+  const output = assertRejected(
+    {
+      Vault: artifact("Vault", [slotEntry("treasury", 0, "t_address")], { t_address: ADDRESS }),
+      VaultLegacy: legacy,
+    },
+    {
+      Vault: artifact("Vault", [slotEntry("treasury", 0, "t_uint256")], { t_uint256: UINT256 }),
+      VaultLegacy: legacy,
+    },
+    "variable treasury changed type from address to uint256"
+  );
+  assert.ok(output.includes("contracts/Vault.sol:Vault"), output);
+});
+
+test("contract whose file moved is still paired by its name", () => {
+  const vault = artifact("Vault", [slotEntry("total", 0, "t_uint256")], { t_uint256: UINT256 });
+  assertCompatible(
+    { Vault: vault },
+    { Vault: fromSource(vault, "contracts/vaults/Vault.sol", "Vault") }
+  );
+});
+
+/** A source unit declaring a file level `Status` and nothing else, so no artifact of its own. */
+function typesOnlyAst(enumId: number, members: string[]): AstNode {
+  return {
+    nodeType: "SourceUnit",
+    absolutePath: "contracts/Types.sol",
+    nodes: [
+      {
+        id: enumId,
+        nodeType: "EnumDefinition",
+        name: "Status",
+        canonicalName: "Status",
+        members: members.map((member) => ({ nodeType: "EnumValue", name: member })),
+      },
+    ],
+  };
+}
+
+/** A Vault storing the `Status` it imports from contracts/Types.sol. */
+function importingVault(enumId: number): Artifact {
+  const typeId = `t_enum(Status)${enumId}`;
+  return artifact(
+    "Vault",
+    [slotEntry("status", 0, typeId)],
+    { [typeId]: { encoding: "inplace", label: "enum Status", numberOfBytes: "1" } },
+    ABI,
+    {
+      nodeType: "SourceUnit",
+      absolutePath: "contracts/Vault.sol",
+      nodes: [{ nodeType: "ContractDefinition", name: "Vault", nodes: [] }],
+    }
+  );
+}
+
+/** One compiler run's build-info, holding Types.sol with the given `Status` members. */
+function buildInfo(enumId: number, members: string[]): unknown {
+  return { output: { sources: { "contracts/Types.sol": { ast: typesOnlyAst(enumId, members) } } } };
+}
+
+// A file that declares no contract has no artifact, so its declarations are only in the
+// build-info of the compiler run. Before, the stored enum could not be resolved and the
+// reorder only reached review.
+test("enum from a file without contracts is compared through the build-info", () => {
+  const { status, output } = runCheck(
+    { Vault: importingVault(5) },
+    { Vault: importingVault(5) },
+    {
+      baseline: { "out/build-info/run.json": buildInfo(5, ["Pending", "Active"]) },
+      current: { "out/build-info/run.json": buildInfo(5, ["Active", "Pending"]) },
+    }
+  );
+  assert.equal(status, 1, output);
+  assert.ok(output.includes("enum Status: value 0 was Pending, is now Active"), output);
+});
+
+// An incremental build keeps earlier compiler runs, each numbering its AST nodes on its
+// own. Forge's cache names the run behind each artifact, and only that run's ids mean
+// anything for its storage layout.
+test("the compiler run the cache names is used, not an earlier one", () => {
+  const cache = {
+    files: {
+      "contracts/Vault.sol": {
+        artifacts: {
+          Vault: { "0.8.11": { default: { path: "Vault.sol/Vault.json", build_id: "fresh" } } },
+        },
+      },
+    },
+  };
+  const { status, output } = runCheck(
+    { Vault: importingVault(5) },
+    { Vault: importingVault(5) },
+    {
+      baseline: {
+        "out/build-info/earlier.json": buildInfo(5, ["Frozen"]),
+        "out/build-info/fresh.json": buildInfo(5, ["Pending", "Active"]),
+        "cache/solidity-files-cache.json": cache,
+      },
+      current: { "out/build-info/run.json": buildInfo(5, ["Pending", "Active"]) },
+    }
+  );
+  assert.equal(status, 0, output);
+  assert.ok(output.includes("compatible with the baseline (0 item(s) flagged for review)"), output);
 });

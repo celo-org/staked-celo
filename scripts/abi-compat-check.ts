@@ -65,6 +65,11 @@
  *                   flagged for review. The layout names the declaration by its AST id,
  *                   so a stored enum is always compared with the one it stores.
  *
+ * Contracts are paired by name, and by source file as well where either build declares
+ * a name in more than one file. Enum and value type declarations come from the build-info
+ * of the compiler run that built each contract (named by Forge's cache next to `out/`, or
+ * the only run there is), which also holds the files that declare no contract.
+ *
  * Findings come in two flavours: ERROR (breaks a deployed proxy, exit status 1) and
  * REVIEW (legal in principle but a human has to confirm the intent, exit status 0).
  *
@@ -75,6 +80,8 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+
+import { buildInfoIds, buildInfoSources, contractBuilds } from "./lib/foundry-builds.ts";
 
 // Contracts outside the check: mocks, test helpers,
 // interfaces, proxies and the contracts inherited from the Celo monorepo are not
@@ -475,19 +482,82 @@ function walk(root: string): Array<{ directory: string; files: string[] }> {
 }
 
 /**
- * Maps contract name -> artifact for the compiled sources under sourcePrefix.
+ * The checked contracts of one build.
  *
- * Returns the AST level definitions of the whole build alongside, keyed by kind, the
- * excluded sources included: an enum or a value type a checked contract stores is
- * often declared by an interface or by one of the inherited OpenZeppelin contracts,
- * whose own layout is not checked.
+ * A contract is keyed by its name, or by `<source>:<name>` where two source files of the
+ * build declare the same name: Solidity allows that, and keying both by the name would
+ * let one silently stand in for the other.
  */
-export function loadArtifacts(
+export type LoadedBuild = {
+  artifacts: Map<string, Artifact>;
+  /** Source file and contract name behind every key. */
+  sources: Map<string, string>;
+  names: Map<string, string>;
+  /** The declarations the contract artifacts' own ASTs carry, every build mixed. */
+  definitions: Definitions;
+  /**
+   * Per key, the declarations of the compiler run that built the contract: every source
+   * it imports, including files that declare no contract, numbered in one AST id space.
+   */
+  buildDefinitions: Map<string, Definitions>;
+};
+
+/** The declarations of every source file of one compiler run. */
+function runDefinitions(outDir: string, buildId: string): Definitions {
+  const definitions: Definitions = { enum: emptyIndex(), value_type: emptyIndex() };
+  for (const [source, ast] of buildInfoSources(outDir, buildId)) {
+    for (const [name, members, id] of enumDefinitions(ast as AstNode)) {
+      addDefinition(definitions.enum, name, members, id, source);
+    }
+    for (const [name, underlying, id] of valueTypeDefinitions(ast as AstNode)) {
+      addDefinition(definitions.value_type, name, underlying, id, source);
+    }
+  }
+  return definitions;
+}
+
+/**
+ * The declarations of the compiler run behind each checked contract, where it can be
+ * told: from Forge's cache, or from the only build-info there is (a clean build, such as
+ * CI's, is one compiler run). Contracts left out fall back to the artifact ASTs.
+ */
+function loadBuildDefinitions(
   outDir: string,
-  exclude: RegExp,
-  sourcePrefix: string
-): { artifacts: Map<string, Artifact>; definitions: Definitions } {
-  const artifacts = new Map<string, Artifact>();
+  keys: Array<{ key: string; source: string; name: string }>
+): Map<string, Definitions> {
+  const ids = buildInfoIds(outDir);
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const cached = contractBuilds(outDir);
+  const only = ids.length === 1 ? ids[0] : undefined;
+  const runs = new Map<string, Definitions>();
+  const perKey = new Map<string, Definitions>();
+  for (const { key, source, name } of keys) {
+    const buildId = cached.get(`${source}:${name}`) ?? only;
+    if (buildId === undefined || !ids.includes(buildId)) {
+      continue;
+    }
+    let definitions = runs.get(buildId);
+    if (definitions === undefined) {
+      definitions = runDefinitions(outDir, buildId);
+      runs.set(buildId, definitions);
+    }
+    perKey.set(key, definitions);
+  }
+  return perKey;
+}
+
+/**
+ * Loads the checked contracts - the compiled sources under sourcePrefix that the
+ * exclusion regex lets through - of one Foundry out directory.
+ *
+ * The declarations come along for the whole build, the excluded sources included: an
+ * enum or a value type a checked contract stores is often declared by an interface or
+ * by one of the inherited OpenZeppelin contracts, whose own layout is not checked.
+ */
+export function loadArtifacts(outDir: string, exclude: RegExp, sourcePrefix: string): LoadedBuild {
+  const found: Array<{ source: string; name: string; artifact: Artifact }> = [];
   const definitions: Definitions = { enum: emptyIndex(), value_type: emptyIndex() };
   for (const { directory, files } of walk(outDir)) {
     const present = new Set(files);
@@ -526,10 +596,47 @@ export function loadArtifacts(
       if (!source.startsWith(sourcePrefix) || exclude.test(name)) {
         continue;
       }
-      artifacts.set(name, artifact);
+      found.push({ source, name, artifact });
     }
   }
-  return { artifacts, definitions };
+  const declared = new Map<string, number>();
+  for (const { name } of found) {
+    declared.set(name, (declared.get(name) ?? 0) + 1);
+  }
+  const artifacts = new Map<string, Artifact>();
+  const sources = new Map<string, string>();
+  const names = new Map<string, string>();
+  const keys: Array<{ key: string; source: string; name: string }> = [];
+  for (const { source, name, artifact } of found) {
+    const key = (declared.get(name) ?? 0) > 1 ? `${source}:${name}` : name;
+    artifacts.set(key, artifact);
+    sources.set(key, source);
+    names.set(key, name);
+    keys.push({ key, source, name });
+  }
+  const buildDefinitions = loadBuildDefinitions(outDir, keys);
+  return { artifacts, sources, names, definitions, buildDefinitions };
+}
+
+/**
+ * The key of the current contract a baseline contract is compared with. The name
+ * decides while it is unique on both sides, so a contract whose file moved still pairs
+ * up. Where either side declares the name more than once, the source file decides too.
+ */
+export function counterpart(key: string, base: LoadedBuild, cur: LoadedBuild): string | undefined {
+  if (cur.artifacts.has(key)) {
+    return key;
+  }
+  const source = base.sources.get(key);
+  const name = base.names.get(key);
+  if (source === undefined || name === undefined) {
+    return undefined;
+  }
+  const bySource = `${source}:${name}`;
+  if (cur.artifacts.has(bySource)) {
+    return bySource;
+  }
+  return cur.artifacts.has(name) && cur.sources.get(name) === source ? name : undefined;
 }
 
 /** Number of slots the variable occupies, starting at its own slot. */
@@ -1694,17 +1801,22 @@ export function main(
   const results: ContractResult[] = [];
   const errors: Finding[] = [];
   const reviews: Finding[] = [];
+  const paired = new Set<string>();
   for (const name of [...base.artifacts.keys()].sort(compareStrings)) {
     const findings: Finding[] = [];
     const baseline = base.artifacts.get(name) as Artifact;
-    const current = cur.artifacts.get(name);
-    if (current === undefined) {
+    const curKey = counterpart(name, base, cur);
+    const current = curKey === undefined ? undefined : cur.artifacts.get(curKey);
+    if (curKey === undefined || current === undefined) {
       findings.push({ level: ERROR, name, message: "contract is gone from the current build" });
     } else {
+      paired.add(curKey);
       const reached: ReachedSets = { enum: new Map(), value_type: new Map() };
       checkStorage(name, baseline, current, reached, findings);
       checkAbi(name, baseline, current, reached, findings);
-      checkDefinitions(name, reached, base.definitions, cur.definitions, findings);
+      const baseDefinitions = base.buildDefinitions.get(name) ?? base.definitions;
+      const curDefinitions = cur.buildDefinitions.get(curKey) ?? cur.definitions;
+      checkDefinitions(name, reached, baseDefinitions, curDefinitions, findings);
     }
     results.push({ name, findings });
     for (const finding of findings) {
@@ -1716,9 +1828,7 @@ export function main(
     }
   }
 
-  const added = [...cur.artifacts.keys()]
-    .filter((name) => !base.artifacts.has(name))
-    .sort(compareStrings);
+  const added = [...cur.artifacts.keys()].filter((name) => !paired.has(name)).sort(compareStrings);
   if (added.length > 0) {
     print(`new contracts (not checked): ${added.join(", ")}`);
   }
