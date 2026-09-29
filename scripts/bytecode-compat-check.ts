@@ -29,28 +29,22 @@ const REFERENCE_ALGORITHM = "sha256 of the lowercase hex digits, without the 0x 
 const DESCRIPTION = [
   "Verifies that the Foundry build produces the same bytecode as a reference build.",
   "",
-  "The production contracts must keep compiling to exactly the bytecode Hardhat produced",
-  "(solc 0.8.11, evm istanbul, optimizer off, literal metadata content). Three references",
-  "are supported:",
+  "The production contracts must keep compiling to exactly the bytecode that was audited and",
+  "deployed (solc 0.8.11, evm istanbul, optimizer off, literal metadata content). Two",
+  "references are supported:",
   "",
   "  --reference FILE          Checked-in digests of every contract's creation and runtime",
   "                            bytecode (scripts/bytecode-reference.json). This is the check",
-  "                            CI runs: it needs no Hardhat install, and it fails as soon as",
-  "                            a contract or a compiler setting changes, because the solc",
-  "                            settings are hashed into the metadata trailer. Regenerate it",
-  "                            with --update-reference when a contract change is intended.",
+  "                            CI runs: it fails as soon as a contract or a compiler setting",
+  "                            changes, because the solc settings are hashed into the",
+  "                            metadata trailer. Regenerate it with --update-reference when",
+  "                            a contract change is intended.",
   "",
-  "  --hardhat-artifacts DIR   Hardhat `artifacts/contracts` directory, produced by the frozen",
-  "                            toolchain, kept in git history before the Foundry migration. Every contract is compared on both",
-  "                            creation and runtime bytecode. This is the strict check that",
-  "                            originally proved the Foundry build reproduces the Hardhat one.",
-  "",
-  "  --deployments NETWORK     `deployments/<NETWORK>/*_Implementation.json` produced by",
-  "                            hardhat-deploy. Only informational: implementations on chain",
-  "                            may predate the current sources.",
-  "",
-  "For the two artifact-based modes the comparison is reported twice: on the full bytecode",
-  "and with the CBOR metadata trailer stripped (the trailer only carries the metadata hash).",
+  "  --deployments NETWORK     `deployments/<NETWORK>/*_Implementation.json` records of the",
+  "                            deployed implementations. Only informational: implementations",
+  "                            on chain may predate the current sources. The runtime bytecode",
+  "                            is compared twice: in full and with the CBOR metadata trailer",
+  "                            stripped (the trailer only carries the metadata hash).",
   "",
   "Exit status is non-zero when a strict comparison finds a difference.",
 ].join("\n");
@@ -58,7 +52,6 @@ const DESCRIPTION = [
 const USAGE = [
   `usage: ${PROG} [-h] [--reference REFERENCE]`,
   "                                [--update-reference UPDATE_REFERENCE]",
-  "                                [--hardhat-artifacts HARDHAT_ARTIFACTS]",
   "                                [--deployments DEPLOYMENTS] [--out OUT]",
 ].join("\n");
 
@@ -69,8 +62,6 @@ const OPTIONS_HELP = [
   "                        checked-in bytecode digests to verify against (strict)",
   "  --update-reference UPDATE_REFERENCE",
   "                        regenerate the digest file from the current build",
-  "  --hardhat-artifacts HARDHAT_ARTIFACTS",
-  "                        Hardhat artifacts/contracts directory (strict)",
   "  --deployments DEPLOYMENTS",
   "                        network name under deployments/ (informational)",
   "  --out OUT             Foundry out directory",
@@ -97,13 +88,6 @@ export interface ForgeArtifactJson {
   bytecode?: { object?: string };
   deployedBytecode?: { object?: string };
   metadata?: { settings?: { compilationTarget?: Record<string, string> } };
-}
-
-export interface HardhatArtifactJson {
-  contractName: string;
-  sourceName: string;
-  bytecode?: string;
-  deployedBytecode?: string;
 }
 
 /** A contract of the default compiler profile, as found under the Foundry out directory. */
@@ -198,67 +182,6 @@ export function forgeArtifact(
   return [norm(artifact.bytecode?.object ?? ""), norm(artifact.deployedBytecode?.object ?? "")];
 }
 
-/** Compares on the full bytecode and again with the CBOR metadata trailer stripped. */
-export function compare(
-  referenceCreation: string,
-  referenceRuntime: string,
-  forgeCreation: string,
-  forgeRuntime: string
-): readonly [full: boolean, stripped: boolean] {
-  const full = referenceCreation === forgeCreation && referenceRuntime === forgeRuntime;
-  const stripped =
-    stripMetadata(referenceCreation) === stripMetadata(forgeCreation) &&
-    stripMetadata(referenceRuntime) === stripMetadata(forgeRuntime);
-  return [full, stripped];
-}
-
-/** Every *.json under `dir`, recursively, in code point order. */
-function jsonFilesRecursive(dir: string): string[] {
-  const found: string[] = [];
-  for (const entry of walk(dir)) {
-    for (const file of entry.files) {
-      if (file.startsWith(".") || !file.endsWith(".json")) {
-        continue;
-      }
-      found.push(join(entry.dir, file));
-    }
-  }
-  return found.sort(byCodePoint);
-}
-
-export function checkHardhat(artifactsDir: string, outDir: string): number {
-  let failures = 0;
-  const rows: Row[] = [];
-  for (const path of jsonFilesRecursive(artifactsDir)) {
-    if (path.endsWith(".dbg.json")) {
-      continue;
-    }
-    const artifact = readJson(path) as HardhatArtifactJson;
-    if (!artifact.bytecode || artifact.bytecode === "0x") {
-      continue; // abstract contract, interface or library without code
-    }
-    const { contractName: name, sourceName: source } = artifact;
-    const forge = forgeArtifact(outDir, source, name);
-    if (forge === null) {
-      rows.push([source, name, "MISSING", "MISSING"]);
-      failures += 1;
-      continue;
-    }
-    const [full, stripped] = compare(
-      norm(artifact.bytecode),
-      norm(artifact.deployedBytecode ?? ""),
-      forge[0],
-      forge[1]
-    );
-    rows.push([source, name, full ? "ok" : "DIFF", stripped ? "ok" : "DIFF"]);
-    if (!full) {
-      failures += 1;
-    }
-  }
-  printTable("Hardhat artifacts vs Foundry", rows);
-  return failures;
-}
-
 function implementationFiles(dir: string): string[] {
   let names: string[];
   try {
@@ -272,9 +195,13 @@ function implementationFiles(dir: string): string[] {
     .sort(byCodePoint);
 }
 
-export function checkDeployments(network: string, outDir: string): number {
+export function checkDeployments(
+  network: string,
+  outDir: string,
+  deploymentsDir: string = join(ROOT, "deployments")
+): number {
   const rows: Row[] = [];
-  for (const path of implementationFiles(join(ROOT, "deployments", network))) {
+  for (const path of implementationFiles(join(deploymentsDir, network))) {
     const name = basename(path).replace("_Implementation.json", "");
     const deployment = readJson(path) as { deployedBytecode?: string };
     const forge = forgeArtifact(outDir, `${name}.sol`, name);
@@ -432,7 +359,6 @@ export function printTable(
 interface Args {
   reference?: string;
   updateReference?: string;
-  hardhatArtifacts?: string;
   deployments?: string;
   out: string;
   help: boolean;
@@ -449,15 +375,7 @@ export function parseArgs(argv: readonly string[]): Args {
     const equals = token.indexOf("=");
     const flag = equals === -1 ? token : token.slice(0, equals);
     let value = equals === -1 ? undefined : token.slice(equals + 1);
-    if (
-      ![
-        "--reference",
-        "--update-reference",
-        "--hardhat-artifacts",
-        "--deployments",
-        "--out",
-      ].includes(flag)
-    ) {
+    if (!["--reference", "--update-reference", "--deployments", "--out"].includes(flag)) {
       throw usageError(`unrecognized arguments: ${token}`);
     }
     if (value === undefined) {
@@ -471,8 +389,6 @@ export function parseArgs(argv: readonly string[]): Args {
       args.reference = value;
     } else if (flag === "--update-reference") {
       args.updateReference = value;
-    } else if (flag === "--hardhat-artifacts") {
-      args.hardhatArtifacts = value;
     } else if (flag === "--deployments") {
       args.deployments = value;
     } else {
@@ -488,10 +404,8 @@ function run(argv: readonly string[]): number {
     console.log(`${USAGE}\n\n${DESCRIPTION}\n\n${OPTIONS_HELP}`);
     return 0;
   }
-  if (!(args.reference || args.updateReference || args.hardhatArtifacts || args.deployments)) {
-    throw usageError(
-      "pass --reference, --update-reference, --hardhat-artifacts and/or --deployments"
-    );
+  if (!(args.reference || args.updateReference || args.deployments)) {
+    throw usageError("pass --reference, --update-reference and/or --deployments");
   }
   if (!isDirectory(args.out)) {
     throw exitError(1, `Foundry out directory not found: ${args.out} (run \`forge build\` first)`);
@@ -505,9 +419,6 @@ function run(argv: readonly string[]): number {
   let failures = 0;
   if (args.reference) {
     failures += checkReference(args.reference, args.out);
-  }
-  if (args.hardhatArtifacts) {
-    failures += checkHardhat(args.hardhatArtifacts, args.out);
   }
   if (args.deployments) {
     failures += checkDeployments(args.deployments, args.out);

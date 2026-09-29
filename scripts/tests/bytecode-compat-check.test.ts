@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import {
   ROOT,
   buildReference,
-  checkHardhat,
+  checkDeployments,
   checkReference,
   digest,
   norm,
@@ -78,21 +78,6 @@ function writeForgeArtifact(outDir: string, spec: ArtifactSpec): void {
     join(directory, spec.filename ?? `${spec.contract}.json`),
     JSON.stringify(artifact)
   );
-}
-
-function writeHardhatArtifact(
-  artifactsDir: string,
-  spec: { source: string; contract: string; creation: string; runtime: string }
-): void {
-  const directory = join(artifactsDir, spec.source);
-  mkdirSync(directory, { recursive: true });
-  const artifact = {
-    contractName: spec.contract,
-    sourceName: spec.source,
-    bytecode: spec.creation,
-    deployedBytecode: spec.runtime,
-  };
-  writeFileSync(join(directory, `${spec.contract}.json`), JSON.stringify(artifact));
 }
 
 /** Runs `body` with stdout captured, and returns everything it printed. */
@@ -299,6 +284,52 @@ describe("--reference", () => {
   });
 });
 
+describe("--deployments", () => {
+  /** A deployments/<network> directory holding one `<Name>_Implementation.json` per entry. */
+  function deployments(records: Record<string, string>): string {
+    const root = temporaryDirectory();
+    mkdirSync(join(root, "testnet"), { recursive: true });
+    for (const [name, runtime] of Object.entries(records)) {
+      writeFileSync(
+        join(root, "testnet", `${name}_Implementation.json`),
+        JSON.stringify({
+          address: "0x0000000000000000000000000000000000000001",
+          deployedBytecode: runtime,
+        })
+      );
+    }
+    return root;
+  }
+
+  it("reports identical code, a metadata-only difference, a real difference and a missing artifact", () => {
+    const outDir = temporaryDirectory();
+    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
+    writeForgeArtifact(outDir, { source: "contracts/Manager.sol", contract: "Manager" });
+    writeForgeArtifact(outDir, { source: "contracts/Vote.sol", contract: "Vote" });
+    const root = deployments({
+      Account: RUNTIME_A,
+      // Same executable code, different metadata hash: only the trailer differs.
+      Manager: RUNTIME_B,
+      // Different executable code.
+      Vote: withMetadata("6080604052600080fd", METADATA_A),
+      Gone: RUNTIME_A,
+    });
+
+    let status = -1;
+    const output = capture(() => {
+      status = checkDeployments("testnet", outDir, root);
+    });
+    const row = (name: string): string =>
+      output.split("\n").find((line) => line.includes(` ${name} `)) ?? "";
+
+    assert.equal(status, 0, "the deployments comparison is informational");
+    assert.match(row("Account"), /ok\s+ok/);
+    assert.match(row("Manager"), /DIFF\s+ok/);
+    assert.match(row("Vote"), /DIFF\s+DIFF/);
+    assert.match(row("Gone"), /MISSING\s+MISSING/);
+  });
+});
+
 describe("--update-reference", () => {
   it("writes the same bytes on every run", () => {
     const { outDir } = fixture();
@@ -345,68 +376,6 @@ describe("--update-reference", () => {
   });
 });
 
-describe("--hardhat-artifacts", () => {
-  it("separates a metadata-only difference from a real one", () => {
-    const outDir = temporaryDirectory();
-    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
-    const artifactsDir = temporaryDirectory();
-    // Same code, different metadata hash: the full comparison fails, the stripped one passes.
-    writeHardhatArtifact(artifactsDir, {
-      source: "contracts/Account.sol",
-      contract: "Account",
-      creation: CREATION_B,
-      runtime: RUNTIME_B,
-    });
-
-    let failures = -1;
-    const output = capture(() => {
-      failures = checkHardhat(artifactsDir, outDir);
-    });
-
-    assert.equal(failures, 1);
-    assert.match(output, /full\s+no-metadata/);
-    assert.match(output, /contracts\/Account\.sol\s+Account\s+DIFF\s+ok/);
-  });
-
-  it("reports ok on both columns when the two builds agree", () => {
-    const outDir = temporaryDirectory();
-    writeForgeArtifact(outDir, { source: "contracts/Account.sol", contract: "Account" });
-    const artifactsDir = temporaryDirectory();
-    writeHardhatArtifact(artifactsDir, {
-      source: "contracts/Account.sol",
-      contract: "Account",
-      creation: CREATION_A,
-      runtime: RUNTIME_A,
-    });
-
-    let failures = -1;
-    const output = capture(() => {
-      failures = checkHardhat(artifactsDir, outDir);
-    });
-
-    assert.equal(failures, 0);
-    assert.match(output, /contracts\/Account\.sol\s+Account\s+ok\s+ok/);
-  });
-
-  it("reports MISSING when the Foundry build has no such artifact", () => {
-    const artifactsDir = temporaryDirectory();
-    writeHardhatArtifact(artifactsDir, {
-      source: "contracts/Gone.sol",
-      contract: "Gone",
-      creation: CREATION_A,
-      runtime: RUNTIME_A,
-    });
-
-    let failures = -1;
-    const output = capture(() => {
-      failures = checkHardhat(artifactsDir, temporaryDirectory());
-    });
-
-    assert.equal(failures, 1);
-    assert.match(output, /contracts\/Gone\.sol\s+Gone\s+MISSING\s+MISSING/);
-  });
-});
-
 describe("command line", () => {
   it("exits 2 when no mode is selected", () => {
     let status = -1;
@@ -416,10 +385,7 @@ describe("command line", () => {
 
     assert.equal(status, 2);
     assert.match(output, /usage: bytecode-compat-check\.ts/);
-    assert.match(
-      output,
-      /error: pass --reference, --update-reference, --hardhat-artifacts and\/or --deployments/
-    );
+    assert.match(output, /error: pass --reference, --update-reference and\/or --deployments/);
   });
 
   it("exits 2 on an unknown option", () => {
