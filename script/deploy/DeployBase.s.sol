@@ -191,16 +191,21 @@ abstract contract DeployBase {
     // =========================================================================
 
     /// @notice Resolve the deployments directory name and enable record keeping.
-    /// @dev `NETWORK` wins when set, otherwise the chain id is mapped to the same
-    ///      deployments directory names (celo, sepolia, local).
     function _initNetwork() internal {
-        network = vm.envOr("NETWORK", _networkFromChainId());
+        network = _resolveNetwork(vm.envOr("NETWORK", string("")));
         useDeploymentRecords = true;
         DeployLog.s(string(abi.encodePacked("network: ", network)));
     }
 
-    /// @dev Map the chain id of the connected node onto a deployments directory name.
-    function _networkFromChainId() private view returns (string memory) {
+    /// @dev `fromEnv` (the `NETWORK` variable) wins when set. Otherwise the chain id of
+    ///      the connected node picks the directory, with the same table as
+    ///      `TaskBase.networkName`. A chain id outside that table stops the script: writing
+    ///      the records of a real network into deployments/local would leave its own
+    ///      directory stale for the tasks that read it later.
+    function _resolveNetwork(string memory fromEnv) internal view returns (string memory) {
+        if (bytes(fromEnv).length > 0) {
+            return fromEnv;
+        }
         if (block.chainid == 42220) {
             return "celo";
         }
@@ -208,7 +213,11 @@ abstract contract DeployBase {
         if (block.chainid == 11142220) {
             return "sepolia";
         }
-        return "local";
+        // anvil's default chain id, also the one the local devchain genesis uses.
+        if (block.chainid == 31337) {
+            return "local";
+        }
+        revert("set NETWORK: chain id has no default deployments directory");
     }
 
     // =========================================================================

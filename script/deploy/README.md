@@ -21,7 +21,7 @@
 | `MULTISIG_REQUIRED_CONFIRMATIONS` | yes | Confirmations needed to execute a proposal. |
 | `MULTISIG_OWNERS` | yes, or the variables below | Comma separated owner addresses; the addresses must be distinct. |
 | `MULTISIG_SIGNER_0`, `MULTISIG_SIGNER_1`, ... | yes, or the variable above | The older spelling of the owner set, still accepted. Read from `MULTISIG_SIGNER_0` upwards until one is unset, and only when `MULTISIG_OWNERS` is empty. |
-| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, anything else -> `local`. |
+| `NETWORK` | no | `deployments/` subdirectory. Defaults to the chain id: 42220 -> `celo`, 11142220 -> `sepolia`, 31337 -> `local`. Any other chain id stops the script until `NETWORK` is set, so a network without an entry never writes into `deployments/local`. |
 | `VALIDATOR_GROUPS` | no | Comma separated validator groups to make healthy and activate. Empty by default, which skips both steps. |
 | `CONTRACT` | for upgrades | Contract to upgrade, e.g. `Manager`. Read by `UpgradeImplementation` only. |
 

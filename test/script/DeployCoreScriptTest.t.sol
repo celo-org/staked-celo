@@ -16,6 +16,8 @@ interface ScriptTestVm {
     function createDir(string calldata path, bool recursive) external;
 
     function removeDir(string calldata path, bool recursive) external;
+
+    function chainId(uint256 newChainId) external;
 }
 
 /// @dev Vote keeps its dependencies in internal storage; getVoteWeight is the cheapest
@@ -402,6 +404,10 @@ contract DeployCoreEnvHarness is DeployCore {
     function configFromEnv() external view returns (CoreConfig memory) {
         return _configFromEnv();
     }
+
+    function resolveNetwork(string memory fromEnv) external view returns (string memory) {
+        return _resolveNetwork(fromEnv);
+    }
 }
 
 /**
@@ -512,6 +518,52 @@ contract DeployCoreEnvConfigTest is CeloTestHelper {
 
     function _signerName(uint256 index) private pure returns (string memory) {
         return string(abi.encodePacked("MULTISIG_SIGNER_", vm.toString(index)));
+    }
+}
+
+/**
+ * @title DeployBaseNetworkTest
+ * @notice Which deployments directory the deploy scripts write to. A chain id with a
+ *         directory of its own resolves by itself, any other chain needs `NETWORK`, so the
+ *         records of a real network never land in deployments/local by accident.
+ * @dev The `NETWORK` value is passed in rather than set with `setEnv`: environment
+ *      variables are shared by every test forge runs in parallel.
+ */
+contract DeployBaseNetworkTest is CeloTestHelper {
+    ScriptTestVm internal constant svm =
+        ScriptTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    DeployCoreEnvHarness internal harness;
+
+    function setUp() public {
+        harness = new DeployCoreEnvHarness();
+    }
+
+    function test_knownChainIdsResolveToTheirDirectory() public {
+        svm.chainId(42220);
+        _assertNetwork(harness.resolveNetwork(""), "celo");
+        svm.chainId(11142220);
+        _assertNetwork(harness.resolveNetwork(""), "sepolia");
+        svm.chainId(31337);
+        _assertNetwork(harness.resolveNetwork(""), "local");
+    }
+
+    function test_unknownChainIdWithoutNetworkReverts() public {
+        svm.chainId(1101);
+        vm.expectRevert(bytes("set NETWORK: chain id has no default deployments directory"));
+        harness.resolveNetwork("");
+    }
+
+    function test_networkWinsOverTheChainId() public {
+        svm.chainId(1101);
+        _assertNetwork(harness.resolveNetwork("staging"), "staging");
+        svm.chainId(42220);
+        _assertNetwork(harness.resolveNetwork("celo-fork"), "celo-fork");
+    }
+
+    function _assertNetwork(string memory actual, string memory expected) private pure {
+        if (keccak256(bytes(actual)) == keccak256(bytes(expected))) return;
+        revert(string(abi.encodePacked("network: actual ", actual, ", expected ", expected)));
     }
 }
 
