@@ -46,6 +46,12 @@
  *                   payable flag, turns a plain transfer into a revert. Additions are
  *                   fine.
  *
+ *                   Parameter and tuple component names are compared by position:
+ *                   the signature spells out types only, so two of the same type can
+ *                   trade places with the selector unchanged while callers keep
+ *                   encoding the old order. A name that moved is an error, a tuple
+ *                   field renamed in place a review item.
+ *
  *                   Every parameter's `internalType` is read along the way, tuple
  *                   components included. solc erases an enum parameter to a uint8 and
  *                   a user defined value type parameter to what it wraps, so neither
@@ -1234,6 +1240,59 @@ function rememberSignature(sig: string, base: AbiEntry, cur: AbiEntry, reached: 
   rememberParameters(base.outputs, cur.outputs, reached, `${sig} returns`);
 }
 
+/**
+ * Reports parameters, or fields of a struct passed as a tuple, that traded places.
+ *
+ * The canonical signature spells out types only, so two parameters or two fields of the
+ * same type can swap without the selector or the event topic moving, while every caller
+ * keeps encoding them in the old order and the upgraded code reads each as the other. A
+ * name found at another position on the current side is therefore an error. Inside a
+ * tuple a field renamed where it stands is a review item as well: it may be the same field
+ * under a new name, or a different field that took its position. Top level parameters are
+ * renamed all the time without meaning anything, so those pass.
+ */
+function checkParameterNames(
+  name: string,
+  where: string,
+  baseParams: AbiParameter[] | undefined,
+  curParams: AbiParameter[] | undefined,
+  components: boolean,
+  findings: Finding[]
+): void {
+  const base = baseParams ?? [];
+  const cur = curParams ?? [];
+  const baseNames = base.map((param) => param.name ?? "");
+  const curNames = cur.map((param) => param.name ?? "");
+  const listed = `${components ? "components" : "parameters"} (${baseNames.join(
+    ","
+  )}) are now (${curNames.join(",")})`;
+  const moved = baseNames.filter(
+    (param, index) => param !== "" && curNames[index] !== param && curNames.includes(param)
+  );
+  if (moved.length > 0) {
+    findings.push({
+      level: ERROR,
+      name,
+      message:
+        `${where}: ${listed}; ${moved.join(", ")} moved while the types stayed in place, ` +
+        "and callers encode by position",
+    });
+  } else if (components && baseNames.some((param, index) => param !== curNames[index])) {
+    findings.push({
+      level: REVIEW,
+      name,
+      message: `${where}: ${listed}; confirm every position still holds the same field`,
+    });
+  }
+  for (let index = 0; index < base.length; index += 1) {
+    const baseParam = base[index] as AbiParameter;
+    if (baseParam.components !== undefined) {
+      const here = `${where}.${baseParam.name || index}`;
+      checkParameterNames(name, here, baseParam.components, cur[index]?.components, true, findings);
+    }
+  }
+}
+
 export function canonicalType(item: AbiParameter): string {
   if (item.type.startsWith("tuple")) {
     const inner = (item.components ?? []).map((component) => canonicalType(component)).join(",");
@@ -1348,6 +1407,14 @@ export function checkAbi(
       continue;
     }
     rememberSignature(sig, baseEntry, curEntry, reached);
+    checkParameterNames(
+      name,
+      `function ${sig}`,
+      baseEntry.inputs,
+      curEntry.inputs,
+      false,
+      findings
+    );
     if (outputs(baseEntry) !== outputs(curEntry)) {
       findings.push({
         level: ERROR,
@@ -1356,6 +1423,9 @@ export function checkAbi(
           baseEntry
         )})`,
       });
+    } else {
+      const where = `function ${sig} returns`;
+      checkParameterNames(name, where, baseEntry.outputs, curEntry.outputs, false, findings);
     }
     checkMutability(name, sig, baseEntry, curEntry, findings);
   }
@@ -1374,6 +1444,7 @@ export function checkAbi(
       continue;
     }
     rememberSignature(sig, baseEntry, curEntry, reached);
+    checkParameterNames(name, `event ${sig}`, baseEntry.inputs, curEntry.inputs, false, findings);
     if (!sameFlags(indexedFlags(baseEntry), indexedFlags(curEntry))) {
       findings.push({
         level: ERROR,
@@ -1395,6 +1466,7 @@ export function checkAbi(
       continue;
     }
     rememberSignature(sig, baseEntry, curEntry, reached);
+    checkParameterNames(name, `error ${sig}`, baseEntry.inputs, curEntry.inputs, false, findings);
   }
 }
 

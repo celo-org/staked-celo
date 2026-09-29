@@ -1006,3 +1006,86 @@ test("parameter enum named by two differing file level declarations is a review"
       "the baseline and the current build's ASTs"
   );
 });
+
+/** A uint256 ABI parameter or tuple component of the given name. */
+function uintParam(name: string): AbiParameter {
+  return { internalType: "uint256", name, type: "uint256" };
+}
+
+/** `configure(Config)` where Config is a struct of uint256 fields with the given names. */
+function configureFunction(fields: string[], nested: string[] = []): AbiEntry {
+  const components: AbiParameter[] = fields.map(uintParam);
+  if (nested.length > 0) {
+    components.push({
+      components: nested.map(uintParam),
+      internalType: "struct Vault.Limits",
+      name: "limits",
+      type: "tuple",
+    });
+  }
+  return {
+    type: "function",
+    name: "configure",
+    inputs: [{ components, internalType: "struct Vault.Config", name: "config", type: "tuple" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  };
+}
+
+/** `setRange(uint256,uint256)` with the given parameter names. */
+function setRangeFunction(first: string, second: string): AbiEntry {
+  return {
+    type: "function",
+    name: "setRange",
+    inputs: [uintParam(first), uintParam(second)],
+    outputs: [],
+    stateMutability: "nonpayable",
+  };
+}
+
+function abiVault(abi: AbiEntry[]): Artifact {
+  return artifact("Vault", [slotEntry("total", 0, "t_uint256")], { t_uint256: UINT256 }, abi);
+}
+
+// Two fields of the same type trading places leave the tuple's canonical type, and with
+// it the selector, as it was, while callers keep encoding `min` first.
+test("swapped tuple fields of the same type are an error", () => {
+  assertRejected(
+    { Vault: abiVault([configureFunction(["min", "max"])]) },
+    { Vault: abiVault([configureFunction(["max", "min"])]) },
+    "function configure((uint256,uint256)).config: components (min,max) are now (max,min)"
+  );
+});
+
+test("swapped fields of a nested tuple are an error", () => {
+  assertRejected(
+    { Vault: abiVault([configureFunction(["fee"], ["floor", "cap"])]) },
+    { Vault: abiVault([configureFunction(["fee"], ["cap", "floor"])]) },
+    "config.limits: components (floor,cap) are now (cap,floor)"
+  );
+});
+
+test("swapped parameters of the same type are an error", () => {
+  assertRejected(
+    { Vault: abiVault([setRangeFunction("min", "max")]) },
+    { Vault: abiVault([setRangeFunction("max", "min")]) },
+    "function setRange(uint256,uint256): parameters (min,max) are now (max,min)"
+  );
+});
+
+// A field renamed where it stands may be the same field under a new name or a different
+// one that took its place, which only a human can tell apart.
+test("renamed tuple field is a review", () => {
+  assertReviewOnly(
+    { Vault: abiVault([configureFunction(["min", "max"])]) },
+    { Vault: abiVault([configureFunction(["min", "ceiling"])]) },
+    "components (min,max) are now (min,ceiling)"
+  );
+});
+
+test("renamed parameter is compatible", () => {
+  assertCompatible(
+    { Vault: abiVault([setRangeFunction("_min", "_max")]) },
+    { Vault: abiVault([setRangeFunction("min", "max")]) }
+  );
+});
