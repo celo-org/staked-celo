@@ -528,7 +528,7 @@ export function checkType(
   stride: boolean,
   walked: string
 ): void {
-  const visit = `${baseId} ${curId} ${stride ? "1" : "0"}`;
+  const visit = `${baseId}\0${curId}\0${stride ? "1" : "0"}`;
   if (seen.has(visit)) {
     return;
   }
