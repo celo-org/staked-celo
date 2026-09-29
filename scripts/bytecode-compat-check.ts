@@ -46,7 +46,7 @@ const DESCRIPTION = [
   "                            on chain may predate the current sources. The runtime bytecode",
   "                            is compared twice: in full and with the CBOR metadata trailer",
   "                            stripped (the trailer only carries the metadata hash).",
-  "                            Records written by hardhat-deploy carry the bytecode. The ones",
+  "                            The older records carry the bytecode. The ones",
   "                            the Foundry scripts write carry only the address, so their code",
   "                            is read from the chain with `cast code` (see --rpc-url). Linked",
   "                            library addresses and immutables are only filled in at",

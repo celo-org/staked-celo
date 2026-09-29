@@ -345,7 +345,7 @@ was deployed. Check which implementations still qualify before submitting anythi
 node scripts/bytecode-compat-check.ts --deployments celo
 ```
 
-The hardhat-deploy records carry the bytecode they were deployed with. The records the
+The older records carry the bytecode they were deployed with. The records the
 Foundry scripts write carry only the address, so for those the script reads the code from
 the chain with `cast code`, through `--rpc-url` (a URL, or by default the network name
 resolved through `rpc_endpoints` in `foundry.toml`). Linked library addresses and

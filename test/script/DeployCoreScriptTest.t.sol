@@ -658,7 +658,7 @@ contract DeployBaseNetworkTest is CeloTestHelper {
         harness.checkNetworkChain("some-fork");
     }
 
-    /// @dev hardhat-deploy kept the chain id of a directory in `.chainId`.
+    /// @dev The earlier deployment tooling kept the chain id of a directory in `.chainId`.
     function test_chainIdFileTiesADirectoryToItsChain() public {
         string memory directory = "deployments/chain-id-file-test";
         svm.createDir(directory, true);

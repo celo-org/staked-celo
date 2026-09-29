@@ -419,7 +419,7 @@ describe("--deployments", () => {
     const root = records({
       // Read from the chain: the library address and the immutable are filled in.
       Strategy: { address: "0x00000000000000000000000000000000000000c3" },
-      // A hardhat-deploy record stores the linked code.
+      // An older record stores the linked code.
       Linked: {
         address: "0x00000000000000000000000000000000000000d4",
         deployedBytecode: LINKED_ON_CHAIN,

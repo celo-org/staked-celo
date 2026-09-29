@@ -48,7 +48,7 @@ library NetworkCheck {
      *      scripts resolve a chain id with. `local` has to be among them: it is git-ignored
      *      and nothing writes a `.chainId` into it, so a first local deployment pointed at a
      *      public node would otherwise go through. Any other directory is known by the
-     *      `.chainId` file hardhat-deploy kept in it, where there is one.
+     *      `.chainId` file the earlier deployment tooling kept in it, where there is one.
      */
     function expectedChainId(string memory network) internal view returns (uint256) {
         bytes32 name = keccak256(bytes(network));
@@ -91,7 +91,7 @@ library NetworkCheck {
     /**
      * @notice Revert when a record carries the chain id of another chain.
      * @dev The records the Foundry scripts write carry the chain id they were written on;
-     *      the hardhat-deploy ones do not, and are covered by `requireChain`.
+     *      the older ones do not, and are covered by `requireChain`.
      */
     function requireRecordChain(string memory json, string memory path) internal view {
         if (!VM.keyExistsJson(json, ".chainId")) {
