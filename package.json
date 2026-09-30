@@ -12,7 +12,7 @@
   "packageManager": "yarn@1.22.22",
   "devDependencies": {
     "@celo/devchain-anvil": "17.0.7",
-    "@openzeppelin/contracts": "4.4.2",
+    "@openzeppelin/contracts": "4.9.3",
     "@openzeppelin/contracts-upgradeable": "4.5.2",
     "@types/node": "^24",
     "husky": ">=6",
