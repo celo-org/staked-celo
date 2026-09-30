@@ -2,11 +2,15 @@
 
 echo "Processing encrypted files v2"
 
-# Set list of secret files to encrypt and decrypt.
-files=(
-  ".env.staging:staked-celo-staging"
-  ".env.alfajores:staked-celo-alfajores"
-)
+# Set list of secret files to encrypt and decrypt, one "<file>:<GCP project>" entry per
+# network. Both networks that used to be listed here are retired, so the list is empty;
+# add a network back by uncommenting a line of this shape:
+#
+#   ".env.<network>:staked-celo-<network>"
+#
+# The key ring itself (staked-celo-keys / staked-celo-rings, location global) is the same
+# for every project.
+files=()
 
 if [[ -z "$1" ]]; then
   echo "Encrypt or decrypt secret files using GCP keystore."
@@ -16,6 +20,12 @@ elif [[ $1 != "encrypt" ]] && [[ $1 != "decrypt" ]]; then
   echo "invalid action $1. Choose 'encrypt' or 'decrypt'"
   echo "usage: $0 < encrypt | decrypt >"
   exit 1
+fi
+
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "no secret files are configured, nothing to $1"
+  echo "add a '<file>:<GCP project>' entry to the 'files' array in $0"
+  exit 0
 fi
 
 # this is to allow the script to be called from anywhere

@@ -5,22 +5,28 @@ node_modules/
 # asdf
 .tool-versions
 
-# hardhat
-artifacts
-cache
-deployments/hardhat
-deployments/local
-deployments/devchain
-typechain-types
-
 # IDEA
 .idea
 
 # decrypted environment configs
-.env.staging
-.env.alfajores
-.env.local
 .env
+.env.*
+!.env.example
 
-#devchain
-db
+# Foundry
+out/
+cache/
+cache_forge/
+
+# forge deployment records for a local devchain
+deployments/local
+
+# Generated devchain fixture (scripts/prepare-devchain.sh)
+test/devchain/allocs.json
+test/devchain/meta.json
+
+# Compatibility baseline checked out by the CI compatibility job
+baseline/
+
+# forge script broadcast logs
+broadcast/
