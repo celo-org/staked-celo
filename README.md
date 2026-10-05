@@ -82,8 +82,8 @@ Withdrawal flow:
 
 ## Prerequisites
 
-- **Foundry 1.8.1.** `mise.toml` pins it, so `mise install` followed by
-  `eval "$(mise env -s zsh)"` is enough. Without mise: `foundryup -i 1.8.1`. The version is
+- **Foundry 1.8.3.** `mise.toml` pins it, so `mise install` followed by
+  `eval "$(mise env -s zsh)"` is enough. Without mise: `foundryup -i 1.8.3`. The version is
   pinned because the compiler settings and the cheatcodes the suite uses must match CI.
 - **Node 24 and yarn.** Everything under `scripts/` is TypeScript that node runs straight
   from source with its native type stripping, which is why `package.json`'s `engines`
