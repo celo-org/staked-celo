@@ -12,7 +12,7 @@ on:
 
 env:
   # Keep in sync with mise.toml, which pins the same version for local development.
-  FOUNDRY_VERSION: v1.8.1
+  FOUNDRY_VERSION: v1.8.3
   # The release the upgradeable contracts must stay storage- and ABI-compatible with.
   COMPATIBILITY_BASELINE: releases/4
 
