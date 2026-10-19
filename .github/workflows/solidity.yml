@@ -91,7 +91,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Cache the Celo devchain fixture
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             test/devchain/allocs.json
