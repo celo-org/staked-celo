@@ -29,7 +29,7 @@ jobs:
       # `engines` field requires: the scripts are TypeScript run by node's native type
       # stripping, which needs node 24.
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
           cache: yarn
@@ -79,7 +79,7 @@ jobs:
       # Node 24 is what package.json's `engines` requires: the helper is run straight
       # from source by node's native type stripping.
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
           cache: yarn
@@ -124,7 +124,7 @@ jobs:
       # The checker is TypeScript, run from source by node's native type stripping, so
       # the version follows package.json's `engines`.
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
           cache: yarn
@@ -171,7 +171,7 @@ jobs:
       # version package.json's `engines` requires: they are TypeScript run from source
       # by its native type stripping.
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.x"
           cache: yarn
