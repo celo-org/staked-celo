@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # package.json carries the lint and typecheck tooling (prettier, solhint,
       # typescript) plus the devchain fixture package. The version is the one its
@@ -67,7 +67,7 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -114,7 +114,7 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -159,10 +159,10 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout the compatibility baseline
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: baseline
           ref: ${{ env.COMPATIBILITY_BASELINE }}
