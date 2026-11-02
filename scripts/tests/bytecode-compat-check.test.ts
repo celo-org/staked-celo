@@ -84,7 +84,7 @@ function writeForgeArtifact(outDir: string, spec: ArtifactSpec): void {
   };
   writeFileSync(
     join(directory, spec.filename ?? `${spec.contract}.json`),
-    JSON.stringify(artifact)
+    JSON.stringify(artifact),
   );
 }
 
@@ -142,7 +142,7 @@ describe("hex helpers", () => {
     assert.equal(digest("0xAB"), digest("ab"));
     assert.equal(
       digest("0x00"),
-      "f1534392279bddbf9d43dde8701cb5be14b82f76ec6607bf8d6ad557f60f304e"
+      "f1534392279bddbf9d43dde8701cb5be14b82f76ec6607bf8d6ad557f60f304e",
     );
   });
 });
@@ -214,7 +214,7 @@ describe("artifact discovery", () => {
         bytecode: { object: CREATION_A },
         deployedBytecode: { object: RUNTIME_A },
         metadata: { settings: { compilationTarget: { "contracts/Account.sol": "Account" } } },
-      })
+      }),
     );
 
     assert.deepEqual(buildReference(outDir).contracts, {});
@@ -303,7 +303,7 @@ describe("--deployments", () => {
         JSON.stringify({
           address: "0x0000000000000000000000000000000000000001",
           deployedBytecode: runtime,
-        })
+        }),
       );
     }
     return root;
@@ -362,7 +362,7 @@ describe("--deployments", () => {
   function runDeployments(
     outDir: string,
     root: string,
-    readCode?: (address: string) => string
+    readCode?: (address: string) => string,
   ): (name: string) => string {
     let status = -1;
     const output = capture(() => {
@@ -514,7 +514,7 @@ describe("--update-reference", () => {
     // The digests need a build, but the two header fields do not: if either drifts,
     // --update-reference stops reproducing scripts/bytecode-reference.json byte for byte.
     const checkedIn = JSON.parse(
-      readFileSync(join(ROOT, "scripts", "bytecode-reference.json"), "utf8")
+      readFileSync(join(ROOT, "scripts", "bytecode-reference.json"), "utf8"),
     ) as { comment: string; algorithm: string };
     const generated = buildReference(temporaryDirectory());
 

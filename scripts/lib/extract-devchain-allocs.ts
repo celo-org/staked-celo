@@ -165,5 +165,5 @@ writeFileSync(join(outDir, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
 
 console.log(
   `wrote ${Object.keys(allocs).length} accounts to ${outDir}/allocs.json;` +
-    ` block ${meta.blockNumber} ts ${meta.timestamp}`
+    ` block ${meta.blockNumber} ts ${meta.timestamp}`,
 );
