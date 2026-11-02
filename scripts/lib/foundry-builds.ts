@@ -51,7 +51,7 @@ export function contractBuilds(outDir: string): Map<string, string> {
   const cachePath = path.join(
     path.dirname(path.resolve(outDir)),
     "cache",
-    "solidity-files-cache.json"
+    "solidity-files-cache.json",
   );
   let cache: BuildCache;
   try {

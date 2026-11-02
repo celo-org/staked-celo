@@ -148,7 +148,7 @@ function isDirectory(path: string): boolean {
 /** Walks `dir` top-down, yielding every directory with its file names sorted. */
 function* walk(
   dir: string,
-  skipDirs: ReadonlySet<string> = new Set<string>()
+  skipDirs: ReadonlySet<string> = new Set<string>(),
 ): Generator<{ dir: string; files: string[] }> {
   let entries;
   try {
@@ -199,7 +199,7 @@ export interface ForgeRuntime {
 export function forgeRuntime(
   outDir: string,
   sourceName: string,
-  contractName: string
+  contractName: string,
 ): ForgeRuntime | null {
   const path = join(outDir, basename(sourceName), `${contractName}.json`);
   if (!existsSync(path)) {
@@ -207,7 +207,7 @@ export function forgeRuntime(
   }
   const deployed = (readJson(path) as ForgeArtifactJson).deployedBytecode ?? {};
   const linked = Object.values(deployed.linkReferences ?? {}).flatMap((libraries) =>
-    Object.values(libraries).flat()
+    Object.values(libraries).flat(),
   );
   const immutables = Object.values(deployed.immutableReferences ?? {}).flat();
   return { code: norm(deployed.object ?? ""), deployTimeRanges: [...linked, ...immutables] };
@@ -269,7 +269,7 @@ export function checkDeployments(
   network: string,
   outDir: string,
   deploymentsDir: string = join(ROOT, "deployments"),
-  readCode?: CodeReader
+  readCode?: CodeReader,
 ): number {
   const rows: Row[] = [];
   const notes: string[] = [];
@@ -426,7 +426,7 @@ export function checkReference(path: string, outDir: string): number {
     console.log(
       "\nUNPINNED means the contract is not in the reference yet, MISSING means the " +
         "reference has a contract the build does not produce." +
-        "\nIf the change is intended, rerun with --update-reference to refresh the reference."
+        "\nIf the change is intended, rerun with --update-reference to refresh the reference.",
     );
   }
   return failures;
@@ -435,7 +435,7 @@ export function checkReference(path: string, outDir: string): number {
 export function printTable(
   title: string,
   rows: readonly Row[],
-  columns: readonly [string, string] = ["full", "no-metadata"]
+  columns: readonly [string, string] = ["full", "no-metadata"],
 ): void {
   console.log(`\n${title}`);
   if (rows.length === 0) {
@@ -444,7 +444,7 @@ export function printTable(
   }
   const width = Math.max(...rows.map((row) => row[0].length));
   console.log(
-    `  ${"source".padEnd(width)}  ${"contract".padEnd(28)} ${columns[0].padEnd(8)} ${columns[1]}`
+    `  ${"source".padEnd(width)}  ${"contract".padEnd(28)} ${columns[0].padEnd(8)} ${columns[1]}`,
   );
   for (const [source, name, full, stripped] of rows) {
     console.log(`  ${source.padEnd(width)}  ${name.padEnd(28)} ${full.padEnd(8)} ${stripped}`);
