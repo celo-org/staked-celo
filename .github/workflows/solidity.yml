@@ -31,7 +31,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24.x"
+          node-version: "26.x"
           cache: yarn
 
       - name: Install dependencies
@@ -81,7 +81,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24.x"
+          node-version: "26.x"
           cache: yarn
 
       # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
@@ -126,7 +126,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24.x"
+          node-version: "26.x"
           cache: yarn
 
       # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
@@ -173,7 +173,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24.x"
+          node-version: "26.x"
           cache: yarn
 
       # The contracts import "@openzeppelin/...", and ./@openzeppelin is a symlink into
