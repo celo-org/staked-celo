@@ -62,7 +62,7 @@ function artifact(
   storage: StorageEntry[],
   types: TypesMap,
   abi: AbiEntry[] = ABI,
-  ast: AstNode | null = null
+  ast: AstNode | null = null,
 ): Artifact {
   const content: Artifact = {
     metadata: { settings: { compilationTarget: { [`contracts/${name}.sol`]: name } } },
@@ -119,7 +119,7 @@ function enumAst(contract: string, enumName: string, members: string[]): AstNode
 function enumVault(
   members: string[],
   astId: number,
-  options: { nested?: boolean; withAst?: boolean; abi?: AbiEntry[] } = {}
+  options: { nested?: boolean; withAst?: boolean; abi?: AbiEntry[] } = {},
 ): Artifact {
   const nested = options.nested ?? false;
   const withAst = options.withAst ?? true;
@@ -146,7 +146,7 @@ function enumVault(
     storage,
     types,
     options.abi ?? ABI,
-    withAst ? enumAst("Vault", "Status", members) : null
+    withAst ? enumAst("Vault", "Status", members) : null,
   );
 }
 
@@ -205,7 +205,7 @@ function abiEnumVault(members: string[], abi: AbiEntry[]): Artifact {
     [slotEntry("total", 0, "t_uint256")],
     { t_uint256: UINT256 },
     abi,
-    enumAst("Vault", "Mode", members)
+    enumAst("Vault", "Mode", members),
   );
 }
 
@@ -248,7 +248,7 @@ function valueTypeAst(contract: string, valueType: string, underlying: string): 
 function valueTypeVault(
   underlying: string,
   astId: number,
-  options: { shape?: "direct" | "struct_member" | "mapping_key"; withAst?: boolean } = {}
+  options: { shape?: "direct" | "struct_member" | "mapping_key"; withAst?: boolean } = {},
 ): Artifact {
   const shape = options.shape ?? "direct";
   const withAst = options.withAst ?? true;
@@ -285,7 +285,7 @@ function valueTypeVault(
     storage,
     types,
     ABI,
-    withAst ? valueTypeAst("Vault", "Amount", underlying) : null
+    withAst ? valueTypeAst("Vault", "Amount", underlying) : null,
   );
 }
 
@@ -305,7 +305,7 @@ function abiValueTypeVault(underlying: string, withAst: boolean): Artifact {
     [slotEntry("total", 0, "t_uint256")],
     { t_uint256: UINT256 },
     abi,
-    withAst ? valueTypeAst("Vault", "Amount", underlying) : null
+    withAst ? valueTypeAst("Vault", "Amount", underlying) : null,
   );
 }
 
@@ -332,12 +332,7 @@ function paddedVault(members: string[], astId: number): Artifact {
 }
 
 type Shape =
-  | "plain"
-  | "dynamic_array"
-  | "static_array"
-  | "mapping"
-  | "mapping_of_array"
-  | "struct_of_array";
+  "plain" | "dynamic_array" | "static_array" | "mapping" | "mapping_of_array" | "struct_of_array";
 
 /**
  * Types map and top level type id for an `Entry` struct held in the given shape.
@@ -348,7 +343,7 @@ type Shape =
 function entryTypes(
   shape: Shape,
   members: string[],
-  astId: number
+  astId: number,
 ): { types: TypesMap; typeId: string } {
   const structId = `t_struct(Entry)${astId}_storage`;
   const arrayId = `t_array(${structId})dyn_storage`;
@@ -437,7 +432,7 @@ type Extras = Record<string, unknown>;
 function runCheck(
   baseline: Build,
   current: Build,
-  extras: { baseline?: Extras; current?: Extras } = {}
+  extras: { baseline?: Extras; current?: Extras } = {},
 ): { status: number; output: string } {
   const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "abi-compat-"));
   try {
@@ -466,7 +461,7 @@ function runCheck(
       ["--baseline", directories[0] as string, "--current", directories[1] as string],
       (text) => {
         output += text;
-      }
+      },
     );
     return { status, output };
   } finally {
@@ -509,7 +504,7 @@ test("appended member in dynamic array element is an error", () => {
     { Vault: vault("dynamic_array", ["value"], 1) },
     { Vault: vault("dynamic_array", ["value", "timestamp"], 7) },
     "gained member(s) timestamp at entries[i]",
-    "array element"
+    "array element",
   );
 });
 
@@ -517,7 +512,7 @@ test("appended member in static array element is an error", () => {
   assertRejected(
     { Vault: vault("static_array", ["value"], 1) },
     { Vault: vault("static_array", ["value", "timestamp"], 7) },
-    "gained member(s) timestamp at entries[i]"
+    "gained member(s) timestamp at entries[i]",
   );
 });
 
@@ -525,7 +520,7 @@ test("appended member in array under a mapping is an error", () => {
   assertRejected(
     { Vault: vault("mapping_of_array", ["value"], 1) },
     { Vault: vault("mapping_of_array", ["value", "timestamp"], 7) },
-    "gained member(s) timestamp at entries[key][i]"
+    "gained member(s) timestamp at entries[key][i]",
   );
 });
 
@@ -533,7 +528,7 @@ test("appended member in array under a struct is an error", () => {
   assertRejected(
     { Vault: vault("struct_of_array", ["value"], 1) },
     { Vault: vault("struct_of_array", ["value", "timestamp"], 7) },
-    "gained member(s) timestamp at entries.items[i]"
+    "gained member(s) timestamp at entries.items[i]",
   );
 });
 
@@ -545,7 +540,7 @@ test("member appended within array element padding is a review", () => {
     { Vault: paddedVault(["amount"], 1) },
     { Vault: paddedVault(["amount", "fee"], 7) },
     "gained member(s) fee at entries[i]",
-    "appended within padding"
+    "appended within padding",
   );
 });
 
@@ -555,7 +550,7 @@ test("appended member in a mapping value is a review", () => {
     { Vault: vault("mapping", ["value"], 1) },
     { Vault: vault("mapping", ["value", "timestamp"], 7) },
     "gained member(s) timestamp at entries[key]",
-    "not an array element"
+    "not an array element",
   );
 });
 
@@ -564,7 +559,7 @@ test("appended member in a top level struct is a review", () => {
     { Vault: vault("plain", ["value"], 1) },
     { Vault: vault("plain", ["value", "timestamp"], 7) },
     "gained member(s) timestamp at entries",
-    "not an array element"
+    "not an array element",
   );
 });
 
@@ -572,7 +567,7 @@ test("removed struct member is an error", () => {
   assertRejected(
     { Vault: vault("mapping", ["value", "timestamp"], 1) },
     { Vault: vault("mapping", ["value"], 7) },
-    "member timestamp was removed"
+    "member timestamp was removed",
   );
 });
 
@@ -580,14 +575,14 @@ test("reordered struct members are an error", () => {
   assertRejected(
     { Vault: vault("mapping", ["value", "timestamp"], 1) },
     { Vault: vault("mapping", ["timestamp", "value"], 7) },
-    "was value, is now timestamp"
+    "was value, is now timestamp",
   );
 });
 
 test("unchanged layout is compatible", () => {
   assertCompatible(
     { Vault: vault("dynamic_array", ["value", "timestamp"], 1) },
-    { Vault: vault("dynamic_array", ["value", "timestamp"], 7) }
+    { Vault: vault("dynamic_array", ["value", "timestamp"], 7) },
   );
 });
 
@@ -596,7 +591,7 @@ test("removed function and event are errors", () => {
     { Vault: vault("mapping", ["value"], 1) },
     { Vault: vault("mapping", ["value"], 7, []) },
     "function deposit(uint256) was removed",
-    "event Deposited(address) was removed"
+    "event Deposited(address) was removed",
   );
 });
 
@@ -606,7 +601,7 @@ test("removed receive is an error", () => {
   assertRejected(
     { Vault: vault("mapping", ["value"], 1, [...ABI, RECEIVE]) },
     { Vault: vault("mapping", ["value"], 7) },
-    "receive() was removed"
+    "receive() was removed",
   );
 });
 
@@ -614,7 +609,7 @@ test("removed fallback is an error", () => {
   assertRejected(
     { Vault: vault("mapping", ["value"], 1, [...ABI, PAYABLE_FALLBACK]) },
     { Vault: vault("mapping", ["value"], 7) },
-    "fallback() was removed"
+    "fallback() was removed",
   );
 });
 
@@ -622,14 +617,14 @@ test("fallback that stops being payable is an error", () => {
   assertRejected(
     { Vault: vault("mapping", ["value"], 1, [...ABI, PAYABLE_FALLBACK]) },
     { Vault: vault("mapping", ["value"], 7, [...ABI, PLAIN_FALLBACK]) },
-    "fallback() changed mutability from payable to nonpayable"
+    "fallback() changed mutability from payable to nonpayable",
   );
 });
 
 test("kept receive is compatible", () => {
   assertCompatible(
     { Vault: vault("mapping", ["value"], 1, [...ABI, RECEIVE]) },
-    { Vault: vault("mapping", ["value"], 7, [...ABI, RECEIVE]) }
+    { Vault: vault("mapping", ["value"], 7, [...ABI, RECEIVE]) },
   );
 });
 
@@ -641,13 +636,13 @@ test("shrunk gap is a review", () => {
   const current = artifact(
     "Vault",
     [slotEntry("__gap", 0, gapType(49)), slotEntry("treasury", 49, "t_address")],
-    types
+    types,
   );
   assertReviewOnly(
     { Vault: baseline },
     { Vault: current },
     "reserved gap __gap shrank from 50 to 49 slots",
-    "new variable treasury sits at slot 49"
+    "new variable treasury sits at slot 49",
   );
 });
 
@@ -659,7 +654,7 @@ test("gap consumed by a new variable is a review", () => {
   const baseline = artifact(
     "Vault",
     [slotEntry("treasury", 0, "t_address"), slotEntry("__gap", 1, gapType(50))],
-    types
+    types,
   );
   const current = artifact(
     "Vault",
@@ -668,7 +663,7 @@ test("gap consumed by a new variable is a review", () => {
       slotEntry("keeper", 1, "t_address"),
       slotEntry("__gap", 2, gapType(49)),
     ],
-    types
+    types,
   );
   assertReviewOnly({ Vault: baseline }, { Vault: current }, "consumed 1 gap slot(s)");
 });
@@ -682,7 +677,7 @@ test("gap consumption that moves a later variable is an error", () => {
       slotEntry("__gap", 1, gapType(50)),
       slotEntry("keeper", 51, "t_address"),
     ],
-    types
+    types,
   );
   // The gap was not shortened to pay for `minter`, so `keeper` is pushed out.
   const current = artifact(
@@ -693,12 +688,12 @@ test("gap consumption that moves a later variable is an error", () => {
       slotEntry("__gap", 2, gapType(50)),
       slotEntry("keeper", 52, "t_address"),
     ],
-    types
+    types,
   );
   assertRejected(
     { Vault: baseline },
     { Vault: current },
-    "variable keeper moved from slot 51+0 to slot 52+0"
+    "variable keeper moved from slot 51+0 to slot 52+0",
   );
 });
 
@@ -708,12 +703,12 @@ test("consuming more slots than the gap reserved is an error", () => {
   const current = artifact(
     "Vault",
     [slotEntry("keeper", 0, "t_address"), slotEntry("__gap", 1, gapType(51))],
-    types
+    types,
   );
   assertRejected(
     { Vault: baseline },
     { Vault: current },
-    "reserved by __gap at slot 0 now hold data reaching to slot 52"
+    "reserved by __gap at slot 0 now hold data reaching to slot 52",
   );
 });
 
@@ -722,17 +717,17 @@ test("variable replaced at its slot is an error", () => {
   const baseline = artifact(
     "Vault",
     [slotEntry("treasury", 0, "t_address"), slotEntry("__gap", 1, gapType(50))],
-    types
+    types,
   );
   const current = artifact(
     "Vault",
     [slotEntry("keeper", 0, "t_address"), slotEntry("__gap", 1, gapType(50))],
-    types
+    types,
   );
   assertRejected(
     { Vault: baseline },
     { Vault: current },
-    "slot 0+0 held treasury, now holds keeper"
+    "slot 0+0 held treasury, now holds keeper",
   );
 });
 
@@ -743,7 +738,7 @@ test("variable that changed type is an error", () => {
   assertRejected(
     { Vault: baseline },
     { Vault: current },
-    "variable treasury changed type from address to uint256"
+    "variable treasury changed type from address to uint256",
   );
 });
 
@@ -752,7 +747,7 @@ test("variable that changed type is an error", () => {
 test("unchanged enum is compatible", () => {
   assertCompatible(
     { Vault: enumVault(["Pending", "Active"], 1) },
-    { Vault: enumVault(["Pending", "Active"], 7) }
+    { Vault: enumVault(["Pending", "Active"], 7) },
   );
 });
 
@@ -760,7 +755,7 @@ test("appended enum member is a review", () => {
   assertReviewOnly(
     { Vault: enumVault(["Pending", "Active"], 1) },
     { Vault: enumVault(["Pending", "Active", "Frozen"], 7) },
-    "enum Vault.Status gained member(s) Frozen at the end"
+    "enum Vault.Status gained member(s) Frozen at the end",
   );
 });
 
@@ -768,7 +763,7 @@ test("reordered enum members are an error", () => {
   assertRejected(
     { Vault: enumVault(["Pending", "Active"], 1) },
     { Vault: enumVault(["Active", "Pending"], 7) },
-    "enum Vault.Status: value 0 was Pending, is now Active"
+    "enum Vault.Status: value 0 was Pending, is now Active",
   );
 });
 
@@ -776,7 +771,7 @@ test("enum member inserted before the existing ones is an error", () => {
   assertRejected(
     { Vault: enumVault(["Pending", "Active"], 1) },
     { Vault: enumVault(["Draft", "Pending", "Active"], 7) },
-    "enum Vault.Status: value 0 was Pending, is now Draft"
+    "enum Vault.Status: value 0 was Pending, is now Draft",
   );
 });
 
@@ -784,7 +779,7 @@ test("removed enum member is an error", () => {
   assertRejected(
     { Vault: enumVault(["Pending", "Active"], 1) },
     { Vault: enumVault(["Pending"], 7) },
-    "enum Vault.Status: member Active (value 1) was removed"
+    "enum Vault.Status: member Active (value 1) was removed",
   );
 });
 
@@ -792,7 +787,7 @@ test("reordered enum inside a struct is an error", () => {
   assertRejected(
     { Vault: enumVault(["Pending", "Active"], 1, { nested: true }) },
     { Vault: enumVault(["Active", "Pending"], 7, { nested: true }) },
-    "enum Vault.Status: value 0 was Pending, is now Active"
+    "enum Vault.Status: value 0 was Pending, is now Active",
   );
 });
 
@@ -800,7 +795,7 @@ test("enum without a definition is a review", () => {
   assertReviewOnly(
     { Vault: enumVault(["Pending", "Active"], 1) },
     { Vault: enumVault(["Pending", "Active"], 7, { withAst: false }) },
-    "enum Vault.Status at status is not in the current build's ASTs"
+    "enum Vault.Status at status is not in the current build's ASTs",
   );
 });
 
@@ -811,7 +806,7 @@ test("enum without a definition is a review", () => {
 test("unchanged value type is compatible", () => {
   assertCompatible(
     { Vault: valueTypeVault("uint256", 5) },
-    { Vault: valueTypeVault("uint256", 11) }
+    { Vault: valueTypeVault("uint256", 11) },
   );
 });
 
@@ -819,7 +814,7 @@ test("changed underlying type is an error", () => {
   assertRejected(
     { Vault: valueTypeVault("uint256", 5) },
     { Vault: valueTypeVault("int256", 11) },
-    "value type Vault.Amount at total wraps int256 instead of uint256"
+    "value type Vault.Amount at total wraps int256 instead of uint256",
   );
 });
 
@@ -827,7 +822,7 @@ test("changed underlying type of a struct member is an error", () => {
   assertRejected(
     { Vault: valueTypeVault("uint256", 5, { shape: "struct_member" }) },
     { Vault: valueTypeVault("int256", 11, { shape: "struct_member" }) },
-    "value type Vault.Amount at entry.amount wraps int256 instead of uint256"
+    "value type Vault.Amount at entry.amount wraps int256 instead of uint256",
   );
 });
 
@@ -837,7 +832,7 @@ test("changed underlying type of a mapping key is an error", () => {
   assertRejected(
     { Vault: valueTypeVault("uint256", 5, { shape: "mapping_key" }) },
     { Vault: valueTypeVault("int256", 11, { shape: "mapping_key" }) },
-    "value type Vault.Amount at byAmount[key] wraps int256 instead of uint256"
+    "value type Vault.Amount at byAmount[key] wraps int256 instead of uint256",
   );
 });
 
@@ -845,7 +840,7 @@ test("value type without a definition is a review", () => {
   assertReviewOnly(
     { Vault: valueTypeVault("uint256", 5) },
     { Vault: valueTypeVault("uint256", 11, { withAst: false }) },
-    "value type Vault.Amount at total is not in the current build's ASTs"
+    "value type Vault.Amount at total is not in the current build's ASTs",
   );
 });
 
@@ -857,7 +852,7 @@ test("reordered enum used only in a function parameter is an error", () => {
   assertRejected(
     { Vault: abiEnumVault(["Manual", "Auto"], [MODE_FUNCTION]) },
     { Vault: abiEnumVault(["Auto", "Manual"], [MODE_FUNCTION]) },
-    "enum Vault.Mode: value 0 was Manual, is now Auto"
+    "enum Vault.Mode: value 0 was Manual, is now Auto",
   );
 });
 
@@ -865,7 +860,7 @@ test("reordered enum used only in an event parameter is an error", () => {
   assertRejected(
     { Vault: abiEnumVault(["Manual", "Auto"], [MODE_EVENT]) },
     { Vault: abiEnumVault(["Auto", "Manual"], [MODE_EVENT]) },
-    "enum Vault.Mode: value 0 was Manual, is now Auto"
+    "enum Vault.Mode: value 0 was Manual, is now Auto",
   );
 });
 
@@ -873,7 +868,7 @@ test("removed member of an enum used only in a function parameter is an error", 
   assertRejected(
     { Vault: abiEnumVault(["Manual", "Auto"], [MODE_FUNCTION]) },
     { Vault: abiEnumVault(["Manual"], [MODE_FUNCTION]) },
-    "enum Vault.Mode: member Auto (value 1) was removed"
+    "enum Vault.Mode: member Auto (value 1) was removed",
   );
 });
 
@@ -881,7 +876,7 @@ test("appended member of an enum used only in a custom error is a review", () =>
   assertReviewOnly(
     { Vault: abiEnumVault(["Manual", "Auto"], [MODE_ERROR]) },
     { Vault: abiEnumVault(["Manual", "Auto", "Paused"], [MODE_ERROR]) },
-    "enum Vault.Mode gained member(s) Paused at the end"
+    "enum Vault.Mode gained member(s) Paused at the end",
   );
 });
 
@@ -891,7 +886,7 @@ test("reordered enum inside a tuple parameter is an error", () => {
   assertRejected(
     { Vault: abiEnumVault(["Manual", "Auto"], [MODE_TUPLE_FUNCTION]) },
     { Vault: abiEnumVault(["Auto", "Manual"], [MODE_TUPLE_FUNCTION]) },
-    "enum Vault.Mode: value 0 was Manual, is now Auto"
+    "enum Vault.Mode: value 0 was Manual, is now Auto",
   );
 });
 
@@ -899,7 +894,7 @@ test("unchanged enum in a parameter is compatible", () => {
   const abi = [MODE_FUNCTION, MODE_EVENT, MODE_ERROR, MODE_TUPLE_FUNCTION];
   assertCompatible(
     { Vault: abiEnumVault(["Manual", "Auto"], abi) },
-    { Vault: abiEnumVault(["Manual", "Auto"], abi) }
+    { Vault: abiEnumVault(["Manual", "Auto"], abi) },
   );
 });
 
@@ -917,7 +912,7 @@ test("enum reached through both the layout and a parameter is reported once", ()
   const output = assertRejected(
     { Vault: enumVault(["Pending", "Active"], 1, { abi: [setStatus] }) },
     { Vault: enumVault(["Active", "Pending"], 7, { abi: [setStatus] }) },
-    message
+    message,
   );
   assert.equal(output.split(message).length - 1, 1, output);
 });
@@ -928,7 +923,7 @@ test("value type used only in a parameter without a definition is a review", () 
   assertReviewOnly(
     { Vault: abiValueTypeVault("uint256", true) },
     { Vault: abiValueTypeVault("uint256", false) },
-    "value type Vault.Amount at credit(uint256).amount is not in the current build's ASTs"
+    "value type Vault.Amount at credit(uint256).amount is not in the current build's ASTs",
   );
 });
 
@@ -957,7 +952,7 @@ function fileLevelStatusAst(contract: string, enumId: number, members: string[])
 function fileStatusVault(
   members: string[],
   enumId: number,
-  options: { stored: boolean; abi?: AbiEntry[] }
+  options: { stored: boolean; abi?: AbiEntry[] },
 ): Artifact {
   const typeId = `t_enum(Status)${enumId}`;
   const storage = options.stored
@@ -971,7 +966,7 @@ function fileStatusVault(
     storage,
     types,
     options.abi ?? ABI,
-    fileLevelStatusAst("Vault", enumId, members)
+    fileLevelStatusAst("Vault", enumId, members),
   );
 }
 
@@ -993,7 +988,7 @@ test("stored file level enum is compared by its AST id, not by a same-named one"
       Vault: fileStatusVault(["Active", "Pending"], 11, { stored: true }),
       Zeta: unrelatedStatus(21),
     },
-    "enum Status: value 0 was Pending, is now Active"
+    "enum Status: value 0 was Pending, is now Active",
   );
 });
 
@@ -1020,7 +1015,7 @@ test("parameter enum named by two differing file level declarations is an error"
     },
     "enum Status at setStatus(uint8).status names more than one differing declaration in " +
       "the baseline and the current build's ASTs",
-    "give the declarations distinct names"
+    "give the declarations distinct names",
   );
 });
 
@@ -1070,7 +1065,7 @@ test("swapped tuple fields of the same type are an error", () => {
   assertRejected(
     { Vault: abiVault([configureFunction(["min", "max"])]) },
     { Vault: abiVault([configureFunction(["max", "min"])]) },
-    "function configure((uint256,uint256)).config: components (min,max) are now (max,min)"
+    "function configure((uint256,uint256)).config: components (min,max) are now (max,min)",
   );
 });
 
@@ -1078,7 +1073,7 @@ test("swapped fields of a nested tuple are an error", () => {
   assertRejected(
     { Vault: abiVault([configureFunction(["fee"], ["floor", "cap"])]) },
     { Vault: abiVault([configureFunction(["fee"], ["cap", "floor"])]) },
-    "config.limits: components (floor,cap) are now (cap,floor)"
+    "config.limits: components (floor,cap) are now (cap,floor)",
   );
 });
 
@@ -1086,7 +1081,7 @@ test("swapped parameters of the same type are an error", () => {
   assertRejected(
     { Vault: abiVault([setRangeFunction("min", "max")]) },
     { Vault: abiVault([setRangeFunction("max", "min")]) },
-    "function setRange(uint256,uint256): parameters (min,max) are now (max,min)"
+    "function setRange(uint256,uint256): parameters (min,max) are now (max,min)",
   );
 });
 
@@ -1096,14 +1091,14 @@ test("renamed tuple field is a review", () => {
   assertReviewOnly(
     { Vault: abiVault([configureFunction(["min", "max"])]) },
     { Vault: abiVault([configureFunction(["min", "ceiling"])]) },
-    "components (min,max) are now (min,ceiling)"
+    "components (min,max) are now (min,ceiling)",
   );
 });
 
 test("renamed parameter is compatible", () => {
   assertCompatible(
     { Vault: abiVault([setRangeFunction("_min", "_max")]) },
-    { Vault: abiVault([setRangeFunction("min", "max")]) }
+    { Vault: abiVault([setRangeFunction("min", "max")]) },
   );
 });
 
@@ -1119,7 +1114,7 @@ test("same contract name in two source files is checked per file", () => {
   const legacy = fromSource(
     artifact("Vault", [slotEntry("owner", 0, "t_address")], { t_address: ADDRESS }),
     "contracts/legacy/Vault.sol",
-    "Vault"
+    "Vault",
   );
   const output = assertRejected(
     {
@@ -1130,7 +1125,7 @@ test("same contract name in two source files is checked per file", () => {
       Vault: artifact("Vault", [slotEntry("treasury", 0, "t_uint256")], { t_uint256: UINT256 }),
       VaultLegacy: legacy,
     },
-    "variable treasury changed type from address to uint256"
+    "variable treasury changed type from address to uint256",
   );
   assert.ok(output.includes("contracts/Vault.sol:Vault"), output);
 });
@@ -1139,7 +1134,7 @@ test("contract whose file moved is still paired by its name", () => {
   const vault = artifact("Vault", [slotEntry("total", 0, "t_uint256")], { t_uint256: UINT256 });
   assertCompatible(
     { Vault: vault },
-    { Vault: fromSource(vault, "contracts/vaults/Vault.sol", "Vault") }
+    { Vault: fromSource(vault, "contracts/vaults/Vault.sol", "Vault") },
   );
 });
 
@@ -1172,7 +1167,7 @@ function importingVault(enumId: number): Artifact {
       nodeType: "SourceUnit",
       absolutePath: "contracts/Vault.sol",
       nodes: [{ nodeType: "ContractDefinition", name: "Vault", nodes: [] }],
-    }
+    },
   );
 }
 
@@ -1191,7 +1186,7 @@ test("enum from a file without contracts is compared through the build-info", ()
     {
       baseline: { "out/build-info/run.json": buildInfo(5, ["Pending", "Active"]) },
       current: { "out/build-info/run.json": buildInfo(5, ["Active", "Pending"]) },
-    }
+    },
   );
   assert.equal(status, 1, output);
   assert.ok(output.includes("enum Status: value 0 was Pending, is now Active"), output);
@@ -1220,7 +1215,7 @@ test("the compiler run the cache names is used, not an earlier one", () => {
         "cache/solidity-files-cache.json": cache,
       },
       current: { "out/build-info/run.json": buildInfo(5, ["Pending", "Active"]) },
-    }
+    },
   );
   assert.equal(status, 0, output);
   assert.ok(output.includes("compatible with the baseline (0 item(s) flagged for review)"), output);
