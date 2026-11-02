@@ -17,7 +17,7 @@
     "@types/node": "^24",
     "husky": ">=6",
     "lint-staged": ">=10",
-    "prettier": "^2.5.1",
+    "prettier": "^3.0.0",
     "prettier-plugin-solidity": "1.0.0-beta.19",
     "solhint": "git+https://github.com/celo-org/solhint.git",
     "typescript": "^7.0.0"
