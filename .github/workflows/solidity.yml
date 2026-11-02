@@ -27,7 +27,7 @@ jobs:
       # package.json carries the lint and typecheck tooling (prettier, solhint,
       # typescript) plus the devchain fixture package. The version is the one its
       # `engines` field requires: the scripts are TypeScript run by node's native type
-      # stripping, which needs node 24.
+      # stripping, which needs node 26.
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
@@ -76,7 +76,7 @@ jobs:
 
       # The devchain fixture is extracted from an npm package by a TypeScript helper,
       # so node is needed even though nothing in the test-suite itself runs on node.
-      # Node 24 is what package.json's `engines` requires: the helper is run straight
+      # Node 26 is what package.json's `engines` requires: the helper is run straight
       # from source by node's native type stripping.
       - name: Use Node.js
         uses: actions/setup-node@v7

@@ -85,9 +85,9 @@ Withdrawal flow:
 - **Foundry 1.8.1.** `mise.toml` pins it, so `mise install` followed by
   `eval "$(mise env -s zsh)"` is enough. Without mise: `foundryup -i 1.8.1`. The version is
   pinned because the compiler settings and the cheatcodes the suite uses must match CI.
-- **Node 24 and yarn.** Everything under `scripts/` is TypeScript that node runs straight
+- **Node 26 and yarn.** Everything under `scripts/` is TypeScript that node runs straight
   from source with its native type stripping, which is why `package.json`'s `engines`
-  floor is 24; nothing compiles it, and nothing in the build, the tests or the deployment
+  floor is 26; nothing compiles it, and nothing in the build, the tests or the deployment
   runs on node either. `yarn install` is still required before `forge build`, because it
   is what provides OpenZeppelin: `./@openzeppelin` is a symlink into `node_modules`, and
   without the install the contracts' imports do not resolve. Beyond that it brings the
