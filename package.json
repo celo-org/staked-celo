@@ -14,7 +14,7 @@
     "@celo/devchain-anvil": "17.0.7",
     "@openzeppelin/contracts": "4.4.2",
     "@openzeppelin/contracts-upgradeable": "4.5.2",
-    "@types/node": "^24",
+    "@types/node": "^26.0.0",
     "husky": ">=6",
     "lint-staged": ">=10",
     "prettier": "^2.5.1",
