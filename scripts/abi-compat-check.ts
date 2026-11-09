@@ -288,7 +288,7 @@ export function declarations(ast: AstNode | undefined): AstNode[] {
 
 /** Yields [qualified name, member names, AST id] for every enum of one source unit AST. */
 export function enumDefinitions(
-  ast: AstNode | undefined
+  ast: AstNode | undefined,
 ): Array<[string, string[], number | undefined]> {
   const found: Array<[string, string[], number | undefined]> = [];
   for (const node of declarations(ast)) {
@@ -311,7 +311,7 @@ export function enumDefinitions(
  * spells out no more than the name, so it has to come from the AST.
  */
 export function valueTypeDefinitions(
-  ast: AstNode | undefined
+  ast: AstNode | undefined,
 ): Array<[string, string, number | undefined]> {
   const found: Array<[string, string, number | undefined]> = [];
   for (const node of declarations(ast)) {
@@ -341,7 +341,7 @@ export function addDefinition<T>(
   name: string,
   madeOf: T,
   id: number | undefined,
-  source: string
+  source: string,
 ): void {
   if (id !== undefined) {
     const known = index.byId.get(id);
@@ -380,7 +380,7 @@ export function lookupDefinition<T>(
   index: DefinitionIndex<T>,
   label: string,
   equal: (left: T, right: T) => boolean,
-  id?: number
+  id?: number,
 ): Resolution<T> {
   if (id !== undefined) {
     const exact = index.byId.get(id);
@@ -422,10 +422,10 @@ function unresolvedClauses<T>(base: Resolution<T>, cur: Resolution<T>): string {
     ["current", cur],
   ];
   const missing = sides.filter(
-    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "missing"
+    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "missing",
   );
   const ambiguous = sides.filter(
-    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "ambiguous"
+    ([, resolution]) => "unresolved" in resolution && resolution.unresolved === "ambiguous",
   );
   const clauses: string[] = [];
   if (missing.length > 0) {
@@ -435,7 +435,7 @@ function unresolvedClauses<T>(base: Resolution<T>, cur: Resolution<T>): string {
     clauses.push(
       `names more than one differing declaration in the ${ambiguous
         .map(([side]) => side)
-        .join(" and the ")} build's ASTs`
+        .join(" and the ")} build's ASTs`,
     );
   }
   return clauses.join(" and ");
@@ -454,10 +454,10 @@ function unresolvedFinding<T>(
   described: string,
   base: Resolution<T>,
   cur: Resolution<T>,
-  consequence: string
+  consequence: string,
 ): Finding {
   const ambiguous = [base, cur].some(
-    (resolution) => "unresolved" in resolution && resolution.unresolved === "ambiguous"
+    (resolution) => "unresolved" in resolution && resolution.unresolved === "ambiguous",
   );
   const remedy = ambiguous ? " - give the declarations distinct names" : "";
   return {
@@ -550,7 +550,7 @@ function runDefinitions(outDir: string, buildId: string): Definitions {
  */
 function loadBuildDefinitions(
   outDir: string,
-  keys: Array<{ key: string; source: string; name: string }>
+  keys: Array<{ key: string; source: string; name: string }>,
 ): Map<string, Definitions> {
   const ids = buildInfoIds(outDir);
   if (ids.length === 0) {
@@ -603,7 +603,7 @@ export function loadArtifacts(outDir: string, exclude: RegExp, sourcePrefix: str
         continue;
       }
       const artifact = JSON.parse(
-        fs.readFileSync(path.join(directory, filename), "utf8")
+        fs.readFileSync(path.join(directory, filename), "utf8"),
       ) as Artifact;
       const compiled = Object.entries(artifact.metadata?.settings?.compilationTarget ?? {});
       const target = compiled[0];
@@ -754,7 +754,7 @@ function remember(
   base: string,
   cur: string | null,
   walked: string,
-  ids?: { base?: number; cur?: number }
+  ids?: { base?: number; cur?: number },
 ): void {
   if (ids === undefined) {
     for (const entry of reached.values()) {
@@ -808,7 +808,7 @@ export function checkType(
   seen: Set<string>,
   reached: ReachedSets,
   stride: boolean,
-  walked: string
+  walked: string,
 ): void {
   const visit = `${baseId}\0${curId}\0${stride ? "1" : "0"}`;
   if (seen.has(visit)) {
@@ -854,7 +854,7 @@ export function checkType(
       seen,
       reached,
       true,
-      `${walked}[i]`
+      `${walked}[i]`,
     );
   }
   if (baseType.value !== undefined && curType.value !== undefined) {
@@ -868,7 +868,7 @@ export function checkType(
       seen,
       reached,
       false,
-      `${walked}[key]`
+      `${walked}[key]`,
     );
   }
   // The key decides which slot an entry hashes to, so an enum or a value type used as
@@ -885,7 +885,7 @@ export function checkType(
       seen,
       reached,
       false,
-      `${walked}[key]`
+      `${walked}[key]`,
     );
   }
 
@@ -947,7 +947,7 @@ export function checkType(
           seen,
           reached,
           stride,
-          `${walked}.${baseMember.label}`
+          `${walked}.${baseMember.label}`,
         );
       }
     }
@@ -1012,7 +1012,7 @@ export function checkEnums(
   reached: Reached,
   baseEnums: DefinitionIndex<string[]>,
   curEnums: DefinitionIndex<string[]>,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   for (const { base, cur, path: walked, baseId, curId } of byBaselineName(reached)) {
     const baseResolution = lookupDefinition(baseEnums, base, sameMembers, baseId);
@@ -1024,8 +1024,8 @@ export function checkEnums(
           `enum ${base} at ${walked}`,
           baseResolution,
           curResolution,
-          "the order of its members could not be compared"
-        )
+          "the order of its members could not be compared",
+        ),
       );
       continue;
     }
@@ -1074,7 +1074,7 @@ export function checkUserDefinedValueTypes(
   reached: Reached,
   baseValueTypes: DefinitionIndex<string>,
   curValueTypes: DefinitionIndex<string>,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   // Sorted by the baseline name alone: the current one is null where the walk found
   // something other than a value type opposite.
@@ -1088,8 +1088,8 @@ export function checkUserDefinedValueTypes(
           `value type ${base} at ${walked}`,
           baseResolution,
           curResolution,
-          "its underlying type could not be compared"
-        )
+          "its underlying type could not be compared",
+        ),
       );
       continue;
     }
@@ -1126,7 +1126,7 @@ export function checkGaps(
   baseTypes: TypesMap,
   curStorage: StorageEntry[],
   curTypes: TypesMap,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const curAt = new Map<string, StorageEntry>();
   for (const entry of curStorage) {
@@ -1212,7 +1212,7 @@ export function checkStorage(
   baseline: Artifact,
   current: Artifact,
   reached: ReachedSets,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const baseLayout = baseline.storageLayout ?? {};
   const curLayout = current.storageLayout ?? {};
@@ -1288,7 +1288,7 @@ export function checkStorage(
         seenStructs,
         reached,
         false,
-        label
+        label,
       );
     }
   }
@@ -1354,7 +1354,7 @@ function rememberParameters(
   baseParams: AbiParameter[] | undefined,
   curParams: AbiParameter[] | undefined,
   reached: ReachedSets,
-  walked: string
+  walked: string,
 ): void {
   const base = baseParams ?? [];
   const cur = curParams ?? [];
@@ -1395,17 +1395,17 @@ function checkParameterNames(
   baseParams: AbiParameter[] | undefined,
   curParams: AbiParameter[] | undefined,
   components: boolean,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const base = baseParams ?? [];
   const cur = curParams ?? [];
   const baseNames = base.map((param) => param.name ?? "");
   const curNames = cur.map((param) => param.name ?? "");
   const listed = `${components ? "components" : "parameters"} (${baseNames.join(
-    ","
+    ",",
   )}) are now (${curNames.join(",")})`;
   const moved = baseNames.filter(
-    (param, index) => param !== "" && curNames[index] !== param && curNames.includes(param)
+    (param, index) => param !== "" && curNames[index] !== param && curNames.includes(param),
   );
   if (moved.length > 0) {
     findings.push({
@@ -1471,7 +1471,7 @@ export function checkMutability(
   sig: string,
   base: AbiEntry,
   cur: AbiEntry,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const baseMutability = base.stateMutability ?? "nonpayable";
   const curMutability = cur.stateMutability ?? "nonpayable";
@@ -1503,7 +1503,7 @@ export function checkHandler(
   kind: string,
   baseAbi: AbiEntry[],
   curAbi: AbiEntry[],
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const baseEntry = baseAbi.find((entry) => entry.type === kind);
   if (baseEntry === undefined) {
@@ -1530,7 +1530,7 @@ export function checkAbi(
   baseline: Artifact,
   current: Artifact,
   reached: ReachedSets,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   const baseAbi = baseline.abi ?? [];
   const curAbi = current.abi ?? [];
@@ -1551,14 +1551,14 @@ export function checkAbi(
       baseEntry.inputs,
       curEntry.inputs,
       false,
-      findings
+      findings,
     );
     if (outputs(baseEntry) !== outputs(curEntry)) {
       findings.push({
         level: ERROR,
         name,
         message: `function ${sig} returns (${outputs(curEntry)}) instead of (${outputs(
-          baseEntry
+          baseEntry,
         )})`,
       });
     } else {
@@ -1623,7 +1623,7 @@ export function checkDefinitions(
   reached: ReachedSets,
   baseDefinitions: Definitions,
   curDefinitions: Definitions,
-  findings: Finding[]
+  findings: Finding[],
 ): void {
   checkEnums(name, reached.enum, baseDefinitions.enum, curDefinitions.enum, findings);
   checkUserDefinedValueTypes(
@@ -1631,7 +1631,7 @@ export function checkDefinitions(
     reached.value_type,
     baseDefinitions.value_type,
     curDefinitions.value_type,
-    findings
+    findings,
   );
 }
 
@@ -1645,7 +1645,7 @@ export function report(
   errors: Finding[],
   reviews: Finding[],
   verbose: boolean,
-  print: (line: string) => void
+  print: (line: string) => void,
 ): void {
   let width = 8;
   if (results.length > 0) {
@@ -1790,7 +1790,7 @@ export function main(
   argv: string[],
   write: (text: string) => void = (text) => {
     process.stdout.write(text);
-  }
+  },
 ): number {
   const print = (line: string): void => {
     write(`${line}\n`);
